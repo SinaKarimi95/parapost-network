@@ -1264,7 +1264,7 @@ useEffect(() => {
 
 return (
   <div
-    className={`min-h-screen text-white profile-polish-surface profile-mobile-first-polish ${profileSmoothLoadClass}`}
+    className={`min-h-screen text-white profile-polish-surface profile-mobile-first-polish profile-batch2-flow-polish ${profileSmoothLoadClass}`}
    style={{
      ...profilePageBackgroundStyle,
      backgroundColor: "#07090d",
@@ -1284,6 +1284,185 @@ return (
         --pp-surface: rgba(18,20,25,0.92);
         --pp-surface-soft: rgba(255,255,255,0.045);
         --pp-purple: #a855f7;
+      }
+
+
+
+      .profile-batch2-flow-polish .profile-stats-bar,
+      .profile-batch2-flow-polish .profile-stories-row,
+      .profile-batch2-flow-polish .profile-tabs-shell,
+      .profile-batch2-flow-polish .profile-content-card {
+        scroll-margin-top: 84px;
+      }
+
+      .profile-batch2-flow-polish .profile-stats-bar {
+        background: linear-gradient(180deg, rgba(255,255,255,0.040), rgba(255,255,255,0.022)) !important;
+        border-color: rgba(255,255,255,0.075) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.035) !important;
+      }
+
+      .profile-batch2-flow-polish .profile-stats-bar strong {
+        letter-spacing: -0.035em;
+      }
+
+      .profile-batch2-flow-polish .profile-stories-row {
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .profile-batch2-flow-polish .profile-stories-row::-webkit-scrollbar {
+        display: none;
+      }
+
+      .profile-batch2-flow-polish .profile-stories-row button {
+        scroll-snap-align: start;
+      }
+
+      .profile-batch2-flow-polish .profile-stories-row button:hover .profile-story-circle {
+        transform: translateY(-1px);
+        border-color: rgba(216,180,254,0.72) !important;
+        box-shadow: 0 0 24px rgba(168,85,247,0.22) !important;
+      }
+
+      .profile-batch2-flow-polish .profile-story-circle {
+        transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+      }
+
+      .profile-batch2-flow-polish .profile-tabs-shell {
+        position: relative;
+        z-index: 12;
+      }
+
+      .profile-batch2-flow-polish .profile-tabs-desktop {
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .profile-batch2-flow-polish .profile-tabs-desktop::-webkit-scrollbar {
+        display: none;
+      }
+
+      .profile-batch2-flow-polish .profile-tabs-desktop button {
+        position: relative;
+      }
+
+      .profile-batch2-flow-polish .profile-tabs-desktop button[aria-pressed="true"]::after {
+        content: "";
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 4px;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(168,85,247,0), rgba(168,85,247,0.95), rgba(34,211,238,0.70), rgba(168,85,247,0));
+        pointer-events: none;
+      }
+
+      .profile-batch2-flow-polish .profile-content-card {
+        animation: profileSectionSettle 180ms ease-out;
+      }
+
+      .profile-batch2-flow-polish .profile-feed-section-card {
+        margin-top: 0;
+      }
+
+      .profile-batch2-flow-polish .profile-feed-card {
+        transform-origin: center top;
+      }
+
+      @keyframes profileSectionSettle {
+        from {
+          opacity: 0.92;
+          transform: translateY(3px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (min-width: 721px) {
+        .profile-batch2-flow-polish .profile-tabs-shell {
+          padding-top: 2px !important;
+          padding-bottom: 16px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-tabs-desktop {
+          gap: 8px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-content-card + .profile-content-card {
+          margin-top: 2px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-batch2-flow-polish .profile-stats-bar,
+        .profile-batch2-flow-polish .profile-stories-row,
+        .profile-batch2-flow-polish .profile-tabs-shell,
+        .profile-batch2-flow-polish .profile-content-card {
+          scroll-margin-top: 58px;
+        }
+
+        .profile-batch2-flow-polish .profile-stats-bar strong {
+          font-size: 18px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-stats-bar span {
+          font-size: 10px !important;
+          letter-spacing: 0.035em !important;
+        }
+
+        .profile-batch2-flow-polish .profile-stories-row {
+          padding-top: 12px !important;
+          padding-bottom: 14px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-stories-row button {
+          min-width: 70px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-story-circle {
+          width: 58px !important;
+          height: 58px !important;
+          border-radius: 18px !important;
+          border-width: 1px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-tabs-shell {
+          box-shadow: 0 10px 26px rgba(0,0,0,0.18) !important;
+        }
+
+        .profile-batch2-flow-polish .profile-tabs-desktop {
+          gap: 18px !important;
+          scroll-snap-type: x proximity;
+        }
+
+        .profile-batch2-flow-polish .profile-tabs-desktop button {
+          scroll-snap-align: center;
+          min-height: 42px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-tabs-desktop button[aria-pressed="true"]::after {
+          left: 10px;
+          right: 10px;
+          bottom: 5px;
+        }
+
+        .profile-batch2-flow-polish .profile-content-card {
+          padding-top: 15px !important;
+          padding-bottom: 15px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-feed-section-card > div:first-child {
+          gap: 12px !important;
+        }
+
+        .profile-batch2-flow-polish .profile-feed-section-card > div:first-child > div:last-child {
+          width: 100% !important;
+          justify-content: flex-start !important;
+        }
       }
 
       .profile-data-ready .profile-hero-content,
@@ -2837,6 +3016,219 @@ return (
 
 
 
+
+      /* Profile polish batch 1: premium header, avatar ring, cleaner cover/identity flow */
+      .profile-polish-surface .profile-cover-zone {
+        overflow: hidden !important;
+      }
+
+      .profile-polish-surface .profile-cover-zone button {
+        opacity: 0.88 !important;
+      }
+
+      .profile-polish-surface .profile-cover-zone button:hover {
+        opacity: 1 !important;
+      }
+
+      .profile-polish-surface .profile-hero-content {
+        align-items: flex-start !important;
+      }
+
+      .profile-polish-surface .profile-hero-info {
+        padding-top: clamp(70px, 7.2vw, 96px) !important;
+      }
+
+      .profile-polish-surface .profile-identity-block {
+        min-width: 0 !important;
+        max-width: 100% !important;
+      }
+
+      .profile-polish-surface .profile-hero-topline h1 {
+        text-shadow: 0 10px 28px rgba(0,0,0,0.26) !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap,
+      .profile-polish-surface .profile-mobile-avatar-shell-real {
+        position: relative !important;
+        isolation: isolate !important;
+        overflow: visible !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap img,
+      .profile-polish-surface .profile-avatar-wrap > div,
+      .profile-polish-surface .profile-mobile-avatar-image-real,
+      .profile-polish-surface .profile-mobile-avatar-fallback-real {
+        position: relative !important;
+        z-index: 2 !important;
+      }
+
+      .profile-polish-surface .profile-avatar-online-ring {
+        background: linear-gradient(135deg, rgba(168,85,247,0.95), rgba(34,211,238,0.82), rgba(124,58,237,0.90)) !important;
+        box-shadow:
+          0 0 0 1px rgba(216,180,254,0.20),
+          0 0 18px rgba(168,85,247,0.30),
+          0 0 32px rgba(34,211,238,0.14) !important;
+      }
+
+      .profile-polish-surface .profile-avatar-online-ring::after {
+        content: "" !important;
+        position: absolute !important;
+        inset: -6px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(34,211,238,0.36) !important;
+        box-shadow:
+          0 0 18px rgba(168,85,247,0.30),
+          0 0 30px rgba(34,211,238,0.14) !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+      }
+
+      .profile-polish-surface .profile-avatar-offline-ring {
+        background: linear-gradient(135deg, rgba(168,85,247,0.62), rgba(59,130,246,0.42), rgba(15,23,42,0.72)) !important;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,0.08),
+          0 0 16px rgba(168,85,247,0.14) !important;
+      }
+
+      .profile-polish-surface [class*="online-dot"],
+      .profile-polish-surface [class*="OnlineDot"],
+      .profile-polish-surface .profile-mobile-online-dot-real {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+
+      .profile-polish-surface .profile-avatar-edit-button,
+      .profile-polish-surface .profile-mobile-camera-real {
+        z-index: 5 !important;
+      }
+
+      @media (min-width: 721px) {
+        .profile-polish-surface .profile-mobile-header-real {
+          display: none !important;
+        }
+
+        .profile-polish-surface .profile-hero-content {
+          min-height: 188px !important;
+        }
+
+        .profile-polish-surface .profile-hero-actions {
+          padding-top: 4px !important;
+        }
+      }
+
+      @media (max-width: 980px) and (min-width: 721px) {
+        .profile-polish-surface .profile-hero-info {
+          padding-top: clamp(74px, 8vw, 92px) !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-polish-surface .profile-mobile-header-real {
+          display: none !important;
+        }
+
+        .profile-polish-surface .profile-cover-zone {
+          height: 132px !important;
+        }
+
+        .profile-polish-surface .profile-hero-content {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          justify-content: flex-start !important;
+          margin-top: -48px !important;
+          padding: 0 16px 16px !important;
+          gap: 0 !important;
+          text-align: left !important;
+          background: linear-gradient(180deg, rgba(7,9,14,0) 0%, rgba(12,14,20,0.92) 24%, rgba(12,14,20,0.98) 100%) !important;
+        }
+
+        .profile-polish-surface .profile-avatar-wrap {
+          width: 100px !important;
+          height: 100px !important;
+          min-width: 100px !important;
+          padding: 4px !important;
+          margin: 0 0 12px 0 !important;
+          box-shadow: 0 0 17px rgba(168,85,247,0.18) !important;
+        }
+
+        .profile-polish-surface .profile-avatar-online-ring::after {
+          inset: -5px !important;
+          border-width: 1px !important;
+        }
+
+        .profile-polish-surface .profile-hero-info {
+          width: 100% !important;
+          min-width: 0 !important;
+          padding: 0 !important;
+          text-align: left !important;
+        }
+
+        .profile-polish-surface .profile-hero-topline {
+          width: 100% !important;
+          align-items: flex-start !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          gap: 9px !important;
+          margin: 0 !important;
+        }
+
+        .profile-polish-surface .profile-hero-topline h1 {
+          justify-content: flex-start !important;
+          text-align: left !important;
+          font-size: clamp(27px, 7.8vw, 36px) !important;
+          line-height: 1.05 !important;
+          letter-spacing: -0.045em !important;
+          max-width: 100% !important;
+        }
+
+        .profile-polish-surface .profile-hero-topline p {
+          justify-content: flex-start !important;
+          text-align: left !important;
+          font-size: 13px !important;
+          line-height: 1.38 !important;
+          margin-top: 5px !important;
+        }
+
+        .profile-polish-surface .profile-avatar-edit-button,
+        .profile-polish-surface .profile-mobile-camera-real {
+          right: -11px !important;
+          bottom: 3px !important;
+          width: 33px !important;
+          height: 33px !important;
+          border-radius: 13px !important;
+          font-size: 14px !important;
+        }
+
+        .profile-polish-surface .profile-hero-info > p {
+          margin-top: 10px !important;
+          font-size: 15px !important;
+          line-height: 1.48 !important;
+          color: #e6e8ee !important;
+        }
+
+        .profile-polish-surface .profile-meta-row {
+          gap: 8px !important;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .profile-polish-surface .profile-cover-zone {
+          height: 126px !important;
+        }
+
+        .profile-polish-surface .profile-hero-content {
+          margin-top: -45px !important;
+        }
+
+        .profile-polish-surface .profile-avatar-wrap {
+          width: 94px !important;
+          height: 94px !important;
+          min-width: 94px !important;
+        }
+      }
+
       /* Mobile profile tabs touch polish: cleaner, smoother, no big spacing change */
       @media (max-width: 720px) {
         .profile-mobile-first-polish .profile-tabs-shell {
@@ -3170,7 +3562,7 @@ return (
 
                   <div className="profile-hero-info" style={profileHeroInfoStyle}>
                     <div className="profile-hero-topline" style={profileHeroTopLineStyle}>
-                      <div style={{ minWidth: 0 }}>
+                      <div className="profile-identity-block" style={{ minWidth: 0 }}>
                         <h1 style={profileHeroNameStyle}>
                           {profileDisplayName || "\u00A0"}
                           {profile?.verified ? <span style={verifiedBadgeStyle}>✓</span> : null}
@@ -3446,16 +3838,26 @@ return (
 
                 <div className="profile-stories-row" style={profileStoriesRowStyle}>
                   {[
-                    { label: "New", icon: "+" },
-                    { label: "Photos", icon: "▧" },
-                    { label: "Reels", icon: "▣" },
-                    { label: "Events", icon: "◇" },
-                    { label: "Interests", icon: "✦" },
+                    { label: "New", icon: "+", tab: "Posts" },
+                    { label: "Photos", icon: "▧", tab: "Photos" },
+                    { label: "Reels", icon: "▣", tab: "Reels" },
+                    { label: "Events", icon: "◇", tab: "Events" },
+                    { label: "Interests", icon: "✦", tab: "About" },
                   ].map((story) => (
-                    <div key={story.label} style={profileStoryItemStyle}>
+                    <button
+                      key={story.label}
+                      type="button"
+                      style={profileStoryItemStyle}
+                      onClick={() =>
+                        story.label === "New"
+                          ? handleMobileCreatePostClick()
+                          : handleOpenProfileSection(story.tab)
+                      }
+                      aria-label={`Open ${story.label} section`}
+                    >
                       <div className="profile-story-circle" style={profileStoryCircleStyle}>{story.icon}</div>
                       <span style={profileStoryLabelStyle}>{story.label}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
 
@@ -3465,9 +3867,7 @@ return (
                       <button
                         key={tab}
                         type="button"
-                        onClick={() =>
-                          setActiveProfileTab((prev) => (prev === tab ? "Posts" : tab))
-                        }
+                        onClick={() => setActiveProfileTab(tab)}
                         style={activeProfileTab === tab ? profileActiveTabStyle : profileTabStyle}
                         aria-pressed={activeProfileTab === tab}
                       >
@@ -3478,11 +3878,7 @@ return (
 
                 <select
                   value={activeProfileTab}
-                  onChange={(event) =>
-                    setActiveProfileTab((prev) =>
-                      prev === event.target.value ? "Posts" : event.target.value
-                    )
-                  }
+                  onChange={(event) => setActiveProfileTab(event.target.value)}
                   style={profileMobileTabSelectStyle}
                   aria-label="Choose profile section"
                 >
@@ -4315,13 +4711,13 @@ function getFriendStatusPillStyle(friendStatus: FriendRequestStatus): CSSPropert
 
 const mainCardStyle: CSSProperties = {
   background:
-    "linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.024) 100%)",
-  borderRadius: "12px",
+    "linear-gradient(180deg, rgba(255,255,255,0.040) 0%, rgba(255,255,255,0.022) 100%)",
+  borderRadius: "14px",
   padding: "18px",
-  border: "1px solid rgba(255,255,255,0.09)",
+  border: "1px solid rgba(255,255,255,0.085)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
-  boxShadow: "0 14px 34px rgba(0,0,0,0.22)",
+  boxShadow: "0 12px 30px rgba(0,0,0,0.20)",
   transition: "border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease",
 };
 
@@ -5174,7 +5570,7 @@ const profileCoverOverlayStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   background:
-    "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.12) 45%, rgba(5,7,11,0.96) 100%)",
+    "linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.10) 46%, rgba(5,7,11,0.94) 100%)",
 };
 
 const editCoverButtonStyle: CSSProperties = {
@@ -5182,23 +5578,26 @@ const editCoverButtonStyle: CSSProperties = {
   top: "16px",
   right: "16px",
   zIndex: 2,
-  border: "1px solid rgba(255,255,255,0.13)",
-  background: "rgba(0,0,0,0.44)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(0,0,0,0.34)",
   color: "white",
   borderRadius: "14px",
-  padding: "9px 12px",
+  padding: "8px 11px",
   cursor: "pointer",
-  fontWeight: 800,
-  backdropFilter: "blur(10px)",
+  fontWeight: 850,
+  fontSize: "13px",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
 };
 
 const profileHeroContentStyle: CSSProperties = {
   position: "relative",
   marginTop: "-86px",
-  padding: "0 20px 20px",
+  padding: "0 22px 22px",
   display: "flex",
-  gap: "24px",
-  alignItems: "flex-end",
+  gap: "22px",
+  alignItems: "flex-start",
   flexWrap: "wrap",
 };
 
@@ -5261,6 +5660,7 @@ const avatarCameraButtonStyle: CSSProperties = {
 const profileHeroInfoStyle: CSSProperties = {
   flex: 1,
   minWidth: "300px",
+  paddingTop: "84px",
   paddingBottom: "12px",
 };
 
@@ -5270,15 +5670,15 @@ const profileHeroTopLineStyle: CSSProperties = {
   alignItems: "flex-start",
   gap: "18px",
   flexWrap: "wrap",
-  marginBottom: "12px",
+  marginBottom: "10px",
   overflow: "visible",
 };
 
 const profileHeroNameStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(30px, 4vw, 48px)",
-  lineHeight: 1.02,
-  letterSpacing: "-0.055em",
+  fontSize: "clamp(30px, 3.8vw, 46px)",
+  lineHeight: 1.03,
+  letterSpacing: "-0.052em",
   color: "#fff",
 };
 
@@ -5296,16 +5696,16 @@ const verifiedBadgeStyle: CSSProperties = {
 };
 
 const profileHandleStyle: CSSProperties = {
-  margin: "10px 0 0",
+  margin: "8px 0 0",
   color: "#aeb3c2",
   fontSize: "14px",
-  lineHeight: "24px",
-  minHeight: "26px",
+  lineHeight: "22px",
+  minHeight: "24px",
   display: "flex",
   alignItems: "center",
   flexWrap: "wrap",
   overflow: "visible",
-  paddingTop: "3px",
+  paddingTop: "2px",
   paddingBottom: "2px",
 };
 
@@ -5436,6 +5836,12 @@ const profileStoryItemStyle: CSSProperties = {
   justifyItems: "center",
   gap: "8px",
   minWidth: "86px",
+  border: "0",
+  background: "transparent",
+  color: "inherit",
+  padding: "0",
+  cursor: "pointer",
+  fontFamily: "inherit",
 };
 
 const profileStoryCircleStyle: CSSProperties = {

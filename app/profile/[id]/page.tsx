@@ -1353,8 +1353,8 @@ return (
 
       @media (max-width: 720px) {
         .profile-mobile-first-polish .profile-avatar-edit-button {
-          right: -8px !important;
-          bottom: 7px !important;
+          right: -12px !important;
+          bottom: 4px !important;
           width: 34px !important;
           height: 34px !important;
           border-radius: 13px !important;
@@ -2014,8 +2014,8 @@ return (
 
         .profile-mobile-camera-real {
           position: absolute !important;
-          right: -8px !important;
-          bottom: 7px !important;
+          right: -12px !important;
+          bottom: 4px !important;
           width: 34px !important;
           height: 34px !important;
           display: grid !important;
@@ -2717,6 +2717,68 @@ return (
         }
       }
 
+
+
+
+      @media (max-width: 720px) {
+        .profile-mobile-first-polish .profile-cover-zone {
+          height: 128px !important;
+        }
+
+        .profile-mobile-first-polish .profile-hero-content {
+          margin-top: -46px !important;
+          padding: 0 16px 16px !important;
+        }
+
+        .profile-mobile-first-polish .profile-avatar-wrap {
+          width: 98px !important;
+          height: 98px !important;
+          min-width: 98px !important;
+          margin: 0 auto 10px !important;
+        }
+
+        .profile-mobile-first-polish .profile-hero-topline {
+          gap: 8px !important;
+        }
+
+        .profile-mobile-first-polish .profile-hero-topline h1 {
+          line-height: 1.04 !important;
+        }
+
+        .profile-mobile-first-polish .profile-hero-info > p {
+          margin-top: 10px !important;
+          line-height: 1.45 !important;
+        }
+
+        .profile-mobile-first-polish .profile-meta-row {
+          margin-top: 11px !important;
+          gap: 7px !important;
+        }
+
+        .profile-mobile-first-polish .profile-hero-actions {
+          margin-top: 11px !important;
+        }
+
+        .profile-mobile-first-polish .profile-stats-bar {
+          padding-top: 12px !important;
+          padding-bottom: 12px !important;
+        }
+
+        .profile-mobile-first-polish .profile-stories-row {
+          padding-top: 10px !important;
+          padding-bottom: 12px !important;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .profile-mobile-first-polish .profile-avatar-edit-button,
+        .profile-mobile-first-polish .profile-mobile-camera-real {
+          right: -11px !important;
+          bottom: 3px !important;
+          width: 33px !important;
+          height: 33px !important;
+        }
+      }
 
     `}</style>
 
@@ -5054,8 +5116,8 @@ const profileAvatarFallbackStyle: CSSProperties = {
 
 const avatarCameraButtonStyle: CSSProperties = {
   position: "absolute",
-  right: "-7px",
-  bottom: "8px",
+  right: "-10px",
+  bottom: "5px",
   width: "36px",
   height: "36px",
   borderRadius: "13px",

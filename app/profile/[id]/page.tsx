@@ -2216,7 +2216,7 @@ return (
           height: 102px !important;
           min-width: 102px !important;
           padding: 4px !important;
-          margin: 0 auto 12px !important;
+          margin: 0 0 12px 0 !important;
           box-shadow: 0 0 16px rgba(168,85,247,0.18) !important;
         }
 
@@ -2734,7 +2734,7 @@ return (
           width: 98px !important;
           height: 98px !important;
           min-width: 98px !important;
-          margin: 0 auto 10px !important;
+          margin: 0 0 10px 0 !important;
         }
 
         .profile-mobile-first-polish .profile-hero-topline {

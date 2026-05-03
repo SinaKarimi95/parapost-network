@@ -2780,6 +2780,74 @@ return (
         }
       }
 
+
+
+      /* Mobile profile tabs touch polish: cleaner, smoother, no big spacing change */
+      @media (max-width: 720px) {
+        .profile-mobile-first-polish .profile-tabs-shell {
+          padding: 0 !important;
+          background: rgba(17,19,24,0.98) !important;
+          border-top: 1px solid rgba(255,255,255,0.07) !important;
+          border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+          box-shadow: 0 8px 18px rgba(0,0,0,0.16) !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop {
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          padding: 7px 14px !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          scroll-snap-type: x proximity !important;
+          scrollbar-width: none !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-x !important;
+          background: transparent !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button {
+          flex: 0 0 auto !important;
+          min-height: 40px !important;
+          min-width: auto !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          scroll-snap-align: start !important;
+          padding: 0 13px !important;
+          border-radius: 12px !important;
+          border: 1px solid transparent !important;
+          background: rgba(255,255,255,0.025) !important;
+          color: #aeb3c2 !important;
+          font-size: 14px !important;
+          font-weight: 900 !important;
+          line-height: 1 !important;
+          letter-spacing: -0.01em !important;
+          box-shadow: none !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button[aria-pressed="true"],
+        .profile-mobile-first-polish .profile-tabs-desktop button[aria-selected="true"],
+        .profile-mobile-first-polish .profile-tabs-desktop button[data-active="true"] {
+          color: #ffffff !important;
+          border-color: rgba(168,85,247,0.30) !important;
+          background: linear-gradient(135deg, rgba(168,85,247,0.20), rgba(59,130,246,0.10)) !important;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.16) !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button:active {
+          transform: scale(0.98) !important;
+        }
+      }
+
     `}</style>
 
     {/* Mobile Top Bar */}

@@ -1351,6 +1351,17 @@ return (
         -webkit-backdrop-filter: blur(14px);
       }
 
+      @media (max-width: 720px) {
+        .profile-mobile-first-polish .profile-avatar-edit-button {
+          right: -8px !important;
+          bottom: 7px !important;
+          width: 34px !important;
+          height: 34px !important;
+          border-radius: 13px !important;
+          font-size: 14px !important;
+        }
+      }
+
       @keyframes profileAvatarOnlineGlow {
         0%, 100% {
           opacity: 0.55;
@@ -2003,10 +2014,10 @@ return (
 
         .profile-mobile-camera-real {
           position: absolute !important;
-          right: -1px !important;
-          bottom: 3px !important;
-          width: 36px !important;
-          height: 36px !important;
+          right: -8px !important;
+          bottom: 7px !important;
+          width: 34px !important;
+          height: 34px !important;
           display: grid !important;
           place-items: center !important;
           border-radius: 14px !important;
@@ -5028,21 +5039,21 @@ const profileAvatarFallbackStyle: CSSProperties = {
 
 const avatarCameraButtonStyle: CSSProperties = {
   position: "absolute",
-  right: "4px",
-  bottom: "14px",
-  width: "38px",
-  height: "38px",
-  borderRadius: "14px",
-  border: "1px solid rgba(216,180,254,0.38)",
-  background: "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(168,85,247,0.26))",
+  right: "-7px",
+  bottom: "8px",
+  width: "36px",
+  height: "36px",
+  borderRadius: "13px",
+  border: "1px solid rgba(216,180,254,0.42)",
+  background: "linear-gradient(135deg, rgba(255,255,255,0.18), rgba(168,85,247,0.30))",
   color: "white",
   cursor: "pointer",
   display: "grid",
   placeItems: "center",
-  fontSize: "17px",
+  fontSize: "15px",
   fontWeight: 950,
   lineHeight: 1,
-  boxShadow: "0 10px 24px rgba(0,0,0,0.32), 0 0 18px rgba(168,85,247,0.24)",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.34), 0 0 18px rgba(168,85,247,0.26)",
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
 };

@@ -2490,17 +2490,22 @@ return (
         }
 
         .profile-mobile-inline-more {
+          display: grid !important;
+          place-items: center !important;
           width: 50px !important;
           height: 46px !important;
           border-radius: 13px !important;
-          border: 1px solid rgba(255,255,255,0.12) !important;
-          background: rgba(255,255,255,0.055) !important;
+          border: 1px solid rgba(216,180,254,0.24) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,0.075), rgba(168,85,247,0.16)) !important;
           color: #ffffff !important;
           font-size: 16px !important;
           font-weight: 900 !important;
           letter-spacing: 0.12em !important;
           cursor: pointer !important;
           align-self: end !important;
+          box-shadow: 0 12px 26px rgba(0,0,0,0.26), 0 0 18px rgba(168,85,247,0.12) !important;
+          backdrop-filter: blur(14px) !important;
+          -webkit-backdrop-filter: blur(14px) !important;
         }
 
         .profile-mobile-first-polish .profile-mobile-meta-action-row + * {
@@ -3217,7 +3222,17 @@ return (
                         <span>📅 Joined Parapost</span>
                       </div>
 
-                      
+                      {isOwnProfile ? (
+                        <button
+                          type="button"
+                          onClick={() => setProfileActionsOpen(true)}
+                          className="profile-mobile-inline-more"
+                          aria-label="Profile options"
+                          title="Profile options"
+                        >
+                          •••
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

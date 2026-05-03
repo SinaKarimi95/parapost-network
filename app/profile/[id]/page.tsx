@@ -1199,8 +1199,8 @@ useEffect(() => {
   };
 
   const getInitial = (name?: string | null, username?: string | null) => {
-    const value = name || username || "U";
-    return value.charAt(0).toUpperCase();
+    const value = name || username || "";
+    return value ? value.charAt(0).toUpperCase() : "";
   };
 
   const getFriendStatusLabel = () => {
@@ -1250,9 +1250,21 @@ useEffect(() => {
     }, 80);
   };
 
+  const profileIsReady = !!profile;
+  const profileDisplayName = profileIsReady
+    ? profile.full_name || profile.username || "Parapost Member"
+    : "";
+  const profileDisplayUsername = profileIsReady ? profile.username || "" : "";
+  const profileDisplayInitial = profileIsReady
+    ? getInitial(profile.full_name, profile.username)
+    : "";
+  const profileSmoothLoadClass = profileIsReady
+    ? "profile-data-ready"
+    : "profile-data-waiting";
+
 return (
   <div
-    className="min-h-screen text-white profile-polish-surface profile-mobile-first-polish"
+    className={`min-h-screen text-white profile-polish-surface profile-mobile-first-polish ${profileSmoothLoadClass}`}
    style={{
      ...profilePageBackgroundStyle,
      backgroundColor: "#07090d",
@@ -1273,6 +1285,49 @@ return (
         --pp-surface-soft: rgba(255,255,255,0.045);
         --pp-purple: #a855f7;
       }
+
+      .profile-data-ready .profile-hero-content,
+      .profile-data-ready .profile-mobile-header-real,
+      .profile-data-ready .profile-stats-bar,
+      .profile-data-ready .profile-stories-row,
+      .profile-data-ready .profile-tabs-shell,
+      .profile-data-ready .profile-content-card {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+
+      .profile-data-waiting .profile-hero-info,
+      .profile-data-waiting .profile-mobile-identity-real,
+      .profile-data-waiting .profile-mobile-actions-real,
+      .profile-data-waiting .profile-mobile-bio-real,
+      .profile-data-waiting .profile-mobile-meta-real,
+      .profile-data-waiting .profile-stats-bar,
+      .profile-data-waiting .profile-stories-row,
+      .profile-data-waiting .profile-tabs-shell,
+      .profile-data-waiting .profile-content-card {
+        opacity: 0;
+        transform: translateY(4px);
+        pointer-events: none;
+      }
+
+      .profile-data-waiting .profile-avatar-wrap,
+      .profile-data-waiting .profile-mobile-avatar-shell-real {
+        opacity: 0.58;
+        filter: saturate(0.88);
+      }
+
+      .profile-data-waiting .profile-avatar-wrap::before,
+      .profile-data-waiting .profile-mobile-avatar-shell-real::before {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(168,85,247,0.10));
+        border: 1px solid rgba(255,255,255,0.08);
+        z-index: 1;
+      }
+
       .profile-mobile-inline-more {
         display: none !important;
       }
@@ -2943,7 +2998,7 @@ return (
                       />
                     ) : (
                       <div className="profile-mobile-avatar-fallback-real">
-                        {getInitial(profile?.full_name, profile?.username)}
+                        {profileDisplayInitial}
                       </div>
                     )}
 
@@ -2962,14 +3017,14 @@ return (
 
                   <div className="profile-mobile-identity-real">
                     <h1>
-                      {profile?.full_name || "Parapost Member"}
+                      {profileDisplayName || "\u00A0"}
                       {profile?.verified ? <span>✓</span> : null}
                     </h1>
 
                     <p>
-                      @{profile?.username || "no-username"}
-                      <span>•</span>
-                      {isOwnProfile ? "Your profile" : getFriendStatusLabel()}
+                      {profileIsReady && profileDisplayUsername ? `@${profileDisplayUsername}` : ""}
+                      {profileIsReady ? <span>•</span> : null}
+                      {profileIsReady ? (isOwnProfile ? "Your profile" : getFriendStatusLabel()) : null}
                     </p>
                   </div>
 
@@ -3096,7 +3151,7 @@ return (
                       <img src={profile.avatar_url} alt="Profile" style={profileAvatarStyle} />
                     ) : (
                       <div style={profileAvatarFallbackStyle}>
-                        {getInitial(profile?.full_name, profile?.username)}
+                        {profileDisplayInitial}
                       </div>
                     )}
 
@@ -3117,13 +3172,13 @@ return (
                     <div className="profile-hero-topline" style={profileHeroTopLineStyle}>
                       <div style={{ minWidth: 0 }}>
                         <h1 style={profileHeroNameStyle}>
-                          {profile?.full_name || profile?.username || "Profile"}
-                          <span style={verifiedBadgeStyle}>✓</span>
+                          {profileDisplayName || "\u00A0"}
+                          {profile?.verified ? <span style={verifiedBadgeStyle}>✓</span> : null}
                         </h1>
                         <p style={profileHandleStyle}>
-                          @{profile?.username || "no-username"}
-                          <span style={profileDotStyle}>•</span>
-                          {isOwnProfile ? "Your profile" : getFriendStatusLabel()}
+                          {profileIsReady && profileDisplayUsername ? `@${profileDisplayUsername}` : ""}
+                          {profileIsReady ? <span style={profileDotStyle}>•</span> : null}
+                          {profileIsReady ? (isOwnProfile ? "Your profile" : getFriendStatusLabel()) : null}
                         </p>
                       </div>
 
@@ -4085,7 +4140,7 @@ return (
               <div>
                 <p style={profileActionEyebrowStyle}>Profile options</p>
                 <h3 style={profileActionTitleStyle}>
-                  {profile?.full_name || profile?.username || "Profile"}
+                  {profileDisplayName || "\u00A0"}
                 </h3>
               </div>
 

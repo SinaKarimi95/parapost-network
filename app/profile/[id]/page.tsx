@@ -87,6 +87,57 @@ type FriendRequestStatus =
   | "incoming_request"
   | "friends";
 
+type ShowcaseDuration = "24h" | "30d" | "permanent";
+type ShowcaseFontValue =
+  | "inter"
+  | "roboto"
+  | "openSans"
+  | "montserrat"
+  | "poppins"
+  | "lato"
+  | "nunito"
+  | "raleway"
+  | "playfair"
+  | "merriweather";
+
+type ProfileShowcase = {
+  id: string;
+  title: string;
+  coverText?: string | null;
+  fontKey?: ShowcaseFontValue;
+  duration: ShowcaseDuration;
+  createdAt: string;
+  expiresAt: string | null;
+};
+
+const SHOWCASE_FONT_OPTIONS: {
+  value: ShowcaseFontValue;
+  label: string;
+  family: string;
+}[] = [
+  {
+    value: "inter",
+    label: "Inter",
+    family: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  { value: "roboto", label: "Roboto", family: "Roboto, Arial, sans-serif" },
+  { value: "openSans", label: "Open Sans", family: "'Open Sans', Arial, sans-serif" },
+  { value: "montserrat", label: "Montserrat", family: "Montserrat, Arial, sans-serif" },
+  { value: "poppins", label: "Poppins", family: "Poppins, Arial, sans-serif" },
+  { value: "lato", label: "Lato", family: "Lato, Arial, sans-serif" },
+  { value: "nunito", label: "Nunito", family: "Nunito, Arial, sans-serif" },
+  { value: "raleway", label: "Raleway", family: "Raleway, Arial, sans-serif" },
+  { value: "playfair", label: "Playfair Display", family: "'Playfair Display', Georgia, serif" },
+  { value: "merriweather", label: "Merriweather", family: "Merriweather, Georgia, serif" },
+];
+
+function getShowcaseFontOption(fontKey?: string | null) {
+  return (
+    SHOWCASE_FONT_OPTIONS.find((option) => option.value === fontKey) ||
+    SHOWCASE_FONT_OPTIONS[0]
+  );
+}
+
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString);
   const diffMs = Date.now() - date.getTime();
@@ -396,11 +447,39 @@ export default function ProfilePage() {
 
   const [activeProfileTab, setActiveProfileTab] = useState("Posts");
   const [profileActionsOpen, setProfileActionsOpen] = useState(false);
+  const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
+  const [showcaseTitle, setShowcaseTitle] = useState("");
+  const [showcaseCoverText, setShowcaseCoverText] = useState("");
+  const [showcaseFontKey, setShowcaseFontKey] = useState<ShowcaseFontValue>("inter");
+  const [showcaseDuration, setShowcaseDuration] = useState<ShowcaseDuration>("permanent");
+  const [showcaseError, setShowcaseError] = useState("");
+  const [profileShowcases, setProfileShowcases] = useState<ProfileShowcase[]>([]);
+  const [showcasesLoaded, setShowcasesLoaded] = useState(false);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
+  const isLocalShowcaseTesting =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname.startsWith("192.168.") ||
+      window.location.hostname.startsWith("10.") ||
+      window.location.hostname.endsWith(".local"));
+
+  const canCreateShowcase = isOwnProfile || isLocalShowcaseTesting;
+
+  const showcaseStorageKey = useMemo(
+    () => (profileId ? `parapost-profile-showcases-${profileId}` : ""),
+    [profileId]
+  );
+  const visibleProfileShowcases = useMemo(() => {
+    const now = Date.now();
+    return profileShowcases.filter((showcase) => {
+      if (!showcase.expiresAt) return true;
+      return new Date(showcase.expiresAt).getTime() > now;
+    });
+  }, [profileShowcases]);
 
   // ✅ 🔥 ADD THIS FUNCTION RIGHT HERE
   const handleSaveProfileAbout = async (payload: any) => {
@@ -776,6 +855,45 @@ useEffect(() => {
       URL.revokeObjectURL(objectUrl);
     };
   }, [profilePostImage]);
+
+  useEffect(() => {
+    if (!showcaseStorageKey || typeof window === "undefined") {
+      setProfileShowcases([]);
+      setShowcasesLoaded(true);
+      return;
+    }
+
+    try {
+      const saved = window.localStorage.getItem(showcaseStorageKey);
+      const parsed = saved ? (JSON.parse(saved) as ProfileShowcase[]) : [];
+      const now = Date.now();
+      const activeShowcases = Array.isArray(parsed)
+        ? parsed
+            .filter((showcase) => {
+              if (!showcase?.id || !showcase?.title) return false;
+              if (!showcase.expiresAt) return true;
+              return new Date(showcase.expiresAt).getTime() > now;
+            })
+            .map((showcase) => ({
+              ...showcase,
+              coverText: showcase.coverText || "",
+              fontKey: getShowcaseFontOption(showcase.fontKey).value,
+            }))
+        : [];
+
+      setProfileShowcases(activeShowcases);
+    } catch {
+      setProfileShowcases([]);
+    } finally {
+      setShowcasesLoaded(true);
+    }
+  }, [showcaseStorageKey]);
+
+  useEffect(() => {
+    if (!showcasesLoaded || !showcaseStorageKey || typeof window === "undefined") return;
+
+    window.localStorage.setItem(showcaseStorageKey, JSON.stringify(profileShowcases));
+  }, [profileShowcases, showcaseStorageKey, showcasesLoaded]);
 
   useEffect(() => {
     if (!viewerId || !profileId || viewerId === profileId) return;
@@ -1225,6 +1343,93 @@ useEffect(() => {
     }, 80);
   };
 
+  const getShowcaseDurationLabel = (duration: ShowcaseDuration) => {
+    if (duration === "24h") return "24 hours";
+    if (duration === "30d") return "30 days";
+    return "Permanent";
+  };
+
+  const getShowcaseExpiryLabel = (showcase: ProfileShowcase) => {
+    if (!showcase.expiresAt) return "Stays until removed";
+
+    const expiryTime = new Date(showcase.expiresAt).getTime();
+    const diffMs = expiryTime - Date.now();
+
+    if (Number.isNaN(expiryTime) || diffMs <= 0) return "Expired";
+
+    const hours = Math.ceil(diffMs / (1000 * 60 * 60));
+    if (hours <= 24) return `${hours}h left`;
+
+    const days = Math.ceil(hours / 24);
+    return `${days}d left`;
+  };
+
+  const handleOpenShowcaseComposer = () => {
+    if (!canCreateShowcase) return;
+    setShowcaseTitle("");
+    setShowcaseCoverText("");
+    setShowcaseFontKey("inter");
+    setShowcaseDuration("permanent");
+    setShowcaseError("");
+    setShowcaseComposerOpen(true);
+  };
+
+  const handleCloseShowcaseComposer = () => {
+    setShowcaseComposerOpen(false);
+    setShowcaseTitle("");
+    setShowcaseCoverText("");
+    setShowcaseFontKey("inter");
+    setShowcaseDuration("permanent");
+    setShowcaseError("");
+  };
+
+  const handleCreateShowcase = () => {
+    if (!canCreateShowcase) return;
+
+    const trimmedTitle = showcaseTitle.trim();
+
+    if (!trimmedTitle) {
+      setShowcaseError("Give your Showcase a name first.");
+      return;
+    }
+
+    const now = Date.now();
+    const expiresAt =
+      showcaseDuration === "24h"
+        ? new Date(now + 24 * 60 * 60 * 1000).toISOString()
+        : showcaseDuration === "30d"
+          ? new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : null;
+
+    const nextShowcase: ProfileShowcase = {
+      id: `${now}-${Math.random().toString(36).slice(2, 9)}`,
+      title: trimmedTitle,
+      coverText: showcaseCoverText.trim(),
+      fontKey: showcaseFontKey,
+      duration: showcaseDuration,
+      createdAt: new Date(now).toISOString(),
+      expiresAt,
+    };
+
+    setProfileShowcases((prev) => [...prev, nextShowcase]);
+    handleCloseShowcaseComposer();
+    showFriendStatus("Showcase created.");
+  };
+
+  const handleDeleteShowcase = (showcaseId: string) => {
+    if (!canCreateShowcase) return;
+
+    const confirmed = window.confirm("Delete this Showcase from your profile?");
+    if (!confirmed) return;
+
+    setProfileShowcases((prev) => prev.filter((showcase) => showcase.id !== showcaseId));
+    showFriendStatus("Showcase deleted.");
+  };
+
+  const handleOpenShowcase = (showcase: ProfileShowcase) => {
+    showFriendStatus(`${showcase.title} Showcase selected.`);
+  };
+
   const handleCopyProfileLink = async () => {
     const href =
       typeof window !== "undefined"
@@ -1604,6 +1809,44 @@ return (
         50% {
           opacity: 1;
           transform: scale(1.025);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcases-panel {
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          border-left: 0 !important;
+          border-right: 0 !important;
+          border-radius: 0 !important;
+          padding-top: 10px !important;
+          padding-bottom: 10px !important;
+        }
+
+        .profile-showcases-row {
+          gap: 12px !important;
+          padding: 0 14px 2px !important;
+          padding-bottom: 2px !important;
+          scroll-snap-type: x proximity;
+        }
+
+        .profile-showcases-row > button,
+        .profile-showcases-row > div {
+          scroll-snap-align: start;
+        }
+
+        .profile-showcase-modal-overlay {
+          align-items: flex-end !important;
+          padding: 0 !important;
+        }
+
+        .profile-showcase-modal-overlay > div {
+          width: 100% !important;
+          max-width: none !important;
+          border-radius: 22px 22px 0 0 !important;
+          max-height: 84vh !important;
+          overflow-y: auto !important;
+          padding: 14px 14px 16px !important;
         }
       }
 
@@ -3394,7 +3637,7 @@ return (
                       </div>
                     )}
 
-                    {isOwnProfile ? (
+                    {canCreateShowcase ? (
                       <button
                         type="button"
                         onClick={() => router.push(`/profile/${viewerId}/edit`)}
@@ -3836,30 +4079,208 @@ return (
                   </div>
                 </div>
 
-                <div className="profile-stories-row" style={profileStoriesRowStyle}>
-                  {[
-                    { label: "New", icon: "+", tab: "Posts" },
-                    { label: "Photos", icon: "▧", tab: "Photos" },
-                    { label: "Reels", icon: "▣", tab: "Reels" },
-                    { label: "Events", icon: "◇", tab: "Events" },
-                    { label: "Interests", icon: "✦", tab: "About" },
-                  ].map((story) => (
-                    <button
-                      key={story.label}
-                      type="button"
-                      style={profileStoryItemStyle}
-                      onClick={() =>
-                        story.label === "New"
-                          ? handleMobileCreatePostClick()
-                          : handleOpenProfileSection(story.tab)
-                      }
-                      aria-label={`Open ${story.label} section`}
-                    >
-                      <div className="profile-story-circle" style={profileStoryCircleStyle}>{story.icon}</div>
-                      <span style={profileStoryLabelStyle}>{story.label}</span>
-                    </button>
-                  ))}
-                </div>
+                {(canCreateShowcase || visibleProfileShowcases.length > 0) ? (
+                  <section className="profile-showcases-panel profile-stories-row" style={profileShowcasesPanelStyle} data-profile-showcases="true">
+                    <h3 style={profileShowcasesTitleStyle}>Showcases</h3>
+
+                  <div className="profile-showcases-row" style={profileShowcasesRowStyle}>
+                    {isOwnProfile ? (
+                      <button
+                        type="button"
+                        style={profileShowcaseNewItemStyle}
+                        onClick={handleOpenShowcaseComposer}
+                        aria-label="Create a new Showcase"
+                      >
+                        <span style={profileShowcasePlusCircleStyle}>+</span>
+                        <span style={profileShowcaseNewLabelStyle}>New</span>
+                      </button>
+                    ) : null}
+
+                    {visibleProfileShowcases.map((showcase) => {
+                      const fontOption = getShowcaseFontOption(showcase.fontKey);
+                      const coverText = (showcase.coverText || showcase.title).trim();
+
+                      return (
+                        <button
+                          key={showcase.id}
+                          type="button"
+                          style={profileShowcaseItemStyle}
+                          onClick={() => handleOpenShowcase(showcase)}
+                          aria-label={`Open ${showcase.title} Showcase`}
+                        >
+                          <span style={profileShowcaseCoverCircleStyle}>
+                            <span
+                              style={{
+                                ...profileShowcaseCoverTextStyle,
+                                fontFamily: fontOption.family,
+                              }}
+                            >
+                              {coverText}
+                            </span>
+                          </span>
+
+                          {canCreateShowcase ? (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              style={profileShowcaseDeleteStyle}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                handleDeleteShowcase(showcase.id);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleDeleteShowcase(showcase.id);
+                                }
+                              }}
+                              aria-label={`Delete ${showcase.title} Showcase`}
+                            >
+                              ×
+                            </span>
+                          ) : null}
+
+                          <span style={profileShowcaseNewLabelStyle}>{showcase.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  </section>
+                ) : null}
+
+                {showcaseComposerOpen ? (
+                  <div
+                    className="profile-showcase-modal-overlay"
+                    style={profileShowcaseModalOverlayStyle}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Create Showcase"
+                  >
+                    <div style={profileShowcaseModalStyle}>
+                      <div style={profileShowcaseModalHeaderStyle}>
+                        <div>
+                          <p style={profileShowcaseModalEyebrowStyle}>Parapost Showcases</p>
+                          <h3 style={profileShowcaseModalTitleStyle}>Create a new Showcase</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCloseShowcaseComposer}
+                          style={profileShowcaseModalCloseStyle}
+                          aria-label="Close Showcase creator"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <label style={profileShowcaseFieldLabelStyle}>
+                        Showcase name
+                        <input
+                          value={showcaseTitle}
+                          onChange={(event) => {
+                            setShowcaseTitle(event.target.value);
+                            setShowcaseError("");
+                          }}
+                          placeholder="Family, Acting, Trips, Reels, Events..."
+                          style={profileShowcaseInputStyle}
+                          maxLength={32}
+                        />
+                      </label>
+
+                      <label style={{ ...profileShowcaseFieldLabelStyle, marginTop: "14px" }}>
+                        Text on Showcase cover <span style={profileShowcaseOptionalTextStyle}>Optional</span>
+                        <input
+                          value={showcaseCoverText}
+                          onChange={(event) => setShowcaseCoverText(event.target.value)}
+                          placeholder="Summer memories, Behind the scenes..."
+                          style={profileShowcaseInputStyle}
+                          maxLength={26}
+                        />
+                      </label>
+
+                      <div style={profileShowcaseFontGroupStyle}>
+                        <strong style={profileShowcaseDurationTitleStyle}>Cover font</strong>
+                        <div style={profileShowcaseFontGridStyle}>
+                          {SHOWCASE_FONT_OPTIONS.map((font) => {
+                            const selected = showcaseFontKey === font.value;
+                            return (
+                              <button
+                                key={font.value}
+                                type="button"
+                                onClick={() => setShowcaseFontKey(font.value)}
+                                style={
+                                  selected
+                                    ? profileShowcaseFontOptionActiveStyle
+                                    : profileShowcaseFontOptionStyle
+                                }
+                                aria-pressed={selected}
+                              >
+                                <span style={{ fontFamily: font.family }}>{font.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div style={profileShowcaseDurationGroupStyle}>
+                        <div>
+                          <strong style={profileShowcaseDurationTitleStyle}>How long should it stay?</strong>
+                          <p style={profileShowcaseDurationHelpStyle}>
+                            Permanent means it stays until you remove it.
+                          </p>
+                        </div>
+
+                        <div style={profileShowcaseDurationOptionsStyle}>
+                          {[
+                            { value: "24h" as const, label: "24 hours", help: "Quick update" },
+                            { value: "30d" as const, label: "30 days", help: "Recent feature" },
+                            { value: "permanent" as const, label: "Permanent", help: "Until removed" },
+                          ].map((option) => {
+                            const selected = showcaseDuration === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setShowcaseDuration(option.value)}
+                                style={
+                                  selected
+                                    ? profileShowcaseDurationOptionActiveStyle
+                                    : profileShowcaseDurationOptionStyle
+                                }
+                                aria-pressed={selected}
+                              >
+                                <span>{option.label}</span>
+                                <small>{option.help}</small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {showcaseError ? (
+                        <p style={profileShowcaseErrorStyle}>{showcaseError}</p>
+                      ) : null}
+
+                      <div style={profileShowcaseModalActionsStyle}>
+                        <button
+                          type="button"
+                          onClick={handleCloseShowcaseComposer}
+                          style={profileShowcaseCancelButtonStyle}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateShowcase}
+                          style={profileShowcaseCreateButtonStyle}
+                        >
+                          Create Showcase
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="profile-tabs-shell" style={profileTabsShellStyle}>
                   <div className="profile-tabs-desktop" style={profileTabsStyle}>
@@ -5861,6 +6282,343 @@ const profileStoryLabelStyle: CSSProperties = {
   fontSize: "12px",
   fontWeight: 700,
   whiteSpace: "nowrap",
+};
+
+const profileShowcasesPanelStyle: CSSProperties = {
+  margin: "0 14px 12px",
+  padding: "10px 0 11px",
+  borderRadius: "16px",
+  borderTop: "1px solid rgba(255,255,255,0.08)",
+  borderRight: "1px solid rgba(255,255,255,0.06)",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  borderLeft: "1px solid rgba(255,255,255,0.06)",
+  background: "linear-gradient(180deg, rgba(38,25,52,0.68), rgba(17,19,24,0.86))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+};
+
+const profileShowcasesTitleStyle: CSSProperties = {
+  margin: "0 14px 8px",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 950,
+  letterSpacing: "-0.02em",
+};
+
+const profileShowcasesRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "12px",
+  overflowX: "auto",
+  overflowY: "hidden",
+  padding: "0 14px 2px",
+  scrollbarWidth: "none",
+  WebkitOverflowScrolling: "touch",
+};
+
+const profileShowcaseNewItemStyle: CSSProperties = {
+  position: "relative",
+  display: "grid",
+  justifyItems: "center",
+  gap: "6px",
+  minWidth: "66px",
+  width: "66px",
+  border: 0,
+  background: "transparent",
+  color: "#ffffff",
+  padding: 0,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const profileShowcasePlusCircleStyle: CSSProperties = {
+  width: "58px",
+  height: "58px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "999px",
+  border: "1px solid rgba(216,180,254,0.44)",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.98), rgba(124,58,237,0.96) 54%, rgba(59,130,246,0.76))",
+  color: "#ffffff",
+  fontSize: "34px",
+  fontWeight: 900,
+  lineHeight: 1,
+  boxShadow:
+    "0 0 0 3px rgba(168,85,247,0.10), 0 0 24px rgba(168,85,247,0.30), 0 12px 24px rgba(0,0,0,0.26)",
+};
+
+const profileShowcaseNewLabelStyle: CSSProperties = {
+  maxWidth: "74px",
+  color: "#e5e7eb",
+  fontSize: "11px",
+  fontWeight: 850,
+  lineHeight: 1.15,
+  textAlign: "center",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profileShowcaseItemStyle: CSSProperties = {
+  position: "relative",
+  display: "grid",
+  justifyItems: "center",
+  gap: "6px",
+  minWidth: "70px",
+  width: "70px",
+  border: 0,
+  background: "transparent",
+  color: "#ffffff",
+  padding: 0,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const profileShowcaseCoverCircleStyle: CSSProperties = {
+  position: "relative",
+  width: "58px",
+  height: "58px",
+  display: "grid",
+  placeItems: "center",
+  overflow: "hidden",
+  borderRadius: "999px",
+  border: "1px solid rgba(216,180,254,0.30)",
+  background:
+    "radial-gradient(circle at 36% 18%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, rgba(88,28,135,0.96), rgba(59,130,246,0.58))",
+  boxShadow: "0 0 22px rgba(168,85,247,0.20), 0 12px 24px rgba(0,0,0,0.24)",
+};
+
+const profileShowcaseCoverTextStyle: CSSProperties = {
+  width: "84%",
+  color: "#ffffff",
+  fontSize: "10px",
+  fontWeight: 950,
+  lineHeight: 1.05,
+  letterSpacing: "-0.02em",
+  textAlign: "center",
+  textShadow: "0 2px 10px rgba(0,0,0,0.38)",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const profileShowcaseDeleteStyle: CSSProperties = {
+  position: "absolute",
+  top: "-3px",
+  right: "4px",
+  zIndex: 3,
+  width: "20px",
+  height: "20px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(0,0,0,0.58)",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 900,
+  cursor: "pointer",
+  boxShadow: "0 8px 16px rgba(0,0,0,0.26)",
+};
+
+const profileShowcaseOptionalTextStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 750,
+};
+
+const profileShowcaseFontGroupStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  marginTop: "12px",
+};
+
+const profileShowcaseFontGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "6px",
+};
+
+const profileShowcaseFontOptionStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "12px",
+  background: "rgba(255,255,255,0.04)",
+  color: "#e5e7eb",
+  padding: "8px 10px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontSize: "12px",
+  fontWeight: 850,
+  textAlign: "left",
+};
+
+const profileShowcaseFontOptionActiveStyle: CSSProperties = {
+  ...profileShowcaseFontOptionStyle,
+  border: "1px solid rgba(216,180,254,0.42)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.23), rgba(59,130,246,0.10))",
+  boxShadow: "0 0 20px rgba(168,85,247,0.14)",
+};
+
+const profileShowcaseModalOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 7000,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "16px",
+  background: "rgba(0,0,0,0.62)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+};
+
+const profileShowcaseModalStyle: CSSProperties = {
+  width: "min(470px, 100%)",
+  borderRadius: "24px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background:
+    "radial-gradient(circle at 16% 0%, rgba(168,85,247,0.20), transparent 34%), linear-gradient(180deg, rgba(24,26,34,0.98), rgba(12,14,20,0.98))",
+  boxShadow: "0 28px 70px rgba(0,0,0,0.52)",
+  padding: "16px",
+};
+
+const profileShowcaseModalHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "12px",
+  marginBottom: "14px",
+};
+
+const profileShowcaseModalEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#c084fc",
+  fontSize: "11px",
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const profileShowcaseModalTitleStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 950,
+  letterSpacing: "-0.04em",
+};
+
+const profileShowcaseModalCloseStyle: CSSProperties = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.055)",
+  color: "#ffffff",
+  fontSize: "24px",
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+const profileShowcaseFieldLabelStyle: CSSProperties = {
+  display: "grid",
+  gap: "6px",
+  color: "#e5e7eb",
+  fontSize: "12px",
+  fontWeight: 900,
+};
+
+const profileShowcaseInputStyle: CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "14px",
+  background: "rgba(0,0,0,0.24)",
+  color: "#ffffff",
+  padding: "12px 13px",
+  outline: "none",
+  fontSize: "15px",
+  fontFamily: "inherit",
+};
+
+const profileShowcaseDurationGroupStyle: CSSProperties = {
+  display: "grid",
+  gap: "10px",
+  marginTop: "14px",
+};
+
+const profileShowcaseDurationTitleStyle: CSSProperties = {
+  display: "block",
+  color: "#ffffff",
+  fontSize: "13px",
+};
+
+const profileShowcaseDurationHelpStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#9ca3af",
+  fontSize: "12px",
+  lineHeight: 1.35,
+};
+
+const profileShowcaseDurationOptionsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const profileShowcaseDurationOptionStyle: CSSProperties = {
+  display: "grid",
+  gap: "3px",
+  textAlign: "left",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.04)",
+  color: "#e5e7eb",
+  padding: "10px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontWeight: 850,
+};
+
+const profileShowcaseDurationOptionActiveStyle: CSSProperties = {
+  ...profileShowcaseDurationOptionStyle,
+  border: "1px solid rgba(216,180,254,0.42)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
+  boxShadow: "0 0 22px rgba(168,85,247,0.16)",
+};
+
+const profileShowcaseErrorStyle: CSSProperties = {
+  margin: "12px 0 0",
+  color: "#fecaca",
+  fontSize: "13px",
+  fontWeight: 850,
+};
+
+const profileShowcaseModalActionsStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "8px",
+  marginTop: "16px",
+};
+
+const profileShowcaseCancelButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#ffffff",
+  borderRadius: "12px",
+  padding: "11px 13px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const profileShowcaseCreateButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "linear-gradient(135deg, #9333ea, #7c3aed)",
+  color: "#ffffff",
+  borderRadius: "12px",
+  padding: "11px 14px",
+  fontWeight: 950,
+  cursor: "pointer",
+  boxShadow: "0 14px 26px rgba(124,58,237,0.24)",
 };
 
 const profileTabsShellStyle: CSSProperties = {

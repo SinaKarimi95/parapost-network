@@ -459,6 +459,11 @@ export default function ProfilePage() {
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
+  const profileActionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [profileActionMenuPosition, setProfileActionMenuPosition] = useState({
+    top: 0,
+    left: 0,
+  });
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
   const canCreateShowcase = isOwnProfile || isLocalShowcaseTesting;
@@ -1460,6 +1465,70 @@ useEffect(() => {
     showFriendStatus(`${showcase.title} Showcase selected.`);
   };
 
+  const updateProfileActionMenuPosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const button = profileActionButtonRef.current;
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 280;
+    const safePadding = 12;
+    const left = Math.max(
+      safePadding,
+      Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - safePadding)
+    );
+
+    setProfileActionMenuPosition({
+      top: rect.bottom + 10,
+      left,
+    });
+  }, []);
+
+  const handleToggleProfileActions = (event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 721px)").matches;
+
+    if (isDesktop) {
+      const button = event?.currentTarget || profileActionButtonRef.current;
+
+      if (button && typeof window !== "undefined") {
+        const rect = button.getBoundingClientRect();
+        const menuWidth = 280;
+        const safePadding = 12;
+        const left = Math.max(
+          safePadding,
+          Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - safePadding)
+        );
+
+        setProfileActionMenuPosition({
+          top: rect.bottom + 10,
+          left,
+        });
+      }
+    }
+
+    setProfileActionsOpen((value) => !value);
+  };
+
+  useEffect(() => {
+    if (!profileActionsOpen || typeof window === "undefined") return;
+
+    const isDesktopProfileWidth = window.matchMedia("(min-width: 721px)").matches;
+    if (!isDesktopProfileWidth) return;
+
+    updateProfileActionMenuPosition();
+
+    window.addEventListener("resize", updateProfileActionMenuPosition);
+    return () => {
+      window.removeEventListener("resize", updateProfileActionMenuPosition);
+    };
+  }, [profileActionsOpen, updateProfileActionMenuPosition]);
+
   const handleCopyProfileLink = async () => {
     const href =
       typeof window !== "undefined"
@@ -1990,6 +2059,25 @@ return (
       .profile-desktop-action-menu::-webkit-scrollbar-thumb {
         background: rgba(168,85,247,0.45);
         border-radius: 999px;
+      }
+
+      .profile-desktop-action-menu-fixed {
+        position: fixed !important;
+        z-index: 2147483000 !important;
+        display: block !important;
+        background: #11131a !important;
+        background-color: #11131a !important;
+        opacity: 1 !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        isolation: isolate !important;
+        mix-blend-mode: normal !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-desktop-action-menu-fixed {
+          display: none !important;
+        }
       }
 
       .profile-desktop-action-menu button,
@@ -3993,17 +4081,16 @@ return (
                           onClick={(event) => event.stopPropagation()}
                         >
                           <button
+                            ref={profileActionButtonRef}
                             type="button"
-                            onClick={() =>
-                              setProfileActionsOpen((value) => !value)
-                            }
+                            onClick={handleToggleProfileActions}
                             style={profileIconButtonStyle}
                             aria-label="More profile actions"
                           >
                             •••
                           </button>
 
-                          {profileActionsOpen ? (
+                          {false ? (
                             <div
                               className="profile-desktop-action-menu"
                               style={profileDesktopActionMenuStyle}
@@ -5046,6 +5133,109 @@ return (
           </aside>
         </div>
       </div>
+      {profileActionsOpen ? (
+        <div
+          className="profile-desktop-action-menu-fixed"
+          style={{
+            ...profileDesktopActionMenuFixedStyle,
+            top: profileActionMenuPosition.top,
+            left: profileActionMenuPosition.left,
+          }}
+          onClick={(event) => event.stopPropagation()}
+          onWheel={(event) => event.stopPropagation()}
+        >
+          <div style={profileDesktopActionMenuHeaderStyle}>
+            <p style={profileActionEyebrowStyle}>Profile options</p>
+            <strong>
+              {profile?.full_name || profile?.username || "Profile"}
+            </strong>
+          </div>
+
+          {isOwnProfile ? (
+            <button
+              type="button"
+              onClick={() => {
+                setProfileActionsOpen(false);
+                router.push(`/profile/${viewerId}/edit`);
+              }}
+              style={profileDesktopActionItemStyle}
+            >
+              <span style={profileActionIconStyle}>✎</span>
+              <span>
+                <strong>Edit profile</strong>
+                <small>Edit avatar, bio, and profile details</small>
+              </span>
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => handleOpenProfileSection("Posts")}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>▤</span>
+            <span>
+              <strong>View posts</strong>
+              <small>Go to profile feed</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenProfileSection("Photos")}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>▧</span>
+            <span>
+              <strong>View photos</strong>
+              <small>Open photo grid</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setProfileActionsOpen(false);
+              router.push(`/profile/${profileId}/reels`);
+            }}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>▣</span>
+            <span>
+              <strong>Open reels</strong>
+              <small>View short videos</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyProfileLink}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>↗</span>
+            <span>
+              <strong>Copy profile link</strong>
+              <small>Share this profile</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setProfileActionsOpen(false);
+              router.push("/dashboard");
+            }}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>⌂</span>
+            <span>
+              <strong>Back to feed</strong>
+              <small>Return to homepage feed</small>
+            </span>
+          </button>
+        </div>
+      ) : null}
+
       {profileActionsOpen && isOwnProfile ? (
         <div
           className="profile-mobile-action-overlay"
@@ -5930,6 +6120,17 @@ const profileDesktopActionMenuStyle: CSSProperties = {
   WebkitBackdropFilter: "none",
   isolation: "isolate",
   opacity: 1,
+};
+
+const profileDesktopActionMenuFixedStyle: CSSProperties = {
+  ...profileDesktopActionMenuStyle,
+  position: "fixed",
+  width: "280px",
+  zIndex: 2147483000,
+  background: "#11131a",
+  backgroundColor: "#11131a",
+  opacity: 1,
+  pointerEvents: "auto",
 };
 
 const profileDesktopActionMenuHeaderStyle: CSSProperties = {

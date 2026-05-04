@@ -562,6 +562,21 @@ export default function ProfilePage() {
   }
 };
 
+const handleProfileLogout = async () => {
+  const confirmed = window.confirm("Log out of Parapost Network?");
+  if (!confirmed) return;
+
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    alert(`Log out error: ${error.message}`);
+    return;
+  }
+
+  setProfileActionsOpen(false);
+  router.push("/");
+};
+
 const profileFeedItems = useMemo<ProfileFeedItem[]>(() => {
   return [
     ...posts.map((post) => ({ ...post, feedKind: "post" as const })),
@@ -4461,16 +4476,13 @@ return (
 
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setProfileActionsOpen(false);
-                                  router.push("/dashboard");
-                                }}
-                                style={profileDesktopActionItemStyle}
+                                onClick={handleProfileLogout}
+                                style={profileDesktopLogoutActionItemStyle}
                               >
-                                <span style={profileActionIconStyle}>⌂</span>
+                                <span style={profileActionLogoutIconStyle}>↪</span>
                                 <span>
-                                  <strong>Back to feed</strong>
-                                  <small>Return to homepage feed</small>
+                                  <strong>Log out</strong>
+                                  <small>Sign out of Parapost Network</small>
                                 </span>
                               </button>
                             </div>
@@ -5696,16 +5708,13 @@ return (
 
           <button
             type="button"
-            onClick={() => {
-              setProfileActionsOpen(false);
-              router.push("/dashboard");
-            }}
-            style={profileDesktopActionItemStyle}
+            onClick={handleProfileLogout}
+            style={profileDesktopLogoutActionItemStyle}
           >
-            <span style={profileActionIconStyle}>⌂</span>
+            <span style={profileActionLogoutIconStyle}>↪</span>
             <span>
-              <strong>Back to feed</strong>
-              <small>Return to homepage feed</small>
+              <strong>Log out</strong>
+              <small>Sign out of Parapost Network</small>
             </span>
           </button>
         </div>
@@ -6630,6 +6639,26 @@ const profileDesktopActionItemStyle: CSSProperties = {
   textAlign: "left",
   cursor: "pointer",
   opacity: 1,
+};
+
+const profileDesktopLogoutActionItemStyle: CSSProperties = {
+  ...profileDesktopActionItemStyle,
+  marginTop: "6px",
+  border: "1px solid rgba(248,113,113,0.20)",
+  background: "rgba(127,29,29,0.28)",
+  backgroundColor: "rgba(127,29,29,0.28)",
+};
+
+const profileActionLogoutIconStyle: CSSProperties = {
+  width: "38px",
+  height: "38px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "12px",
+  background: "rgba(248,113,113,0.14)",
+  color: "#fecaca",
+  fontSize: "18px",
+  fontWeight: 950,
 };
 
 const profileActionOverlayStyle: CSSProperties = {

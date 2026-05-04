@@ -455,18 +455,12 @@ export default function ProfilePage() {
   const [showcaseError, setShowcaseError] = useState("");
   const [profileShowcases, setProfileShowcases] = useState<ProfileShowcase[]>([]);
   const [showcasesLoaded, setShowcasesLoaded] = useState(false);
+  const [isLocalShowcaseTesting, setIsLocalShowcaseTesting] = useState(false);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
-  const isLocalShowcaseTesting =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname.startsWith("192.168.") ||
-      window.location.hostname.startsWith("10.") ||
-      window.location.hostname.endsWith(".local"));
-
   const canCreateShowcase = isOwnProfile || isLocalShowcaseTesting;
 
   const showcaseStorageKey = useMemo(
@@ -797,6 +791,18 @@ const showFriendStatus = useCallback((message: string) => {
   useEffect(() => {
   loadPage();
 }, [loadPage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const hostname = window.location.hostname;
+    setIsLocalShowcaseTesting(
+      hostname === "localhost" ||
+        hostname.startsWith("192.168.") ||
+        hostname.startsWith("10.") ||
+        hostname.endsWith(".local")
+    );
+  }, []);
 
 useEffect(() => {
   if (!profileActionsOpen || typeof window === "undefined") return;

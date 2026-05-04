@@ -807,6 +807,9 @@ const showFriendStatus = useCallback((message: string) => {
 useEffect(() => {
   if (!profileActionsOpen || typeof window === "undefined") return;
 
+  const isMobileProfileWidth = window.matchMedia("(max-width: 720px)").matches;
+  if (!isMobileProfileWidth) return;
+
   const scrollY = window.scrollY;
   const body = document.body;
   const html = document.documentElement;
@@ -835,18 +838,39 @@ useEffect(() => {
 }, [profileActionsOpen]);
 
 useEffect(() => {
-  const handleGlobalClick = () => {
+  const closePostMenusOnly = () => {
     setOpenPostMenuId(null);
   };
 
-    window.addEventListener("click", handleGlobalClick);
-    window.addEventListener("scroll", handleGlobalClick);
+  const closeDesktopFloatingMenus = () => {
+    setOpenPostMenuId(null);
 
-    return () => {
-      window.removeEventListener("click", handleGlobalClick);
-      window.removeEventListener("scroll", handleGlobalClick);
-    };
-  }, []);
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 721px)").matches) {
+      setProfileActionsOpen(false);
+    }
+  };
+
+  const handleEscapeKey = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      setOpenPostMenuId(null);
+      setProfileActionsOpen(false);
+    }
+  };
+
+  window.addEventListener("click", closeDesktopFloatingMenus);
+  window.addEventListener("scroll", closeDesktopFloatingMenus, { passive: true });
+  window.addEventListener("wheel", closeDesktopFloatingMenus, { passive: true });
+  window.addEventListener("touchmove", closePostMenusOnly, { passive: true });
+  window.addEventListener("keydown", handleEscapeKey);
+
+  return () => {
+    window.removeEventListener("click", closeDesktopFloatingMenus);
+    window.removeEventListener("scroll", closeDesktopFloatingMenus);
+    window.removeEventListener("wheel", closeDesktopFloatingMenus);
+    window.removeEventListener("touchmove", closePostMenusOnly);
+    window.removeEventListener("keydown", handleEscapeKey);
+  };
+}, []);
 
   useEffect(() => {
     if (!profilePostImage) {
@@ -1876,22 +1900,82 @@ return (
       }
 
       @media (min-width: 721px) {
-        .profile-hero-shell {
+        .profile-center-column,
+        .profile-stream-stack,
+        .profile-hero-shell,
+        .profile-hero-content,
+        .profile-hero-info,
+        .profile-hero-topline,
+        .profile-hero-actions {
           overflow: visible !important;
         }
 
+        .profile-hero-shell {
+          position: relative !important;
+          z-index: 2147480000 !important;
+        }
+
+        .profile-stats-bar,
+        .profile-showcases-panel,
+        .profile-tabs-shell,
+        .profile-content-card {
+          position: relative;
+          z-index: 0;
+        }
+
+        .profile-desktop-action-menu-wrap {
+          position: relative !important;
+          z-index: 2147482000 !important;
+        }
+
         .profile-desktop-action-menu {
-          max-height: 340px !important;
+          top: calc(100% + 10px) !important;
+          bottom: auto !important;
+          max-height: min(300px, calc(100vh - 210px)) !important;
           overflow-y: auto !important;
           overscroll-behavior: contain !important;
+          z-index: 2147483000 !important;
         }
       }
 
       .profile-desktop-action-menu {
         position: absolute;
         right: 0;
-        top: calc(100% + 10px);
-        z-index: 5000;
+        top: calc(100% + 10px) !important;
+        bottom: auto !important;
+        z-index: 2147483000 !important;
+        width: min(280px, calc(100vw - 48px)) !important;
+        max-height: min(300px, calc(100vh - 210px)) !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        scrollbar-width: thin;
+        background: #11131a !important;
+        background-color: #11131a !important;
+        border: 1px solid rgba(255,255,255,0.16) !important;
+        opacity: 1 !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        isolation: isolate !important;
+        mix-blend-mode: normal !important;
+        box-shadow:
+          0 30px 90px rgba(0,0,0,0.82),
+          0 0 0 1px rgba(255,255,255,0.08),
+          0 0 34px rgba(168,85,247,0.20) !important;
+      }
+
+      .profile-desktop-action-menu::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background: #11131a;
+        pointer-events: none;
+      }
+
+      .profile-desktop-action-menu > * {
+        position: relative;
+        z-index: 1;
       }
 
       .profile-desktop-action-menu::-webkit-scrollbar {
@@ -1906,6 +1990,24 @@ return (
       .profile-desktop-action-menu::-webkit-scrollbar-thumb {
         background: rgba(168,85,247,0.45);
         border-radius: 999px;
+      }
+
+      .profile-desktop-action-menu button,
+      .profile-desktop-action-menu a {
+        background-color: #151821 !important;
+      }
+
+      .profile-desktop-action-menu button:disabled,
+      .profile-desktop-action-menu [aria-disabled="true"] {
+        background-color: #151821 !important;
+        opacity: 0.55 !important;
+      }
+
+      @media (min-width: 721px) {
+        .profile-desktop-action-menu button,
+        .profile-desktop-action-menu a {
+          min-height: 42px !important;
+        }
       }
 
       .profile-mobile-action-overlay {
@@ -3889,6 +3991,7 @@ return (
 <div
                           className="profile-desktop-action-menu-wrap"
                           onClick={(event) => event.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
                         >
                           <button
                             type="button"
@@ -5817,26 +5920,31 @@ const profileDesktopActionMenuStyle: CSSProperties = {
   overscrollBehavior: "contain",
   scrollbarWidth: "thin",
   borderRadius: "16px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  background:
-    "linear-gradient(180deg, rgba(24,27,34,0.98), rgba(12,14,19,0.98))",
-  boxShadow: "0 22px 70px rgba(0,0,0,0.50)",
+  border: "1px solid rgba(255,255,255,0.16)",
+  background: "#11131a",
+  backgroundColor: "#11131a",
+  boxShadow:
+    "0 30px 90px rgba(0,0,0,0.82), 0 0 0 1px rgba(255,255,255,0.08), 0 0 34px rgba(168,85,247,0.20)",
   padding: "8px",
   paddingBottom: "12px",
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
+  backdropFilter: "none",
+  WebkitBackdropFilter: "none",
+  isolation: "isolate",
+  opacity: 1,
 };
 
 const profileDesktopActionMenuHeaderStyle: CSSProperties = {
   padding: "10px 10px 12px",
   borderBottom: "1px solid rgba(255,255,255,0.08)",
   marginBottom: "6px",
+  background: "#11131a",
 };
 
 const profileDesktopActionItemStyle: CSSProperties = {
   width: "100%",
   border: "1px solid transparent",
-  background: "transparent",
+  background: "#151821",
+  backgroundColor: "#151821",
   color: "#ffffff",
   borderRadius: "12px",
   padding: "10px",
@@ -5846,6 +5954,7 @@ const profileDesktopActionItemStyle: CSSProperties = {
   gap: "10px",
   textAlign: "left",
   cursor: "pointer",
+  opacity: 1,
 };
 
 const profileActionOverlayStyle: CSSProperties = {

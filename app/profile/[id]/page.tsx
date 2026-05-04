@@ -88,6 +88,10 @@ type FriendRequestStatus =
   | "friends";
 
 type ShowcaseDuration = "24h" | "30d" | "permanent";
+type ShowcaseCreatorMode = "media" | "text";
+type ShowcaseVisibility = "public" | "friends" | "private";
+type ShowcaseMediaType = "image" | "video" | "text";
+
 type ShowcaseFontValue =
   | "inter"
   | "roboto"
@@ -106,6 +110,11 @@ type ProfileShowcase = {
   coverText?: string | null;
   fontKey?: ShowcaseFontValue;
   duration: ShowcaseDuration;
+  visibility?: ShowcaseVisibility;
+  creatorMode?: ShowcaseCreatorMode;
+  mediaType?: ShowcaseMediaType;
+  mediaPreviewUrl?: string | null;
+  textPosition?: { x: number; y: number };
   createdAt: string;
   expiresAt: string | null;
 };
@@ -117,18 +126,18 @@ const SHOWCASE_FONT_OPTIONS: {
 }[] = [
   {
     value: "inter",
-    label: "Inter",
-    family: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    label: "System",
+    family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
-  { value: "roboto", label: "Roboto", family: "Roboto, Arial, sans-serif" },
-  { value: "openSans", label: "Open Sans", family: "'Open Sans', Arial, sans-serif" },
-  { value: "montserrat", label: "Montserrat", family: "Montserrat, Arial, sans-serif" },
-  { value: "poppins", label: "Poppins", family: "Poppins, Arial, sans-serif" },
-  { value: "lato", label: "Lato", family: "Lato, Arial, sans-serif" },
-  { value: "nunito", label: "Nunito", family: "Nunito, Arial, sans-serif" },
-  { value: "raleway", label: "Raleway", family: "Raleway, Arial, sans-serif" },
-  { value: "playfair", label: "Playfair Display", family: "'Playfair Display', Georgia, serif" },
-  { value: "merriweather", label: "Merriweather", family: "Merriweather, Georgia, serif" },
+  { value: "roboto", label: "Arial", family: "Arial, Helvetica, sans-serif" },
+  { value: "openSans", label: "Verdana", family: "Verdana, Geneva, sans-serif" },
+  { value: "montserrat", label: "Georgia", family: "Georgia, 'Times New Roman', serif" },
+  { value: "poppins", label: "Trebuchet", family: "'Trebuchet MS', Arial, sans-serif" },
+  { value: "lato", label: "Tahoma", family: "Tahoma, Geneva, sans-serif" },
+  { value: "nunito", label: "Courier", family: "'Courier New', Courier, monospace" },
+  { value: "raleway", label: "Impact", family: "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" },
+  { value: "playfair", label: "Serif", family: "'Times New Roman', Times, serif" },
+  { value: "merriweather", label: "Clean", family: "'Segoe UI', Arial, sans-serif" },
 ];
 
 function getShowcaseFontOption(fontKey?: string | null) {
@@ -448,16 +457,23 @@ export default function ProfilePage() {
   const [activeProfileTab, setActiveProfileTab] = useState("Posts");
   const [profileActionsOpen, setProfileActionsOpen] = useState(false);
   const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
+  const [showcaseCreatorMode, setShowcaseCreatorMode] = useState<ShowcaseCreatorMode>("media");
   const [showcaseTitle, setShowcaseTitle] = useState("");
   const [showcaseCoverText, setShowcaseCoverText] = useState("");
   const [showcaseFontKey, setShowcaseFontKey] = useState<ShowcaseFontValue>("inter");
   const [showcaseDuration, setShowcaseDuration] = useState<ShowcaseDuration>("permanent");
+  const [showcaseVisibility, setShowcaseVisibility] = useState<ShowcaseVisibility>("public");
+  const [showcaseTextPosition, setShowcaseTextPosition] = useState({ x: 50, y: 50 });
+  const [showcaseMediaPreviewUrl, setShowcaseMediaPreviewUrl] = useState("");
+  const [showcaseMediaType, setShowcaseMediaType] = useState<ShowcaseMediaType>("text");
+  const [showcaseMediaFileName, setShowcaseMediaFileName] = useState("");
   const [showcaseError, setShowcaseError] = useState("");
   const [profileShowcases, setProfileShowcases] = useState<ProfileShowcase[]>([]);
   const [showcasesLoaded, setShowcasesLoaded] = useState(false);
   const [isLocalShowcaseTesting, setIsLocalShowcaseTesting] = useState(false);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
+  const showcaseMediaInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
   const profileActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const [profileActionMenuPosition, setProfileActionMenuPosition] = useState({
@@ -913,6 +929,11 @@ useEffect(() => {
               ...showcase,
               coverText: showcase.coverText || "",
               fontKey: getShowcaseFontOption(showcase.fontKey).value,
+              visibility: showcase.visibility || "public",
+              creatorMode: showcase.creatorMode || (showcase.mediaPreviewUrl ? "media" : "text"),
+              mediaType: showcase.mediaType || (showcase.mediaPreviewUrl ? "image" : "text"),
+              mediaPreviewUrl: showcase.mediaPreviewUrl || null,
+              textPosition: showcase.textPosition || { x: 50, y: 50 },
             }))
         : [];
 
@@ -1399,28 +1420,131 @@ useEffect(() => {
     return `${days}d left`;
   };
 
+  const handleShowcaseMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+
+    if (!file) return;
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+
+    if (!isImage && !isVideo) {
+      setShowcaseError("Please choose a photo or video file.");
+      return;
+    }
+
+    const maxSizeMb = isVideo ? 25 : 8;
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      setShowcaseError(`Please choose a ${isVideo ? "video" : "photo"} under ${maxSizeMb}MB for this preview.`);
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+
+      if (!result) {
+        setShowcaseError("Could not preview this file.");
+        return;
+      }
+
+      setShowcaseCreatorMode("media");
+      setShowcaseMediaPreviewUrl(result);
+      setShowcaseMediaType(isVideo ? "video" : "image");
+      setShowcaseMediaFileName(file.name);
+      setShowcaseError("");
+    };
+
+    reader.onerror = () => {
+      setShowcaseError("Could not read this file.");
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearShowcaseMedia = () => {
+    setShowcaseMediaPreviewUrl("");
+    setShowcaseMediaFileName("");
+    setShowcaseMediaType("text");
+
+    if (showcaseMediaInputRef.current) {
+      showcaseMediaInputRef.current.value = "";
+    }
+  };
+
+  const updateShowcaseTextPositionFromPointer = (
+    clientX: number,
+    clientY: number,
+    target: HTMLElement
+  ) => {
+    const rect = target.getBoundingClientRect();
+
+    if (!rect.width || !rect.height) return;
+
+    const x = Math.max(8, Math.min(92, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(10, Math.min(90, ((clientY - rect.top) / rect.height) * 100));
+
+    setShowcaseTextPosition({ x, y });
+  };
+
+  const handleShowcasePreviewPointerMove = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (event.buttons !== 1 && event.pointerType !== "touch") return;
+    updateShowcaseTextPositionFromPointer(
+      event.clientX,
+      event.clientY,
+      event.currentTarget
+    );
+  };
+
+  const handleShowcasePreviewPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    updateShowcaseTextPositionFromPointer(
+      event.clientX,
+      event.clientY,
+      event.currentTarget
+    );
+  };
+
   const handleOpenShowcaseComposer = () => {
-    if (!canCreateShowcase) return;
+    setShowcaseCreatorMode("media");
     setShowcaseTitle("");
     setShowcaseCoverText("");
     setShowcaseFontKey("inter");
     setShowcaseDuration("permanent");
+    setShowcaseVisibility("public");
+    setShowcaseTextPosition({ x: 50, y: 50 });
+    setShowcaseMediaPreviewUrl("");
+    setShowcaseMediaType("text");
+    setShowcaseMediaFileName("");
     setShowcaseError("");
     setShowcaseComposerOpen(true);
   };
 
   const handleCloseShowcaseComposer = () => {
     setShowcaseComposerOpen(false);
+    setShowcaseCreatorMode("media");
     setShowcaseTitle("");
     setShowcaseCoverText("");
     setShowcaseFontKey("inter");
     setShowcaseDuration("permanent");
+    setShowcaseVisibility("public");
+    setShowcaseTextPosition({ x: 50, y: 50 });
+    setShowcaseMediaPreviewUrl("");
+    setShowcaseMediaType("text");
+    setShowcaseMediaFileName("");
     setShowcaseError("");
+
+    if (showcaseMediaInputRef.current) {
+      showcaseMediaInputRef.current.value = "";
+    }
   };
 
   const handleCreateShowcase = () => {
-    if (!canCreateShowcase) return;
-
     const trimmedTitle = showcaseTitle.trim();
 
     if (!trimmedTitle) {
@@ -1442,6 +1566,11 @@ useEffect(() => {
       coverText: showcaseCoverText.trim(),
       fontKey: showcaseFontKey,
       duration: showcaseDuration,
+      visibility: showcaseVisibility,
+      creatorMode: showcaseCreatorMode,
+      mediaType: showcaseMediaPreviewUrl ? showcaseMediaType : "text",
+      mediaPreviewUrl: showcaseMediaPreviewUrl || null,
+      textPosition: showcaseTextPosition,
       createdAt: new Date(now).toISOString(),
       expiresAt,
     };
@@ -1923,9 +2052,11 @@ return (
         }
 
         .profile-showcases-row {
+          min-height: 76px !important;
           gap: 12px !important;
-          padding: 0 14px 2px !important;
-          padding-bottom: 2px !important;
+          padding: 0 14px 4px !important;
+          padding-bottom: 4px !important;
+          overflow-y: visible !important;
           scroll-snap-type: x proximity;
         }
 
@@ -1936,16 +2067,170 @@ return (
 
         .profile-showcase-modal-overlay {
           align-items: flex-end !important;
-          padding: 0 !important;
+          padding: 0 0 92px !important;
+          background: rgba(0,0,0,0.70) !important;
         }
 
         .profile-showcase-modal-overlay > div {
           width: 100% !important;
           max-width: none !important;
           border-radius: 22px 22px 0 0 !important;
-          max-height: 84vh !important;
+          max-height: calc(100vh - 118px) !important;
           overflow-y: auto !important;
-          padding: 14px 14px 16px !important;
+          padding: 12px 12px 18px !important;
+          overscroll-behavior: contain !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="margin-bottom: 14px"] {
+          margin-bottom: 10px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="font-size: 22px"] {
+          font-size: 18px !important;
+          line-height: 1.08 !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax(0, 1.1fr)"] {
+          grid-template-columns: 1fr !important;
+          gap: 10px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(2"] {
+          grid-template-columns: 1fr !important;
+          gap: 7px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: 38px"] {
+          grid-template-columns: 34px minmax(0, 1fr) !important;
+          padding: 8px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="width: 36px"] {
+          width: 32px !important;
+          height: 32px !important;
+          border-radius: 11px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="min-height: 270px"],
+        .profile-showcase-modal-overlay [style*="min-height: 300px"] {
+          min-height: 178px !important;
+          border-radius: 18px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="font-size: 28px"] {
+          font-size: 20px !important;
+          line-height: 1.06 !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+          gap: 7px !important;
+        }
+
+        .profile-showcase-modal-overlay input {
+          min-height: 40px !important;
+          font-size: 14px !important;
+        }
+
+        .profile-showcase-modal-overlay button {
+          min-height: 38px !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-modal-overlay {
+          z-index: 2147482500 !important;
+          align-items: stretch !important;
+          justify-content: stretch !important;
+          padding: 0 !important;
+          background: rgba(0,0,0,0.74) !important;
+        }
+
+        .profile-showcase-modal-overlay > div {
+          position: fixed !important;
+          left: 8px !important;
+          right: 8px !important;
+          top: 8px !important;
+          bottom: 86px !important;
+          width: auto !important;
+          max-width: none !important;
+          max-height: none !important;
+          height: auto !important;
+          border-radius: 18px !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          padding: 10px 10px 12px !important;
+        }
+
+        .profile-showcase-modal-overlay input,
+        .profile-showcase-modal-overlay button,
+        .profile-showcase-modal-overlay select {
+          font-size: 13px !important;
+        }
+
+        .profile-showcase-mobile-font-select {
+          display: block !important;
+          min-height: 38px !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: none !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="min-height: 270px"],
+        .profile-showcase-modal-overlay [style*="min-height: 300px"] {
+          min-height: 156px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="font-size: 28px"] {
+          font-size: 20px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: 34px"] {
+          grid-template-columns: 30px minmax(0, 1fr) !important;
+          padding: 7px !important;
+          gap: 7px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="width: 32px"] {
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 10px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="margin-top: 12px"] {
+          margin-top: 8px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="margin-top: 14px"] {
+          margin-top: 9px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="gap: 10px"] {
+          gap: 7px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="padding: 9px 10px"] {
+          padding: 7px 9px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="padding: 12px 13px"] {
+          padding: 9px 10px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="bottom: 0"] {
+          bottom: -1px !important;
+          padding-bottom: 2px !important;
+        }
+      }
+
+      @media (min-width: 721px) {
+        .profile-showcase-mobile-font-select {
+          display: none !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: grid !important;
         }
       }
 
@@ -4274,22 +4559,20 @@ return (
                   </div>
                 </div>
 
-                {(canCreateShowcase || visibleProfileShowcases.length > 0) ? (
+                {(canCreateShowcase || visibleProfileShowcases.length > 0 || profileIsReady) ? (
                   <section className="profile-showcases-panel profile-stories-row" style={profileShowcasesPanelStyle} data-profile-showcases="true">
                     <h3 style={profileShowcasesTitleStyle}>Showcases</h3>
 
                   <div className="profile-showcases-row" style={profileShowcasesRowStyle}>
-                    {isOwnProfile ? (
-                      <button
-                        type="button"
-                        style={profileShowcaseNewItemStyle}
-                        onClick={handleOpenShowcaseComposer}
-                        aria-label="Create a new Showcase"
-                      >
-                        <span style={profileShowcasePlusCircleStyle}>+</span>
-                        <span style={profileShowcaseNewLabelStyle}>New</span>
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      style={profileShowcaseNewItemStyle}
+                      onClick={handleOpenShowcaseComposer}
+                      aria-label="Create a new Showcase"
+                    >
+                      <span style={profileShowcasePlusCircleStyle}>+</span>
+                      <span style={profileShowcaseNewLabelStyle}>New</span>
+                    </button>
 
                     {visibleProfileShowcases.map((showcase) => {
                       const fontOption = getShowcaseFontOption(showcase.fontKey);
@@ -4304,9 +4587,33 @@ return (
                           aria-label={`Open ${showcase.title} Showcase`}
                         >
                           <span style={profileShowcaseCoverCircleStyle}>
+                            {showcase.mediaPreviewUrl && showcase.mediaType === "image" ? (
+                              <img
+                                src={showcase.mediaPreviewUrl}
+                                alt=""
+                                style={profileShowcaseCoverMediaStyle}
+                              />
+                            ) : showcase.mediaPreviewUrl && showcase.mediaType === "video" ? (
+                              <video
+                                src={showcase.mediaPreviewUrl}
+                                muted
+                                playsInline
+                                style={profileShowcaseCoverMediaStyle}
+                              />
+                            ) : null}
+
+                            <span
+                              style={{
+                                ...profileShowcaseCoverShadeStyle,
+                                opacity: showcase.mediaPreviewUrl ? 1 : 0,
+                              }}
+                            />
+
                             <span
                               style={{
                                 ...profileShowcaseCoverTextStyle,
+                                left: `${showcase.textPosition?.x || 50}%`,
+                                top: `${showcase.textPosition?.y || 50}%`,
                                 fontFamily: fontOption.family,
                               }}
                             >
@@ -4369,87 +4676,255 @@ return (
                         </button>
                       </div>
 
-                      <label style={profileShowcaseFieldLabelStyle}>
-                        Showcase name
-                        <input
-                          value={showcaseTitle}
-                          onChange={(event) => {
-                            setShowcaseTitle(event.target.value);
-                            setShowcaseError("");
-                          }}
-                          placeholder="Family, Acting, Trips, Reels, Events..."
-                          style={profileShowcaseInputStyle}
-                          maxLength={32}
-                        />
-                      </label>
+                      <div style={profileShowcaseStudioLayoutStyle}>
+                        <div style={profileShowcaseStudioControlsStyle}>
+                          <div style={profileShowcaseStartOptionsStyle}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowcaseCreatorMode("media");
+                                showcaseMediaInputRef.current?.click();
+                              }}
+                              style={
+                                showcaseCreatorMode === "media"
+                                  ? profileShowcaseStartOptionActiveStyle
+                                  : profileShowcaseStartOptionStyle
+                              }
+                            >
+                              <span style={profileShowcaseStartIconStyle}>▧</span>
+                              <span>
+                                <strong>Add photo or video</strong>
+                                <small>Upload from desktop or phone</small>
+                              </span>
+                            </button>
 
-                      <label style={{ ...profileShowcaseFieldLabelStyle, marginTop: "14px" }}>
-                        Text on Showcase cover <span style={profileShowcaseOptionalTextStyle}>Optional</span>
-                        <input
-                          value={showcaseCoverText}
-                          onChange={(event) => setShowcaseCoverText(event.target.value)}
-                          placeholder="Summer memories, Behind the scenes..."
-                          style={profileShowcaseInputStyle}
-                          maxLength={26}
-                        />
-                      </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowcaseCreatorMode("text");
+                                handleClearShowcaseMedia();
+                              }}
+                              style={
+                                showcaseCreatorMode === "text"
+                                  ? profileShowcaseStartOptionActiveStyle
+                                  : profileShowcaseStartOptionStyle
+                              }
+                            >
+                              <span style={profileShowcaseStartIconStyle}>Aa</span>
+                              <span>
+                                <strong>Create text Showcase</strong>
+                                <small>Use a clean Parapost canvas</small>
+                              </span>
+                            </button>
+                          </div>
 
-                      <div style={profileShowcaseFontGroupStyle}>
-                        <strong style={profileShowcaseDurationTitleStyle}>Cover font</strong>
-                        <div style={profileShowcaseFontGridStyle}>
-                          {SHOWCASE_FONT_OPTIONS.map((font) => {
-                            const selected = showcaseFontKey === font.value;
-                            return (
-                              <button
-                                key={font.value}
-                                type="button"
-                                onClick={() => setShowcaseFontKey(font.value)}
-                                style={
-                                  selected
-                                    ? profileShowcaseFontOptionActiveStyle
-                                    : profileShowcaseFontOptionStyle
-                                }
-                                aria-pressed={selected}
-                              >
-                                <span style={{ fontFamily: font.family }}>{font.label}</span>
-                              </button>
-                            );
-                          })}
+                          <input
+                            ref={showcaseMediaInputRef}
+                            type="file"
+                            accept="image/*,video/*"
+                            onChange={handleShowcaseMediaChange}
+                            style={{ display: "none" }}
+                          />
+
+                          <label style={profileShowcaseFieldLabelStyle}>
+                            Showcase name
+                            <input
+                              value={showcaseTitle}
+                              onChange={(event) => {
+                                setShowcaseTitle(event.target.value);
+                                setShowcaseError("");
+                              }}
+                              placeholder="Family, Acting, Trips, Reels, Events..."
+                              style={profileShowcaseInputStyle}
+                              maxLength={32}
+                            />
+                          </label>
+
+                          <label style={{ ...profileShowcaseFieldLabelStyle, marginTop: "12px" }}>
+                            Text on Showcase cover <span style={profileShowcaseOptionalTextStyle}>Optional</span>
+                            <input
+                              value={showcaseCoverText}
+                              onChange={(event) => setShowcaseCoverText(event.target.value)}
+                              placeholder="Summer memories, Behind the scenes..."
+                              style={profileShowcaseInputStyle}
+                              maxLength={26}
+                            />
+                          </label>
+
+                          <div style={profileShowcaseFontGroupStyle}>
+                            <strong style={profileShowcaseDurationTitleStyle}>Cover font</strong>
+
+                            <select
+                              className="profile-showcase-mobile-font-select"
+                              value={showcaseFontKey}
+                              onChange={(event) =>
+                                setShowcaseFontKey(event.target.value as ShowcaseFontValue)
+                              }
+                              style={profileShowcaseFontSelectStyle}
+                              aria-label="Choose Showcase font"
+                            >
+                              {SHOWCASE_FONT_OPTIONS.map((font) => (
+                                <option key={font.value} value={font.value}>
+                                  {font.label}
+                                </option>
+                              ))}
+                            </select>
+
+                            <div className="profile-showcase-desktop-font-grid" style={profileShowcaseFontGridStyle}>
+                              {SHOWCASE_FONT_OPTIONS.map((font) => {
+                                const selected = showcaseFontKey === font.value;
+                                return (
+                                  <button
+                                    key={font.value}
+                                    type="button"
+                                    onClick={() => setShowcaseFontKey(font.value)}
+                                    style={
+                                      selected
+                                        ? profileShowcaseFontOptionActiveStyle
+                                        : profileShowcaseFontOptionStyle
+                                    }
+                                    aria-pressed={selected}
+                                  >
+                                    <span style={{ fontFamily: font.family }}>{font.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div style={profileShowcaseDurationGroupStyle}>
+                            <div>
+                              <strong style={profileShowcaseDurationTitleStyle}>How long should it stay?</strong>
+                              <p style={profileShowcaseDurationHelpStyle}>
+                                Permanent means it stays until you remove it.
+                              </p>
+                            </div>
+
+                            <div style={profileShowcaseDurationOptionsStyle}>
+                              {[
+                                { value: "24h" as const, label: "24 hours", help: "Quick update" },
+                                { value: "30d" as const, label: "30 days", help: "Recent feature" },
+                                { value: "permanent" as const, label: "Permanent", help: "Until removed" },
+                              ].map((option) => {
+                                const selected = showcaseDuration === option.value;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setShowcaseDuration(option.value)}
+                                    style={
+                                      selected
+                                        ? profileShowcaseDurationOptionActiveStyle
+                                        : profileShowcaseDurationOptionStyle
+                                    }
+                                    aria-pressed={selected}
+                                  >
+                                    <span>{option.label}</span>
+                                    <small>{option.help}</small>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div style={profileShowcaseDurationGroupStyle}>
+                            <div>
+                              <strong style={profileShowcaseDurationTitleStyle}>Visibility</strong>
+                              <p style={profileShowcaseDurationHelpStyle}>
+                                Choose who can see this Showcase.
+                              </p>
+                            </div>
+
+                            <div style={profileShowcaseVisibilityOptionsStyle}>
+                              {[
+                                { value: "public" as const, label: "Public" },
+                                { value: "friends" as const, label: "Friends" },
+                                { value: "private" as const, label: "Only me" },
+                              ].map((option) => {
+                                const selected = showcaseVisibility === option.value;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setShowcaseVisibility(option.value)}
+                                    style={
+                                      selected
+                                        ? profileShowcaseDurationOptionActiveStyle
+                                        : profileShowcaseDurationOptionStyle
+                                    }
+                                    aria-pressed={selected}
+                                  >
+                                    <span>{option.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
-                      </div>
 
-                      <div style={profileShowcaseDurationGroupStyle}>
-                        <div>
-                          <strong style={profileShowcaseDurationTitleStyle}>How long should it stay?</strong>
-                          <p style={profileShowcaseDurationHelpStyle}>
-                            Permanent means it stays until you remove it.
-                          </p>
-                        </div>
+                        <div style={profileShowcasePreviewColumnStyle}>
+                          <strong style={profileShowcaseDurationTitleStyle}>Live preview</strong>
+                          <div style={profileShowcasePreviewPhoneStyle}>
+                            {showcaseMediaPreviewUrl && showcaseMediaType === "image" ? (
+                              <img
+                                src={showcaseMediaPreviewUrl}
+                                alt=""
+                                style={profileShowcasePreviewMediaStyle}
+                              />
+                            ) : showcaseMediaPreviewUrl && showcaseMediaType === "video" ? (
+                              <video
+                                src={showcaseMediaPreviewUrl}
+                                muted
+                                playsInline
+                                controls
+                                style={profileShowcasePreviewMediaStyle}
+                              />
+                            ) : (
+                              <div style={profileShowcasePreviewCanvasStyle} />
+                            )}
 
-                        <div style={profileShowcaseDurationOptionsStyle}>
-                          {[
-                            { value: "24h" as const, label: "24 hours", help: "Quick update" },
-                            { value: "30d" as const, label: "30 days", help: "Recent feature" },
-                            { value: "permanent" as const, label: "Permanent", help: "Until removed" },
-                          ].map((option) => {
-                            const selected = showcaseDuration === option.value;
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => setShowcaseDuration(option.value)}
-                                style={
-                                  selected
-                                    ? profileShowcaseDurationOptionActiveStyle
-                                    : profileShowcaseDurationOptionStyle
-                                }
-                                aria-pressed={selected}
+                            <div
+                              style={profileShowcasePreviewOverlayStyle}
+                              onPointerDown={handleShowcasePreviewPointerDown}
+                              onPointerMove={handleShowcasePreviewPointerMove}
+                            >
+                              <span
+                                style={{
+                                  ...profileShowcasePreviewTextStyle,
+                                  left: `${showcaseTextPosition.x}%`,
+                                  top: `${showcaseTextPosition.y}%`,
+                                  fontFamily: getShowcaseFontOption(showcaseFontKey).family,
+                                }}
                               >
-                                <span>{option.label}</span>
-                                <small>{option.help}</small>
+                                {showcaseCoverText.trim() || showcaseTitle.trim() || "Your Showcase"}
+                              </span>
+
+                              <small style={profileShowcaseDragHintStyle}>
+                                Drag text to move
+                              </small>
+                            </div>
+                          </div>
+
+                          <div style={profileShowcasePreviewMetaStyle}>
+                            <span>{showcaseMediaFileName || (showcaseCreatorMode === "text" ? "Text canvas" : "No media selected yet")}</span>
+                            {showcaseMediaPreviewUrl ? (
+                              <button
+                                type="button"
+                                onClick={handleClearShowcaseMedia}
+                                style={profileShowcaseTinyButtonStyle}
+                              >
+                                Remove
                               </button>
-                            );
-                          })}
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => showcaseMediaInputRef.current?.click()}
+                                style={profileShowcaseTinyButtonStyle}
+                              >
+                                Upload
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -6703,15 +7178,36 @@ const profileShowcaseCoverCircleStyle: CSSProperties = {
   boxShadow: "0 0 22px rgba(168,85,247,0.20), 0 12px 24px rgba(0,0,0,0.24)",
 };
 
+const profileShowcaseCoverMediaStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  zIndex: 0,
+};
+
+const profileShowcaseCoverShadeStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  zIndex: 1,
+  background: "linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.48))",
+  pointerEvents: "none",
+};
+
 const profileShowcaseCoverTextStyle: CSSProperties = {
-  width: "84%",
+  position: "absolute",
+  zIndex: 2,
+  width: "78%",
+  maxWidth: "78%",
   color: "#ffffff",
   fontSize: "10px",
   fontWeight: 950,
   lineHeight: 1.05,
   letterSpacing: "-0.02em",
   textAlign: "center",
-  textShadow: "0 2px 10px rgba(0,0,0,0.38)",
+  textShadow: "0 2px 10px rgba(0,0,0,0.52)",
+  transform: "translate(-50%, -50%)",
   display: "-webkit-box",
   WebkitLineClamp: 2,
   WebkitBoxOrient: "vertical",
@@ -6743,6 +7239,157 @@ const profileShowcaseOptionalTextStyle: CSSProperties = {
   fontWeight: 750,
 };
 
+const profileShowcaseStudioLayoutStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1.1fr) minmax(220px, 0.9fr)",
+  gap: "16px",
+  alignItems: "start",
+};
+
+const profileShowcaseStudioControlsStyle: CSSProperties = {
+  minWidth: 0,
+};
+
+const profileShowcaseStartOptionsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "8px",
+  marginBottom: "14px",
+};
+
+const profileShowcaseStartOptionStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "36px minmax(0, 1fr)",
+  gap: "9px",
+  alignItems: "center",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.04)",
+  color: "#ffffff",
+  padding: "9px",
+  cursor: "pointer",
+  textAlign: "left",
+  fontFamily: "inherit",
+};
+
+const profileShowcaseStartOptionActiveStyle: CSSProperties = {
+  ...profileShowcaseStartOptionStyle,
+  border: "1px solid rgba(216,180,254,0.46)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
+  boxShadow: "0 0 24px rgba(168,85,247,0.16)",
+};
+
+const profileShowcaseStartIconStyle: CSSProperties = {
+  width: "36px",
+  height: "36px",
+  borderRadius: "13px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(168,85,247,0.22)",
+  color: "#ffffff",
+  fontSize: "16px",
+  fontWeight: 950,
+};
+
+const profileShowcasePreviewColumnStyle: CSSProperties = {
+  display: "grid",
+  gap: "9px",
+  minWidth: 0,
+};
+
+const profileShowcasePreviewPhoneStyle: CSSProperties = {
+  position: "relative",
+  minHeight: "270px",
+  borderRadius: "24px",
+  overflow: "hidden",
+  border: "1px solid rgba(255,255,255,0.11)",
+  background:
+    "linear-gradient(135deg, rgba(20,184,166,0.76), rgba(124,58,237,0.88) 52%, rgba(168,85,247,0.82))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 18px 42px rgba(0,0,0,0.34)",
+};
+
+const profileShowcasePreviewCanvasStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background:
+    "linear-gradient(135deg, rgba(20,184,166,0.80), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.86))",
+};
+
+const profileShowcasePreviewMediaStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const profileShowcasePreviewOverlayStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "block",
+  padding: "18px",
+  background:
+    "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.10) 45%, rgba(0,0,0,0.42))",
+  touchAction: "none",
+  cursor: "grab",
+};
+
+const profileShowcasePreviewTextStyle: CSSProperties = {
+  position: "absolute",
+  transform: "translate(-50%, -50%)",
+  maxWidth: "82%",
+  color: "#ffffff",
+  fontSize: "28px",
+  fontWeight: 950,
+  lineHeight: 1.04,
+  letterSpacing: "-0.04em",
+  textAlign: "center",
+  textShadow: "0 3px 18px rgba(0,0,0,0.58)",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+};
+
+const profileShowcaseDragHintStyle: CSSProperties = {
+  position: "absolute",
+  left: "50%",
+  bottom: "10px",
+  transform: "translateX(-50%)",
+  borderRadius: "999px",
+  background: "rgba(0,0,0,0.42)",
+  color: "rgba(255,255,255,0.82)",
+  padding: "5px 9px",
+  fontSize: "10px",
+  fontWeight: 850,
+  pointerEvents: "none",
+};
+
+const profileShowcasePreviewMetaStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const profileShowcaseTinyButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.11)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.06)",
+  color: "#ffffff",
+  padding: "7px 10px",
+  fontSize: "12px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const profileShowcaseVisibilityOptionsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "8px",
+};
+
 const profileShowcaseFontGroupStyle: CSSProperties = {
   display: "grid",
   gap: "8px",
@@ -6753,6 +7400,21 @@ const profileShowcaseFontGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: "6px",
+};
+
+const profileShowcaseFontSelectStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "42px",
+  border: "1px solid rgba(216,180,254,0.28)",
+  borderRadius: "13px",
+  background: "#11131a",
+  color: "#ffffff",
+  padding: "0 12px",
+  fontSize: "14px",
+  fontWeight: 850,
+  fontFamily: "inherit",
+  outline: "none",
+  display: "none",
 };
 
 const profileShowcaseFontOptionStyle: CSSProperties = {
@@ -6778,7 +7440,7 @@ const profileShowcaseFontOptionActiveStyle: CSSProperties = {
 const profileShowcaseModalOverlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  zIndex: 7000,
+  zIndex: 2147482500,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -6789,7 +7451,9 @@ const profileShowcaseModalOverlayStyle: CSSProperties = {
 };
 
 const profileShowcaseModalStyle: CSSProperties = {
-  width: "min(470px, 100%)",
+  width: "min(840px, 100%)",
+  maxHeight: "min(86vh, 760px)",
+  overflowY: "auto",
   borderRadius: "24px",
   border: "1px solid rgba(255,255,255,0.12)",
   background:
@@ -6846,19 +7510,19 @@ const profileShowcaseFieldLabelStyle: CSSProperties = {
 const profileShowcaseInputStyle: CSSProperties = {
   width: "100%",
   border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "14px",
+  borderRadius: "13px",
   background: "rgba(0,0,0,0.24)",
   color: "#ffffff",
-  padding: "12px 13px",
+  padding: "10px 12px",
   outline: "none",
-  fontSize: "15px",
+  fontSize: "14px",
   fontFamily: "inherit",
 };
 
 const profileShowcaseDurationGroupStyle: CSSProperties = {
   display: "grid",
-  gap: "10px",
-  marginTop: "14px",
+  gap: "8px",
+  marginTop: "10px",
 };
 
 const profileShowcaseDurationTitleStyle: CSSProperties = {
@@ -6885,10 +7549,10 @@ const profileShowcaseDurationOptionStyle: CSSProperties = {
   gap: "3px",
   textAlign: "left",
   border: "1px solid rgba(255,255,255,0.09)",
-  borderRadius: "14px",
+  borderRadius: "13px",
   background: "rgba(255,255,255,0.04)",
   color: "#e5e7eb",
-  padding: "10px",
+  padding: "9px 10px",
   cursor: "pointer",
   fontFamily: "inherit",
   fontWeight: 850,
@@ -6909,10 +7573,16 @@ const profileShowcaseErrorStyle: CSSProperties = {
 };
 
 const profileShowcaseModalActionsStyle: CSSProperties = {
+  position: "sticky",
+  bottom: 0,
   display: "flex",
   justifyContent: "flex-end",
   gap: "8px",
-  marginTop: "16px",
+  marginTop: "10px",
+  paddingTop: "8px",
+  background:
+    "linear-gradient(180deg, rgba(12,14,20,0.00), rgba(12,14,20,0.96) 28%, rgba(12,14,20,1))",
+  zIndex: 5,
 };
 
 const profileShowcaseCancelButtonStyle: CSSProperties = {

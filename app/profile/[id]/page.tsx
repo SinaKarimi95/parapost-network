@@ -4476,6 +4476,21 @@ return (
 
                               <button
                                 type="button"
+                                onClick={() => {
+                                  setProfileActionsOpen(false);
+                                  router.push("/dashboard");
+                                }}
+                                style={profileDesktopActionItemStyle}
+                              >
+                                <span style={profileActionIconStyle}>⌂</span>
+                                <span>
+                                  <strong>Back to feed</strong>
+                                  <small>Return to homepage feed</small>
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
                                 onClick={handleProfileLogout}
                                 style={profileDesktopLogoutActionItemStyle}
                               >
@@ -5708,6 +5723,21 @@ return (
 
           <button
             type="button"
+            onClick={() => {
+              setProfileActionsOpen(false);
+              router.push("/dashboard");
+            }}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>⌂</span>
+            <span>
+              <strong>Back to feed</strong>
+              <small>Return to homepage feed</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleProfileLogout}
             style={profileDesktopLogoutActionItemStyle}
           >
@@ -5834,6 +5864,18 @@ return (
                 <span>
                   <strong>Back to feed</strong>
                   <small>Return to the main Parapost feed</small>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleProfileLogout}
+                style={profileMobileLogoutActionItemStyle}
+              >
+                <span style={profileActionLogoutIconStyle}>↪</span>
+                <span>
+                  <strong>Log out</strong>
+                  <small>Sign out of Parapost Network</small>
                 </span>
               </button>
             </div>
@@ -6639,26 +6681,6 @@ const profileDesktopActionItemStyle: CSSProperties = {
   textAlign: "left",
   cursor: "pointer",
   opacity: 1,
-};
-
-const profileDesktopLogoutActionItemStyle: CSSProperties = {
-  ...profileDesktopActionItemStyle,
-  marginTop: "6px",
-  border: "1px solid rgba(248,113,113,0.20)",
-  background: "rgba(127,29,29,0.28)",
-  backgroundColor: "rgba(127,29,29,0.28)",
-};
-
-const profileActionLogoutIconStyle: CSSProperties = {
-  width: "38px",
-  height: "38px",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "12px",
-  background: "rgba(248,113,113,0.14)",
-  color: "#fecaca",
-  fontSize: "18px",
-  fontWeight: 950,
 };
 
 const profileActionOverlayStyle: CSSProperties = {
@@ -8131,5 +8153,53 @@ const profileGlowLineStyle: CSSProperties = {
   background:
     "linear-gradient(90deg, rgba(168,85,247,0.00) 0%, rgba(168,85,247,0.72) 45%, rgba(34,211,238,0.58) 72%, rgba(34,211,238,0.00) 100%)",
   boxShadow: "0 0 22px rgba(168,85,247,0.28)",
+};
+
+
+const profileDesktopLogoutActionItemStyle: CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(248,113,113,0.22)",
+  background: "rgba(127,29,29,0.30)",
+  backgroundColor: "rgba(127,29,29,0.30)",
+  color: "#ffffff",
+  borderRadius: "12px",
+  padding: "10px",
+  display: "grid",
+  gridTemplateColumns: "38px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "10px",
+  textAlign: "left",
+  cursor: "pointer",
+  opacity: 1,
+  marginTop: "6px",
+};
+
+const profileMobileLogoutActionItemStyle: CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(248,113,113,0.22)",
+  background: "rgba(127,29,29,0.30)",
+  color: "#ffffff",
+  borderRadius: "14px",
+  padding: "12px",
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "12px",
+  textAlign: "left",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  marginTop: "6px",
+};
+
+const profileActionLogoutIconStyle: CSSProperties = {
+  width: "38px",
+  height: "38px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "12px",
+  background: "rgba(248,113,113,0.14)",
+  color: "#fecaca",
+  fontSize: "18px",
+  fontWeight: 950,
 };
 

@@ -3991,7 +3991,6 @@ return (
 <div
                           className="profile-desktop-action-menu-wrap"
                           onClick={(event) => event.stopPropagation()}
-                          onClick={(event) => event.stopPropagation()}
                         >
                           <button
                             type="button"

@@ -115,11 +115,67 @@ type ProfileShowcase = {
   creatorMode?: ShowcaseCreatorMode;
   mediaType?: ShowcaseMediaType;
   mediaPreviewUrl?: string | null;
+  mediaFileName?: string | null;
   textPosition?: { x: number; y: number };
   overlayFontSize?: number;
   createdAt: string;
   expiresAt: string | null;
 };
+
+type ProfileShowcaseRow = {
+  id: string;
+  user_id: string;
+  title: string | null;
+  cover_text: string | null;
+  media_url: string | null;
+  media_type: string | null;
+  media_filename: string | null;
+  font_key: string | null;
+  text_position_x: number | string | null;
+  text_position_y: number | string | null;
+  overlay_font_size: number | null;
+  duration: string | null;
+  visibility: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+};
+
+function mapProfileShowcaseRow(row: ProfileShowcaseRow): ProfileShowcase {
+  const mediaType =
+    row.media_type === "video" || row.media_type === "image" || row.media_type === "text"
+      ? row.media_type
+      : "text";
+
+  const duration =
+    row.duration === "24h" || row.duration === "30d" || row.duration === "permanent"
+      ? row.duration
+      : "permanent";
+
+  const visibility =
+    row.visibility === "public" || row.visibility === "friends" || row.visibility === "private"
+      ? row.visibility
+      : "public";
+
+  return {
+    id: row.id,
+    title: row.title || "Showcase",
+    coverText: row.cover_text || "",
+    fontKey: getShowcaseFontOption(row.font_key).value,
+    duration,
+    visibility,
+    creatorMode: row.media_url ? "media" : "text",
+    mediaType,
+    mediaPreviewUrl: row.media_url || null,
+    mediaFileName: row.media_filename || null,
+    textPosition: {
+      x: Number(row.text_position_x ?? 50),
+      y: Number(row.text_position_y ?? 50),
+    },
+    overlayFontSize: clampShowcaseOverlayFontSize(row.overlay_font_size),
+    createdAt: row.created_at || new Date().toISOString(),
+    expiresAt: row.expires_at,
+  };
+}
 
 const SHOWCASE_FONT_OPTIONS: {
   value: ShowcaseFontValue;
@@ -542,7 +598,13 @@ export default function ProfilePage() {
   });
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
-  const canCreateShowcase = isOwnProfile || isLocalShowcaseTesting;
+  const canManageProfileShowcases = Boolean(
+    profile?.id &&
+      ((typeof viewerId !== "undefined" && viewerId === profile.id) ||
+        (typeof currentUserId !== "undefined" && currentUserId === profile.id) ||
+        (typeof userId !== "undefined" && userId === profile.id))
+  );
+  const canCreateShowcase = canManageProfileShowcases || isLocalShowcaseTesting;
 
   const showcaseStorageKey = useMemo(
     () => (profileId ? `parapost-profile-showcases-${profileId}` : ""),
@@ -1008,49 +1070,52 @@ useEffect(() => {
   }, [profilePostImage]);
 
   useEffect(() => {
-    if (!showcaseStorageKey || typeof window === "undefined") {
-      setProfileShowcases([]);
-      setShowcasesLoaded(true);
-      return;
-    }
+    let cancelled = false;
 
-    try {
-      const saved = window.localStorage.getItem(showcaseStorageKey);
-      const parsed = saved ? (JSON.parse(saved) as ProfileShowcase[]) : [];
+    const loadProfileShowcases = async () => {
+      if (!profileId) {
+        setProfileShowcases([]);
+        setShowcasesLoaded(true);
+        return;
+      }
+
+      setShowcasesLoaded(false);
+
+      const { data, error } = await supabase
+        .from("profile_showcases")
+        .select(
+          "id,user_id,title,cover_text,media_url,media_type,media_filename,font_key,text_position_x,text_position_y,overlay_font_size,duration,visibility,expires_at,created_at"
+        )
+        .eq("user_id", profileId)
+        .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Could not load profile Showcases:", error);
+        setProfileShowcases([]);
+        setShowcasesLoaded(true);
+        return;
+      }
+
       const now = Date.now();
-      const activeShowcases = Array.isArray(parsed)
-        ? parsed
-            .filter((showcase) => {
-              if (!showcase?.id || !showcase?.title) return false;
-              if (!showcase.expiresAt) return true;
-              return new Date(showcase.expiresAt).getTime() > now;
-            })
-            .map((showcase) => ({
-              ...showcase,
-              coverText: showcase.coverText || "",
-              fontKey: getShowcaseFontOption(showcase.fontKey).value,
-              visibility: showcase.visibility || "public",
-              creatorMode: showcase.creatorMode || (showcase.mediaPreviewUrl ? "media" : "text"),
-              mediaType: showcase.mediaType || (showcase.mediaPreviewUrl ? "image" : "text"),
-              mediaPreviewUrl: showcase.mediaPreviewUrl || null,
-              textPosition: showcase.textPosition || { x: 50, y: 50 },
-              overlayFontSize: clampShowcaseOverlayFontSize(showcase.overlayFontSize),
-            }))
-        : [];
+      const mapped = ((data || []) as ProfileShowcaseRow[])
+        .map(mapProfileShowcaseRow)
+        .filter((showcase) => {
+          if (!showcase.expiresAt) return true;
+          return new Date(showcase.expiresAt).getTime() > now;
+        });
 
-      setProfileShowcases(activeShowcases);
-    } catch {
-      setProfileShowcases([]);
-    } finally {
+      setProfileShowcases(mapped);
       setShowcasesLoaded(true);
-    }
-  }, [showcaseStorageKey]);
+    };
 
-  useEffect(() => {
-    if (!showcasesLoaded || !showcaseStorageKey || typeof window === "undefined") return;
+    loadProfileShowcases();
 
-    window.localStorage.setItem(showcaseStorageKey, JSON.stringify(profileShowcases));
-  }, [profileShowcases, showcaseStorageKey, showcasesLoaded]);
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId]);
 
   useEffect(() => {
     if (!viewerId || !profileId || viewerId === profileId) return;
@@ -1673,11 +1738,16 @@ useEffect(() => {
     }
   };
 
-  const handleCreateShowcase = () => {
+  const handleCreateShowcase = async () => {
     const trimmedTitle = showcaseTitle.trim();
 
     if (!trimmedTitle) {
       setShowcaseError("Give your Showcase a name first.");
+      return;
+    }
+
+    if (!canManageProfileShowcases || !viewerId || !profileId) {
+      setShowcaseError("You can only create Showcases on your own profile.");
       return;
     }
 
@@ -1689,32 +1759,59 @@ useEffect(() => {
           ? new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString()
           : null;
 
-    const nextShowcase: ProfileShowcase = {
-      id: `${now}-${Math.random().toString(36).slice(2, 9)}`,
+    const insertPayload = {
+      user_id: viewerId,
       title: trimmedTitle,
-      coverText: showcaseCoverText.trim(),
-      fontKey: showcaseFontKey,
+      cover_text: showcaseCoverText.trim(),
+      media_url: showcaseMediaPreviewUrl || null,
+      media_type: showcaseMediaPreviewUrl ? showcaseMediaType : "text",
+      media_filename: showcaseMediaFileName || null,
+      font_key: showcaseFontKey,
+      text_position_x: showcaseTextPosition.x,
+      text_position_y: showcaseTextPosition.y,
+      overlay_font_size: clampShowcaseOverlayFontSize(showcaseOverlayFontSize),
       duration: showcaseDuration,
       visibility: showcaseVisibility,
-      creatorMode: showcaseCreatorMode,
-      mediaType: showcaseMediaPreviewUrl ? showcaseMediaType : "text",
-      mediaPreviewUrl: showcaseMediaPreviewUrl || null,
-      textPosition: showcaseTextPosition,
-      overlayFontSize: clampShowcaseOverlayFontSize(showcaseOverlayFontSize),
-      createdAt: new Date(now).toISOString(),
-      expiresAt,
+      expires_at: expiresAt,
     };
 
-    setProfileShowcases((prev) => [...prev, nextShowcase]);
+    const { data, error } = await supabase
+      .from("profile_showcases")
+      .insert(insertPayload)
+      .select(
+        "id,user_id,title,cover_text,media_url,media_type,media_filename,font_key,text_position_x,text_position_y,overlay_font_size,duration,visibility,expires_at,created_at"
+      )
+      .single();
+
+    if (error || !data) {
+      console.error("Could not create Showcase:", error);
+      setShowcaseError("Could not create Showcase. Please try again.");
+      return;
+    }
+
+    const nextShowcase = mapProfileShowcaseRow(data as ProfileShowcaseRow);
+
+    setProfileShowcases((prev) => [nextShowcase, ...prev]);
     handleCloseShowcaseComposer();
     showFriendStatus("Showcase created.");
   };
 
-  const handleDeleteShowcase = (showcaseId: string) => {
-    if (!canCreateShowcase) return;
+  const handleDeleteShowcase = async (showcaseId: string) => {
+    if (!canManageProfileShowcases) return;
 
     const confirmed = window.confirm("Delete this Showcase from your profile?");
     if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("profile_showcases")
+      .delete()
+      .eq("id", showcaseId);
+
+    if (error) {
+      console.error("Could not delete Showcase:", error);
+      showFriendStatus("Could not delete Showcase.");
+      return;
+    }
 
     setProfileShowcases((prev) => prev.filter((showcase) => showcase.id !== showcaseId));
     showFriendStatus("Showcase deleted.");
@@ -5601,6 +5698,50 @@ return (
         -webkit-tap-highlight-color: transparent;
       }
 
+
+      /* Step 30 fixed: Showcase ownership + circle size polish. */
+      .profile-showcases-row button:not([aria-label="Create a new Showcase"]) {
+        min-width: 74px !important;
+        width: 74px !important;
+      }
+
+      .profile-showcases-row button:not([aria-label="Create a new Showcase"]) > span:first-child,
+      .profile-showcases-row button:not([aria-label="Create a new Showcase"]) > div:first-child {
+        width: 64px !important;
+        height: 64px !important;
+        min-width: 64px !important;
+        min-height: 64px !important;
+        border-radius: 999px !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcases-row button:not([aria-label="Create a new Showcase"]) {
+          min-width: 78px !important;
+          width: 78px !important;
+        }
+
+        .profile-showcases-row button:not([aria-label="Create a new Showcase"]) > span:first-child,
+        .profile-showcases-row button:not([aria-label="Create a new Showcase"]) > div:first-child {
+          width: 68px !important;
+          height: 68px !important;
+          min-width: 68px !important;
+          min-height: 68px !important;
+          border-radius: 999px !important;
+        }
+      }
+
+
+      /* Step 31: restore owner New Showcase visibility and row spacing. */
+      .profile-showcases-row {
+        min-height: 78px;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcases-row {
+          min-height: 88px !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}
@@ -6160,8 +6301,10 @@ return (
                   <div className="profile-showcases-row" style={profileShowcasesRowStyle}>
                     <button
                       type="button"
-                      style={profileShowcaseNewItemStyle}
-                      onClick={handleOpenShowcaseComposer}
+                      style={canManageProfileShowcases ? profileShowcaseNewItemStyle : profileShowcaseHiddenCreateItemStyle}
+                      onClick={() => {
+                        if (canManageProfileShowcases) handleOpenShowcaseComposer();
+                      }}
                       aria-label="Create a new Showcase"
                     >
                       <span style={profileShowcasePlusCircleStyle}>+</span>
@@ -8840,6 +8983,10 @@ const profileShowcaseNewItemStyle: CSSProperties = {
   fontFamily: "inherit",
 };
 
+const profileShowcaseHiddenCreateItemStyle: CSSProperties = {
+  display: "none",
+};
+
 const profileShowcasePlusCircleStyle: CSSProperties = {
   width: "62px",
   height: "62px",
@@ -8876,11 +9023,10 @@ const profileShowcaseItemStyle: CSSProperties = {
   display: "grid",
   justifyItems: "center",
   gap: "6px",
-  minWidth: "70px",
-  width: "70px",
+  minWidth: "74px",
+  width: "74px",
   border: 0,
   background: "transparent",
-  color: "#ffffff",
   padding: 0,
   cursor: "pointer",
   fontFamily: "inherit",

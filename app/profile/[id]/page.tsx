@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -115,6 +116,7 @@ type ProfileShowcase = {
   mediaType?: ShowcaseMediaType;
   mediaPreviewUrl?: string | null;
   textPosition?: { x: number; y: number };
+  overlayFontSize?: number;
   createdAt: string;
   expiresAt: string | null;
 };
@@ -181,6 +183,23 @@ function getShowcaseFontOption(fontKey?: string | null) {
     SHOWCASE_FONT_OPTIONS.find((option) => option.value === fontKey) ||
     SHOWCASE_FONT_OPTIONS[0]
   );
+}
+
+const SHOWCASE_OVERLAY_MIN_FONT_SIZE = 18;
+const SHOWCASE_OVERLAY_MAX_FONT_SIZE = 48;
+const SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE = 28;
+
+function clampShowcaseOverlayFontSize(size?: number | null) {
+  if (!size || Number.isNaN(size)) return SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE;
+  return Math.max(
+    SHOWCASE_OVERLAY_MIN_FONT_SIZE,
+    Math.min(SHOWCASE_OVERLAY_MAX_FONT_SIZE, Math.round(size))
+  );
+}
+
+function getShowcaseTileFontSize(size?: number | null) {
+  const clamped = clampShowcaseOverlayFontSize(size);
+  return Math.max(10, Math.min(16, Math.round(clamped / 2.7)));
 }
 
 function formatTimeAgo(dateString: string) {
@@ -492,11 +511,13 @@ export default function ProfilePage() {
 
   const [activeProfileTab, setActiveProfileTab] = useState("Posts");
   const [profileActionsOpen, setProfileActionsOpen] = useState(false);
+  const [isClientMounted, setIsClientMounted] = useState(false);
   const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
   const [showcaseCreatorMode, setShowcaseCreatorMode] = useState<ShowcaseCreatorMode>("media");
   const [showcaseTitle, setShowcaseTitle] = useState("");
   const [showcaseCoverText, setShowcaseCoverText] = useState("");
   const [showcaseFontKey, setShowcaseFontKey] = useState<ShowcaseFontValue>("inter");
+  const [showcaseOverlayFontSize, setShowcaseOverlayFontSize] = useState(28);
   const [showcaseDuration, setShowcaseDuration] = useState<ShowcaseDuration>("permanent");
   const [showcaseVisibility, setShowcaseVisibility] = useState<ShowcaseVisibility>("public");
   const [showcaseCustomizeOpen, setShowcaseCustomizeOpen] = useState(false);
@@ -511,6 +532,7 @@ export default function ProfilePage() {
   const [isLocalShowcaseTesting, setIsLocalShowcaseTesting] = useState(false);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
+  const showcaseDragFrameRef = useRef<number | null>(null);
   const showcaseMediaInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
   const profileActionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -526,6 +548,19 @@ export default function ProfilePage() {
     () => (profileId ? `parapost-profile-showcases-${profileId}` : ""),
     [profileId]
   );
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (showcaseDragFrameRef.current !== null) {
+        window.cancelAnimationFrame(showcaseDragFrameRef.current);
+      }
+    };
+  }, []);
+
+
   const visibleProfileShowcases = useMemo(() => {
     const now = Date.now();
     return profileShowcases.filter((showcase) => {
@@ -538,8 +573,13 @@ export default function ProfilePage() {
   const showcaseTextNearVerticalCenter = Math.abs(showcaseTextPosition.y - 50) <= 2;
   const showShowcaseCenterGuides =
     showcaseCustomizeOpen &&
+    Boolean(showcaseCoverText.trim()) &&
     showcaseTextNearHorizontalCenter &&
     showcaseTextNearVerticalCenter;
+  const showcaseSizeRailVisible = showcaseCustomizeOpen && Boolean(showcaseCoverText.trim());
+  const safeShowcaseTextX =
+    showcaseSizeRailVisible && showcaseTextPosition.x < 22 ? 22 : showcaseTextPosition.x;
+
 
   // ✅ 🔥 ADD THIS FUNCTION RIGHT HERE
   const handleSaveProfileAbout = async (payload: any) => {
@@ -994,6 +1034,7 @@ useEffect(() => {
               mediaType: showcase.mediaType || (showcase.mediaPreviewUrl ? "image" : "text"),
               mediaPreviewUrl: showcase.mediaPreviewUrl || null,
               textPosition: showcase.textPosition || { x: 50, y: 50 },
+              overlayFontSize: clampShowcaseOverlayFontSize(showcase.overlayFontSize),
             }))
         : [];
 
@@ -1597,6 +1638,7 @@ useEffect(() => {
     setShowcaseTitle("");
     setShowcaseCoverText("");
     setShowcaseFontKey("inter");
+    setShowcaseOverlayFontSize(SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE);
     setShowcaseDuration("permanent");
     setShowcaseVisibility("public");
     setShowcaseCustomizeOpen(false);
@@ -1615,6 +1657,7 @@ useEffect(() => {
     setShowcaseTitle("");
     setShowcaseCoverText("");
     setShowcaseFontKey("inter");
+    setShowcaseOverlayFontSize(SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE);
     setShowcaseDuration("permanent");
     setShowcaseVisibility("public");
     setShowcaseCustomizeOpen(false);
@@ -1657,6 +1700,7 @@ useEffect(() => {
       mediaType: showcaseMediaPreviewUrl ? showcaseMediaType : "text",
       mediaPreviewUrl: showcaseMediaPreviewUrl || null,
       textPosition: showcaseTextPosition,
+      overlayFontSize: clampShowcaseOverlayFontSize(showcaseOverlayFontSize),
       createdAt: new Date(now).toISOString(),
       expiresAt,
     };
@@ -2210,8 +2254,8 @@ return (
         }
 
         .profile-showcase-modal-actions {
-          position: sticky !important;
-          bottom: 0 !important;
+          position: static !important;
+          bottom: auto !important;
           display: grid !important;
           grid-template-columns: 1fr 1.35fr !important;
           gap: 8px !important;
@@ -2394,8 +2438,8 @@ return (
         }
 
         .profile-showcase-modal-actions {
-          position: sticky !important;
-          bottom: 0 !important;
+          position: static !important;
+          bottom: auto !important;
           display: grid !important;
           grid-template-columns: 1fr 1.35fr !important;
           gap: 8px !important;
@@ -2571,8 +2615,8 @@ return (
         }
 
         .profile-showcase-modal-actions {
-          position: sticky !important;
-          bottom: 0 !important;
+          position: static !important;
+          bottom: auto !important;
           display: grid !important;
           grid-template-columns: 1fr 1.35fr !important;
           gap: 8px !important;
@@ -3507,7 +3551,7 @@ return (
         .profile-hero-info {
           min-width: 0 !important;
           width: 100% !important;
-          padding-bottom: 0 !important;
+          padding-bottom: auto !important;
         }
 
         .profile-hero-topline {
@@ -3604,7 +3648,7 @@ return (
           flex-direction: column !important;
           align-items: flex-start !important;
           gap: 12px !important;
-          margin-bottom: 0 !important;
+          margin-bottom: auto !important;
         }
 
         .profile-hero-topline h1 {
@@ -3771,7 +3815,7 @@ return (
         }
 
         .profile-tabs-shell {
-          position: sticky !important;
+          position: static !important;
           top: 64px !important;
           z-index: 20 !important;
           background: rgba(15,17,22,0.98) !important;
@@ -3914,7 +3958,7 @@ return (
         }
 
         .profile-mobile-first-polish .profile-tabs-shell {
-          margin-bottom: 0 !important;
+          margin-bottom: auto !important;
         }
       }
 
@@ -4331,7 +4375,7 @@ return (
 
         .profile-mobile-first-polish .profile-tabs-shell {
           top: 0 !important;
-          margin-bottom: 0 !important;
+          margin-bottom: auto !important;
         }
 
         .profile-mobile-first-polish .profile-tabs-desktop {
@@ -4501,11 +4545,11 @@ return (
         .profile-mobile-first-polish .profile-stream-stack > :not([hidden]) ~ :not([hidden]) {
           --tw-space-y-reverse: 0 !important;
           margin-top: 0 !important;
-          margin-bottom: 0 !important;
+          margin-bottom: auto !important;
         }
 
         .profile-mobile-first-polish .profile-tabs-shell {
-          margin-bottom: 0 !important;
+          margin-bottom: auto !important;
           border-bottom: 1px solid rgba(255,255,255,0.07) !important;
         }
 
@@ -4533,7 +4577,7 @@ return (
         .profile-mobile-first-polish .profile-tabs-desktop {
           background: #111318 !important;
           box-shadow: none !important;
-          padding-bottom: 0 !important;
+          padding-bottom: auto !important;
         }
 
         .profile-mobile-first-polish .profile-tabs-desktop button {
@@ -4544,7 +4588,7 @@ return (
           border-bottom: 3px solid transparent !important;
           padding-left: 0 !important;
           padding-right: 0 !important;
-          margin-bottom: 0 !important;
+          margin-bottom: auto !important;
         }
 
         .profile-mobile-first-polish .profile-tabs-desktop button[aria-selected="true"],
@@ -5027,7 +5071,537 @@ return (
         }
       }
 
-    `}</style>
+    
+      /* Step 22: proper mobile Showcase overlay and full flow. */
+      @media (max-width: 720px) {
+        html:has(.profile-showcase-mobile-open),
+        body:has(.profile-showcase-mobile-open) {
+          overflow: hidden !important;
+          height: 100% !important;
+        }
+
+        .profile-showcase-modal-overlay,
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147483647 !important;
+          display: block !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          background:
+            radial-gradient(circle at 50% -8%, rgba(168,85,247,0.28), transparent 44%),
+            rgba(0,0,0,0.97) !important;
+          overflow: hidden !important;
+          isolation: isolate !important;
+        }
+
+        .profile-showcase-modal-shell {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147483647 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: max(12px, env(safe-area-inset-top)) 14px max(34px, env(safe-area-inset-bottom)) !important;
+          box-shadow: none !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.18), transparent 34%),
+            radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 30%),
+            linear-gradient(180deg, rgba(14,16,23,0.99), rgba(4,6,10,1)) !important;
+        }
+
+        .profile-showcase-modal-header {
+          position: relative !important;
+          top: auto !important;
+          margin: 0 0 12px !important;
+          padding: 0 0 12px !important;
+          background: transparent !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+        }
+
+        .profile-showcase-preview-column {
+          order: -1 !important;
+          border-left: 0 !important;
+          padding-left: 0 !important;
+          gap: 8px !important;
+        }
+
+        .profile-showcase-simple-controls {
+          order: 1 !important;
+          display: grid !important;
+          gap: 10px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(270px, 37vh) !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-upload-card {
+          min-height: 100px !important;
+          grid-template-columns: 44px minmax(0, 1fr) !important;
+          padding: 14px !important;
+          border-radius: 19px !important;
+        }
+
+        .profile-showcase-upload-card span:first-child {
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 15px !important;
+          font-size: 24px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+        }
+
+        .profile-showcase-modal-actions,
+        .profile-showcase-modal-overlay .profile-showcase-modal-actions {
+          position: relative !important;
+          bottom: auto !important;
+          top: auto !important;
+          left: auto !important;
+          right: auto !important;
+          transform: none !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1.35fr !important;
+          gap: 9px !important;
+          margin: 18px 0 0 !important;
+          padding: 14px 0 0 !important;
+          border-top: 1px solid rgba(255,255,255,0.08) !important;
+          background: transparent !important;
+          z-index: 1 !important;
+        }
+
+        .profile-showcase-modal-actions button {
+          width: 100% !important;
+          min-height: 48px !important;
+          justify-content: center !important;
+          border-radius: 16px !important;
+        }
+
+        .profile-showcase-modal-overlay input,
+        .profile-showcase-modal-overlay select,
+        .profile-showcase-modal-overlay button {
+          font-size: 13px !important;
+        }
+      }
+
+
+      /* Step 23: mobile full cover + full scrollable Showcase flow. */
+      @media (max-width: 720px) {
+        html:has(.profile-showcase-mobile-open),
+        body:has(.profile-showcase-mobile-open) {
+          overflow: hidden !important;
+          height: 100% !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open,
+        .profile-showcase-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147483647 !important;
+          display: block !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          background:
+            radial-gradient(circle at 50% -6%, rgba(168,85,247,0.30), transparent 44%),
+            #05060a !important;
+          overflow: hidden !important;
+          isolation: isolate !important;
+        }
+
+        .profile-showcase-modal-overlay::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          z-index: -1;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.16), transparent 36%),
+            radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 32%),
+            linear-gradient(180deg, #0e1017, #030408 72%);
+          pointer-events: none;
+        }
+
+        .profile-showcase-modal-shell {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147483647 !important;
+          width: 100vw !important;
+          min-width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: max(12px, env(safe-area-inset-top)) 14px max(38px, env(safe-area-inset-bottom)) !important;
+          box-shadow: none !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.18), transparent 34%),
+            radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 30%),
+            linear-gradient(180deg, rgba(14,16,23,0.99), rgba(4,6,10,1)) !important;
+        }
+
+        .profile-showcase-modal-header {
+          position: relative !important;
+          top: auto !important;
+          margin: 0 0 12px !important;
+          padding: 0 0 12px !important;
+          background: transparent !important;
+        }
+
+        .profile-showcase-studio-layout,
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+          align-items: stretch !important;
+        }
+
+        .profile-showcase-preview-column {
+          order: -1 !important;
+          border-left: 0 !important;
+          padding-left: 0 !important;
+          gap: 8px !important;
+          min-width: 0 !important;
+        }
+
+        .profile-showcase-simple-controls {
+          order: 1 !important;
+          display: grid !important;
+          gap: 10px !important;
+          min-width: 0 !important;
+          padding-bottom: 0 !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(265px, 36vh) !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-upload-card {
+          min-height: 100px !important;
+          grid-template-columns: 44px minmax(0, 1fr) !important;
+          padding: 14px !important;
+          border-radius: 19px !important;
+        }
+
+        .profile-showcase-upload-card span:first-child {
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 15px !important;
+          font-size: 24px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+        }
+
+        .profile-showcase-font-select {
+          display: block !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: none !important;
+        }
+
+        .profile-showcase-modal-actions,
+        .profile-showcase-modal-overlay .profile-showcase-modal-actions {
+          position: relative !important;
+          bottom: auto !important;
+          top: auto !important;
+          left: auto !important;
+          right: auto !important;
+          transform: none !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1.35fr !important;
+          gap: 9px !important;
+          margin: 18px 0 0 !important;
+          padding: 14px 0 0 !important;
+          border-top: 1px solid rgba(255,255,255,0.08) !important;
+          background: transparent !important;
+          z-index: 1 !important;
+        }
+
+        .profile-showcase-modal-actions button {
+          width: 100% !important;
+          min-height: 48px !important;
+          justify-content: center !important;
+          border-radius: 16px !important;
+        }
+
+        body:has(.profile-showcase-mobile-open) .profile-mobile-bottom-nav,
+        body:has(.profile-showcase-mobile-open) .profile-bottom-nav,
+        body:has(.profile-showcase-mobile-open) .bottom-nav,
+        body:has(.profile-showcase-mobile-open) nav[aria-label="Bottom navigation"],
+        body:has(.profile-showcase-mobile-open) [class*="BottomNav"],
+        body:has(.profile-showcase-mobile-open) [class*="bottomNav"],
+        body:has(.profile-showcase-mobile-open) [class*="bottom-nav"] {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+        }
+      }
+
+
+      /* Step 24: Showcase creator is portaled above the full app. */
+      .profile-showcase-modal-overlay.profile-showcase-mobile-open {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483647 !important;
+        isolation: isolate !important;
+      }
+
+      .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-shell {
+        z-index: 2147483647 !important;
+      }
+
+      @media (max-width: 720px) {
+        html:has(.profile-showcase-mobile-open),
+        body:has(.profile-showcase-mobile-open) {
+          overflow: hidden !important;
+          height: 100% !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open {
+          display: block !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          background:
+            radial-gradient(circle at 50% -6%, rgba(168,85,247,0.30), transparent 44%),
+            #05060a !important;
+          overflow: hidden !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-shell {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          min-width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: max(12px, env(safe-area-inset-top)) 14px max(38px, env(safe-area-inset-bottom)) !important;
+          box-shadow: none !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.18), transparent 34%),
+            radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 30%),
+            linear-gradient(180deg, rgba(14,16,23,0.99), rgba(4,6,10,1)) !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-studio-layout,
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="grid-template-columns: minmax"] {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+          align-items: stretch !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-preview-column {
+          order: -1 !important;
+          border-left: 0 !important;
+          padding-left: 0 !important;
+          gap: 8px !important;
+          min-width: 0 !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-simple-controls {
+          order: 1 !important;
+          display: grid !important;
+          gap: 10px !important;
+          min-width: 0 !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(265px, 36vh) !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-actions {
+          position: relative !important;
+          bottom: auto !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1.35fr !important;
+          gap: 9px !important;
+          margin: 18px 0 0 !important;
+          padding: 14px 0 0 !important;
+          border-top: 1px solid rgba(255,255,255,0.08) !important;
+          background: transparent !important;
+          z-index: 1 !important;
+        }
+      }
+
+
+      /* Step 26: Showcase overlay text size controls. */
+      .profile-showcase-modal-overlay input[type="range"] {
+        min-height: 32px;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-modal-overlay input[type="range"] {
+          min-height: 36px !important;
+        }
+      }
+
+
+      /* Step 27: premium preview-side text size slider. */
+      .profile-showcase-vertical-size-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+        touch-action: none;
+      }
+
+      .profile-showcase-vertical-size-slider::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.45);
+      }
+
+      .profile-showcase-vertical-size-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 19px;
+        height: 19px;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 2px solid rgba(168,85,247,0.55);
+        margin-top: -7.5px;
+        box-shadow: 0 0 0 5px rgba(255,255,255,0.12), 0 8px 18px rgba(0,0,0,0.30);
+      }
+
+      .profile-showcase-vertical-size-slider::-moz-range-track {
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.45);
+      }
+
+      .profile-showcase-vertical-size-slider::-moz-range-thumb {
+        width: 19px;
+        height: 19px;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 2px solid rgba(168,85,247,0.55);
+        box-shadow: 0 0 0 5px rgba(255,255,255,0.12), 0 8px 18px rgba(0,0,0,0.30);
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-vertical-size-slider {
+          width: 142px !important;
+        }
+      }
+
+
+      /* Step 28: fix overlay text size target and slim slider. */
+      .profile-showcase-vertical-size-slider::-webkit-slider-runnable-track {
+        height: 3px !important;
+        background: rgba(255,255,255,0.58) !important;
+      }
+
+      .profile-showcase-vertical-size-slider::-webkit-slider-thumb {
+        width: 18px !important;
+        height: 18px !important;
+        margin-top: -7.5px !important;
+      }
+
+      .profile-showcase-vertical-size-slider::-moz-range-track {
+        height: 3px !important;
+        background: rgba(255,255,255,0.58) !important;
+      }
+
+      .profile-showcase-vertical-size-slider::-moz-range-thumb {
+        width: 18px !important;
+        height: 18px !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-vertical-size-slider {
+          width: 132px !important;
+        }
+      }
+
+
+      /* Step 29: smoother preview text movement and clean size slider. */
+      .profile-showcase-modal-overlay .profile-showcase-vertical-size-slider {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        background: transparent !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        touch-action: none !important;
+      }
+
+      .profile-showcase-modal-overlay .profile-showcase-vertical-size-slider::-webkit-slider-runnable-track {
+        height: 3px !important;
+        border-radius: 999px !important;
+        background: rgba(255,255,255,0.72) !important;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.20) !important;
+      }
+
+      .profile-showcase-modal-overlay .profile-showcase-vertical-size-slider::-webkit-slider-thumb {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        width: 18px !important;
+        height: 18px !important;
+        border-radius: 999px !important;
+        background: #ffffff !important;
+        border: 2px solid rgba(168,85,247,0.62) !important;
+        margin-top: -7.5px !important;
+        box-shadow: 0 0 0 5px rgba(255,255,255,0.10), 0 8px 18px rgba(0,0,0,0.30) !important;
+      }
+
+      .profile-showcase-modal-overlay .profile-showcase-vertical-size-slider::-moz-range-track {
+        height: 3px !important;
+        border-radius: 999px !important;
+        background: rgba(255,255,255,0.72) !important;
+      }
+
+      .profile-showcase-modal-overlay .profile-showcase-vertical-size-slider::-moz-range-thumb {
+        width: 18px !important;
+        height: 18px !important;
+        border-radius: 999px !important;
+        background: #ffffff !important;
+        border: 2px solid rgba(168,85,247,0.62) !important;
+      }
+
+      .profile-showcase-modal-overlay * {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+`}</style>
 
     {/* Mobile Top Bar */}
     <div className="xl:hidden" style={mobileTopBarStyle}>
@@ -5635,6 +6209,7 @@ return (
                                 left: `${showcase.textPosition?.x || 50}%`,
                                 top: `${showcase.textPosition?.y || 50}%`,
                                 fontFamily: fontOption.family,
+                                fontSize: `${getShowcaseTileFontSize(showcase.overlayFontSize)}px`,
                               }}
                             >
                               {coverText}
@@ -5672,9 +6247,11 @@ return (
                   </section>
                 ) : null}
 
-                {showcaseComposerOpen ? (
+                {isClientMounted && showcaseComposerOpen
+                  ? createPortal(
+                      (
                   <div
-                    className="profile-showcase-modal-overlay"
+                    className="profile-showcase-modal-overlay profile-showcase-mobile-open"
                     style={profileShowcaseModalOverlayStyle}
                     role="dialog"
                     aria-modal="true"
@@ -5700,7 +6277,6 @@ return (
                             <div style={profileShowcaseModalFlowPillsStyle}>
                               <span>Simple first</span>
                               <span>Customize optional</span>
-                              <span>Profile only</span>
                             </div>
                           </span>
                         </div>
@@ -5714,7 +6290,7 @@ return (
                         </button>
                       </div>
 
-                      <div style={profileShowcaseSimpleStudioStyle}>
+                      <div className="profile-showcase-studio-layout" style={profileShowcaseSimpleStudioStyle}>
                         <div className="profile-showcase-simple-controls" style={profileShowcaseSimpleControlsStyle}>
                           <button
                             className="profile-showcase-upload-card"
@@ -5846,7 +6422,7 @@ return (
                               <div style={profileShowcaseCustomizeIntroStyle}>
                                 <strong>Customize Showcase</strong>
                                 <small>
-                                  Add cover text, adjust font, set visibility, and drag the text in the preview.
+                                  Add cover text, choose a font, then resize and drag it directly in the preview.
                                 </small>
                               </div>
 
@@ -5887,12 +6463,11 @@ return (
                                   style={{
                                     ...profileShowcaseFontPreviewStyle,
                                     fontFamily: getShowcaseFontOption(showcaseFontKey).family,
-                                  }}
+                                    }}
                                 >
-                                  {showcaseCoverText.trim() || showcaseTitle.trim() || "Preview your overlay text"}
+                                  {showcaseCoverText.trim() || "Preview optional overlay text"}
                                 </div>
-
-                              </div>
+</div>
 
                               <div style={profileShowcaseDurationGroupStyle}>
                                 <div>
@@ -5985,6 +6560,28 @@ return (
                             )}
 
                             <div style={profileShowcasePreviewOverlayStyle}>
+                              {showcaseCustomizeOpen && showcaseCoverText.trim() ? (
+                                <div style={profileShowcaseVerticalSizeRailStyle}>
+<input
+                                    className="profile-showcase-vertical-size-slider"
+                                    type="range"
+                                    min={SHOWCASE_OVERLAY_MIN_FONT_SIZE}
+                                    max={SHOWCASE_OVERLAY_MAX_FONT_SIZE}
+                                    step={1}
+                                    value={showcaseOverlayFontSize}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    onPointerMove={(event) => event.stopPropagation()}
+                                    onChange={(event) =>
+                                      setShowcaseOverlayFontSize(
+                                        clampShowcaseOverlayFontSize(Number(event.target.value))
+                                      )
+                                    }
+                                    style={profileShowcaseVerticalSizeSliderStyle}
+                                    aria-label="Showcase text size"
+                                  />
+</div>
+                              ) : null}
+
                               {showShowcaseCenterGuides ? (
                                 <>
                                   <span style={profileShowcaseCenterGuideVerticalStyle} />
@@ -5992,18 +6589,22 @@ return (
                                 </>
                               ) : null}
 
-                              <span
-                                style={{
-                                  ...profileShowcasePreviewTextStyle,
-                                  left: `${showcaseTextPosition.x}%`,
-                                  top: `${showcaseTextPosition.y}%`,
-                                  fontFamily: getShowcaseFontOption(showcaseFontKey).family,
-                                }}
-                              >
-                                {showcaseCoverText.trim() || showcaseTitle.trim() || "Your Showcase"}
-                              </span>
+                              {showcaseCoverText.trim() ? (
+                                <span
+                                  style={{
+                                    ...profileShowcasePreviewTextStyle,
+                                    left: `${safeShowcaseTextX}%`,
+                                    top: `${showcaseTextPosition.y}%`,
+                                    fontFamily: getShowcaseFontOption(showcaseFontKey).family,
+                                  fontSize: `${clampShowcaseOverlayFontSize(showcaseOverlayFontSize)}px`,
+                                    maxWidth: "calc(100% - 92px)",
+                                  }}
+                                >
+                                  {showcaseCoverText.trim()}
+                                </span>
+                              ) : null}
 
-                              {showcaseCustomizeOpen ? (
+                              {showcaseCustomizeOpen && showcaseCoverText.trim() ? (
                                 <small style={profileShowcaseDragHintStyle}>
                                   {showShowcaseCenterGuides ? "Centered" : "Drag text to move"}
                                 </small>
@@ -6015,7 +6616,9 @@ return (
                             <span>
                               {showcaseCustomizeOpen
                                 ? "Move text, choose font, and set visibility."
-                                : "This is how your Showcase will look."}
+                                : showcaseCoverText.trim()
+                                  ? "This is how your Showcase will look."
+                                  : "Overlay text is optional. Use Customize if you want to add writing."}
                             </span>
                           </div>
                         </div>
@@ -6043,7 +6646,10 @@ return (
                       </div>
                     </div>
                   </div>
-                ) : null}
+                      ),
+                      document.body
+                    )
+                  : null}
 
                 <div className="profile-tabs-shell" style={profileTabsShellStyle}>
                   <div className="profile-tabs-desktop" style={profileTabsStyle}>
@@ -6949,7 +7555,7 @@ return (
         </div>
       ) : null}
 
-      {!profileActionsOpen ? (
+      {!profileActionsOpen && !showcaseComposerOpen ? (
         <BottomNav
         currentUserId={viewerId}
         activeItem="profile"
@@ -8597,6 +9203,8 @@ const profileShowcasePreviewOverlayStyle: CSSProperties = {
     "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.10) 45%, rgba(0,0,0,0.42))",
   touchAction: "none",
   cursor: "grab",
+  userSelect: "none",
+  WebkitUserSelect: "none",
 };
 
 const profileShowcaseCenterGuideVerticalStyle: CSSProperties = {
@@ -8628,14 +9236,16 @@ const profileShowcaseCenterGuideHorizontalStyle: CSSProperties = {
 const profileShowcasePreviewTextStyle: CSSProperties = {
   position: "absolute",
   transform: "translate(-50%, -50%)",
-  maxWidth: "82%",
   color: "#ffffff",
   fontSize: "28px",
   fontWeight: 950,
-  lineHeight: 1.04,
-  letterSpacing: "-0.04em",
   textAlign: "center",
-  textShadow: "0 3px 18px rgba(0,0,0,0.58)",
+  lineHeight: 1.05,
+  textShadow: "0 4px 16px rgba(0,0,0,0.42)",
+  pointerEvents: "none",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  padding: "0 8px",
   userSelect: "none",
   WebkitUserSelect: "none",
 };
@@ -8769,6 +9379,91 @@ const profileShowcaseFontPreviewStyle: CSSProperties = {
   textShadow: "0 2px 12px rgba(0,0,0,0.38)",
 };
 
+const profileShowcaseTextSizeControlStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  border: "1px solid rgba(255,255,255,0.075)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.032)",
+  padding: "11px",
+};
+
+const profileShowcaseTextSizeHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  color: "#ffffff",
+  fontSize: "13px",
+  fontWeight: 900,
+};
+
+const profileShowcaseTextSizeRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "38px minmax(0, 1fr) 38px",
+  gap: "9px",
+  alignItems: "center",
+};
+
+const profileShowcaseTextSizeButtonStyle: CSSProperties = {
+  width: "38px",
+  height: "38px",
+  border: "1px solid rgba(216,180,254,0.22)",
+  borderRadius: "13px",
+  background: "rgba(168,85,247,0.12)",
+  color: "#ffffff",
+  fontSize: "20px",
+  fontWeight: 950,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const profileShowcaseTextSizeSliderStyle: CSSProperties = {
+  width: "100%",
+  accentColor: "#a855f7",
+  cursor: "pointer",
+};
+
+const profileShowcaseTextSizeHelpStyle: CSSProperties = {
+  color: "rgba(229,231,235,0.68)",
+  fontSize: "11px",
+  fontWeight: 750,
+  lineHeight: 1.3,
+};
+
+const profileShowcaseVerticalSizeRailStyle: CSSProperties = {
+  position: "absolute",
+  left: "14px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  zIndex: 8,
+  width: "26px",
+  height: "160px",
+  display: "grid",
+  placeItems: "center",
+  touchAction: "none",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+};
+
+const profileShowcaseVerticalSizeLabelStyle: CSSProperties = {
+  display: "none",
+};
+
+const profileShowcaseVerticalSizeValueStyle: CSSProperties = {
+  display: "none",
+};
+
+const profileShowcaseVerticalSizeSliderStyle: CSSProperties = {
+  width: "138px",
+  height: "24px",
+  transform: "rotate(-90deg)",
+  accentColor: "#ffffff",
+  cursor: "pointer",
+};
+
+
+
 
 const profileShowcaseFontOptionStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.09)",
@@ -8793,13 +9488,13 @@ const profileShowcaseFontOptionActiveStyle: CSSProperties = {
 const profileShowcaseModalOverlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  zIndex: 2147482500,
+  zIndex: 2147483647,
   display: "flex",
   alignItems: "stretch",
   justifyContent: "center",
   padding: "18px",
   background:
-    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.84)",
+    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.88)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
 };
@@ -8844,7 +9539,7 @@ const profileShowcaseModalLogoStyle: CSSProperties = {
   borderRadius: "15px",
   background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
   color: "#ffffff",
-      boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
   overflow: "hidden",
 };
 
@@ -8980,16 +9675,15 @@ const profileShowcaseErrorStyle: CSSProperties = {
 };
 
 const profileShowcaseModalActionsStyle: CSSProperties = {
-  position: "sticky",
-  bottom: 0,
+  position: "static",
   display: "flex",
   justifyContent: "flex-end",
   gap: "10px",
-  marginTop: "14px",
+  marginTop: "16px",
   paddingTop: "12px",
-  background:
-    "linear-gradient(180deg, rgba(12,14,20,0.00), rgba(12,14,20,0.96) 28%, rgba(12,14,20,1))",
-  zIndex: 5,
+  borderTop: "1px solid rgba(255,255,255,0.07)",
+  background: "transparent",
+  zIndex: 1,
 };
 
 const profileShowcaseCancelButtonStyle: CSSProperties = {

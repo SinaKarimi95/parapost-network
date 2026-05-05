@@ -595,6 +595,7 @@ export default function ProfilePage() {
   const [profileActionMenuPosition, setProfileActionMenuPosition] = useState({
     top: 0,
     left: 0,
+    maxHeight: 340,
   });
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
@@ -1016,12 +1017,24 @@ useEffect(() => {
 }, [profileActionsOpen]);
 
 useEffect(() => {
+  const targetIsInsideProfileActions = (event: Event) => {
+    const target = event.target as HTMLElement | null;
+
+    return Boolean(
+      target?.closest(
+        ".profile-desktop-action-menu-fixed, .profile-desktop-action-menu-wrap, .profile-mobile-action-overlay"
+      )
+    );
+  };
+
   const closePostMenusOnly = () => {
     setOpenPostMenuId(null);
   };
 
-  const closeDesktopFloatingMenus = () => {
+  const closeDesktopFloatingMenus = (event: Event) => {
     setOpenPostMenuId(null);
+
+    if (targetIsInsideProfileActions(event)) return;
 
     if (typeof window !== "undefined" && window.matchMedia("(min-width: 721px)").matches) {
       setProfileActionsOpen(false);
@@ -1825,14 +1838,31 @@ useEffect(() => {
     const rect = button.getBoundingClientRect();
     const menuWidth = 280;
     const safePadding = 12;
+    const gap = 10;
+
+    const preferredTop = rect.bottom + gap;
+    const availableBelow = window.innerHeight - preferredTop - safePadding;
+    const availableAbove = rect.top - safePadding - gap;
+    const openUpward = availableBelow < 260 && availableAbove > availableBelow;
+
+    const maxHeight = Math.min(
+      340,
+      Math.max(180, openUpward ? availableAbove : availableBelow)
+    );
+
+    const top = openUpward
+      ? Math.max(safePadding, rect.top - maxHeight - gap)
+      : Math.min(preferredTop, window.innerHeight - maxHeight - safePadding);
+
     const left = Math.max(
       safePadding,
       Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - safePadding)
     );
 
     setProfileActionMenuPosition({
-      top: rect.bottom + 10,
+      top,
       left,
+      maxHeight,
     });
   }, []);
 
@@ -1845,25 +1875,31 @@ useEffect(() => {
       window.matchMedia("(min-width: 721px)").matches;
 
     if (isDesktop) {
-      const button = event?.currentTarget || profileActionButtonRef.current;
+      updateProfileActionMenuPosition();
 
-      if (button && typeof window !== "undefined") {
-        const rect = button.getBoundingClientRect();
-        const menuWidth = 280;
-        const safePadding = 12;
-        const left = Math.max(
-          safePadding,
-          Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - safePadding)
-        );
-
-        setProfileActionMenuPosition({
-          top: rect.bottom + 10,
-          left,
-        });
-      }
+      window.requestAnimationFrame(() => {
+        updateProfileActionMenuPosition();
+      });
     }
 
     setProfileActionsOpen((value) => !value);
+  };
+
+  const handleDesktopActionMenuWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu = event.currentTarget;
+    const maxScrollTop = Math.max(0, menu.scrollHeight - menu.clientHeight);
+
+    if (maxScrollTop <= 0) return;
+
+    const nextScrollTop = Math.max(
+      0,
+      Math.min(maxScrollTop, menu.scrollTop + event.deltaY)
+    );
+
+    menu.scrollTop = nextScrollTop;
   };
 
   useEffect(() => {
@@ -3492,6 +3528,8 @@ return (
 
       .profile-desktop-action-menu-fixed {
         position: fixed !important;
+        right: auto !important;
+        bottom: auto !important;
         z-index: 2147483000 !important;
         display: block !important;
         background: #11131a !important;
@@ -3501,6 +3539,34 @@ return (
         -webkit-backdrop-filter: none !important;
         isolation: isolate !important;
         mix-blend-mode: normal !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        scrollbar-width: thin;
+      }
+
+      .profile-desktop-action-menu-fixed::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .profile-desktop-action-menu-fixed::-webkit-scrollbar-track {
+        background: rgba(255,255,255,0.035);
+        border-radius: 999px;
+      }
+
+      .profile-desktop-action-menu-fixed::-webkit-scrollbar-thumb {
+        background: rgba(168,85,247,0.45);
+        border-radius: 999px;
+      }
+
+      .profile-desktop-action-menu-fixed button,
+      .profile-desktop-action-menu-fixed a {
+        background-color: #151821 !important;
+      }
+
+      .profile-desktop-action-menu-fixed button:disabled,
+      .profile-desktop-action-menu-fixed [aria-disabled="true"] {
+        background-color: #151821 !important;
+        opacity: 0.55 !important;
       }
 
       @media (max-width: 720px) {
@@ -7452,9 +7518,11 @@ return (
             ...profileDesktopActionMenuFixedStyle,
             top: profileActionMenuPosition.top,
             left: profileActionMenuPosition.left,
+            maxHeight: profileActionMenuPosition.maxHeight,
+            overflowY: "auto",
           }}
           onClick={(event) => event.stopPropagation()}
-          onWheel={(event) => event.stopPropagation()}
+          onWheel={handleDesktopActionMenuWheel}
         >
           <div style={profileDesktopActionMenuHeaderStyle}>
             <p style={profileActionEyebrowStyle}>Profile options</p>
@@ -8461,12 +8529,19 @@ const profileDesktopActionMenuStyle: CSSProperties = {
 const profileDesktopActionMenuFixedStyle: CSSProperties = {
   ...profileDesktopActionMenuStyle,
   position: "fixed",
+  right: "auto",
+  bottom: "auto",
   width: "280px",
   zIndex: 2147483000,
   background: "#11131a",
   backgroundColor: "#11131a",
   opacity: 1,
   pointerEvents: "auto",
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+  scrollbarWidth: "thin",
+  WebkitOverflowScrolling: "touch",
+  touchAction: "pan-y",
 };
 
 const profileDesktopActionMenuHeaderStyle: CSSProperties = {

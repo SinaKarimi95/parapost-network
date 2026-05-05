@@ -598,12 +598,7 @@ export default function ProfilePage() {
   });
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
-  const canManageProfileShowcases = Boolean(
-    profile?.id &&
-      ((typeof viewerId !== "undefined" && viewerId === profile.id) ||
-        (typeof currentUserId !== "undefined" && currentUserId === profile.id) ||
-        (typeof userId !== "undefined" && userId === profile.id))
-  );
+  const canManageProfileShowcases = Boolean(viewerId && profileId && viewerId === profileId);
   const canCreateShowcase = canManageProfileShowcases || isLocalShowcaseTesting;
 
   const showcaseStorageKey = useMemo(

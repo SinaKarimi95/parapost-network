@@ -5683,7 +5683,14 @@ return (
                     <div className="profile-showcase-modal-shell" style={profileShowcaseModalStyle}>
                       <div className="profile-showcase-modal-header" style={profileShowcaseModalHeaderStyle}>
                         <div style={profileShowcaseModalBrandRowStyle}>
-                          <span style={profileShowcaseModalLogoStyle}>P</span>
+                          <span style={profileShowcaseModalLogoStyle}>
+                            <img
+                              src="/parapost-icon-white.png"
+                              alt=""
+                              aria-hidden="true"
+                              style={profileShowcaseModalLogoImageStyle}
+                            />
+                          </span>
                           <span>
                             <p style={profileShowcaseModalEyebrowStyle}>Parapost Showcases</p>
                             <h3 style={profileShowcaseModalTitleStyle}>Create Showcase</h3>
@@ -8837,10 +8844,18 @@ const profileShowcaseModalLogoStyle: CSSProperties = {
   borderRadius: "15px",
   background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
   color: "#ffffff",
-  fontSize: "22px",
-  fontWeight: 1000,
-  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+      boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  overflow: "hidden",
 };
+
+const profileShowcaseModalLogoImageStyle: CSSProperties = {
+  width: "27px",
+  height: "27px",
+  objectFit: "contain",
+  display: "block",
+  filter: "drop-shadow(0 0 8px rgba(255,255,255,0.16))",
+};
+
 
 const profileShowcaseModalFlowPillsStyle: CSSProperties = {
   display: "flex",

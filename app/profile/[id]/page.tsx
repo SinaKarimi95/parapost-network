@@ -2123,13 +2123,600 @@ return (
       }
 
 
-      .profile-showcase-modal-overlay img,
-      .profile-showcase-modal-overlay video {
-        max-width: 100%;
+      .profile-showcase-font-select {
+        display: block !important;
       }
 
-      .profile-showcase-preview-column video {
-        background: #05060a;
+      .profile-showcase-desktop-font-grid {
+        display: none !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147483000 !important;
+          display: block !important;
+          padding: 0 !important;
+          background:
+            radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 40%),
+            rgba(0,0,0,0.92) !important;
+          overflow: hidden !important;
+        }
+
+        .profile-showcase-modal-overlay > div {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          border-radius: 0 !important;
+          border-left: 0 !important;
+          border-right: 0 !important;
+          border-top: 0 !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          padding: 14px 14px 96px !important;
+          box-shadow: none !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+        }
+
+        .profile-showcase-preview-column {
+          order: -1 !important;
+        }
+
+        .profile-showcase-simple-controls {
+          order: 1 !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: 245px !important;
+          border-radius: 20px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="min-height: 144px"],
+        .profile-showcase-modal-overlay [style*="min-height: 126px"],
+        .profile-showcase-modal-overlay [style*="min-height: 110px"] {
+          min-height: 96px !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          padding: 13px !important;
+          border-radius: 18px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="width: 58px"],
+        .profile-showcase-modal-overlay [style*="width: 52px"],
+        .profile-showcase-modal-overlay [style*="width: 44px"] {
+          width: 42px !important;
+          height: 42px !important;
+          border-radius: 14px !important;
+          font-size: 23px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+        }
+
+        .profile-showcase-font-select {
+          display: block !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: none !important;
+        }
+
+        .profile-showcase-modal-actions {
+          position: sticky !important;
+          bottom: 0 !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1.35fr !important;
+          gap: 8px !important;
+          margin: 14px -2px 0 !important;
+          padding: 12px 0 2px !important;
+          background:
+            linear-gradient(180deg, rgba(8,10,15,0), rgba(8,10,15,0.96) 24%, rgba(8,10,15,1)) !important;
+          z-index: 30 !important;
+        }
+
+        .profile-showcase-modal-actions button {
+          width: 100% !important;
+          min-height: 42px !important;
+          justify-content: center !important;
+        }
+      }
+
+      @media (min-width: 721px) and (max-width: 1050px) {
+        .profile-showcase-modal-overlay {
+          padding: 12px !important;
+        }
+
+        .profile-showcase-modal-overlay > div {
+          width: calc(100vw - 24px) !important;
+          height: calc(100vh - 24px) !important;
+          max-height: calc(100vh - 24px) !important;
+          border-radius: 24px !important;
+        }
+
+        .profile-showcase-font-select {
+          display: block !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: none !important;
+        }
+      }
+
+      @media (min-width: 1051px) {
+        .profile-showcase-font-select {
+          display: block !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: none !important;
+        }
+      }
+
+
+      .profile-showcase-font-select {
+        display: block !important;
+      }
+
+      .profile-showcase-desktop-font-grid {
+        display: none !important;
+      }
+
+      @media (min-width: 1051px) {
+        .profile-showcase-modal-overlay > div {
+          width: min(1180px, calc(100vw - 32px)) !important;
+          height: min(840px, calc(100vh - 32px)) !important;
+          max-height: calc(100vh - 32px) !important;
+        }
+
+        .profile-showcase-preview-column {
+          border-left: 1px solid rgba(255,255,255,0.085) !important;
+          padding-left: 22px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(500px, calc(100vh - 260px)) !important;
+        }
+      }
+
+      @media (min-width: 721px) and (max-width: 1050px) {
+        .profile-showcase-modal-overlay {
+          padding: 12px !important;
+        }
+
+        .profile-showcase-modal-overlay > div {
+          width: calc(100vw - 24px) !important;
+          height: calc(100vh - 24px) !important;
+          max-height: calc(100vh - 24px) !important;
+          border-radius: 24px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: minmax(0, 0.95fr) minmax(300px, 1.05fr) !important;
+          gap: 18px !important;
+        }
+
+        .profile-showcase-preview-column {
+          border-left: 1px solid rgba(255,255,255,0.08) !important;
+          padding-left: 18px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(430px, calc(100vh - 265px)) !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147483000 !important;
+          display: block !important;
+          padding: 0 !important;
+          background:
+            radial-gradient(circle at 50% 0%, rgba(168,85,247,0.24), transparent 42%),
+            rgba(0,0,0,0.94) !important;
+          overflow: hidden !important;
+        }
+
+        .profile-showcase-modal-overlay > div {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          border-radius: 0 !important;
+          border: 0 !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          padding: 14px 14px 96px !important;
+          box-shadow: none !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+        }
+
+        .profile-showcase-preview-column {
+          order: -1 !important;
+          border-left: 0 !important;
+          padding-left: 0 !important;
+          gap: 8px !important;
+        }
+
+        .profile-showcase-simple-controls {
+          order: 1 !important;
+          gap: 10px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(250px, 34vh) !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="min-height: 148px"],
+        .profile-showcase-modal-overlay [style*="min-height: 144px"],
+        .profile-showcase-modal-overlay [style*="min-height: 126px"] {
+          min-height: 96px !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          padding: 13px !important;
+          border-radius: 18px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="width: 58px"],
+        .profile-showcase-modal-overlay [style*="width: 52px"],
+        .profile-showcase-modal-overlay [style*="width: 44px"] {
+          width: 42px !important;
+          height: 42px !important;
+          border-radius: 14px !important;
+          font-size: 23px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+        }
+
+        .profile-showcase-font-select {
+          display: block !important;
+        }
+
+        .profile-showcase-desktop-font-grid {
+          display: none !important;
+        }
+
+        .profile-showcase-modal-actions {
+          position: sticky !important;
+          bottom: 0 !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1.35fr !important;
+          gap: 8px !important;
+          margin: 14px -2px 0 !important;
+          padding: 12px 0 2px !important;
+          background:
+            linear-gradient(180deg, rgba(8,10,15,0), rgba(8,10,15,0.96) 24%, rgba(8,10,15,1)) !important;
+          z-index: 30 !important;
+        }
+
+        .profile-showcase-modal-actions button {
+          width: 100% !important;
+          min-height: 42px !important;
+          justify-content: center !important;
+        }
+      }
+
+
+      .profile-showcase-modal-flow-pills span,
+      .profile-showcase-modal-header span[style] + span span {
+        pointer-events: none;
+      }
+
+      .profile-showcase-modal-header div[style*="margin-top: 10px"] span {
+        border: 1px solid rgba(216,180,254,0.18);
+        background: rgba(168,85,247,0.08);
+        color: #d8b4fe;
+        border-radius: 999px;
+        padding: 5px 8px;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      @media (min-width: 1051px) {
+        .profile-showcase-modal-shell {
+          width: min(1220px, calc(100vw - 32px)) !important;
+          height: min(860px, calc(100vh - 32px)) !important;
+          max-height: calc(100vh - 32px) !important;
+          padding: 24px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: minmax(340px, 0.88fr) minmax(430px, 1.12fr) !important;
+          gap: 28px !important;
+        }
+
+        .profile-showcase-preview-column {
+          border-left: 1px solid rgba(255,255,255,0.085) !important;
+          padding-left: 26px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(520px, calc(100vh - 270px)) !important;
+        }
+      }
+
+      @media (min-width: 721px) and (max-width: 1050px) {
+        .profile-showcase-modal-shell {
+          width: calc(100vw - 24px) !important;
+          height: calc(100vh - 24px) !important;
+          max-height: calc(100vh - 24px) !important;
+          border-radius: 26px !important;
+          padding: 18px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr) !important;
+          gap: 20px !important;
+        }
+
+        .profile-showcase-preview-column {
+          border-left: 1px solid rgba(255,255,255,0.08) !important;
+          padding-left: 18px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(455px, calc(100vh - 270px)) !important;
+        }
+
+        .profile-showcase-upload-card {
+          min-height: 132px !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-modal-shell {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          border-radius: 0 !important;
+          border: 0 !important;
+          overflow-y: auto !important;
+          padding: 12px 14px 96px !important;
+          box-shadow: none !important;
+        }
+
+        .profile-showcase-modal-header {
+          position: relative !important;
+          top: auto !important;
+          margin: -2px -2px 12px !important;
+          padding: 4px 2px 12px !important;
+          background: transparent !important;
+        }
+
+        .profile-showcase-modal-header h3 {
+          font-size: 20px !important;
+          letter-spacing: -0.04em !important;
+        }
+
+        .profile-showcase-modal-header p {
+          font-size: 12px !important;
+        }
+
+        .profile-showcase-modal-header div[style*="margin-top: 10px"] {
+          gap: 5px !important;
+          margin-top: 7px !important;
+        }
+
+        .profile-showcase-modal-header div[style*="margin-top: 10px"] span {
+          font-size: 9px !important;
+          padding: 4px 7px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: minmax"] {
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+        }
+
+        .profile-showcase-preview-column {
+          order: -1 !important;
+          border-left: 0 !important;
+          padding-left: 0 !important;
+          gap: 8px !important;
+        }
+
+        .profile-showcase-simple-controls {
+          order: 1 !important;
+          gap: 10px !important;
+        }
+
+        .profile-showcase-preview-column [style*="min-height"] {
+          min-height: min(260px, 36vh) !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-upload-card {
+          min-height: 96px !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          padding: 13px !important;
+          border-radius: 18px !important;
+        }
+
+        .profile-showcase-upload-card span:first-child {
+          width: 42px !important;
+          height: 42px !important;
+          border-radius: 14px !important;
+          font-size: 23px !important;
+        }
+
+        .profile-showcase-modal-overlay input,
+        .profile-showcase-modal-overlay select,
+        .profile-showcase-modal-overlay button {
+          font-size: 13px !important;
+        }
+
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+        }
+
+        .profile-showcase-modal-actions {
+          position: sticky !important;
+          bottom: 0 !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1.35fr !important;
+          gap: 8px !important;
+          margin: 14px -2px 0 !important;
+          padding: 12px 0 2px !important;
+          background:
+            linear-gradient(180deg, rgba(8,10,15,0), rgba(8,10,15,0.96) 24%, rgba(8,10,15,1)) !important;
+          z-index: 30 !important;
+        }
+
+        .profile-showcase-modal-actions button {
+          width: 100% !important;
+          min-height: 42px !important;
+          justify-content: center !important;
+        }
+      }
+
+
+      .profile-showcase-modal-overlay [aria-pressed] strong {
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 950;
+        line-height: 1.05;
+      }
+
+      .profile-showcase-modal-overlay [aria-pressed] small {
+        color: rgba(229,231,235,0.68);
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1.05;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-modal-overlay [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+        }
+
+        .profile-showcase-modal-overlay [aria-pressed] {
+          min-height: 52px !important;
+        }
+      }
+
+
+      .profile-showcase-visibility-symbol {
+        position: relative;
+        width: 20px;
+        height: 20px;
+        display: block;
+        color: #e9d5ff;
+      }
+
+      .profile-showcase-visibility-symbol-public {
+        border: 1.8px solid currentColor;
+        border-radius: 999px;
+      }
+
+      .profile-showcase-visibility-symbol-public::before {
+        content: "";
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        top: 50%;
+        height: 1.6px;
+        transform: translateY(-50%);
+        background: currentColor;
+        border-radius: 999px;
+        opacity: 0.9;
+      }
+
+      .profile-showcase-visibility-symbol-public::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        bottom: 2px;
+        left: 50%;
+        width: 1.6px;
+        transform: translateX(-50%);
+        background: currentColor;
+        border-radius: 999px;
+        opacity: 0.9;
+      }
+
+      .profile-showcase-visibility-symbol-friends::before {
+        content: "";
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border: 1.8px solid currentColor;
+        border-radius: 999px;
+        left: 2px;
+        top: 2px;
+        box-shadow: 8px 0 0 -1.8px #e9d5ff, 8px 0 0 0 currentColor;
+      }
+
+      .profile-showcase-visibility-symbol-friends::after {
+        content: "";
+        position: absolute;
+        left: 1px;
+        right: 1px;
+        bottom: 2px;
+        height: 8px;
+        border: 1.8px solid currentColor;
+        border-top-left-radius: 999px;
+        border-top-right-radius: 999px;
+        border-bottom: 0;
+        opacity: 0.95;
+      }
+
+      .profile-showcase-visibility-symbol-private::before {
+        content: "";
+        position: absolute;
+        left: 5px;
+        right: 5px;
+        top: 1px;
+        height: 10px;
+        border: 1.8px solid currentColor;
+        border-bottom: 0;
+        border-radius: 999px 999px 0 0;
+      }
+
+      .profile-showcase-visibility-symbol-private::after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        bottom: 2px;
+        height: 11px;
+        border: 1.8px solid currentColor;
+        border-radius: 5px;
+        background:
+          radial-gradient(circle at 50% 44%, currentColor 0 1.5px, transparent 1.6px),
+          linear-gradient(currentColor, currentColor) 50% 62% / 1.6px 4px no-repeat;
+      }
+
+      .profile-showcase-modal-overlay [aria-pressed="true"] .profile-showcase-visibility-symbol {
+        color: #ffffff;
+        filter: drop-shadow(0 0 8px rgba(216,180,254,0.34));
+      }
+
+
+      .profile-showcase-modal-header {
+        position: relative !important;
+        top: auto !important;
+        background: transparent !important;
       }
 
       .profile-mobile-first-polish {
@@ -5093,14 +5680,22 @@ return (
                     aria-modal="true"
                     aria-label="Create Showcase"
                   >
-                    <div style={profileShowcaseModalStyle}>
-                      <div style={profileShowcaseModalHeaderStyle}>
-                        <div>
-                          <p style={profileShowcaseModalEyebrowStyle}>Parapost Showcases</p>
-                          <h3 style={profileShowcaseModalTitleStyle}>Create Showcase</h3>
-                          <p style={profileShowcaseModalSubtitleStyle}>
-                            Create it fast. Customize only if you want to.
-                          </p>
+                    <div className="profile-showcase-modal-shell" style={profileShowcaseModalStyle}>
+                      <div className="profile-showcase-modal-header" style={profileShowcaseModalHeaderStyle}>
+                        <div style={profileShowcaseModalBrandRowStyle}>
+                          <span style={profileShowcaseModalLogoStyle}>P</span>
+                          <span>
+                            <p style={profileShowcaseModalEyebrowStyle}>Parapost Showcases</p>
+                            <h3 style={profileShowcaseModalTitleStyle}>Create Showcase</h3>
+                            <p style={profileShowcaseModalSubtitleStyle}>
+                              Upload, name it, choose a duration, and create.
+                            </p>
+                            <div style={profileShowcaseModalFlowPillsStyle}>
+                              <span>Simple first</span>
+                              <span>Customize optional</span>
+                              <span>Profile only</span>
+                            </div>
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -5115,6 +5710,7 @@ return (
                       <div style={profileShowcaseSimpleStudioStyle}>
                         <div className="profile-showcase-simple-controls" style={profileShowcaseSimpleControlsStyle}>
                           <button
+                            className="profile-showcase-upload-card"
                             type="button"
                             onClick={() => {
                               setShowcaseCreatorMode("media");
@@ -5159,7 +5755,7 @@ return (
 
                           {showcaseMediaFileName ? (
                             <div style={profileShowcaseSelectedFileStyle}>
-                              <span>{showcaseMediaType === "video" ? "Video" : "Photo"} ready: {showcaseMediaFileName} • auto-fit preview</span>
+                              <span>{showcaseMediaType === "video" ? "Video" : "Photo"} ready: {showcaseMediaFileName}</span>
                               <button
                                 type="button"
                                 onClick={handleClearShowcaseMedia}
@@ -5301,9 +5897,24 @@ return (
 
                                 <div style={profileShowcaseVisibilityOptionsStyle}>
                                   {[
-                                    { value: "public" as const, label: "Public" },
-                                    { value: "friends" as const, label: "Friends" },
-                                    { value: "private" as const, label: "Only me" },
+                                    {
+                                      value: "public" as const,
+                                      label: "Public",
+                                      icon: "public",
+                                      help: "Everyone",
+                                    },
+                                    {
+                                      value: "friends" as const,
+                                      label: "Friends",
+                                      icon: "friends",
+                                      help: "Friends only",
+                                    },
+                                    {
+                                      value: "private" as const,
+                                      label: "Only me",
+                                      icon: "private",
+                                      help: "Private",
+                                    },
                                   ].map((option) => {
                                     const selected = showcaseVisibility === option.value;
                                     return (
@@ -5313,12 +5924,21 @@ return (
                                         onClick={() => setShowcaseVisibility(option.value)}
                                         style={
                                           selected
-                                            ? profileShowcaseDurationOptionActiveStyle
-                                            : profileShowcaseDurationOptionStyle
+                                            ? profileShowcaseVisibilityOptionActiveStyle
+                                            : profileShowcaseVisibilityOptionStyle
                                         }
                                         aria-pressed={selected}
                                       >
-                                        <span>{option.label}</span>
+                                        <span style={profileShowcaseVisibilityIconStyle}>
+                                          <span
+                                            className={`profile-showcase-visibility-symbol profile-showcase-visibility-symbol-${option.icon}`}
+                                            aria-hidden="true"
+                                          />
+                                        </span>
+                                        <span style={profileShowcaseVisibilityTextStyle}>
+                                          <strong>{option.label}</strong>
+                                          <small>{option.help}</small>
+                                        </span>
                                       </button>
                                     );
                                   })}
@@ -5388,7 +6008,7 @@ return (
                             <span>
                               {showcaseCustomizeOpen
                                 ? "Move text, choose font, and set visibility."
-                                : "Portrait, landscape, square, and thumbnail uploads auto-fit here."}
+                                : "This is how your Showcase will look."}
                             </span>
                           </div>
                         </div>
@@ -5398,7 +6018,7 @@ return (
                         <p style={profileShowcaseErrorStyle}>{showcaseError}</p>
                       ) : null}
 
-                      <div style={profileShowcaseModalActionsStyle}>
+                      <div className="profile-showcase-modal-actions" style={profileShowcaseModalActionsStyle}>
                         <button
                           type="button"
                           onClick={handleCloseShowcaseComposer}
@@ -7673,7 +8293,7 @@ const profileShowcaseCoverMediaStyle: CSSProperties = {
   width: "100%",
   height: "100%",
   objectFit: "cover",
-  zIndex: 0,  objectPosition: "center center",
+  zIndex: 0,
 };
 
 const profileShowcaseCoverShadeStyle: CSSProperties = {
@@ -7731,22 +8351,24 @@ const profileShowcaseOptionalTextStyle: CSSProperties = {
 
 const profileShowcaseSimpleStudioStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(320px, 0.92fr) minmax(360px, 1.08fr)",
-  gap: "22px",
+  gridTemplateColumns: "minmax(330px, 0.88fr) minmax(410px, 1.12fr)",
+  gap: "26px",
   alignItems: "start",
 };
 
 const profileShowcaseSimpleControlsStyle: CSSProperties = {
   minWidth: 0,
+  display: "grid",
+  gap: "12px",
 };
 
 const profileShowcaseSimpleUploadCardStyle: CSSProperties = {
   width: "100%",
   minHeight: "144px",
-  border: "1px dashed rgba(216,180,254,0.48)",
+  border: "1px dashed rgba(216,180,254,0.52)",
   borderRadius: "24px",
   background:
-    "radial-gradient(circle at 22% 0%, rgba(168,85,247,0.18), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.105), rgba(255,255,255,0.034))",
+    "radial-gradient(circle at 20% 0%, rgba(168,85,247,0.20), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.11), rgba(255,255,255,0.035))",
   color: "#ffffff",
   display: "grid",
   gridTemplateColumns: "58px minmax(0, 1fr)",
@@ -7756,12 +8378,12 @@ const profileShowcaseSimpleUploadCardStyle: CSSProperties = {
   textAlign: "left",
   cursor: "pointer",
   fontFamily: "inherit",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.055), 0 18px 46px rgba(0,0,0,0.22)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 50px rgba(0,0,0,0.24)",
 };
 
 const profileShowcaseSimpleUploadCardActiveStyle: CSSProperties = {
   ...profileShowcaseSimpleUploadCardStyle,
-  border: "1px dashed rgba(34,211,238,0.66)",
+  border: "1px dashed rgba(34,211,238,0.70)",
   background:
     "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.18), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.14), rgba(34,211,238,0.055))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(34,211,238,0.18), 0 22px 52px rgba(0,0,0,0.26)",
@@ -7769,7 +8391,7 @@ const profileShowcaseSimpleUploadCardActiveStyle: CSSProperties = {
 
 const profileShowcaseSimpleUploadCardSelectedStyle: CSSProperties = {
   ...profileShowcaseSimpleUploadCardStyle,
-  border: "1px solid rgba(74,222,128,0.28)",
+  border: "1px solid rgba(74,222,128,0.32)",
   background:
     "radial-gradient(circle at 22% 0%, rgba(74,222,128,0.12), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.10), rgba(74,222,128,0.040))",
 };
@@ -7837,21 +8459,24 @@ const profileShowcaseCustomizeButtonActiveStyle: CSSProperties = {
 
 const profileShowcaseCustomizePanelStyle: CSSProperties = {
   display: "grid",
-  gap: "10px",
+  gap: "12px",
   marginTop: "12px",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: "18px",
-  background: "rgba(0,0,0,0.18)",
-  padding: "12px",
+  border: "1px solid rgba(216,180,254,0.13)",
+  borderRadius: "20px",
+  background:
+    "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.10), transparent 38%), rgba(0,0,0,0.18)",
+  padding: "13px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
 };
 
 const profileShowcaseCustomizeIntroStyle: CSSProperties = {
   display: "grid",
   gap: "4px",
-  border: "1px solid rgba(216,180,254,0.14)",
-  borderRadius: "14px",
-  background: "rgba(168,85,247,0.08)",
-  padding: "10px",
+  border: "1px solid rgba(216,180,254,0.15)",
+  borderRadius: "15px",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.13), rgba(37,99,235,0.055))",
+  padding: "11px",
   color: "#ffffff",
   fontSize: "13px",
   fontWeight: 900,
@@ -7921,26 +8546,28 @@ const profileShowcaseStartIconStyle: CSSProperties = {
 
 const profileShowcasePreviewColumnStyle: CSSProperties = {
   display: "grid",
-  gap: "9px",
+  gap: "12px",
   minWidth: 0,
+  borderLeft: "1px solid rgba(255,255,255,0.085)",
+  paddingLeft: "24px",
 };
 
 const profileShowcasePreviewPhoneStyle: CSSProperties = {
   position: "relative",
-  minHeight: "460px",
-  borderRadius: "28px",
+  minHeight: "480px",
+  borderRadius: "32px",
   overflow: "hidden",
-  border: "1px solid rgba(255,255,255,0.12)",
+  border: "1px solid rgba(255,255,255,0.14)",
   background:
-    "linear-gradient(135deg, rgba(20,184,166,0.76), rgba(124,58,237,0.88) 52%, rgba(168,85,247,0.82))",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 28px 70px rgba(0,0,0,0.46)",
+    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.90) 52%, rgba(168,85,247,0.84))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 34px 86px rgba(0,0,0,0.50)",
 };
 
 const profileShowcasePreviewCanvasStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   background:
-    "radial-gradient(circle at 24% 12%, rgba(34,211,238,0.34), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.88) 54%, rgba(168,85,247,0.84))",
+    "linear-gradient(135deg, rgba(20,184,166,0.80), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.86))",
 };
 
 const profileShowcasePreviewMediaStyle: CSSProperties = {
@@ -8048,6 +8675,51 @@ const profileShowcaseVisibilityOptionsStyle: CSSProperties = {
   gap: "8px",
 };
 
+const profileShowcaseVisibilityOptionStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.035)",
+  color: "#ffffff",
+  padding: "10px",
+  display: "grid",
+  gridTemplateColumns: "34px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "9px",
+  textAlign: "left",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  minHeight: "58px",
+};
+
+const profileShowcaseVisibilityOptionActiveStyle: CSSProperties = {
+  ...profileShowcaseVisibilityOptionStyle,
+  border: "1px solid rgba(216,180,254,0.58)",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(37,99,235,0.11))",
+  boxShadow:
+    "0 0 0 1px rgba(168,85,247,0.12), 0 14px 30px rgba(124,58,237,0.18)",
+};
+
+const profileShowcaseVisibilityIconStyle: CSSProperties = {
+  width: "36px",
+  height: "36px",
+  borderRadius: "13px",
+  display: "grid",
+  placeItems: "center",
+  background:
+    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.16), transparent 28%), rgba(168,85,247,0.16)",
+  border: "1px solid rgba(216,180,254,0.20)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+  position: "relative",
+};
+
+const profileShowcaseVisibilityTextStyle: CSSProperties = {
+  display: "grid",
+  gap: "2px",
+  minWidth: 0,
+};
+
+
 const profileShowcaseFontGroupStyle: CSSProperties = {
   display: "grid",
   gap: "8px",
@@ -8120,31 +8792,64 @@ const profileShowcaseModalOverlayStyle: CSSProperties = {
   justifyContent: "center",
   padding: "18px",
   background:
-    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.82)",
+    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.84)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
 };
 
 const profileShowcaseModalStyle: CSSProperties = {
-  width: "min(1180px, calc(100vw - 36px))",
-  height: "min(860px, calc(100vh - 36px))",
-  maxHeight: "calc(100vh - 36px)",
+  width: "min(1180px, calc(100vw - 32px))",
+  height: "min(840px, calc(100vh - 32px))",
+  maxHeight: "calc(100vh - 32px)",
   overflowY: "auto",
-  borderRadius: "30px",
+  borderRadius: "32px",
   border: "1px solid rgba(255,255,255,0.14)",
   background:
-    "radial-gradient(circle at 14% 0%, rgba(168,85,247,0.24), transparent 34%), radial-gradient(circle at 96% 12%, rgba(34,211,238,0.10), transparent 28%), linear-gradient(180deg, rgba(24,26,34,0.992), rgba(8,10,15,0.995))",
-  boxShadow: "0 38px 110px rgba(0,0,0,0.68), 0 0 0 1px rgba(255,255,255,0.035)",
-  padding: "20px",
+    "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
+  boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
+  padding: "22px",
 };
 
 const profileShowcaseModalHeaderStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 20,
   display: "flex",
-  alignItems: "flex-start",
   justifyContent: "space-between",
-  gap: "12px",
-  marginBottom: "14px",
+  gap: "14px",
+  alignItems: "flex-start",
+  marginBottom: "18px",
+  paddingBottom: "14px",
+  background: "transparent",
 };
+
+const profileShowcaseModalBrandRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "center",
+};
+
+const profileShowcaseModalLogoStyle: CSSProperties = {
+  width: "42px",
+  height: "42px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "15px",
+  background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 1000,
+  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+};
+
+const profileShowcaseModalFlowPillsStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "6px",
+  marginTop: "10px",
+};
+
+
 
 const profileShowcaseModalEyebrowStyle: CSSProperties = {
   margin: 0,
@@ -8173,15 +8878,17 @@ const profileShowcaseModalSubtitleStyle: CSSProperties = {
 
 
 const profileShowcaseModalCloseStyle: CSSProperties = {
-  width: "34px",
-  height: "34px",
-  borderRadius: "12px",
+  width: "38px",
+  height: "38px",
   border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.055)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.07)",
   color: "#ffffff",
-  fontSize: "24px",
-  lineHeight: 1,
+  fontSize: "20px",
+  fontWeight: 900,
   cursor: "pointer",
+  flex: "0 0 auto",
+  boxShadow: "0 12px 24px rgba(0,0,0,0.24)",
 };
 
 const profileShowcaseFieldLabelStyle: CSSProperties = {
@@ -8284,11 +8991,11 @@ const profileShowcaseCreateButtonStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.13)",
   background: "linear-gradient(135deg, #a855f7, #7c3aed 58%, #2563eb)",
   color: "#ffffff",
-  borderRadius: "14px",
+  borderRadius: "15px",
   padding: "12px 18px",
   fontWeight: 950,
   cursor: "pointer",
-  boxShadow: "0 18px 34px rgba(124,58,237,0.32)",
+  boxShadow: "0 20px 38px rgba(124,58,237,0.34)",
 };
 
 const profileTabsShellStyle: CSSProperties = {

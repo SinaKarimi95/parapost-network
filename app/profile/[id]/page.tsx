@@ -5828,6 +5828,192 @@ return (
         }
       }
 
+
+      /* Step 32: mobile Showcase creator polish. Keeps desktop/tablet intact while making the phone creator feel intentional. */
+      @media (max-width: 720px) {
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open {
+          z-index: 2147482500 !important;
+          align-items: stretch !important;
+          justify-content: stretch !important;
+          padding: 0 !important;
+          background:
+            radial-gradient(circle at 50% 0%, rgba(168,85,247,0.22), transparent 42%),
+            rgba(0,0,0,0.88) !important;
+          backdrop-filter: blur(14px) !important;
+          -webkit-backdrop-filter: blur(14px) !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-shell {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          max-height: 100dvh !important;
+          border-radius: 0 !important;
+          padding: 12px 12px calc(12px + env(safe-area-inset-bottom)) !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+          background:
+            radial-gradient(circle at 15% 0%, rgba(168,85,247,0.28), transparent 34%),
+            radial-gradient(circle at 94% 8%, rgba(34,211,238,0.12), transparent 28%),
+            linear-gradient(180deg, rgba(18,20,29,0.99), rgba(6,8,13,0.995)) !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header {
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 30 !important;
+          flex: 0 0 auto !important;
+          align-items: center !important;
+          gap: 10px !important;
+          margin: 0 0 10px !important;
+          padding: 4px 0 10px !important;
+          border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+          background: linear-gradient(180deg, rgba(12,14,22,0.98), rgba(12,14,22,0.86)) !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header h3 {
+          font-size: 20px !important;
+          line-height: 1.05 !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header p {
+          max-width: 260px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header [style*="Simple first"] {
+          display: none !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-studio-layout {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 12px !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          padding: 2px 2px 92px !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-preview-column {
+          order: -1 !important;
+          gap: 8px !important;
+          padding: 0 !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-preview-column > div:first-child {
+          padding: 0 2px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-preview-column [style*="Live preview"] small {
+          display: none !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 270px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 300px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 340px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 460px"] {
+          width: min(76vw, 292px) !important;
+          min-height: min(48vh, 370px) !important;
+          height: min(48vh, 370px) !important;
+          margin: 0 auto !important;
+          border-radius: 24px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-simple-controls {
+          gap: 10px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-upload-card {
+          min-height: 96px !important;
+          border-radius: 20px !important;
+          padding: 13px !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          background:
+            linear-gradient(135deg, rgba(168,85,247,0.18), rgba(59,130,246,0.08)),
+            rgba(255,255,255,0.045) !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-upload-card strong {
+          font-size: 14px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-upload-card small {
+          font-size: 11px !important;
+          line-height: 1.25 !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open input,
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open select,
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open button {
+          min-height: 42px !important;
+          touch-action: manipulation !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="grid-template-columns: repeat(3"] {
+          grid-template-columns: 1fr !important;
+          gap: 8px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [aria-pressed] {
+          min-height: 44px !important;
+          grid-template-columns: 34px minmax(0, 1fr) !important;
+          align-items: center !important;
+          padding: 9px 10px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-actions {
+          position: sticky !important;
+          bottom: 0 !important;
+          z-index: 35 !important;
+          flex: 0 0 auto !important;
+          margin: 0 -2px !important;
+          padding: 10px 2px 0 !important;
+          display: grid !important;
+          grid-template-columns: 0.8fr 1.2fr !important;
+          gap: 8px !important;
+          border-top: 1px solid rgba(255,255,255,0.09) !important;
+          background: linear-gradient(180deg, rgba(8,10,16,0.20), rgba(8,10,16,0.98) 34%) !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-actions button {
+          width: 100% !important;
+          min-height: 46px !important;
+          border-radius: 15px !important;
+          padding: 11px 12px !important;
+          font-size: 13px !important;
+        }
+      }
+
+      @media (max-width: 390px) {
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header [style*="width: 42px"] {
+          width: 36px !important;
+          height: 36px !important;
+          border-radius: 13px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header h3 {
+          font-size: 18px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header p {
+          font-size: 12px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 270px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 300px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 340px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 460px"] {
+          width: min(74vw, 252px) !important;
+          min-height: min(43vh, 320px) !important;
+          height: min(43vh, 320px) !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}
@@ -6501,7 +6687,7 @@ return (
                             <p style={profileShowcaseModalEyebrowStyle}>Parapost Showcases</p>
                             <h3 style={profileShowcaseModalTitleStyle}>Create Showcase</h3>
                             <p style={profileShowcaseModalSubtitleStyle}>
-                              Upload, name it, choose a duration, and create.
+                              Add a photo or video, name it, choose a duration, and create.
                             </p>
                             <div style={profileShowcaseModalFlowPillsStyle}>
                               <span>Simple first</span>
@@ -6549,7 +6735,7 @@ return (
                               <small>
                                 {showcaseMediaPreviewUrl
                                   ? "Tap to replace this Showcase media"
-                                  : "Drag and drop or tap to browse"}
+                                  : "Tap to choose from your device"}
                               </small>
                               <small>
                                 {showcaseMediaFileName || "JPG, PNG, MP4"}

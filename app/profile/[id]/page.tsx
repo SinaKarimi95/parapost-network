@@ -1947,23 +1947,26 @@ useEffect(() => {
     profileBioValue.length > 0 &&
     !profileBioValue.toLowerCase().startsWith("no bio added yet");
   const profileHasAvatar = Boolean(profile?.avatar_url);
-  const profileHasProfileActivity =
-    posts.length > 0 ||
-    sharedReelPosts.length > 0 ||
-    reels.length > 0 ||
-    visibleProfileShowcases.length > 0;
+  const profileHasEditedBasics = Boolean(
+    profileHasAvatar ||
+      profileHasUsefulBio ||
+      profile?.location ||
+      profile?.website ||
+      profile?.occupation ||
+      profile?.paranormal_focus ||
+      profile?.experience_years ||
+      profile?.equipment ||
+      profile?.favorite_locations ||
+      profile?.availability
+  );
+  const profileHasFirstPost = posts.length > 0;
   const shouldShowProfileStarter =
     isOwnProfile &&
     !loading &&
     !errorMessage &&
-    (!profile || !profileHasAvatar || !profileHasUsefulBio || !profileHasProfileActivity);
-  const profileStarterCompletedCount = [
-    profileHasAvatar,
-    profileHasUsefulBio,
-    posts.length > 0,
-    visibleProfileShowcases.length > 0,
-  ].filter(Boolean).length;
-  const profileStarterPercent = Math.round((profileStarterCompletedCount / 4) * 100);
+    (!profile || !profileHasEditedBasics || !profileHasFirstPost);
+  const profileStarterCompletedCount = [profileHasEditedBasics, profileHasFirstPost].filter(Boolean).length;
+  const profileStarterPercent = Math.round((profileStarterCompletedCount / 2) * 100);
   const profileSmoothLoadClass = profileIsReady
     ? "profile-data-ready"
     : "profile-data-waiting";
@@ -6886,7 +6889,7 @@ return (
                         <p style={profileStarterEyebrowStyle}>New profile setup</p>
                         <h3 style={profileStarterTitleStyle}>Welcome to Parapost Network</h3>
                         <p style={profileStarterSubtitleStyle}>
-                          Your profile is ready. Add a photo, write a short intro, and share your first post so people know this page is active.
+                          Your profile is ready. Edit your profile details, then create your first post so people know this page is active.
                         </p>
                       </div>
 
@@ -6907,31 +6910,17 @@ return (
 
                     <div style={profileStarterChecklistStyle}>
                       <div style={profileStarterChecklistItemStyle}>
-                        <span style={profileHasAvatar ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
-                          {profileHasAvatar ? "✓" : "1"}
+                        <span style={profileHasEditedBasics ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
+                          {profileHasEditedBasics ? "✓" : "1"}
                         </span>
-                        <span>Add a profile photo</span>
+                        <span>Edit your profile</span>
                       </div>
 
                       <div style={profileStarterChecklistItemStyle}>
-                        <span style={profileHasUsefulBio ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
-                          {profileHasUsefulBio ? "✓" : "2"}
-                        </span>
-                        <span>Add your bio and details</span>
-                      </div>
-
-                      <div style={profileStarterChecklistItemStyle}>
-                        <span style={posts.length > 0 ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
-                          {posts.length > 0 ? "✓" : "3"}
+                        <span style={profileHasFirstPost ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
+                          {profileHasFirstPost ? "✓" : "2"}
                         </span>
                         <span>Create your first post</span>
-                      </div>
-
-                      <div style={profileStarterChecklistItemStyle}>
-                        <span style={visibleProfileShowcases.length > 0 ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
-                          {visibleProfileShowcases.length > 0 ? "✓" : "4"}
-                        </span>
-                        <span>Add your first Showcase</span>
                       </div>
                     </div>
 
@@ -6958,13 +6947,6 @@ return (
                         Create First Post
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={handleOpenShowcaseComposer}
-                        style={profileStarterSecondaryButtonStyle}
-                      >
-                        Add Showcase
-                      </button>
                     </div>
                   </section>
                 ) : null}

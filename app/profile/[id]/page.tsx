@@ -1916,14 +1916,54 @@ useEffect(() => {
     }, 80);
   };
 
-  const profileIsReady = !!profile;
-  const profileDisplayName = profileIsReady
+  const profileMissingForOwner = isOwnProfile && !loading && !errorMessage && !profile;
+  const profileFallbackName = viewerEmail
+    ? viewerEmail
+        .split("@")[0]
+        .replace(/[._-]+/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+    : "Parapost Member";
+  const profileFallbackUsername = viewerEmail
+    ? viewerEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 24)
+    : "";
+  const profileIsReady = !!profile || profileMissingForOwner;
+  const profileDisplayName = profile
     ? profile.full_name || profile.username || "Parapost Member"
-    : "";
-  const profileDisplayUsername = profileIsReady ? profile.username || "" : "";
-  const profileDisplayInitial = profileIsReady
+    : profileMissingForOwner
+      ? profileFallbackName
+      : "";
+  const profileDisplayUsername = profile
+    ? profile.username || ""
+    : profileMissingForOwner
+      ? profileFallbackUsername
+      : "";
+  const profileDisplayInitial = profile
     ? getInitial(profile.full_name, profile.username)
-    : "";
+    : profileMissingForOwner
+      ? getInitial(profileFallbackName, profileFallbackUsername)
+      : "";
+  const profileBioValue = (profile?.bio || "").trim();
+  const profileHasUsefulBio =
+    profileBioValue.length > 0 &&
+    !profileBioValue.toLowerCase().startsWith("no bio added yet");
+  const profileHasAvatar = Boolean(profile?.avatar_url);
+  const profileHasProfileActivity =
+    posts.length > 0 ||
+    sharedReelPosts.length > 0 ||
+    reels.length > 0 ||
+    visibleProfileShowcases.length > 0;
+  const shouldShowProfileStarter =
+    isOwnProfile &&
+    !loading &&
+    !errorMessage &&
+    (!profile || !profileHasAvatar || !profileHasUsefulBio || !profileHasProfileActivity);
+  const profileStarterCompletedCount = [
+    profileHasAvatar,
+    profileHasUsefulBio,
+    posts.length > 0,
+    visibleProfileShowcases.length > 0,
+  ].filter(Boolean).length;
+  const profileStarterPercent = Math.round((profileStarterCompletedCount / 4) * 100);
   const profileSmoothLoadClass = profileIsReady
     ? "profile-data-ready"
     : "profile-data-waiting";
@@ -1944,6 +1984,24 @@ return (
    }}
   >
     <style>{`
+
+      @media (max-width: 720px) {
+        .profile-starter-card {
+          margin: 12px 10px 14px !important;
+          padding: 14px !important;
+          border-radius: 20px !important;
+        }
+
+        .profile-starter-card [style*="grid-template-columns: repeat(4"] {
+          grid-template-columns: 1fr 1fr !important;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .profile-starter-card [style*="grid-template-columns: repeat(4"] {
+          grid-template-columns: 1fr !important;
+        }
+      }
 
       @media (max-width: 720px) {
         .profile-showcase-modal-overlay {
@@ -6819,6 +6877,98 @@ return (
                     )
                   : null}
 
+                {shouldShowProfileStarter ? (
+                  <section className="profile-starter-card" style={profileStarterCardStyle} aria-label="Complete your profile">
+                    <div style={profileStarterHeaderStyle}>
+                      <div style={profileStarterIconStyle}>✦</div>
+
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={profileStarterEyebrowStyle}>New profile setup</p>
+                        <h3 style={profileStarterTitleStyle}>Welcome to Parapost Network</h3>
+                        <p style={profileStarterSubtitleStyle}>
+                          Your profile is ready. Add a photo, write a short intro, and share your first post so people know this page is active.
+                        </p>
+                      </div>
+
+                      <div style={profileStarterScoreStyle}>
+                        <strong>{profileStarterPercent}%</strong>
+                        <span>Complete</span>
+                      </div>
+                    </div>
+
+                    <div style={profileStarterProgressTrackStyle}>
+                      <span
+                        style={{
+                          ...profileStarterProgressFillStyle,
+                          width: `${profileStarterPercent}%`,
+                        }}
+                      />
+                    </div>
+
+                    <div style={profileStarterChecklistStyle}>
+                      <div style={profileStarterChecklistItemStyle}>
+                        <span style={profileHasAvatar ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
+                          {profileHasAvatar ? "✓" : "1"}
+                        </span>
+                        <span>Add a profile photo</span>
+                      </div>
+
+                      <div style={profileStarterChecklistItemStyle}>
+                        <span style={profileHasUsefulBio ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
+                          {profileHasUsefulBio ? "✓" : "2"}
+                        </span>
+                        <span>Add your bio and details</span>
+                      </div>
+
+                      <div style={profileStarterChecklistItemStyle}>
+                        <span style={posts.length > 0 ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
+                          {posts.length > 0 ? "✓" : "3"}
+                        </span>
+                        <span>Create your first post</span>
+                      </div>
+
+                      <div style={profileStarterChecklistItemStyle}>
+                        <span style={visibleProfileShowcases.length > 0 ? profileStarterStepDoneStyle : profileStarterStepTodoStyle}>
+                          {visibleProfileShowcases.length > 0 ? "✓" : "4"}
+                        </span>
+                        <span>Add your first Showcase</span>
+                      </div>
+                    </div>
+
+                    <div style={profileStarterActionsStyle}>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/profile/${viewerId}/edit`)}
+                        style={profileStarterPrimaryButtonStyle}
+                      >
+                        Edit Profile
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveProfileTab("Posts");
+                          window.setTimeout(() => {
+                            const composer = document.getElementById("profile-composer");
+                            composer?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 80);
+                        }}
+                        style={profileStarterSecondaryButtonStyle}
+                      >
+                        Create First Post
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleOpenShowcaseComposer}
+                        style={profileStarterSecondaryButtonStyle}
+                      >
+                        Add Showcase
+                      </button>
+                    </div>
+                  </section>
+                ) : null}
+
                 <div className="profile-tabs-shell" style={profileTabsShellStyle}>
                   <div className="profile-tabs-desktop" style={profileTabsStyle}>
                     {["Posts", "About", "Reels", "Photos", "Events"].map((tab) => (
@@ -7068,14 +7218,18 @@ return (
 
                   {errorMessage ? (
                     <div style={messageBoxStyle}>{errorMessage}</div>
-                  ) : !profile ? (
+                  ) : !profile && !profileMissingForOwner ? (
                     <div style={messageBoxStyle}>This profile could not be found.</div>
                   ) : profileFeedItems.length === 0 ? (
                     <div style={feedEmptyStateStyle}>
                       <div style={{ fontSize: "34px", marginBottom: "8px" }}>✦</div>
-                      <strong style={{ color: "#ffffff", fontSize: "18px" }}>No posts shared yet</strong>
+                      <strong style={{ color: "#ffffff", fontSize: "18px" }}>
+                        {isOwnProfile ? "Your first post goes here" : "No posts shared yet"}
+                      </strong>
                       <span style={{ color: "#9ca3af", fontSize: "14px", lineHeight: 1.6 }}>
-                        When this profile shares posts or reels, they will appear here.
+                        {isOwnProfile
+                          ? "Create your first post so your profile feels active the moment people visit."
+                          : "When this profile shares posts or reels, they will appear here."}
                       </span>
                     </div>
                   ) : (
@@ -7738,6 +7892,171 @@ return (
     </div>
   );
 }   
+
+const profileStarterCardStyle: CSSProperties = {
+  margin: "14px 14px 16px",
+  padding: "16px",
+  borderRadius: "24px",
+  border: "1px solid rgba(216,180,254,0.22)",
+  background:
+    "linear-gradient(135deg, rgba(88,28,135,0.34), rgba(17,24,39,0.86) 54%, rgba(6,8,14,0.92))",
+  boxShadow: "0 22px 54px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.06)",
+  position: "relative",
+  overflow: "hidden",
+};
+
+const profileStarterHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "12px",
+  position: "relative",
+  zIndex: 1,
+};
+
+const profileStarterIconStyle: CSSProperties = {
+  width: "46px",
+  height: "46px",
+  borderRadius: "16px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 950,
+  background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+  boxShadow: "0 16px 36px rgba(168,85,247,0.34), inset 0 1px 0 rgba(255,255,255,0.22)",
+};
+
+const profileStarterEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#d8b4fe",
+  fontSize: "11px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.18em",
+};
+
+const profileStarterTitleStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#ffffff",
+  fontSize: "20px",
+  lineHeight: 1.15,
+  letterSpacing: "-0.045em",
+  fontWeight: 950,
+};
+
+const profileStarterSubtitleStyle: CSSProperties = {
+  margin: "7px 0 0",
+  color: "#cbd5e1",
+  fontSize: "13px",
+  lineHeight: 1.55,
+  maxWidth: "720px",
+};
+
+const profileStarterScoreStyle: CSSProperties = {
+  minWidth: "82px",
+  padding: "9px 10px",
+  borderRadius: "16px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.06)",
+  textAlign: "center",
+  flexShrink: 0,
+};
+
+const profileStarterProgressTrackStyle: CSSProperties = {
+  height: "8px",
+  marginTop: "14px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.08)",
+  overflow: "hidden",
+};
+
+const profileStarterProgressFillStyle: CSSProperties = {
+  display: "block",
+  height: "100%",
+  borderRadius: "999px",
+  background: "linear-gradient(90deg, #7c3aed, #a855f7, #ec4899)",
+  boxShadow: "0 0 22px rgba(168,85,247,0.45)",
+  transition: "width 180ms ease",
+};
+
+const profileStarterChecklistStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: "10px",
+  marginTop: "14px",
+};
+
+const profileStarterChecklistItemStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  minHeight: "42px",
+  padding: "9px 10px",
+  borderRadius: "15px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.055)",
+  color: "#e5e7eb",
+  fontSize: "12px",
+  fontWeight: 850,
+  minWidth: 0,
+};
+
+const profileStarterStepTodoStyle: CSSProperties = {
+  width: "23px",
+  height: "23px",
+  borderRadius: "999px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+  color: "#d8b4fe",
+  fontSize: "11px",
+  fontWeight: 950,
+  border: "1px solid rgba(216,180,254,0.30)",
+  background: "rgba(88,28,135,0.30)",
+};
+
+const profileStarterStepDoneStyle: CSSProperties = {
+  ...profileStarterStepTodoStyle,
+  color: "#ffffff",
+  border: "1px solid rgba(134,239,172,0.42)",
+  background: "linear-gradient(135deg, rgba(34,197,94,0.88), rgba(20,184,166,0.72))",
+};
+
+const profileStarterActionsStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap",
+  marginTop: "14px",
+};
+
+const profileStarterPrimaryButtonStyle: CSSProperties = {
+  border: "0",
+  minHeight: "40px",
+  borderRadius: "14px",
+  padding: "0 16px",
+  cursor: "pointer",
+  color: "#1f1235",
+  fontSize: "13px",
+  fontWeight: 950,
+  background: "linear-gradient(135deg, #ffffff, #e9d5ff)",
+  boxShadow: "0 14px 30px rgba(168,85,247,0.22)",
+};
+
+const profileStarterSecondaryButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.14)",
+  minHeight: "40px",
+  borderRadius: "14px",
+  padding: "0 14px",
+  cursor: "pointer",
+  color: "#f8fafc",
+  fontSize: "13px",
+  fontWeight: 900,
+  background: "rgba(255,255,255,0.07)",
+};
 
 function getFriendStatusPillStyle(friendStatus: FriendRequestStatus): CSSProperties {
   if (friendStatus === "friends") {

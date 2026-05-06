@@ -1928,17 +1928,17 @@ useEffect(() => {
     : "";
   const profileIsReady = !!profile || profileMissingForOwner;
   const profileDisplayName = profile
-    ? profile.full_name || profile.username || "Parapost Member"
+    ? profile?.full_name || profile?.username || "Parapost Member"
     : profileMissingForOwner
       ? profileFallbackName
       : "";
   const profileDisplayUsername = profile
-    ? profile.username || ""
+    ? profile?.username || ""
     : profileMissingForOwner
       ? profileFallbackUsername
       : "";
   const profileDisplayInitial = profile
-    ? getInitial(profile.full_name, profile.username)
+    ? getInitial(profile?.full_name, profile?.username)
     : profileMissingForOwner
       ? getInitial(profileFallbackName, profileFallbackUsername)
       : "";
@@ -5914,7 +5914,7 @@ return (
                   <div className={`profile-mobile-avatar-shell-real ${profile?.is_online ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`}>
                     {profile?.avatar_url ? (
                       <img
-                        src={profile.avatar_url}
+                        src={profile?.avatar_url || ""}
                         alt="Profile"
                         className="profile-mobile-avatar-image-real"
                       />
@@ -6029,35 +6029,35 @@ return (
                   ) : null}
 
                   {(profile?.bio &&
-                    !profile.bio
+                    !(profile?.bio || "")
                       .toLowerCase()
                       .startsWith("no bio added yet")) ||
                   isOwnProfile ? (
                     <p className="profile-mobile-bio-real">
                       {profile?.bio &&
-                      !profile.bio
+                      !(profile?.bio || "")
                         .toLowerCase()
                         .startsWith("no bio added yet")
-                        ? profile.bio
+                        ? profile?.bio
                         : "No bio added yet. Add a short intro, your interests, and what you share on Parapost."}
                     </p>
                   ) : null}
 
                   <div className="profile-mobile-meta-real">
-                    {profile?.location ? <span>📍 {profile.location}</span> : null}
+                    {profile?.location ? <span>📍 {profile?.location}</span> : null}
 
                     {profile?.website ? (
                       <a
                         href={
-                          profile.website.startsWith("http")
-                            ? profile.website
-                            : `https://${profile.website}`
+                          (profile?.website || "").startsWith("http")
+                            ? profile?.website
+                            : `https://${profile?.website || ""}`
                         }
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         🔗{" "}
-                        {profile.website
+                        {(profile?.website || "")
                           .replace(/^https?:\/\//, "")
                           .replace(/^www\./, "")}
                       </a>
@@ -6070,7 +6070,7 @@ return (
                 <div className="profile-hero-content" style={profileHeroContentStyle}>
                   <div className={`profile-avatar-wrap ${profile?.is_online ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`} style={profileAvatarWrapStyle}>
                     {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="Profile" style={profileAvatarStyle} />
+                      <img src={profile?.avatar_url || ""} alt="Profile" style={profileAvatarStyle} />
                     ) : (
                       <div style={profileAvatarFallbackStyle}>
                         {profileDisplayInitial}
@@ -6301,37 +6301,37 @@ return (
                     {friendStatusMessage ? <div style={statusToastStyle}>{friendStatusMessage}</div> : null}
 
                     {(profile?.bio &&
-                      !profile.bio
+                      !(profile?.bio || "")
                         .toLowerCase()
                         .startsWith("no bio added yet")) ||
                     isOwnProfile ? (
                       <p style={profileBioStyle}>
                         {profile?.bio &&
-                        !profile.bio
+                        !(profile?.bio || "")
                           .toLowerCase()
                           .startsWith("no bio added yet")
-                          ? profile.bio
+                          ? profile?.bio
                           : "No bio added yet. Add a short intro, your interests, and what you share on Parapost."}
                       </p>
                     ) : null}
 
                     <div className="profile-mobile-meta-action-row">
                       <div className="profile-meta-row" style={profileMetaRowStyle}>
-                        {profile?.location ? <span>📍 {profile.location}</span> : null}
+                        {profile?.location ? <span>📍 {profile?.location}</span> : null}
 
                         {profile?.website ? (
                           <a
                             href={
-                              profile.website.startsWith("http")
-                                ? profile.website
-                                : `https://${profile.website}`
+                              (profile?.website || "").startsWith("http")
+                                ? profile?.website
+                                : `https://${profile?.website || ""}`
                             }
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ textDecoration: "none", color: "#c084fc", fontWeight: 600 }}
                           >
                             🔗{" "}
-                            {profile.website
+                            {(profile?.website || "")
                               .replace(/^https?:\/\//, "")
                               .replace(/^www\./, "")}
                           </a>
@@ -7259,19 +7259,19 @@ return (
                             >
                               <header style={postHeaderStyle}>
                                 <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
-                                  {profile.avatar_url ? (
-                                    <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  {profile?.avatar_url ? (
+                                    <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                   ) : (
-                                    <span style={postAuthorFallbackStyle}>{getInitial(profile.full_name, profile.username)}</span>
+                                    <span style={postAuthorFallbackStyle}>{profileDisplayInitial || "P"}</span>
                                   )}
                                 </div>
 
                                 <div style={postAuthorTextStyle}>
                                   <strong style={postAuthorNameStyle}>
-                                    {profile.full_name || profile.username || "Unnamed User"}
+                                    {profileDisplayName || "Parapost Member"}
                                   </strong>
                                   <span style={postMetaStyle}>
-                                    @{profile.username || "no-username"} shared a reel · {formatTimeAgo(item.created_at)}
+                                    @{profileDisplayUsername || "new-member"} shared a reel · {formatTimeAgo(item.created_at)}
                                   </span>
                                 </div>
 
@@ -7389,19 +7389,19 @@ return (
                           >
                             <header style={postHeaderStyle}>
                               <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
-                                {profile.avatar_url ? (
-                                  <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                {profile?.avatar_url ? (
+                                  <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 ) : (
-                                  <span style={postAuthorFallbackStyle}>{getInitial(profile.full_name, profile.username)}</span>
+                                  <span style={postAuthorFallbackStyle}>{profileDisplayInitial || "P"}</span>
                                 )}
                               </div>
 
                               <div style={postAuthorTextStyle}>
                                 <strong style={postAuthorNameStyle}>
-                                  {profile.full_name || profile.username || "Unnamed User"}
+                                  {profileDisplayName || "Parapost Member"}
                                 </strong>
                                 <span style={postMetaStyle}>
-                                  @{profile.username || "no-username"} · {formatTimeAgo(post.created_at)}
+                                  @{profileDisplayUsername || "new-member"} · {formatTimeAgo(post.created_at)}
                                 </span>
                               </div>
 

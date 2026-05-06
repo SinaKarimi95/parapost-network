@@ -14,6 +14,9 @@ type ProfileRow = {
 };
 
 const BIO_MAX_LENGTH = 175;
+const USERNAME_TAKEN_MESSAGE = "That username already exists. Please choose another one.";
+
+type StatusKind = "success" | "error" | "info";
 
 const pageShellStyle: CSSProperties = {
   minHeight: "100vh",
@@ -105,6 +108,62 @@ function cleanText(value: string) {
   return value.trim().replace(/<[^>]*>/g, "");
 }
 
+function normalizeUsername(value: string) {
+  return cleanText(value)
+    .replace(/^@+/, "")
+    .replace(/\s+/g, "")
+    .slice(0, 30);
+}
+
+function isDuplicateUsernameError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : typeof error === "string"
+        ? error
+        : "";
+
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("profiles_username_key") ||
+    (normalized.includes("duplicate key") && normalized.includes("username"))
+  );
+}
+
+function getStatusBoxStyle(kind: StatusKind): CSSProperties {
+  if (kind === "error") {
+    return {
+      background: "rgba(248,113,113,0.10)",
+      border: "1px solid rgba(248,113,113,0.30)",
+      color: "#fecaca",
+      borderRadius: "20px",
+      padding: "12px 14px",
+      fontWeight: 700,
+    };
+  }
+
+  if (kind === "success") {
+    return {
+      background: "rgba(52,211,153,0.10)",
+      border: "1px solid rgba(52,211,153,0.28)",
+      color: "#bbf7d0",
+      borderRadius: "20px",
+      padding: "12px 14px",
+      fontWeight: 700,
+    };
+  }
+
+  return {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    color: "#f9fafb",
+    borderRadius: "20px",
+    padding: "12px 14px",
+    fontWeight: 700,
+  };
+}
+
 export default function EditProfilePage() {
   const [currentUserId, setCurrentUserId] = useState("");
   const [email, setEmail] = useState("");
@@ -112,6 +171,7 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [statusKind, setStatusKind] = useState<StatusKind>("info");
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [bio, setBio] = useState("");
@@ -128,6 +188,7 @@ export default function EditProfilePage() {
 
       if (userError || !user) {
         setLoading(false);
+        setStatusKind("error");
         setStatusMessage("You need to be logged in to edit your profile.");
         return;
       }
@@ -143,6 +204,7 @@ export default function EditProfilePage() {
 
       if (error) {
         setLoading(false);
+        setStatusKind("error");
         setStatusMessage(`Could not load profile: ${error.message}`);
         return;
       }
@@ -164,6 +226,7 @@ export default function EditProfilePage() {
 
     setUploadingAvatar(true);
     setStatusMessage("");
+    setStatusKind("info");
 
     const extension = file.name.split(".").pop() || "jpg";
     const fileName = `${currentUserId}-${Date.now()}.${extension}`;
@@ -174,6 +237,7 @@ export default function EditProfilePage() {
 
     if (uploadError) {
       setUploadingAvatar(false);
+      setStatusKind("error");
       setStatusMessage(`Avatar upload error: ${uploadError.message}`);
       return;
     }
@@ -191,12 +255,14 @@ export default function EditProfilePage() {
 
     if (updateError) {
       setUploadingAvatar(false);
+      setStatusKind("error");
       setStatusMessage(`Avatar save error: ${updateError.message}`);
       return;
     }
 
     setAvatarUrl(nextAvatarUrl);
     setUploadingAvatar(false);
+    setStatusKind("success");
     setStatusMessage("Avatar updated.");
   };
 
@@ -204,32 +270,69 @@ export default function EditProfilePage() {
     event.preventDefault();
 
     if (!currentUserId) {
+      setStatusKind("error");
       setStatusMessage("You need to be logged in to save changes.");
       return;
     }
 
     setSaving(true);
     setStatusMessage("");
+    setStatusKind("info");
 
-    const cleanedUsername = cleanText(username);
+    const cleanedUsername = normalizeUsername(username);
     const cleanedFullName = cleanText(fullName);
     const cleanedBio = cleanText(bio).slice(0, BIO_MAX_LENGTH);
 
+    if (!cleanedUsername) {
+      setSaving(false);
+      setStatusKind("error");
+      setStatusMessage("Please choose a username before saving your profile.");
+      return;
+    }
+
+    const { data: existingUsernameOwner, error: usernameLookupError } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", cleanedUsername)
+      .neq("id", currentUserId)
+      .maybeSingle();
+
+    if (usernameLookupError) {
+      setSaving(false);
+      setStatusKind("error");
+      setStatusMessage("We couldn’t check that username. Please try again.");
+      return;
+    }
+
+    if (existingUsernameOwner) {
+      setSaving(false);
+      setStatusKind("error");
+      setStatusMessage(USERNAME_TAKEN_MESSAGE);
+      return;
+    }
+
     const { error } = await supabase.from("profiles").upsert({
       id: currentUserId,
-      username: cleanedUsername || "",
+      username: cleanedUsername,
       full_name: cleanedFullName || "",
       bio: cleanedBio || "",
     });
 
     if (error) {
       setSaving(false);
-      setStatusMessage(`Save error: ${error.message}`);
+      setStatusKind("error");
+      setStatusMessage(
+        isDuplicateUsernameError(error)
+          ? USERNAME_TAKEN_MESSAGE
+          : "We couldn’t save your profile changes. Please try again."
+      );
       return;
     }
 
+    setUsername(cleanedUsername);
     setBio(cleanedBio);
     setSaving(false);
+    setStatusKind("success");
     setStatusMessage("Profile updated successfully.");
   };
 
@@ -419,10 +522,20 @@ export default function EditProfilePage() {
                       id="username"
                       type="text"
                       value={username}
-                      onChange={(event) => setUsername(event.target.value)}
+                      onChange={(event) => {
+                        setUsername(event.target.value);
+                        if (statusMessage === USERNAME_TAKEN_MESSAGE) {
+                          setStatusMessage("");
+                        }
+                      }}
                       placeholder="Enter your username"
                       style={inputStyle}
                     />
+
+                    <div style={helperRowStyle}>
+                      <span>Letters, numbers, underscores, or a clean display name.</span>
+                      <span>{normalizeUsername(username).length}/30</span>
+                    </div>
                   </div>
 
                   <div>
@@ -461,15 +574,7 @@ export default function EditProfilePage() {
                   </div>
 
                   {statusMessage ? (
-                    <div
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        color: "#f9fafb",
-                        borderRadius: "20px",
-                        padding: "12px 14px",
-                      }}
-                    >
+                    <div style={getStatusBoxStyle(statusKind)}>
                       {statusMessage}
                     </div>
                   ) : null}

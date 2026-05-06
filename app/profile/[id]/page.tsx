@@ -1049,15 +1049,11 @@ useEffect(() => {
   };
 
   window.addEventListener("click", closeDesktopFloatingMenus);
-  window.addEventListener("scroll", closeDesktopFloatingMenus, { passive: true });
-  window.addEventListener("wheel", closeDesktopFloatingMenus, { passive: true });
   window.addEventListener("touchmove", closePostMenusOnly, { passive: true });
   window.addEventListener("keydown", handleEscapeKey);
 
   return () => {
     window.removeEventListener("click", closeDesktopFloatingMenus);
-    window.removeEventListener("scroll", closeDesktopFloatingMenus);
-    window.removeEventListener("wheel", closeDesktopFloatingMenus);
     window.removeEventListener("touchmove", closePostMenusOnly);
     window.removeEventListener("keydown", handleEscapeKey);
   };
@@ -1839,21 +1835,17 @@ useEffect(() => {
     const menuWidth = 280;
     const safePadding = 12;
     const gap = 10;
-
     const preferredTop = rect.bottom + gap;
     const availableBelow = window.innerHeight - preferredTop - safePadding;
     const availableAbove = rect.top - safePadding - gap;
     const openUpward = availableBelow < 260 && availableAbove > availableBelow;
-
     const maxHeight = Math.min(
       340,
       Math.max(180, openUpward ? availableAbove : availableBelow)
     );
-
     const top = openUpward
       ? Math.max(safePadding, rect.top - maxHeight - gap)
       : Math.min(preferredTop, window.innerHeight - maxHeight - safePadding);
-
     const left = Math.max(
       safePadding,
       Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - safePadding)
@@ -1883,23 +1875,6 @@ useEffect(() => {
     }
 
     setProfileActionsOpen((value) => !value);
-  };
-
-  const handleDesktopActionMenuWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const menu = event.currentTarget;
-    const maxScrollTop = Math.max(0, menu.scrollHeight - menu.clientHeight);
-
-    if (maxScrollTop <= 0) return;
-
-    const nextScrollTop = Math.max(
-      0,
-      Math.min(maxScrollTop, menu.scrollTop + event.deltaY)
-    );
-
-    menu.scrollTop = nextScrollTop;
   };
 
   useEffect(() => {
@@ -3528,8 +3503,6 @@ return (
 
       .profile-desktop-action-menu-fixed {
         position: fixed !important;
-        right: auto !important;
-        bottom: auto !important;
         z-index: 2147483000 !important;
         display: block !important;
         background: #11131a !important;
@@ -3539,9 +3512,11 @@ return (
         -webkit-backdrop-filter: none !important;
         isolation: isolate !important;
         mix-blend-mode: normal !important;
-        overflow-y: auto !important;
+        overflow-y: scroll !important;
         overscroll-behavior: contain !important;
-        scrollbar-width: thin;
+        scrollbar-width: thin !important;
+        scrollbar-gutter: stable !important;
+        pointer-events: auto !important;
       }
 
       .profile-desktop-action-menu-fixed::-webkit-scrollbar {
@@ -3554,19 +3529,8 @@ return (
       }
 
       .profile-desktop-action-menu-fixed::-webkit-scrollbar-thumb {
-        background: rgba(168,85,247,0.45);
+        background: rgba(168,85,247,0.5);
         border-radius: 999px;
-      }
-
-      .profile-desktop-action-menu-fixed button,
-      .profile-desktop-action-menu-fixed a {
-        background-color: #151821 !important;
-      }
-
-      .profile-desktop-action-menu-fixed button:disabled,
-      .profile-desktop-action-menu-fixed [aria-disabled="true"] {
-        background-color: #151821 !important;
-        opacity: 0.55 !important;
       }
 
       @media (max-width: 720px) {
@@ -7519,10 +7483,13 @@ return (
             top: profileActionMenuPosition.top,
             left: profileActionMenuPosition.left,
             maxHeight: profileActionMenuPosition.maxHeight,
-            overflowY: "auto",
+            overflowY: "scroll",
           }}
           onClick={(event) => event.stopPropagation()}
-          onWheel={handleDesktopActionMenuWheel}
+          onPointerDown={(event) => event.stopPropagation()}
+          onWheel={(event) => event.stopPropagation()}
+          onScroll={(event) => event.stopPropagation()}
+          onTouchMove={(event) => event.stopPropagation()}
         >
           <div style={profileDesktopActionMenuHeaderStyle}>
             <p style={profileActionEyebrowStyle}>Profile options</p>
@@ -8529,19 +8496,16 @@ const profileDesktopActionMenuStyle: CSSProperties = {
 const profileDesktopActionMenuFixedStyle: CSSProperties = {
   ...profileDesktopActionMenuStyle,
   position: "fixed",
-  right: "auto",
-  bottom: "auto",
   width: "280px",
+  maxHeight: "340px",
+  overflowY: "scroll",
+  overscrollBehavior: "contain",
+  scrollbarWidth: "thin",
   zIndex: 2147483000,
   background: "#11131a",
   backgroundColor: "#11131a",
   opacity: 1,
   pointerEvents: "auto",
-  overflowY: "auto",
-  overscrollBehavior: "contain",
-  scrollbarWidth: "thin",
-  WebkitOverflowScrolling: "touch",
-  touchAction: "pan-y",
 };
 
 const profileDesktopActionMenuHeaderStyle: CSSProperties = {
@@ -8907,11 +8871,18 @@ const profileGlassButtonStyle: React.CSSProperties = {
 const profileIconButtonStyle: CSSProperties = {
   width: "42px",
   height: "42px",
+  minWidth: "42px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   borderRadius: "14px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(255,255,255,0.055)",
   color: "white",
   cursor: "pointer",
+  lineHeight: 1,
+  fontSize: "18px",
+  fontWeight: 900,
   transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
 };
 

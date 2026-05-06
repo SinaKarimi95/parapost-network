@@ -78,6 +78,30 @@ type ProfileAboutSectionProps = {
 
 const MAX_LINKS = 10;
 
+type SaveMessageKind = "success" | "error";
+
+function getProfileSaveErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+
+  const normalizedMessage = message.toLowerCase();
+
+  const isDuplicateUsername =
+    normalizedMessage.includes("profiles_username_key") ||
+    (normalizedMessage.includes("duplicate key") &&
+      normalizedMessage.includes("username"));
+
+  if (isDuplicateUsername) {
+    return "That username already exists. Please choose another one.";
+  }
+
+  return "We couldn’t save your profile changes. Please try again.";
+}
+
 const tabs: { id: AboutTab; label: string; icon: string }[] = [
   { id: "intro", label: "Intro", icon: "👤" },
   { id: "category", label: "Category", icon: "🏷️" },
@@ -353,6 +377,7 @@ export default function ProfileAboutSection({
   const [editing, setEditing] = useState(isEditing);
   const [localSaving, setLocalSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [saveMessageKind, setSaveMessageKind] = useState<SaveMessageKind>("success");
 
   const [aboutIntro, setAboutIntro] = useState(initialPayload.about_intro);
   const [category, setCategory] = useState(initialPayload.category);
@@ -460,6 +485,7 @@ export default function ProfileAboutSection({
 
     setLocalSaving(true);
     setSaveMessage("");
+    setSaveMessageKind("success");
 
     try {
       saveLocalPayload(profile, payload);
@@ -480,12 +506,14 @@ export default function ProfileAboutSection({
       setInterestsText(payload.interests.join(", "));
 
       setEditing(false);
+      setSaveMessageKind("success");
       setSaveMessage("Saved");
       window.setTimeout(() => setSaveMessage(""), 2200);
     } catch (error) {
       saveLocalPayload(profile, payload);
-      setSaveMessage("Saved locally. Database save needs wiring on the profile page.");
-      setEditing(false);
+      setSaveMessageKind("error");
+      setSaveMessage(getProfileSaveErrorMessage(error));
+      setEditing(true);
     } finally {
       setLocalSaving(false);
     }
@@ -876,7 +904,14 @@ export default function ProfileAboutSection({
             <div className="min-h-[420px]">{renderContent()}</div>
 
             {saveMessage ? (
-              <p className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200">
+              <p
+                className={[
+                  "mt-5 rounded-xl border px-4 py-3 text-sm font-bold",
+                  saveMessageKind === "error"
+                    ? "border-rose-400/30 bg-rose-400/10 text-rose-200"
+                    : "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+                ].join(" ")}
+              >
                 {saveMessage}
               </p>
             ) : null}

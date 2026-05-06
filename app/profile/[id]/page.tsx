@@ -4744,8 +4744,8 @@ return (
       @media (max-width: 720px) {
     .profile-mobile-action-overlay {
     position: fixed !important;
-    inset: 0 !important;
-    z-index: 2147483647 !important;
+    inset: 0 0 calc(82px + env(safe-area-inset-bottom)) 0 !important;
+    z-index: 2147482400 !important;
     display: flex !important;
     align-items: flex-end !important;
     justify-content: center !important;
@@ -4755,7 +4755,7 @@ return (
 
   .profile-mobile-action-sheet {
     width: 100% !important;
-    max-height: calc(100dvh - 92px) !important;
+    max-height: calc(100dvh - 164px) !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
@@ -7728,7 +7728,7 @@ return (
         </div>
       ) : null}
 
-      {!profileActionsOpen && !showcaseComposerOpen ? (
+      {!showcaseComposerOpen ? (
         <BottomNav
         currentUserId={viewerId}
         activeItem="profile"
@@ -8534,8 +8534,11 @@ const profileDesktopActionItemStyle: CSSProperties = {
 
 const profileActionOverlayStyle: CSSProperties = {
   position: "fixed",
-  inset: 0,
-  zIndex: 2147483647,
+  top: 0,
+  right: 0,
+  bottom: "calc(82px + env(safe-area-inset-bottom))",
+  left: 0,
+  zIndex: 2147482400,
   background: "rgba(0,0,0,0.62)",
   display: "flex",
   alignItems: "flex-end",
@@ -8550,7 +8553,7 @@ const profileActionOverlayStyle: CSSProperties = {
 const profileActionSheetStyle: CSSProperties = {
   width: "100%",
   maxWidth: "560px",
-  maxHeight: "calc(100dvh - 92px)",
+  maxHeight: "calc(100dvh - 164px)",
   overflow: "hidden",
   display: "flex",
   flexDirection: "column",

@@ -253,6 +253,54 @@ function clampShowcaseOverlayFontSize(size?: number | null) {
   );
 }
 
+function getShowcaseOverlayDisplayFontSize(text: string, size?: number | null) {
+  const clamped = clampShowcaseOverlayFontSize(size);
+  const length = text.trim().length;
+
+  if (length > 180) return Math.max(14, Math.round(clamped * 0.42));
+  if (length > 120) return Math.max(15, Math.round(clamped * 0.52));
+  if (length > 80) return Math.max(16, Math.round(clamped * 0.62));
+  if (length > 48) return Math.max(18, Math.round(clamped * 0.74));
+  if (length > 28) return Math.max(20, Math.round(clamped * 0.86));
+
+  return clamped;
+}
+
+function getShowcaseOverlayTextWidth(text: string) {
+  const length = text.trim().length;
+
+  if (length > 80) return "66%";
+  if (length > 48) return "72%";
+  if (length > 28) return "78%";
+
+  return "82%";
+}
+
+function clampShowcaseTextPercent(value: number, min: number, max: number) {
+  if (Number.isNaN(value)) return 50;
+  return Math.max(min, Math.min(max, value));
+}
+
+function getShowcaseSafeTextPosition(
+  position: { x: number; y: number } | null | undefined,
+  text: string,
+  hasSizeRail = false
+) {
+  const length = text.trim().length;
+
+  // Keep enough protection for long overlay text while letting shorter text move much closer
+  // to the left, right, top, and bottom edges.
+  const edgeMarginX =
+    length > 120 ? 28 : length > 80 ? 24 : length > 48 ? 18 : length > 28 ? 12 : hasSizeRail ? 6 : 4;
+  const finalMarginX = Math.max(hasSizeRail ? 6 : 4, edgeMarginX);
+  const edgeMarginY = length > 120 ? 14 : length > 80 ? 12 : length > 48 ? 9 : 5;
+
+  return {
+    x: clampShowcaseTextPercent(Number(position?.x ?? 50), finalMarginX, 100 - finalMarginX),
+    y: clampShowcaseTextPercent(Number(position?.y ?? 50), edgeMarginY, 100 - edgeMarginY),
+  };
+}
+
 function getShowcaseTileFontSize(size?: number | null) {
   const clamped = clampShowcaseOverlayFontSize(size);
   return Math.max(10, Math.min(16, Math.round(clamped / 2.7)));
@@ -591,6 +639,9 @@ export default function ProfilePage() {
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
   const showcaseDragFrameRef = useRef<number | null>(null);
+  const showcasePendingTextPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const showcaseCommittedDragPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const showcasePreviewTextRef = useRef<HTMLSpanElement | null>(null);
   const showcaseMediaInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
   const profileActionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -614,8 +665,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     return () => {
+      showcasePendingTextPositionRef.current = null;
+
       if (showcaseDragFrameRef.current !== null) {
         window.cancelAnimationFrame(showcaseDragFrameRef.current);
+        showcaseDragFrameRef.current = null;
       }
     };
   }, []);
@@ -629,16 +683,19 @@ export default function ProfilePage() {
     });
   }, [profileShowcases]);
 
-  const showcaseTextNearHorizontalCenter = Math.abs(showcaseTextPosition.x - 50) <= 2;
-  const showcaseTextNearVerticalCenter = Math.abs(showcaseTextPosition.y - 50) <= 2;
+  const showcaseSizeRailVisible = showcaseCustomizeOpen && Boolean(showcaseCoverText.trim());
+  const safeShowcaseTextPosition = getShowcaseSafeTextPosition(
+    showcaseTextPosition,
+    showcaseCoverText.trim(),
+    showcaseSizeRailVisible
+  );
+  const showcaseTextNearHorizontalCenter = Math.abs(safeShowcaseTextPosition.x - 50) <= 4;
+  const showcaseTextNearVerticalCenter = Math.abs(safeShowcaseTextPosition.y - 50) <= 4;
   const showShowcaseCenterGuides =
     showcaseCustomizeOpen &&
     Boolean(showcaseCoverText.trim()) &&
     showcaseTextNearHorizontalCenter &&
     showcaseTextNearVerticalCenter;
-  const showcaseSizeRailVisible = showcaseCustomizeOpen && Boolean(showcaseCoverText.trim());
-  const safeShowcaseTextX =
-    showcaseSizeRailVisible && showcaseTextPosition.x < 22 ? 22 : showcaseTextPosition.x;
 
 
   // ✅ 🔥 ADD THIS FUNCTION RIGHT HERE
@@ -1668,25 +1725,78 @@ useEffect(() => {
     }
   };
 
+  const applyShowcaseTextPositionToPreview = (nextPosition: { x: number; y: number }) => {
+    const textElement = showcasePreviewTextRef.current;
+    if (!textElement) return;
+
+    textElement.style.left = `${nextPosition.x}%`;
+    textElement.style.top = `${nextPosition.y}%`;
+  };
+
+  const scheduleShowcaseTextPositionUpdate = (nextPosition: { x: number; y: number }) => {
+    showcasePendingTextPositionRef.current = nextPosition;
+
+    if (showcaseDragFrameRef.current !== null) return;
+
+    showcaseDragFrameRef.current = window.requestAnimationFrame(() => {
+      const next = showcasePendingTextPositionRef.current;
+      showcasePendingTextPositionRef.current = null;
+      showcaseDragFrameRef.current = null;
+
+      if (next) {
+        showcaseCommittedDragPositionRef.current = next;
+        applyShowcaseTextPositionToPreview(next);
+
+        const nextIsNearCenter =
+          Math.abs(next.x - 50) <= 4 && Math.abs(next.y - 50) <= 4;
+
+        if (nextIsNearCenter || showShowcaseCenterGuides) {
+          setShowcaseTextPosition(next);
+        }
+      }
+    });
+  };
+
   const updateShowcaseTextPositionFromPointer = (
     clientX: number,
     clientY: number,
-    target: HTMLElement
+    target: HTMLElement,
+    immediate = false
   ) => {
     const rect = target.getBoundingClientRect();
 
     if (!rect.width || !rect.height) return;
 
-    const x = Math.max(8, Math.min(92, ((clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(10, Math.min(90, ((clientY - rect.top) / rect.height) * 100));
+    const x = Math.max(3, Math.min(97, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(3, Math.min(97, ((clientY - rect.top) / rect.height) * 100));
+    const nextPosition = getShowcaseSafeTextPosition(
+      { x, y },
+      showcaseCoverText.trim(),
+      showcaseSizeRailVisible
+    );
 
-    setShowcaseTextPosition({ x, y });
+    if (immediate) {
+      showcasePendingTextPositionRef.current = null;
+      showcaseCommittedDragPositionRef.current = nextPosition;
+
+      if (showcaseDragFrameRef.current !== null) {
+        window.cancelAnimationFrame(showcaseDragFrameRef.current);
+        showcaseDragFrameRef.current = null;
+      }
+
+      applyShowcaseTextPositionToPreview(nextPosition);
+      setShowcaseTextPosition(nextPosition);
+      return;
+    }
+
+    scheduleShowcaseTextPositionUpdate(nextPosition);
   };
 
   const handleShowcasePreviewPointerMove = (
     event: React.PointerEvent<HTMLDivElement>
   ) => {
     if (event.buttons !== 1 && event.pointerType !== "touch") return;
+    event.preventDefault();
     updateShowcaseTextPositionFromPointer(
       event.clientX,
       event.clientY,
@@ -1697,12 +1807,31 @@ useEffect(() => {
   const handleShowcasePreviewPointerDown = (
     event: React.PointerEvent<HTMLDivElement>
   ) => {
+    event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     updateShowcaseTextPositionFromPointer(
       event.clientX,
       event.clientY,
-      event.currentTarget
+      event.currentTarget,
+      true
     );
+  };
+
+  const handleShowcasePreviewPointerEnd = () => {
+    const next = showcasePendingTextPositionRef.current || showcaseCommittedDragPositionRef.current;
+
+    showcasePendingTextPositionRef.current = null;
+    showcaseCommittedDragPositionRef.current = null;
+
+    if (showcaseDragFrameRef.current !== null) {
+      window.cancelAnimationFrame(showcaseDragFrameRef.current);
+      showcaseDragFrameRef.current = null;
+    }
+
+    if (next) {
+      applyShowcaseTextPositionToPreview(next);
+      setShowcaseTextPosition(next);
+    }
   };
 
   const handleOpenShowcaseComposer = () => {
@@ -1776,8 +1905,8 @@ useEffect(() => {
       media_type: showcaseMediaPreviewUrl ? showcaseMediaType : "text",
       media_filename: showcaseMediaFileName || null,
       font_key: showcaseFontKey,
-      text_position_x: showcaseTextPosition.x,
-      text_position_y: showcaseTextPosition.y,
+      text_position_x: safeShowcaseTextPosition.x,
+      text_position_y: safeShowcaseTextPosition.y,
       overlay_font_size: clampShowcaseOverlayFontSize(showcaseOverlayFontSize),
       duration: showcaseDuration,
       visibility: showcaseVisibility,
@@ -7083,7 +7212,7 @@ return (
                               }}
                               placeholder="Give your Showcase a name"
                               style={profileShowcaseInputStyle}
-                              maxLength={32}
+                              maxLength={16}
                             />
                           </label>
 
@@ -7153,12 +7282,12 @@ return (
 
                               <label style={profileShowcaseFieldLabelStyle}>
                                 Cover text <span style={profileShowcaseOptionalTextStyle}>Optional</span>
-                                <input
+                                <textarea
                                   value={showcaseCoverText}
                                   onChange={(event) => setShowcaseCoverText(event.target.value)}
                                   placeholder="Add text over your Showcase"
-                                  style={profileShowcaseInputStyle}
-                                  maxLength={26}
+                                  style={profileShowcaseTextareaStyle}
+                                  rows={3}
                                 />
                               </label>
 
@@ -7280,6 +7409,9 @@ return (
                             }}
                             onPointerDown={showcaseCustomizeOpen ? handleShowcasePreviewPointerDown : undefined}
                             onPointerMove={showcaseCustomizeOpen ? handleShowcasePreviewPointerMove : undefined}
+                            onPointerUp={showcaseCustomizeOpen ? handleShowcasePreviewPointerEnd : undefined}
+                            onPointerCancel={showcaseCustomizeOpen ? handleShowcasePreviewPointerEnd : undefined}
+                            onPointerLeave={showcaseCustomizeOpen ? handleShowcasePreviewPointerEnd : undefined}
                           >
                             {showcaseMediaPreviewUrl && showcaseMediaType === "image" ? (
                               <img
@@ -7331,13 +7463,15 @@ return (
 
                               {showcaseCoverText.trim() ? (
                                 <span
+                                  ref={showcasePreviewTextRef}
                                   style={{
                                     ...profileShowcasePreviewTextStyle,
-                                    left: `${safeShowcaseTextX}%`,
-                                    top: `${showcaseTextPosition.y}%`,
+                                    left: `${safeShowcaseTextPosition.x}%`,
+                                    top: `${safeShowcaseTextPosition.y}%`,
                                     fontFamily: getShowcaseFontOption(showcaseFontKey).family,
-                                  fontSize: `${clampShowcaseOverlayFontSize(showcaseOverlayFontSize)}px`,
-                                    maxWidth: "calc(100% - 92px)",
+                                    fontSize: `${getShowcaseOverlayDisplayFontSize(showcaseCoverText.trim(), showcaseOverlayFontSize)}px`,
+                                    width: getShowcaseOverlayTextWidth(showcaseCoverText.trim()),
+                                    maxWidth: getShowcaseOverlayTextWidth(showcaseCoverText.trim()),
                                   }}
                                 >
                                   {showcaseCoverText.trim()}
@@ -7463,12 +7597,20 @@ return (
                                 <span
                                   style={{
                                     ...profileShowcaseViewerOverlayTextStyle,
-                                    left: `${activeProfileShowcase.textPosition?.x ?? 50}%`,
-                                    top: `${activeProfileShowcase.textPosition?.y ?? 50}%`,
+                                    left: `${getShowcaseSafeTextPosition(activeProfileShowcase.textPosition, (activeProfileShowcase.coverText || "").trim()).x}%`,
+                                    top: `${getShowcaseSafeTextPosition(activeProfileShowcase.textPosition, (activeProfileShowcase.coverText || "").trim()).y}%`,
+                                    width: getShowcaseOverlayTextWidth((activeProfileShowcase.coverText || "").trim()),
+                                    maxWidth: getShowcaseOverlayTextWidth((activeProfileShowcase.coverText || "").trim()),
                                     fontFamily: getShowcaseFontOption(activeProfileShowcase.fontKey).family,
                                     fontSize: `${Math.min(
                                       48,
-                                      Math.max(20, clampShowcaseOverlayFontSize(activeProfileShowcase.overlayFontSize))
+                                      Math.max(
+                                        16,
+                                        getShowcaseOverlayDisplayFontSize(
+                                          (activeProfileShowcase.coverText || "").trim(),
+                                          activeProfileShowcase.overlayFontSize
+                                        )
+                                      )
                                     )}px`,
                                   }}
                                 >
@@ -10050,6 +10192,8 @@ const profileShowcaseCoverTextStyle: CSSProperties = {
   WebkitLineClamp: 2,
   WebkitBoxOrient: "vertical",
   overflow: "hidden",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
 };
 
 const profileShowcaseDeleteStyle: CSSProperties = {
@@ -10347,6 +10491,7 @@ const profileShowcasePreviewOverlayStyle: CSSProperties = {
   cursor: "grab",
   userSelect: "none",
   WebkitUserSelect: "none",
+  contain: "layout paint",
 };
 
 const profileShowcaseCenterGuideVerticalStyle: CSSProperties = {
@@ -10377,19 +10522,28 @@ const profileShowcaseCenterGuideHorizontalStyle: CSSProperties = {
 
 const profileShowcasePreviewTextStyle: CSSProperties = {
   position: "absolute",
-  transform: "translate(-50%, -50%)",
+  transform: "translate3d(-50%, -50%, 0)",
   color: "#ffffff",
   fontSize: "28px",
   fontWeight: 950,
   textAlign: "center",
-  lineHeight: 1.05,
+  lineHeight: 1.08,
   textShadow: "0 4px 16px rgba(0,0,0,0.42)",
   pointerEvents: "none",
-  whiteSpace: "normal",
+  whiteSpace: "pre-wrap",
   wordBreak: "break-word",
+  overflowWrap: "anywhere",
+  maxHeight: "72%",
+  overflow: "hidden",
   padding: "0 8px",
+  minWidth: "120px",
+  boxSizing: "border-box",
   userSelect: "none",
   WebkitUserSelect: "none",
+  willChange: "left, top, transform",
+  transition: "none",
+  contain: "layout paint",
+  backfaceVisibility: "hidden",
 };
 
 const profileShowcaseDragHintStyle: CSSProperties = {
@@ -10521,6 +10675,11 @@ const profileShowcaseFontPreviewStyle: CSSProperties = {
   lineHeight: 1.2,
   textAlign: "center",
   textShadow: "0 2px 12px rgba(0,0,0,0.38)",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  whiteSpace: "pre-wrap",
+  maxHeight: "96px",
+  overflowY: "auto",
 };
 
 const profileShowcaseTextSizeControlStyle: CSSProperties = {
@@ -10771,7 +10930,9 @@ const profileShowcaseViewerOverlayTextStyle: CSSProperties = {
   position: "absolute",
   zIndex: 3,
   transform: "translate(-50%, -50%)",
-  maxWidth: "78%",
+  width: "82%",
+  maxWidth: "82%",
+  maxHeight: "74%",
   color: "#ffffff",
   fontWeight: 950,
   lineHeight: 1.05,
@@ -10779,6 +10940,11 @@ const profileShowcaseViewerOverlayTextStyle: CSSProperties = {
   textAlign: "center",
   textShadow: "0 4px 24px rgba(0,0,0,0.55)",
   pointerEvents: "none",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
+  overflow: "hidden",
+  boxSizing: "border-box",
 };
 
 const profileShowcaseViewerFooterStyle: CSSProperties = {
@@ -10953,6 +11119,16 @@ const profileShowcaseInputStyle: CSSProperties = {
   outline: "none",
   fontSize: "14px",
   fontFamily: "inherit",
+};
+
+const profileShowcaseTextareaStyle: CSSProperties = {
+  ...profileShowcaseInputStyle,
+  minHeight: "86px",
+  lineHeight: 1.35,
+  resize: "vertical",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  whiteSpace: "pre-wrap",
 };
 
 const profileShowcaseDurationGroupStyle: CSSProperties = {

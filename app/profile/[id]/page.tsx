@@ -2079,45 +2079,108 @@ useEffect(() => {
     setProfileActionsOpen(false);
   };
 
-  const handleLoggedOutProfileAction = (action: string) => {
-    setProfileActionsOpen(false);
-    alert(`Please log in to ${action}.`);
+  const savePendingLoggedOutProfileAction = (action: "report_profile" | "block_user") => {
+    if (typeof window === "undefined") return;
+
+    const href = `${window.location.origin}/profile/${profileId}`;
+
+    window.localStorage.setItem(
+      "parapost-pending-profile-action",
+      JSON.stringify({
+        action,
+        profileId,
+        href,
+        createdAt: new Date().toISOString(),
+      })
+    );
   };
 
-  const handleReportProfile = () => {
-    if (isOwnProfile) return;
+  const handleLoggedOutProfileAction = (actionLabel: string, action: "report_profile" | "block_user") => {
+    savePendingLoggedOutProfileAction(action);
+    setProfileActionsOpen(false);
+    alert(`Please log in or create an account to ${actionLabel}.`);
+  };
+
+  const handleReportProfile = async () => {
+    if (isOwnProfile || !profileId) return;
 
     if (!viewerId) {
-      handleLoggedOutProfileAction("report a profile");
+      handleLoggedOutProfileAction("report this profile", "report_profile");
       return;
     }
 
+    const profileName = profile?.full_name || profile?.username || "this profile";
     const confirmed = window.confirm(
-      `Report ${profile?.full_name || profile?.username || "this profile"} to Parapost Network moderation?`
+      `Report ${profileName} to Parapost Network moderation?`
     );
 
     if (!confirmed) return;
 
+    const reason = window.prompt(
+      "Why are you reporting this profile? Example: spam, harassment, impersonation, unsafe content, or other.",
+      ""
+    );
+
+    if (reason === null) return;
+
+    const trimmedReason = reason.trim();
+
+    if (!trimmedReason) {
+      showFriendStatus("Please add a reason before reporting.");
+      return;
+    }
+
+    const { error } = await supabase.from("profile_reports").insert({
+      reporter_id: viewerId,
+      reported_profile_id: profileId,
+      reason: trimmedReason.slice(0, 160),
+      details: trimmedReason.length > 160 ? trimmedReason : null,
+      status: "open",
+    });
+
+    if (error) {
+      console.error("Report profile error:", error.message);
+      showFriendStatus("Could not submit report. Please try again.");
+      return;
+    }
+
     setProfileActionsOpen(false);
-    showFriendStatus("Report profile flow noted for moderation setup.");
+    showFriendStatus("Profile report sent to moderation.");
   };
 
-  const handleBlockProfile = () => {
-    if (isOwnProfile) return;
+  const handleBlockProfile = async () => {
+    if (isOwnProfile || !profileId) return;
 
     if (!viewerId) {
-      handleLoggedOutProfileAction("block a user");
+      handleLoggedOutProfileAction("block this user", "block_user");
       return;
     }
 
     const confirmed = window.confirm(
-      `Block ${profile?.full_name || profile?.username || "this user"}? Once the block system is connected, this will hide their profile and activity from you.`
+      `Block ${profile?.full_name || profile?.username || "this user"}? This will save the block to your Parapost account.`
     );
 
     if (!confirmed) return;
 
+    const { error } = await supabase.from("user_blocks").upsert(
+      {
+        blocker_id: viewerId,
+        blocked_id: profileId,
+      },
+      {
+        onConflict: "blocker_id,blocked_id",
+        ignoreDuplicates: true,
+      }
+    );
+
+    if (error) {
+      console.error("Block user error:", error.message);
+      showFriendStatus("Could not block user. Please try again.");
+      return;
+    }
+
     setProfileActionsOpen(false);
-    showFriendStatus("Block user flow noted for safety setup.");
+    showFriendStatus("User blocked.");
   };
 
   const handleOpenProfileSection = (tab: string) => {
@@ -4719,7 +4782,7 @@ return (
         }
 
         .profile-mobile-first-polish .profile-desktop-action-menu-wrap {
-          display: inline-flex !important;
+          display: none !important;
           position: relative !important;
         }
 
@@ -7271,17 +7334,19 @@ return (
                                 </span>
                               </button>
 
-                              <button
-                                type="button"
-                                onClick={handleProfileLogout}
-                                style={profileDesktopLogoutActionItemStyle}
-                              >
-                                <span style={profileActionLogoutIconStyle}>↪</span>
-                                <span>
-                                  <strong>Log out</strong>
-                                  <small>Sign out of Parapost Network</small>
-                                </span>
-                              </button>
+                              {isOwnProfile ? (
+                                <button
+                                  type="button"
+                                  onClick={handleProfileLogout}
+                                  style={profileDesktopLogoutActionItemStyle}
+                                >
+                                  <span style={profileActionLogoutIconStyle}>↪</span>
+                                  <span>
+                                    <strong>Log out</strong>
+                                    <small>Sign out of Parapost Network</small>
+                                  </span>
+                                </button>
+                              ) : null}
                             </div>
                           ) : null}
                         </div>
@@ -8953,7 +9018,7 @@ return (
             </span>
           </button>
 
-          {viewerId ? (
+          {viewerId && isOwnProfile ? (
             <button
               type="button"
               onClick={handleProfileLogout}
@@ -8965,19 +9030,7 @@ return (
                 <small>Sign out of Parapost Network</small>
               </span>
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleLoggedOutProfileAction("connect with people on Parapost Network")}
-              style={profileDesktopActionItemStyle}
-            >
-              <span style={profileActionIconStyle}>◎</span>
-              <span>
-                <strong>Log in to interact</strong>
-                <small>Sign in to friend, message, report, or block</small>
-              </span>
-            </button>
-          )}
+          ) : null}
         </div>
       ) : null}
 
@@ -9138,7 +9191,7 @@ return (
                 </span>
               </button>
 
-              {viewerId ? (
+              {viewerId && isOwnProfile ? (
                 <button
                   type="button"
                   onClick={handleProfileLogout}
@@ -9150,19 +9203,7 @@ return (
                     <small>Sign out of Parapost Network</small>
                   </span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleLoggedOutProfileAction("connect with people on Parapost Network")}
-                  style={profileActionItemStyle}
-                >
-                  <span style={profileActionIconStyle}>◎</span>
-                  <span>
-                    <strong>Log in to interact</strong>
-                    <small>Sign in to friend, message, report, or block</small>
-                  </span>
-                </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

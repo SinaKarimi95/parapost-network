@@ -5536,19 +5536,19 @@ return (
         .profile-mobile-first-polish .profile-feed-card {
           margin-left: 0 !important;
           margin-right: 0 !important;
-          border-radius: 22px !important;
-          border-left: 1px solid rgba(255,255,255,0.10) !important;
-          border-right: 1px solid rgba(255,255,255,0.10) !important;
-          border-top: 1px solid rgba(255,255,255,0.11) !important;
-          border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-          box-shadow: 0 14px 34px rgba(0,0,0,0.28) !important;
-          background: linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.030)) !important;
+          border-radius: 18px !important;
+          border-left: 1px solid rgba(255,255,255,0.085) !important;
+          border-right: 1px solid rgba(255,255,255,0.085) !important;
+          border-top: 1px solid rgba(255,255,255,0.095) !important;
+          border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.22) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.046), rgba(255,255,255,0.024)) !important;
           padding: 14px !important;
         }
 
         .profile-mobile-first-polish .profile-post-image,
         .profile-mobile-first-polish .profile-feed-card img.profile-post-image {
-          border-radius: 18px !important;
+          border-radius: 15px !important;
           margin-left: 0 !important;
           margin-right: 0 !important;
           width: 100% !important;
@@ -8618,16 +8618,17 @@ return (
                         return (
                           <article
                             key={post.id}
-                            style={{ ...postCardStyle, position: "relative" }}
+                            className="profile-feed-card profile-feed-post-card"
+                            style={{ ...profileNormalPostCardStyle, position: "relative" }}
                             onMouseEnter={(event) => {
                               event.currentTarget.style.transform = "translateY(-1px)";
-                              event.currentTarget.style.borderColor = "rgba(168,85,247,0.30)";
-                              event.currentTarget.style.boxShadow = "0 22px 52px rgba(0,0,0,0.34)";
+                              event.currentTarget.style.borderColor = "rgba(168,85,247,0.24)";
+                              event.currentTarget.style.boxShadow = "0 16px 34px rgba(0,0,0,0.24)";
                             }}
                             onMouseLeave={(event) => {
                               event.currentTarget.style.transform = "translateY(0)";
-                              event.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
-                              event.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.26)";
+                              event.currentTarget.style.borderColor = "rgba(255,255,255,0.095)";
+                              event.currentTarget.style.boxShadow = "0 10px 24px rgba(0,0,0,0.20)";
                             }}
                           >
                             <header style={postHeaderStyle}>
@@ -8719,9 +8720,6 @@ return (
                                 <span>{likeCount}</span>
                               </button>
 
-                              <span style={postSubtleMetaPillStyle}>
-                                Profile update
-                              </span>
                             </div>
                           </article>
                         );
@@ -9478,6 +9476,18 @@ const postCardStyle: CSSProperties = {
   transition: "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease",
 };
 
+const profileNormalPostCardStyle: CSSProperties = {
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.046) 0%, rgba(255,255,255,0.024) 100%)",
+  border: "1px solid rgba(255,255,255,0.095)",
+  borderRadius: "18px",
+  padding: "16px",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.20)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  transition: "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease",
+};
+
 const profileComposerHeaderStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -9575,7 +9585,7 @@ const feedCountPillStyle: CSSProperties = {
 const feedStackStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "16px",
+  gap: "13px",
 };
 
 const feedEmptyStateStyle: CSSProperties = {
@@ -9593,30 +9603,32 @@ const feedEmptyStateStyle: CSSProperties = {
 const postHeaderStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "13px",
-  marginBottom: "14px",
+  gap: "11px",
+  marginBottom: "12px",
+  paddingBottom: "10px",
+  borderBottom: "1px solid rgba(255,255,255,0.055)",
 };
 
 const postAuthorAvatarStyle: CSSProperties = {
-  width: "52px",
-  height: "52px",
-  borderRadius: "50%",
+  width: "46px",
+  height: "46px",
+  borderRadius: "14px",
   overflow: "hidden",
   flexShrink: 0,
-  border: "2px solid rgba(168,85,247,0.48)",
+  border: "1px solid rgba(168,85,247,0.34)",
   background: "#05070a",
-  boxShadow: "0 10px 24px rgba(0,0,0,0.26)",
+  boxShadow: "0 8px 18px rgba(0,0,0,0.22)",
 };
 
 const postAuthorAvatarOnlineStyle: CSSProperties = {
-  border: "2px solid rgba(34,211,238,0.82)",
+  border: "1px solid rgba(34,211,238,0.72)",
   boxShadow:
-    "0 0 0 2px rgba(168,85,247,0.34), 0 0 22px rgba(168,85,247,0.34), 0 0 30px rgba(34,211,238,0.18)",
+    "0 0 0 1px rgba(168,85,247,0.22), 0 0 16px rgba(34,211,238,0.14)",
 };
 
 const postAuthorAvatarOfflineStyle: CSSProperties = {
-  border: "2px solid rgba(168,85,247,0.46)",
-  boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 10px 24px rgba(0,0,0,0.28)",
+  border: "1px solid rgba(168,85,247,0.34)",
+  boxShadow: "0 0 0 1px rgba(255,255,255,0.055), 0 8px 18px rgba(0,0,0,0.22)",
 };
 
 const postAuthorFallbackStyle: CSSProperties = {
@@ -9660,31 +9672,32 @@ const postMetaStyle: CSSProperties = {
 const postContentStyle: CSSProperties = {
   margin: "10px 0 2px",
   whiteSpace: "pre-wrap",
-  lineHeight: 1.78,
-  color: "#f9fafb",
-  fontSize: "15.5px",
-  fontWeight: 520,
+  lineHeight: 1.7,
+  color: "#f3f4f6",
+  fontSize: "15px",
+  fontWeight: 500,
+  letterSpacing: "-0.006em",
 };
 
 const postImageStyle: CSSProperties = {
   width: "100%",
   maxHeight: "720px",
-  marginTop: "16px",
-  borderRadius: "24px",
+  marginTop: "14px",
+  borderRadius: "16px",
   objectFit: "cover",
   display: "block",
-  border: "1px solid rgba(255,255,255,0.12)",
-  boxShadow: "0 18px 42px rgba(0,0,0,0.36)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  boxShadow: "0 12px 26px rgba(0,0,0,0.28)",
 };
 
 const postActionsRowStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: "12px",
-  marginTop: "18px",
-  paddingTop: "14px",
-  borderTop: "1px solid rgba(255,255,255,0.075)",
+  justifyContent: "flex-start",
+  gap: "10px",
+  marginTop: "14px",
+  paddingTop: "12px",
+  borderTop: "1px solid rgba(255,255,255,0.055)",
   flexWrap: "wrap",
 };
 
@@ -9692,16 +9705,16 @@ const postLikeButtonActiveStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "8px",
-  borderRadius: "999px",
-  border: "1px solid rgba(236,72,153,0.42)",
-  background: "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(168,85,247,0.12))",
+  gap: "7px",
+  borderRadius: "12px",
+  border: "1px solid rgba(236,72,153,0.32)",
+  background: "linear-gradient(135deg, rgba(236,72,153,0.14), rgba(168,85,247,0.10))",
   color: "#fbcfe8",
-  padding: "10px 15px",
+  padding: "8px 12px",
   cursor: "pointer",
-  minHeight: "42px",
-  fontWeight: 900,
-  boxShadow: "0 12px 28px rgba(236,72,153,0.16)",
+  minHeight: "36px",
+  fontWeight: 850,
+  boxShadow: "0 8px 18px rgba(236,72,153,0.10)",
   transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease",
 };
 
@@ -9785,16 +9798,16 @@ const actionButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "8px",
-  borderRadius: "999px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.055)",
+  gap: "7px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.040)",
   color: "#f9fafb",
-  padding: "10px 15px",
+  padding: "8px 12px",
   cursor: "pointer",
-  minHeight: "42px",
-  fontWeight: 900,
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+  minHeight: "36px",
+  fontWeight: 850,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.028)",
   transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease",
 };
 
@@ -9900,9 +9913,9 @@ const profilePostDangerButtonStyle: CSSProperties = {
 
 
 const dotsButtonStyle: CSSProperties = {
-  width: "38px",
-  height: "38px",
-  borderRadius: "999px",
+  width: "34px",
+  height: "34px",
+  borderRadius: "12px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(255,255,255,0.07)",
   color: "#f9fafb",
@@ -10338,15 +10351,16 @@ const editCoverButtonStyle: CSSProperties = {
   top: "16px",
   right: "16px",
   zIndex: 2,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(0,0,0,0.34)",
-  color: "white",
-  borderRadius: "14px",
-  padding: "8px 11px",
+  border: "1px solid rgba(255,255,255,0.16)",
+  background: "linear-gradient(180deg, rgba(7,10,16,0.76), rgba(7,10,16,0.52))",
+  color: "#f8fafc",
+  borderRadius: "10px",
+  padding: "7px 11px",
   cursor: "pointer",
   fontWeight: 850,
-  fontSize: "13px",
-  boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+  fontSize: "12px",
+  letterSpacing: "0.01em",
+  boxShadow: "0 8px 18px rgba(0,0,0,0.20)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
 };
@@ -12183,7 +12197,7 @@ const miniReelVideoStyle: CSSProperties = {
 
 const rightRailStyle: CSSProperties = {
   flexDirection: "column",
-  gap: "14px",
+  gap: "12px",
   position: "sticky",
   top: "16px",
   height: "fit-content",
@@ -12191,11 +12205,11 @@ const rightRailStyle: CSSProperties = {
 
 const rightPanelCardStyle: CSSProperties = {
   background:
-    "linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.035) 100%)",
-  borderRadius: "24px",
-  padding: "16px",
-  border: "1px solid rgba(255,255,255,0.105)",
-  boxShadow: "0 14px 34px rgba(0,0,0,0.24)",
+    "linear-gradient(180deg, rgba(255,255,255,0.050) 0%, rgba(255,255,255,0.024) 100%)",
+  borderRadius: "18px",
+  padding: "15px",
+  border: "1px solid rgba(255,255,255,0.085)",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.20)",
   backdropFilter: "blur(14px)",
 };
 
@@ -12204,15 +12218,17 @@ const rightPanelHeaderStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: "12px",
-  marginBottom: "14px",
+  marginBottom: "12px",
+  paddingBottom: "10px",
+  borderBottom: "1px solid rgba(255,255,255,0.055)",
 };
 
 const rightPanelTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "16px",
+  fontSize: "15px",
   fontWeight: 900,
-  letterSpacing: "-0.02em",
-  color: "#f9fafb",
+  letterSpacing: "-0.015em",
+  color: "#f8fafc",
 };
 
 const rightPanelTextStyle: CSSProperties = {
@@ -12223,34 +12239,35 @@ const rightPanelTextStyle: CSSProperties = {
 };
 
 const miniPurpleLinkStyle: CSSProperties = {
-  color: "#c084fc",
-  fontSize: "12px",
+  color: "#d8b4fe",
+  fontSize: "11px",
   fontWeight: 850,
   whiteSpace: "nowrap",
+  letterSpacing: "0.015em",
 };
 
 const profileStrengthRingStyle: CSSProperties = {
-  width: "76px",
-  height: "76px",
-  borderRadius: "50%",
+  width: "70px",
+  height: "70px",
+  borderRadius: "18px",
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
   color: "#ffffff",
   background:
-    "radial-gradient(circle at center, rgba(168,85,247,0.12) 0%, rgba(8,10,16,0.96) 62%), conic-gradient(from 0deg, #7c3aed 0deg, #a855f7 306deg, rgba(255,255,255,0.10) 306deg)",
-  boxShadow: "0 0 24px rgba(168,85,247,0.25)",
-  border: "1px solid rgba(255,255,255,0.10)",
+    "linear-gradient(145deg, rgba(124,58,237,0.20), rgba(8,10,16,0.96)), conic-gradient(from 0deg, #7c3aed 0deg, #a855f7 306deg, rgba(255,255,255,0.10) 306deg)",
+  boxShadow: "0 10px 22px rgba(0,0,0,0.22), 0 0 20px rgba(168,85,247,0.18)",
+  border: "1px solid rgba(255,255,255,0.105)",
 };
 
 const wideGlassButtonStyle: CSSProperties = {
   width: "100%",
-  marginTop: "14px",
-  minHeight: "40px",
-  borderRadius: "14px",
-  background: "rgba(255,255,255,0.045)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  color: "#f9fafb",
+  marginTop: "12px",
+  minHeight: "38px",
+  borderRadius: "11px",
+  background: "rgba(255,255,255,0.035)",
+  border: "1px solid rgba(255,255,255,0.09)",
+  color: "#f8fafc",
   fontWeight: 850,
   cursor: "pointer",
   transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
@@ -12259,7 +12276,7 @@ const wideGlassButtonStyle: CSSProperties = {
 const achievementGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: "10px",
+  gap: "8px",
 };
 
 const achievementItemStyle: CSSProperties = {
@@ -12274,27 +12291,27 @@ const achievementItemStyle: CSSProperties = {
 };
 
 const achievementIconStyle: CSSProperties = {
-  width: "50px",
-  height: "50px",
-  borderRadius: "50%",
+  width: "46px",
+  height: "46px",
+  borderRadius: "15px",
   display: "grid",
   placeItems: "center",
-  fontSize: "21px",
-  background: "rgba(255,255,255,0.045)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  boxShadow: "0 0 18px rgba(168,85,247,0.12)",
+  fontSize: "20px",
+  background: "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022))",
+  border: "1px solid rgba(255,255,255,0.095)",
+  boxShadow: "0 8px 16px rgba(0,0,0,0.18)",
 };
 
 const badgeBubbleStyle: CSSProperties = {
-  width: "42px",
-  height: "42px",
-  borderRadius: "50%",
+  width: "40px",
+  height: "40px",
+  borderRadius: "14px",
   display: "grid",
   placeItems: "center",
-  fontSize: "18px",
-  background: "rgba(168,85,247,0.12)",
-  border: "1px solid rgba(168,85,247,0.42)",
-  boxShadow: "0 0 18px rgba(168,85,247,0.16)",
+  fontSize: "17px",
+  background: "linear-gradient(145deg, rgba(168,85,247,0.14), rgba(255,255,255,0.035))",
+  border: "1px solid rgba(168,85,247,0.34)",
+  boxShadow: "0 8px 18px rgba(0,0,0,0.16)",
 };
 
 const visitorAvatarStyle: CSSProperties = {
@@ -12315,10 +12332,10 @@ const activityRowStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: "12px",
-  padding: "10px 12px",
-  borderRadius: "14px",
-  background: "rgba(255,255,255,0.035)",
-  border: "1px solid rgba(255,255,255,0.07)",
+  padding: "9px 11px",
+  borderRadius: "11px",
+  background: "rgba(255,255,255,0.026)",
+  border: "1px solid rgba(255,255,255,0.060)",
   color: "#cbd5e1",
   fontSize: "13px",
 };

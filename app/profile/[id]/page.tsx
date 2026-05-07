@@ -569,6 +569,7 @@ export default function ProfilePage() {
   const [profileActionsOpen, setProfileActionsOpen] = useState(false);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
+  const [activeProfileShowcase, setActiveProfileShowcase] = useState<ProfileShowcase | null>(null);
   const [showcaseCreatorMode, setShowcaseCreatorMode] = useState<ShowcaseCreatorMode>("media");
   const [showcaseTitle, setShowcaseTitle] = useState("");
   const [showcaseCoverText, setShowcaseCoverText] = useState("");
@@ -1046,6 +1047,7 @@ useEffect(() => {
     if (event.key === "Escape") {
       setOpenPostMenuId(null);
       setProfileActionsOpen(false);
+      setActiveProfileShowcase(null);
     }
   };
 
@@ -1821,11 +1823,19 @@ useEffect(() => {
     }
 
     setProfileShowcases((prev) => prev.filter((showcase) => showcase.id !== showcaseId));
+    setActiveProfileShowcase((current) =>
+      current?.id === showcaseId ? null : current
+    );
     showFriendStatus("Showcase deleted.");
   };
 
   const handleOpenShowcase = (showcase: ProfileShowcase) => {
-    showFriendStatus(`${showcase.title} Showcase selected.`);
+    setActiveProfileShowcase(showcase);
+    setProfileActionsOpen(false);
+  };
+
+  const handleCloseShowcaseViewer = () => {
+    setActiveProfileShowcase(null);
   };
 
   const updateProfileActionMenuPosition = useCallback(() => {
@@ -1990,6 +2000,66 @@ return (
    }}
   >
     <style>{`
+
+      .profile-showcase-viewer-overlay {
+        animation: profileShowcaseViewerFade 180ms ease-out;
+      }
+
+      .profile-showcase-viewer-shell {
+        animation: profileShowcaseViewerRise 200ms ease-out;
+      }
+
+      @keyframes profileShowcaseViewerFade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes profileShowcaseViewerRise {
+        from {
+          opacity: 0;
+          transform: translateY(14px) scale(0.985);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-viewer-overlay {
+          padding: 0 !important;
+          align-items: stretch !important;
+        }
+
+        .profile-showcase-viewer-shell {
+          width: 100% !important;
+          max-width: none !important;
+          height: 100dvh !important;
+          max-height: 100dvh !important;
+          border-radius: 0 !important;
+          padding: 12px 12px calc(14px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-showcase-viewer-header {
+          padding-bottom: 10px !important;
+        }
+
+        .profile-showcase-viewer-stage {
+          min-height: 0 !important;
+          flex: 1 1 auto !important;
+          border-radius: 24px !important;
+        }
+
+        .profile-showcase-viewer-footer {
+          grid-template-columns: 1fr !important;
+          gap: 10px !important;
+        }
+
+        .profile-showcase-viewer-delete {
+          width: 100% !important;
+        }
+      }
+
 
       @media (max-width: 720px) {
         .profile-starter-card {
@@ -7322,6 +7392,119 @@ return (
                     )
                   : null}
 
+                {isClientMounted && activeProfileShowcase
+                  ? createPortal(
+                      (
+                        <div
+                          className="profile-showcase-viewer-overlay"
+                          style={profileShowcaseViewerOverlayStyle}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label={`${activeProfileShowcase.title} Showcase viewer`}
+                          onClick={handleCloseShowcaseViewer}
+                        >
+                          <div
+                            className="profile-showcase-viewer-shell"
+                            style={profileShowcaseViewerShellStyle}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="profile-showcase-viewer-header" style={profileShowcaseViewerHeaderStyle}>
+                              <div style={profileShowcaseViewerBrandStyle}>
+                                <span style={profileShowcaseViewerLogoStyle}>
+                                  <img
+                                    src="/parapost-icon-white.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    style={profileShowcaseModalLogoImageStyle}
+                                  />
+                                </span>
+                                <span style={{ minWidth: 0 }}>
+                                  <p style={profileShowcaseViewerEyebrowStyle}>Parapost Showcase</p>
+                                  <h3 style={profileShowcaseViewerTitleStyle}>
+                                    {activeProfileShowcase.title}
+                                  </h3>
+                                  <p style={profileShowcaseViewerMetaTextStyle}>
+                                    {getShowcaseExpiryLabel(activeProfileShowcase)} · {getShowcaseDurationLabel(activeProfileShowcase.duration)}
+                                  </p>
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleCloseShowcaseViewer}
+                                style={profileShowcaseViewerCloseStyle}
+                                aria-label="Close Showcase viewer"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            <div className="profile-showcase-viewer-stage" style={profileShowcaseViewerStageStyle}>
+                              {activeProfileShowcase.mediaPreviewUrl && activeProfileShowcase.mediaType === "image" ? (
+                                <img
+                                  src={activeProfileShowcase.mediaPreviewUrl}
+                                  alt=""
+                                  style={profileShowcaseViewerMediaStyle}
+                                />
+                              ) : activeProfileShowcase.mediaPreviewUrl && activeProfileShowcase.mediaType === "video" ? (
+                                <video
+                                  src={activeProfileShowcase.mediaPreviewUrl}
+                                  controls
+                                  playsInline
+                                  style={profileShowcaseViewerMediaStyle}
+                                />
+                              ) : (
+                                <div style={profileShowcaseViewerCanvasStyle} />
+                              )}
+
+                              <div style={profileShowcaseViewerShadeStyle} />
+
+                              {(activeProfileShowcase.coverText || "").trim() ? (
+                                <span
+                                  style={{
+                                    ...profileShowcaseViewerOverlayTextStyle,
+                                    left: `${activeProfileShowcase.textPosition?.x ?? 50}%`,
+                                    top: `${activeProfileShowcase.textPosition?.y ?? 50}%`,
+                                    fontFamily: getShowcaseFontOption(activeProfileShowcase.fontKey).family,
+                                    fontSize: `${Math.min(
+                                      48,
+                                      Math.max(20, clampShowcaseOverlayFontSize(activeProfileShowcase.overlayFontSize))
+                                    )}px`,
+                                  }}
+                                >
+                                  {(activeProfileShowcase.coverText || "").trim()}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="profile-showcase-viewer-footer" style={profileShowcaseViewerFooterStyle}>
+                              <div style={{ minWidth: 0 }}>
+                                <strong style={profileShowcaseViewerFooterTitleStyle}>
+                                  {activeProfileShowcase.title}
+                                </strong>
+                                <p style={profileShowcaseViewerFooterMetaStyle}>
+                                  Visibility: {activeProfileShowcase.visibility || "public"} · {getShowcaseExpiryLabel(activeProfileShowcase)}
+                                </p>
+                              </div>
+
+                              {canManageProfileShowcases ? (
+                                <button
+                                  type="button"
+                                  className="profile-showcase-viewer-delete"
+                                  onClick={() => handleDeleteShowcase(activeProfileShowcase.id)}
+                                  style={profileShowcaseViewerDeleteButtonStyle}
+                                >
+                                  Delete Showcase
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ),
+                      document.body
+                    )
+                  : null}
+
                 {shouldShowProfileStarter ? (
                   <section className="profile-starter-card" style={profileStarterCardStyle} aria-label="Complete your profile">
                     <div style={profileStarterHeaderStyle}>
@@ -10444,6 +10627,196 @@ const profileShowcaseFontOptionActiveStyle: CSSProperties = {
   border: "1px solid rgba(216,180,254,0.42)",
   background: "linear-gradient(135deg, rgba(168,85,247,0.23), rgba(59,130,246,0.10))",
   boxShadow: "0 0 20px rgba(168,85,247,0.14)",
+};
+
+
+const profileShowcaseViewerOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 2147483647,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "18px",
+  background:
+    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.22), transparent 42%), rgba(0,0,0,0.90)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+};
+
+const profileShowcaseViewerShellStyle: CSSProperties = {
+  width: "min(760px, calc(100vw - 32px))",
+  height: "min(900px, calc(100vh - 32px))",
+  maxHeight: "calc(100vh - 32px)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+  borderRadius: "30px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background:
+    "radial-gradient(circle at 16% 0%, rgba(168,85,247,0.24), transparent 34%), radial-gradient(circle at 96% 10%, rgba(34,211,238,0.11), transparent 30%), linear-gradient(180deg, rgba(17,19,28,0.996), rgba(5,7,12,0.998))",
+  boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
+  padding: "16px",
+  overflow: "hidden",
+};
+
+const profileShowcaseViewerHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  flex: "0 0 auto",
+  paddingBottom: "12px",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+};
+
+const profileShowcaseViewerBrandStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "center",
+  minWidth: 0,
+};
+
+const profileShowcaseViewerLogoStyle: CSSProperties = {
+  width: "42px",
+  height: "42px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "15px",
+  background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
+  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  overflow: "hidden",
+};
+
+const profileShowcaseViewerEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#c084fc",
+  fontSize: "11px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const profileShowcaseViewerTitleStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#ffffff",
+  fontSize: "20px",
+  fontWeight: 950,
+  letterSpacing: "-0.035em",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profileShowcaseViewerMetaTextStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const profileShowcaseViewerCloseStyle: CSSProperties = {
+  width: "38px",
+  height: "38px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.07)",
+  color: "#ffffff",
+  fontSize: "20px",
+  fontWeight: 900,
+  cursor: "pointer",
+  flex: "0 0 auto",
+};
+
+const profileShowcaseViewerStageStyle: CSSProperties = {
+  position: "relative",
+  flex: "1 1 auto",
+  minHeight: "420px",
+  borderRadius: "28px",
+  overflow: "hidden",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background:
+    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.90) 52%, rgba(168,85,247,0.84))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 30px 80px rgba(0,0,0,0.46)",
+};
+
+const profileShowcaseViewerCanvasStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background:
+    "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.82), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.88))",
+};
+
+const profileShowcaseViewerMediaStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  objectPosition: "center center",
+  display: "block",
+  backgroundColor: "#05060a",
+};
+
+const profileShowcaseViewerShadeStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background:
+    "linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.48))",
+  pointerEvents: "none",
+};
+
+const profileShowcaseViewerOverlayTextStyle: CSSProperties = {
+  position: "absolute",
+  zIndex: 3,
+  transform: "translate(-50%, -50%)",
+  maxWidth: "78%",
+  color: "#ffffff",
+  fontWeight: 950,
+  lineHeight: 1.05,
+  letterSpacing: "-0.035em",
+  textAlign: "center",
+  textShadow: "0 4px 24px rgba(0,0,0,0.55)",
+  pointerEvents: "none",
+};
+
+const profileShowcaseViewerFooterStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: "12px",
+  flex: "0 0 auto",
+  paddingTop: "2px",
+};
+
+const profileShowcaseViewerFooterTitleStyle: CSSProperties = {
+  display: "block",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 950,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profileShowcaseViewerFooterMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const profileShowcaseViewerDeleteButtonStyle: CSSProperties = {
+  border: "1px solid rgba(248,113,113,0.30)",
+  borderRadius: "14px",
+  background: "rgba(248,113,113,0.08)",
+  color: "#fecaca",
+  padding: "11px 13px",
+  fontSize: "12px",
+  fontWeight: 950,
+  cursor: "pointer",
+  fontFamily: "inherit",
 };
 
 const profileShowcaseModalOverlayStyle: CSSProperties = {

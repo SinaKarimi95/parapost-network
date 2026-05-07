@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ChangeEvent, CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -2034,11 +2033,13 @@ useEffect(() => {
     };
   }, [profileActionsOpen, updateProfileActionMenuPosition]);
 
+  const getProfileShareHref = () =>
+    typeof window !== "undefined"
+      ? `${window.location.origin}/profile/${profileId}`
+      : `/profile/${profileId}`;
+
   const handleCopyProfileLink = async () => {
-    const href =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/profile/${profileId}`
-        : `/profile/${profileId}`;
+    const href = getProfileShareHref();
 
     try {
       await navigator.clipboard.writeText(href);
@@ -2048,6 +2049,75 @@ useEffect(() => {
     }
 
     setProfileActionsOpen(false);
+  };
+
+  const handleShareProfile = async () => {
+    const href = getProfileShareHref();
+    const shareTitle = `${profile?.full_name || profile?.username || "Parapost profile"} on Parapost Network`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: "View this profile on Parapost Network.",
+          url: href,
+        });
+        setProfileActionsOpen(false);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(href);
+      showFriendStatus("Profile link copied for sharing.");
+    } catch {
+      window.prompt("Copy this profile link:", href);
+    }
+
+    setProfileActionsOpen(false);
+  };
+
+  const handleLoggedOutProfileAction = (action: string) => {
+    setProfileActionsOpen(false);
+    alert(`Please log in to ${action}.`);
+  };
+
+  const handleReportProfile = () => {
+    if (isOwnProfile) return;
+
+    if (!viewerId) {
+      handleLoggedOutProfileAction("report a profile");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Report ${profile?.full_name || profile?.username || "this profile"} to Parapost Network moderation?`
+    );
+
+    if (!confirmed) return;
+
+    setProfileActionsOpen(false);
+    showFriendStatus("Report profile flow noted for moderation setup.");
+  };
+
+  const handleBlockProfile = () => {
+    if (isOwnProfile) return;
+
+    if (!viewerId) {
+      handleLoggedOutProfileAction("block a user");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Block ${profile?.full_name || profile?.username || "this user"}? Once the block system is connected, this will hide their profile and activity from you.`
+    );
+
+    if (!confirmed) return;
+
+    setProfileActionsOpen(false);
+    showFriendStatus("Block user flow noted for safety setup.");
   };
 
   const handleOpenProfileSection = (tab: string) => {
@@ -2674,7 +2744,8 @@ return (
 
       .profile-showcases-row button[aria-label="Create a new Showcase"]:hover span:first-child,
       .profile-showcases-row button[aria-label="Create a new Showcase"]:focus-visible span:first-child {
-        transform: translateY(-1px) scale(1.035);
+        transform: translateY(0) scale(1);
+        filter: brightness(1.08) saturate(1.08);
         box-shadow:
           0 18px 38px rgba(124,58,237,0.44),
           0 0 38px rgba(168,85,247,0.34),
@@ -2682,7 +2753,8 @@ return (
       }
 
       .profile-showcases-row button[aria-label="Create a new Showcase"] span:first-child {
-        transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+        transform-origin: center center;
+        transition: box-shadow 160ms ease, filter 160ms ease;
       }
 
       @media (max-width: 720px) {
@@ -6676,6 +6748,74 @@ return (
         }
       }
 
+
+
+
+
+      /* Step 53: stabilize + New Showcase hover so it glows without lifting into the Showcases heading. */
+      .profile-showcases-row button[aria-label="Create a new Showcase"]:hover,
+      .profile-showcases-row button[aria-label="Create a new Showcase"]:focus-visible {
+        transform: none !important;
+      }
+
+      .profile-showcases-row button[aria-label="Create a new Showcase"]:hover span:first-child,
+      .profile-showcases-row button[aria-label="Create a new Showcase"]:focus-visible span:first-child {
+        transform: none !important;
+      }
+
+      .profile-showcases-title-stable,
+      .profile-showcases-panel h3 {
+        position: relative !important;
+        z-index: 8 !important;
+      }
+
+      /* Step 52: keep Showcase + New labels from tucking under the tabs/content below. */
+      .profile-showcases-panel {
+        padding-bottom: 18px !important;
+        margin-bottom: 14px !important;
+        overflow: visible !important;
+        position: relative !important;
+        z-index: 4 !important;
+      }
+
+      .profile-showcases-row {
+        min-height: 92px !important;
+        padding-bottom: 12px !important;
+        overflow-y: visible !important;
+        position: relative !important;
+        z-index: 5 !important;
+      }
+
+      .profile-showcases-row > button,
+      .profile-showcases-row > div {
+        position: relative !important;
+        z-index: 6 !important;
+        padding-bottom: 4px !important;
+      }
+
+      .profile-showcases-row button[aria-label="Create a new Showcase"] span:last-child {
+        position: relative !important;
+        z-index: 7 !important;
+        margin-top: 1px !important;
+      }
+
+      .profile-tabs-shell {
+        position: relative !important;
+        z-index: 2 !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcases-panel {
+          padding-bottom: 16px !important;
+          margin-bottom: 14px !important;
+        }
+
+        .profile-showcases-row {
+          min-height: 96px !important;
+          padding-bottom: 14px !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}
@@ -7016,7 +7156,7 @@ return (
                             </button>
                           </>
                         ) : null}
-                        {isOwnProfile ? (
+                        {profileIsReady ? (
 
 <div
                           className="profile-desktop-action-menu-wrap"
@@ -7191,7 +7331,7 @@ return (
                         <span>📅 Joined Parapost</span>
                       </div>
 
-                      {isOwnProfile ? (
+                      {profileIsReady ? (
                         <button
                           type="button"
                           onClick={() => setProfileActionsOpen(true)}
@@ -8754,9 +8894,49 @@ return (
             <span style={profileActionIconStyle}>↗</span>
             <span>
               <strong>Copy profile link</strong>
-              <small>Share this profile</small>
+              <small>Copy this profile URL</small>
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={handleShareProfile}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>⇪</span>
+            <span>
+              <strong>Share profile</strong>
+              <small>Open your device share options</small>
+            </span>
+          </button>
+
+          {!isOwnProfile ? (
+            <>
+              <button
+                type="button"
+                onClick={handleReportProfile}
+                style={profileDesktopActionItemStyle}
+              >
+                <span style={profileActionIconStyle}>⚑</span>
+                <span>
+                  <strong>Report profile</strong>
+                  <small>Send this profile to moderation</small>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBlockProfile}
+                style={profileDesktopLogoutActionItemStyle}
+              >
+                <span style={profileActionLogoutIconStyle}>⊘</span>
+                <span>
+                  <strong>Block user</strong>
+                  <small>Limit future interaction with this person</small>
+                </span>
+              </button>
+            </>
+          ) : null}
 
           <button
             type="button"
@@ -8773,21 +8953,35 @@ return (
             </span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleProfileLogout}
-            style={profileDesktopLogoutActionItemStyle}
-          >
-            <span style={profileActionLogoutIconStyle}>↪</span>
-            <span>
-              <strong>Log out</strong>
-              <small>Sign out of Parapost Network</small>
-            </span>
-          </button>
+          {viewerId ? (
+            <button
+              type="button"
+              onClick={handleProfileLogout}
+              style={profileDesktopLogoutActionItemStyle}
+            >
+              <span style={profileActionLogoutIconStyle}>↪</span>
+              <span>
+                <strong>Log out</strong>
+                <small>Sign out of Parapost Network</small>
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleLoggedOutProfileAction("connect with people on Parapost Network")}
+              style={profileDesktopActionItemStyle}
+            >
+              <span style={profileActionIconStyle}>◎</span>
+              <span>
+                <strong>Log in to interact</strong>
+                <small>Sign in to friend, message, report, or block</small>
+              </span>
+            </button>
+          )}
         </div>
       ) : null}
 
-      {profileActionsOpen && isOwnProfile ? (
+      {profileActionsOpen && profileIsReady ? (
         <div
           className="profile-mobile-action-overlay"
           style={profileActionOverlayStyle}
@@ -8885,9 +9079,49 @@ return (
                 <span style={profileActionIconStyle}>↗</span>
                 <span>
                   <strong>Copy profile link</strong>
-                  <small>Share this profile outside Parapost</small>
+                  <small>Copy this profile URL</small>
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleShareProfile}
+                style={profileActionItemStyle}
+              >
+                <span style={profileActionIconStyle}>⇪</span>
+                <span>
+                  <strong>Share profile</strong>
+                  <small>Open your phone share options</small>
+                </span>
+              </button>
+
+              {!isOwnProfile ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleReportProfile}
+                    style={profileActionItemStyle}
+                  >
+                    <span style={profileActionIconStyle}>⚑</span>
+                    <span>
+                      <strong>Report profile</strong>
+                      <small>Send this profile to moderation</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleBlockProfile}
+                    style={profileMobileLogoutActionItemStyle}
+                  >
+                    <span style={profileActionLogoutIconStyle}>⊘</span>
+                    <span>
+                      <strong>Block user</strong>
+                      <small>Limit future interaction with this person</small>
+                    </span>
+                  </button>
+                </>
+              ) : null}
 
               <button
                 type="button"
@@ -8904,17 +9138,31 @@ return (
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleProfileLogout}
-                style={profileMobileLogoutActionItemStyle}
-              >
-                <span style={profileActionLogoutIconStyle}>↪</span>
-                <span>
-                  <strong>Log out</strong>
-                  <small>Sign out of Parapost Network</small>
-                </span>
-              </button>
+              {viewerId ? (
+                <button
+                  type="button"
+                  onClick={handleProfileLogout}
+                  style={profileMobileLogoutActionItemStyle}
+                >
+                  <span style={profileActionLogoutIconStyle}>↪</span>
+                  <span>
+                    <strong>Log out</strong>
+                    <small>Sign out of Parapost Network</small>
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleLoggedOutProfileAction("connect with people on Parapost Network")}
+                  style={profileActionItemStyle}
+                >
+                  <span style={profileActionIconStyle}>◎</span>
+                  <span>
+                    <strong>Log in to interact</strong>
+                    <small>Sign in to friend, message, report, or block</small>
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -10342,8 +10590,8 @@ const profileStoryLabelStyle: CSSProperties = {
 };
 
 const profileShowcasesPanelStyle: CSSProperties = {
-  margin: "0 14px 12px",
-  padding: "10px 0 11px",
+  margin: "0 14px 14px",
+  padding: "10px 0 18px",
   borderRadius: "16px",
   borderTop: "1px solid rgba(255,255,255,0.08)",
   borderRight: "1px solid rgba(255,255,255,0.06)",
@@ -10362,16 +10610,20 @@ const profileShowcasesTitleStyle: CSSProperties = {
 };
 
 const profileShowcasesRowStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 3,
   display: "flex",
   alignItems: "flex-start",
   gap: "14px",
+  minHeight: "92px",
   overflowX: "auto",
-  overflowY: "hidden",
-  padding: "0 14px 4px",
+  overflowY: "visible",
+  padding: "0 14px 12px",
 };
 
 const profileShowcaseNewItemStyle: CSSProperties = {
   position: "relative",
+  zIndex: 5,
   display: "grid",
   justifyItems: "center",
   gap: "6px",
@@ -10379,7 +10631,7 @@ const profileShowcaseNewItemStyle: CSSProperties = {
   width: "74px",
   border: 0,
   background: "transparent",
-  padding: 0,
+  padding: "0 0 4px",
   cursor: "pointer",
   fontFamily: "inherit",
 };
@@ -10407,6 +10659,9 @@ const profileShowcasePlusCircleStyle: CSSProperties = {
 };
 
 const profileShowcaseNewLabelStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 6,
+  display: "block",
   maxWidth: "78px",
   color: "#f3e8ff",
   fontSize: "11px",
@@ -10421,6 +10676,7 @@ const profileShowcaseNewLabelStyle: CSSProperties = {
 
 const profileShowcaseItemStyle: CSSProperties = {
   position: "relative",
+  zIndex: 4,
   display: "grid",
   justifyItems: "center",
   gap: "6px",
@@ -10428,7 +10684,7 @@ const profileShowcaseItemStyle: CSSProperties = {
   width: "74px",
   border: 0,
   background: "transparent",
-  padding: 0,
+  padding: "0 0 4px",
   cursor: "pointer",
   fontFamily: "inherit",
 };

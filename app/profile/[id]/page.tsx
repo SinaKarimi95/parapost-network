@@ -635,7 +635,6 @@ export default function ProfilePage() {
   const [showcaseError, setShowcaseError] = useState("");
   const [profileShowcases, setProfileShowcases] = useState<ProfileShowcase[]>([]);
   const [showcasesLoaded, setShowcasesLoaded] = useState(false);
-  const [isLocalShowcaseTesting, setIsLocalShowcaseTesting] = useState(false);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
   const showcaseDragFrameRef = useRef<number | null>(null);
@@ -653,7 +652,7 @@ export default function ProfilePage() {
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
   const canManageProfileShowcases = Boolean(viewerId && profileId && viewerId === profileId);
-  const canCreateShowcase = canManageProfileShowcases || isLocalShowcaseTesting;
+  const canCreateShowcase = canManageProfileShowcases;
 
   const showcaseStorageKey = useMemo(
     () => (profileId ? `parapost-profile-showcases-${profileId}` : ""),
@@ -677,11 +676,23 @@ export default function ProfilePage() {
 
   const visibleProfileShowcases = useMemo(() => {
     const now = Date.now();
+
     return profileShowcases.filter((showcase) => {
-      if (!showcase.expiresAt) return true;
-      return new Date(showcase.expiresAt).getTime() > now;
+      const isExpired = showcase.expiresAt
+        ? new Date(showcase.expiresAt).getTime() <= now
+        : false;
+
+      if (isExpired) return false;
+      if (canManageProfileShowcases) return true;
+
+      const visibility = showcase.visibility || "public";
+
+      if (visibility === "private") return false;
+      if (visibility === "friends") return friendStatus === "friends";
+
+      return true;
     });
-  }, [profileShowcases]);
+  }, [profileShowcases, canManageProfileShowcases, friendStatus]);
 
   const showcaseSizeRailVisible = showcaseCustomizeOpen && Boolean(showcaseCoverText.trim());
   const safeShowcaseTextPosition = getShowcaseSafeTextPosition(
@@ -1029,18 +1040,6 @@ const showFriendStatus = useCallback((message: string) => {
   useEffect(() => {
   loadPage();
 }, [loadPage]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const hostname = window.location.hostname;
-    setIsLocalShowcaseTesting(
-      hostname === "localhost" ||
-        hostname.startsWith("192.168.") ||
-        hostname.startsWith("10.") ||
-        hostname.endsWith(".local")
-    );
-  }, []);
 
 useEffect(() => {
   if (!profileActionsOpen || typeof window === "undefined") return;
@@ -1943,7 +1942,8 @@ useEffect(() => {
     const { error } = await supabase
       .from("profile_showcases")
       .delete()
-      .eq("id", showcaseId);
+      .eq("id", showcaseId)
+      .eq("user_id", viewerId);
 
     if (error) {
       console.error("Could not delete Showcase:", error);
@@ -7004,16 +7004,16 @@ return (
                   </div>
                 </div>
 
-                {(canCreateShowcase || visibleProfileShowcases.length > 0 || profileIsReady) ? (
+                {(canCreateShowcase || visibleProfileShowcases.length > 0) ? (
                   <section className="profile-showcases-panel profile-stories-row" style={profileShowcasesPanelStyle} data-profile-showcases="true">
                     <h3 style={profileShowcasesTitleStyle}>Showcases</h3>
 
                   <div className="profile-showcases-row" style={profileShowcasesRowStyle}>
                     <button
                       type="button"
-                      style={canManageProfileShowcases ? profileShowcaseNewItemStyle : profileShowcaseHiddenCreateItemStyle}
+                      style={canCreateShowcase ? profileShowcaseNewItemStyle : profileShowcaseHiddenCreateItemStyle}
                       onClick={() => {
-                        if (canManageProfileShowcases) handleOpenShowcaseComposer();
+                        if (canCreateShowcase) handleOpenShowcaseComposer();
                       }}
                       aria-label="Create a new Showcase"
                     >
@@ -7069,7 +7069,7 @@ return (
                             </span>
                           </span>
 
-                          {canCreateShowcase ? (
+                          {canManageProfileShowcases ? (
                             <span
                               role="button"
                               tabIndex={0}

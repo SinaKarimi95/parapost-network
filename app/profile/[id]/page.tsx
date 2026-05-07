@@ -577,6 +577,7 @@ export default function ProfilePage() {
   const [showcaseDuration, setShowcaseDuration] = useState<ShowcaseDuration>("permanent");
   const [showcaseVisibility, setShowcaseVisibility] = useState<ShowcaseVisibility>("public");
   const [showcaseCustomizeOpen, setShowcaseCustomizeOpen] = useState(false);
+  const [showcasePreviewExpanded, setShowcasePreviewExpanded] = useState(false);
   const [showcaseTextPosition, setShowcaseTextPosition] = useState({ x: 50, y: 50 });
   const [showcaseMediaPreviewUrl, setShowcaseMediaPreviewUrl] = useState("");
   const [showcaseMediaType, setShowcaseMediaType] = useState<ShowcaseMediaType>("text");
@@ -1711,6 +1712,7 @@ useEffect(() => {
     setShowcaseDuration("permanent");
     setShowcaseVisibility("public");
     setShowcaseCustomizeOpen(false);
+    setShowcasePreviewExpanded(false);
     setShowcaseTextPosition({ x: 50, y: 50 });
     setShowcaseMediaPreviewUrl("");
     setShowcaseMediaType("text");
@@ -1730,6 +1732,7 @@ useEffect(() => {
     setShowcaseDuration("permanent");
     setShowcaseVisibility("public");
     setShowcaseCustomizeOpen(false);
+    setShowcasePreviewExpanded(false);
     setShowcaseTextPosition({ x: 50, y: 50 });
     setShowcaseMediaPreviewUrl("");
     setShowcaseMediaType("text");
@@ -2146,6 +2149,217 @@ return (
         }
       }
 
+
+      .profile-showcase-duration-option span {
+        word-break: keep-all !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-duration-option {
+          min-height: 64px !important;
+          padding: 8px 8px !important;
+        }
+
+        .profile-showcase-duration-option span {
+          font-size: 12px !important;
+          line-height: 1.05 !important;
+          min-height: 24px !important;
+        }
+
+        .profile-showcase-duration-option small {
+          font-size: 9px !important;
+          line-height: 1.1 !important;
+        }
+      }
+
+      .profile-showcase-preview-phone {
+        width: 100% !important;
+        height: clamp(330px, 42vh, 440px) !important;
+        min-height: 330px !important;
+        max-height: 440px !important;
+      }
+
+      .profile-showcase-upload-card strong,
+      .profile-showcase-upload-card small,
+      .profile-showcase-duration-option span,
+      .profile-showcase-duration-option small {
+        display: block !important;
+      }
+
+      .profile-showcase-upload-card strong,
+      .profile-showcase-preview-title {
+        font-size: 13px !important;
+        line-height: 1.12 !important;
+        font-weight: 950 !important;
+        letter-spacing: -0.01em !important;
+      }
+
+      .profile-showcase-upload-card small,
+      .profile-showcase-preview-help {
+        font-size: 10px !important;
+        line-height: 1.15 !important;
+        font-weight: 800 !important;
+        color: rgba(226,232,240,0.72) !important;
+        margin-top: 3px !important;
+      }
+
+      .profile-showcase-duration-option span {
+        word-break: keep-all !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-preview-column {
+          border-left: 0 !important;
+          padding-left: 0 !important;
+          justify-items: stretch !important;
+        }
+
+        .profile-showcase-preview-header {
+          align-items: flex-start !important;
+          justify-content: flex-start !important;
+          flex-direction: column !important;
+          gap: 3px !important;
+        }
+
+        .profile-showcase-preview-phone {
+          width: 100% !important;
+          height: 220px !important;
+          min-height: 220px !important;
+          max-height: 220px !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-upload-card {
+          min-height: 82px !important;
+          grid-template-columns: 44px minmax(0, 1fr) !important;
+          gap: 12px !important;
+          padding: 13px !important;
+          border-radius: 18px !important;
+        }
+
+        .profile-showcase-upload-card strong,
+        .profile-showcase-preview-title {
+          font-size: 12px !important;
+          line-height: 1.12 !important;
+        }
+
+        .profile-showcase-upload-card small,
+        .profile-showcase-preview-help {
+          font-size: 9px !important;
+          line-height: 1.12 !important;
+        }
+
+        .profile-showcase-duration-option {
+          min-height: 64px !important;
+          padding: 8px 8px !important;
+        }
+
+        .profile-showcase-duration-option span {
+          font-size: 12px !important;
+          line-height: 1.05 !important;
+          min-height: 24px !important;
+        }
+
+        .profile-showcase-duration-option small {
+          font-size: 9px !important;
+          line-height: 1.1 !important;
+        }
+      }
+
+
+      .profile-showcase-upload-card strong,
+      .profile-showcase-upload-card small,
+      .profile-showcase-duration-option span,
+      .profile-showcase-duration-option small,
+      .profile-showcase-preview-title,
+      .profile-showcase-preview-help {
+        display: block !important;
+      }
+
+      .profile-showcase-duration-option span {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-showcase-upload-card strong,
+        .profile-showcase-preview-title {
+          font-size: 12px !important;
+          line-height: 1.12 !important;
+        }
+
+        .profile-showcase-upload-card small,
+        .profile-showcase-preview-help {
+          font-size: 9px !important;
+          line-height: 1.15 !important;
+          margin-top: 3px !important;
+        }
+
+        .profile-showcase-duration-option {
+          min-height: 58px !important;
+          padding: 9px 12px !important;
+          gap: 3px !important;
+          align-content: center !important;
+        }
+
+        .profile-showcase-duration-option span {
+          font-size: 12px !important;
+          line-height: 1.08 !important;
+          min-height: auto !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+        }
+
+        .profile-showcase-duration-option small {
+          font-size: 9px !important;
+          line-height: 1.12 !important;
+        }
+      }
+
+
+
+      /* Final mobile-only duration row fix: keeps desktop unchanged */
+      @media (max-width: 720px) {
+        .profile-showcase-duration-option {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 10px !important;
+          min-height: 46px !important;
+          padding: 10px 12px !important;
+          text-align: left !important;
+        }
+
+        .profile-showcase-duration-option span {
+          display: block !important;
+          flex: 0 0 auto !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          font-size: 12px !important;
+          line-height: 1.05 !important;
+          font-weight: 950 !important;
+          white-space: nowrap !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+        }
+
+        .profile-showcase-duration-option small {
+          display: block !important;
+          flex: 0 0 auto !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          font-size: 9px !important;
+          line-height: 1.08 !important;
+          font-weight: 800 !important;
+          text-align: right !important;
+          white-space: nowrap !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          opacity: 0.82 !important;
+        }
+      }
 
       .profile-showcase-modal-overlay button[style*="dashed"]:hover {
         border-color: rgba(216,180,254,0.72) !important;
@@ -5862,25 +6076,34 @@ return (
         }
 
         .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header {
-          position: sticky !important;
-          top: 0 !important;
-          z-index: 30 !important;
+          position: static !important;
+          top: auto !important;
+          z-index: 1 !important;
           flex: 0 0 auto !important;
           align-items: center !important;
           gap: 10px !important;
-          margin: 0 0 10px !important;
-          padding: 4px 0 10px !important;
-          border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-          background: linear-gradient(180deg, rgba(12,14,22,0.98), rgba(12,14,22,0.86)) !important;
+          margin: 0 0 8px !important;
+          padding: 2px 0 8px !important;
+          border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+          background: transparent !important;
         }
 
         .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header h3 {
-          font-size: 20px !important;
-          line-height: 1.05 !important;
+          font-size: 18px !important;
+          line-height: 1.04 !important;
         }
 
+
         .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header p {
-          max-width: 260px !important;
+          max-width: 240px !important;
+          font-size: 12px !important;
+          line-height: 1.22 !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header button {
+          width: 36px !important;
+          height: 36px !important;
+          border-radius: 13px !important;
         }
 
         .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-modal-header [style*="Simple first"] {
@@ -5915,13 +6138,29 @@ return (
 
         .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 270px"],
         .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 300px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 330px"],
         .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 340px"],
         .profile-showcase-modal-overlay.profile-showcase-mobile-open [style*="min-height: 460px"] {
-          width: min(76vw, 292px) !important;
-          min-height: min(48vh, 370px) !important;
-          height: min(48vh, 370px) !important;
-          margin: 0 auto !important;
-          border-radius: 24px !important;
+          width: 100% !important;
+          min-height: 220px !important;
+          height: 220px !important;
+          margin: 0 !important;
+          border-radius: 22px !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open.profile-showcase-preview-expanded [style*="min-height: 270px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open.profile-showcase-preview-expanded [style*="min-height: 300px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open.profile-showcase-preview-expanded [style*="min-height: 330px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open.profile-showcase-preview-expanded [style*="min-height: 340px"],
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open.profile-showcase-preview-expanded [style*="min-height: 460px"] {
+          min-height: min(420px, 56dvh) !important;
+          height: min(420px, 56dvh) !important;
+          max-height: 56dvh !important;
+        }
+
+        .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-preview-phone {
+          cursor: pointer !important;
+          touch-action: manipulation !important;
         }
 
         .profile-showcase-modal-overlay.profile-showcase-mobile-open .profile-showcase-simple-controls {
@@ -6666,7 +6905,7 @@ return (
                   ? createPortal(
                       (
                   <div
-                    className="profile-showcase-modal-overlay profile-showcase-mobile-open"
+                    className={`profile-showcase-modal-overlay profile-showcase-mobile-open ${showcasePreviewExpanded ? "profile-showcase-preview-expanded" : ""}`}
                     style={profileShowcaseModalOverlayStyle}
                     role="dialog"
                     aria-modal="true"
@@ -6728,16 +6967,16 @@ return (
                             <span style={profileShowcaseSimpleUploadIconStyle}>
                               {showcaseMediaPreviewUrl ? "✓" : "⇧"}
                             </span>
-                            <span>
-                              <strong>
+                            <span className="profile-showcase-upload-copy">
+                              <strong style={profileShowcaseUploadTitleTextStyle}>
                                 {showcaseMediaPreviewUrl ? "Media selected" : "Upload Photo or Video"}
                               </strong>
-                              <small>
+                              <small style={profileShowcaseUploadHelpTextStyle}>
                                 {showcaseMediaPreviewUrl
                                   ? "Tap to replace this Showcase media"
                                   : "Tap to choose from your device"}
                               </small>
-                              <small>
+                              <small style={profileShowcaseUploadHelpTextStyle}>
                                 {showcaseMediaFileName || "JPG, PNG, MP4"}
                               </small>
                             </span>
@@ -6786,7 +7025,7 @@ return (
                               </p>
                             </div>
 
-                            <div style={profileShowcaseDurationOptionsStyle}>
+                            <div className="profile-showcase-duration-options" style={profileShowcaseDurationOptionsStyle}>
                               {[
                                 { value: "24h" as const, label: "24 hours", help: "Quick update" },
                                 { value: "30d" as const, label: "30 days", help: "Recent feature" },
@@ -6795,6 +7034,7 @@ return (
                                 const selected = showcaseDuration === option.value;
                                 return (
                                   <button
+                                    className="profile-showcase-duration-option"
                                     key={option.value}
                                     type="button"
                                     onClick={() => setShowcaseDuration(option.value)}
@@ -6805,8 +7045,8 @@ return (
                                     }
                                     aria-pressed={selected}
                                   >
-                                    <span>{option.label}</span>
-                                    <small>{option.help}</small>
+                                    <span style={profileShowcaseDurationOptionLabelTextStyle}>{option.label}</span>
+                                    <small style={profileShowcaseDurationOptionHelpTextStyle}>{option.help}</small>
                                   </button>
                                 );
                               })}
@@ -6946,13 +7186,28 @@ return (
                         </div>
 
                         <div className="profile-showcase-preview-column" style={profileShowcasePreviewColumnStyle}>
-                          <div style={profileShowcasePreviewHeaderStyle}>
-                            <strong style={profileShowcaseDurationTitleStyle}>Live preview</strong>
-                            {showcaseCustomizeOpen ? <small>Drag text in Customize mode</small> : null}
+                          <div className="profile-showcase-preview-header" style={profileShowcasePreviewHeaderStyle}>
+                            <strong className="profile-showcase-preview-title" style={profileShowcaseDurationTitleStyle}>Live preview</strong>
+                            {showcaseCustomizeOpen ? <small className="profile-showcase-preview-help">Drag text in Customize mode</small> : null}
                           </div>
 
                           <div
+                            className="profile-showcase-preview-phone"
                             style={profileShowcasePreviewPhoneStyle}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={showcasePreviewExpanded ? "Return Showcase preview to normal size" : "Stretch Showcase preview"}
+                            onClick={() => {
+                              if (!showcaseCustomizeOpen) {
+                                setShowcasePreviewExpanded((value) => !value);
+                              }
+                            }}
+                            onKeyDown={(event) => {
+                              if (!showcaseCustomizeOpen && (event.key === "Enter" || event.key === " ")) {
+                                event.preventDefault();
+                                setShowcasePreviewExpanded((value) => !value);
+                              }
+                            }}
                             onPointerDown={showcaseCustomizeOpen ? handleShowcasePreviewPointerDown : undefined}
                             onPointerMove={showcaseCustomizeOpen ? handleShowcasePreviewPointerMove : undefined}
                           >
@@ -7024,6 +7279,7 @@ return (
                                   {showShowcaseCenterGuides ? "Centered" : "Drag text to move"}
                                 </small>
                               ) : null}
+
                             </div>
                           </div>
 
@@ -9699,6 +9955,25 @@ const profileShowcaseSimpleUploadIconStyle: CSSProperties = {
   boxShadow: "0 14px 28px rgba(124,58,237,0.30)",
 };
 
+const profileShowcaseUploadTitleTextStyle: CSSProperties = {
+  display: "block",
+  color: "#ffffff",
+  fontSize: "13px",
+  lineHeight: 1.14,
+  fontWeight: 950,
+  letterSpacing: "-0.01em",
+  margin: 0,
+};
+
+const profileShowcaseUploadHelpTextStyle: CSSProperties = {
+  display: "block",
+  color: "rgba(226,232,240,0.74)",
+  fontSize: "10px",
+  lineHeight: 1.18,
+  fontWeight: 800,
+  marginTop: "4px",
+};
+
 const profileShowcaseSelectedFileStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -9840,11 +10115,18 @@ const profileShowcasePreviewColumnStyle: CSSProperties = {
   minWidth: 0,
   borderLeft: "1px solid rgba(255,255,255,0.085)",
   paddingLeft: "24px",
+  alignContent: "start",
+  justifyItems: "stretch",
 };
 
 const profileShowcasePreviewPhoneStyle: CSSProperties = {
   position: "relative",
-  minHeight: "480px",
+  width: "100%",
+  height: "clamp(330px, 42vh, 440px)",
+  minHeight: "330px",
+  maxHeight: "440px",
+  justifySelf: "stretch",
+  alignSelf: "start",
   borderRadius: "32px",
   overflow: "hidden",
   border: "1px solid rgba(255,255,255,0.14)",
@@ -9942,11 +10224,13 @@ const profileShowcaseDragHintStyle: CSSProperties = {
   boxShadow: "0 8px 20px rgba(0,0,0,0.26)",
 };
 
+
 const profileShowcasePreviewMetaStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: "8px",
+  width: "100%",
   color: "#9ca3af",
   fontSize: "12px",
   fontWeight: 800,
@@ -10325,7 +10609,9 @@ const profileShowcaseDurationOptionsStyle: CSSProperties = {
 
 const profileShowcaseDurationOptionStyle: CSSProperties = {
   display: "grid",
-  gap: "3px",
+  gap: "4px",
+  minHeight: "74px",
+  alignContent: "start",
   textAlign: "left",
   border: "1px solid rgba(255,255,255,0.09)",
   borderRadius: "13px",
@@ -10335,6 +10621,23 @@ const profileShowcaseDurationOptionStyle: CSSProperties = {
   cursor: "pointer",
   fontFamily: "inherit",
   fontWeight: 850,
+};
+
+const profileShowcaseDurationOptionLabelTextStyle: CSSProperties = {
+  display: "block",
+  fontSize: "13px",
+  lineHeight: 1.08,
+  fontWeight: 900,
+  letterSpacing: "-0.01em",
+  whiteSpace: "normal",
+};
+
+const profileShowcaseDurationOptionHelpTextStyle: CSSProperties = {
+  display: "block",
+  fontSize: "10px",
+  lineHeight: 1.12,
+  color: "#9ca3af",
+  fontWeight: 800,
 };
 
 const profileShowcaseDurationOptionActiveStyle: CSSProperties = {

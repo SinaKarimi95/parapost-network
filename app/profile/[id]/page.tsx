@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ChangeEvent, CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -2112,10 +2113,49 @@ useEffect(() => {
   const profileSmoothLoadClass = profileIsReady
     ? "profile-data-ready"
     : "profile-data-waiting";
+  const profilePhotoCount = posts.filter((post) => Boolean(post.image_url)).length;
+  const profileTabItems = [
+    {
+      value: "Posts",
+      label: "Posts",
+      detail: `${profileFeedItems.length} update${profileFeedItems.length === 1 ? "" : "s"}`,
+      summary: isOwnProfile
+        ? "Create updates, share photos, and keep your profile timeline active."
+        : "Browse this profile's posts, shared reels, and public updates.",
+    },
+    {
+      value: "About",
+      label: "About",
+      detail: isOwnProfile ? "Profile details" : "Member info",
+      summary: isOwnProfile
+        ? "Keep your intro, links, location, and profile details polished."
+        : "View this member's profile details, links, and public information.",
+    },
+    {
+      value: "Reels",
+      label: "Reels",
+      detail: `${reels.length} reel${reels.length === 1 ? "" : "s"}`,
+      summary: "Watch short videos connected to this profile.",
+    },
+    {
+      value: "Photos",
+      label: "Photos",
+      detail: `${profilePhotoCount} photo${profilePhotoCount === 1 ? "" : "s"}`,
+      summary: "View photos shared through profile posts and media updates.",
+    },
+    {
+      value: "Events",
+      label: "Events",
+      detail: "Coming soon",
+      summary: "Events are prepared for a future Parapost Network profile update.",
+    },
+  ];
+  const activeProfileTabItem =
+    profileTabItems.find((tab) => tab.value === activeProfileTab) || profileTabItems[0];
 
 return (
   <div
-    className={`min-h-screen text-white profile-polish-surface profile-mobile-first-polish profile-batch2-flow-polish ${profileSmoothLoadClass}`}
+    className={`min-h-screen text-white profile-polish-surface profile-mobile-first-polish profile-batch2-flow-polish profile-tabs-polish-v21 profile-tabs-mobile-cutoff-v22 ${profileSmoothLoadClass}`}
    style={{
      ...profilePageBackgroundStyle,
      backgroundColor: "#07090d",
@@ -2129,6 +2169,72 @@ return (
    }}
   >
     <style>{`
+
+      .profile-tabs-polish-v21 .profile-tabs-desktop button:hover {
+        transform: translateY(-1px);
+        background: rgba(255,255,255,0.045) !important;
+        color: #ffffff !important;
+      }
+
+      .profile-tabs-polish-v21 .profile-tab-summary-card {
+        animation: profileSectionSettle 180ms ease-out;
+      }
+
+      @media (max-width: 720px) {
+        .profile-tabs-polish-v21 .profile-tabs-shell {
+          padding: 0 10px 12px !important;
+          gap: 8px !important;
+          background: rgba(17,19,24,0.96) !important;
+          border-top: 1px solid rgba(255,255,255,0.06) !important;
+          border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+        }
+
+        .profile-tabs-polish-v21 .profile-tabs-desktop {
+          display: flex !important;
+          gap: 8px !important;
+          padding: 8px 2px !important;
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          overflow-x: auto !important;
+          scroll-snap-type: x proximity !important;
+        }
+
+        .profile-tabs-polish-v21 .profile-tabs-desktop button {
+          min-width: 112px !important;
+          min-height: 48px !important;
+          flex: 0 0 auto !important;
+          scroll-snap-align: start !important;
+          padding: 9px 11px !important;
+          border-radius: 14px !important;
+        }
+
+        .profile-tabs-polish-v21 .profile-tabs-desktop button small {
+          font-size: 9px !important;
+        }
+
+        .profile-tabs-polish-v21 .profile-tab-summary-card {
+          grid-template-columns: 36px minmax(0, 1fr) !important;
+          padding: 10px !important;
+          border-radius: 16px !important;
+        }
+
+        .profile-tabs-polish-v21 .profile-tab-summary-card p:last-child {
+          font-size: 11px !important;
+          line-height: 1.35 !important;
+        }
+      }
+
+      @media (min-width: 721px) and (max-width: 1100px) {
+        .profile-tabs-polish-v21 .profile-tabs-desktop {
+          grid-template-columns: repeat(5, minmax(96px, 1fr)) !important;
+        }
+
+        .profile-tabs-polish-v21 .profile-tabs-desktop button {
+          padding-left: 10px !important;
+          padding-right: 10px !important;
+        }
+      }
 
       .profile-showcase-viewer-overlay {
         animation: profileShowcaseViewerFade 180ms ease-out;
@@ -6452,6 +6558,124 @@ return (
         }
       }
 
+
+
+      /* v22: mobile profile tabs/content cutoff fix. Keeps desktop/tablet polish untouched. */
+      @media (max-width: 720px) {
+        .profile-tabs-mobile-cutoff-v22 .profile-page-shell {
+          padding-bottom: calc(184px + env(safe-area-inset-bottom)) !important;
+          overflow-x: hidden !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-stream-stack {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+          padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-shell {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          padding: 0 0 10px !important;
+          margin: 0 !important;
+          background: #111318 !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-desktop {
+          width: 100% !important;
+          max-width: 100% !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          padding: 8px 12px 9px !important;
+          scroll-padding-left: 12px !important;
+          scroll-snap-type: x proximity !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-x !important;
+          box-sizing: border-box !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-desktop button {
+          flex: 0 0 auto !important;
+          min-width: 78px !important;
+          max-width: 118px !important;
+          min-height: 42px !important;
+          padding: 8px 10px !important;
+          display: grid !important;
+          align-content: center !important;
+          justify-items: start !important;
+          gap: 2px !important;
+          border-radius: 13px !important;
+          scroll-snap-align: start !important;
+          box-sizing: border-box !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-desktop button span {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          font-size: 13px !important;
+          line-height: 1.05 !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-desktop button small {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          font-size: 8.5px !important;
+          line-height: 1.05 !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tab-summary-card {
+          margin: 0 10px 10px !important;
+          width: auto !important;
+          max-width: calc(100% - 20px) !important;
+          box-sizing: border-box !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-content-card,
+        .profile-tabs-mobile-cutoff-v22 .profile-composer-card,
+        .profile-tabs-mobile-cutoff-v22 .profile-feed-section-card,
+        .profile-tabs-mobile-cutoff-v22 .profile-empty-state-card {
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          overflow-x: hidden !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 #profile-composer {
+          padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+          margin-bottom: calc(22px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-composer-card textarea,
+        .profile-tabs-mobile-cutoff-v22 .profile-composer-card input,
+        .profile-tabs-mobile-cutoff-v22 .profile-content-card textarea,
+        .profile-tabs-mobile-cutoff-v22 .profile-content-card input {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+      }
+
+      @media (max-width: 390px) {
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-desktop button {
+          min-width: 72px !important;
+          max-width: 104px !important;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+        }
+
+        .profile-tabs-mobile-cutoff-v22 .profile-tabs-desktop button small {
+          display: none !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}
@@ -7720,31 +7944,58 @@ return (
 
                 <div className="profile-tabs-shell" style={profileTabsShellStyle}>
                   <div className="profile-tabs-desktop" style={profileTabsStyle}>
-                    {["Posts", "About", "Reels", "Photos", "Events"].map((tab) => (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setActiveProfileTab(tab)}
-                        style={activeProfileTab === tab ? profileActiveTabStyle : profileTabStyle}
-                        aria-pressed={activeProfileTab === tab}
-                      >
-                        {tab}
-                      </button>
-                    ))}
+                    {profileTabItems.map((tab) => {
+                      const isActive = activeProfileTab === tab.value;
+
+                      return (
+                        <button
+                          key={tab.value}
+                          type="button"
+                          onClick={() => setActiveProfileTab(tab.value)}
+                          style={isActive ? profileActiveTabStyle : profileTabStyle}
+                          aria-pressed={isActive}
+                          data-active={isActive ? "true" : "false"}
+                        >
+                          <span style={profileTabLabelStyle}>{tab.label}</span>
+                          <small style={isActive ? profileActiveTabDetailStyle : profileTabDetailStyle}>
+                            {tab.detail}
+                          </small>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                <select
-                  value={activeProfileTab}
-                  onChange={(event) => setActiveProfileTab(event.target.value)}
-                  style={profileMobileTabSelectStyle}
-                  aria-label="Choose profile section"
-                >
-                  {["Posts", "About", "Reels", "Photos", "Events"].map((tab) => (
-                    <option key={tab} value={tab}>
-                      {tab}
-                    </option>
-                  ))}
-                </select>  
+                  <select
+                    value={activeProfileTab}
+                    onChange={(event) => setActiveProfileTab(event.target.value)}
+                    style={profileMobileTabSelectStyle}
+                    aria-label="Choose profile section"
+                  >
+                    {profileTabItems.map((tab) => (
+                      <option key={tab.value} value={tab.value}>
+                        {tab.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="profile-tab-summary-card" style={profileTabSummaryStyle}>
+                    <div style={profileTabSummaryIconStyle}>
+                      {activeProfileTab === "Posts"
+                        ? "✦"
+                        : activeProfileTab === "About"
+                          ? "i"
+                          : activeProfileTab === "Reels"
+                            ? "▶"
+                            : activeProfileTab === "Photos"
+                              ? "▧"
+                              : "◇"}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={profileTabSummaryEyebrowStyle}>Profile section</p>
+                      <h3 style={profileTabSummaryTitleStyle}>{activeProfileTabItem.label}</h3>
+                      <p style={profileTabSummaryMetaStyle}>{activeProfileTabItem.summary}</p>
+                    </div>
+                  </div>
                 </div>
 
                 {!loading && !errorMessage && profile && !isOwnProfile ? (
@@ -7780,9 +8031,21 @@ return (
                   </div>
 
                   {reels.length === 0 ? (
-                    <div style={aboutComingSoonStyle}>
-                      <strong>No reels yet</strong>
-                      <span>When this profile shares reels, they will show here.</span>
+                    <div className="profile-empty-state-card" style={profilePolishedEmptyStateStyle}>
+                      <div style={profileEmptyStateIconStyle}>▶</div>
+                      <strong style={profileEmptyStateTitleStyle}>
+                        {isOwnProfile ? "No reels shared yet" : "No reels yet"}
+                      </strong>
+                      <span style={profileEmptyStateCopyStyle}>
+                        {isOwnProfile
+                          ? "Share your first Parapost Reel when you are ready to bring motion to your profile."
+                          : "When this member shares reels, they will appear here."}
+                      </span>
+                      <div style={profileEmptyStateActionRowStyle}>
+                        <Link href={`/profile/${profileId}/reels`} style={{ ...primaryButtonStyle, textDecoration: "none" }}>
+                          Open Reels
+                        </Link>
+                      </div>
                     </div>
                   ) : (
                     <div style={miniReelGridStyle}>
@@ -7814,9 +8077,17 @@ return (
 
               {!["Posts", "About", "Reels", "Photos"].includes(activeProfileTab) ? (
                 <div className="profile-content-card" style={mainCardStyle}>
-                  <div style={aboutComingSoonStyle}>
-                    <strong>{activeProfileTab}</strong>
-                    <span>This profile section is set up and ready for the next build step.</span>
+                  <div className="profile-empty-state-card" style={profilePolishedEmptyStateStyle}>
+                    <div style={profileEmptyStateIconStyle}>◇</div>
+                    <strong style={profileEmptyStateTitleStyle}>{activeProfileTab}</strong>
+                    <span style={profileEmptyStateCopyStyle}>
+                      This profile section is ready for a future Parapost Network feature pass.
+                    </span>
+                    <div style={profileEmptyStateMiniGridStyle}>
+                      <span>Events</span>
+                      <span>Creator updates</span>
+                      <span>Community moments</span>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -7970,16 +8241,34 @@ return (
                   ) : !profile && !profileMissingForOwner ? (
                     <div style={messageBoxStyle}>This profile could not be found.</div>
                   ) : profileFeedItems.length === 0 ? (
-                    <div style={feedEmptyStateStyle}>
-                      <div style={{ fontSize: "34px", marginBottom: "8px" }}>✦</div>
-                      <strong style={{ color: "#ffffff", fontSize: "18px" }}>
+                    <div className="profile-empty-state-card" style={profilePolishedEmptyStateStyle}>
+                      <div style={profileEmptyStateIconStyle}>✦</div>
+                      <strong style={profileEmptyStateTitleStyle}>
                         {isOwnProfile ? "Your first post goes here" : "No posts shared yet"}
                       </strong>
-                      <span style={{ color: "#9ca3af", fontSize: "14px", lineHeight: 1.6 }}>
+                      <span style={profileEmptyStateCopyStyle}>
                         {isOwnProfile
                           ? "Create your first post so your profile feels active the moment people visit."
                           : "When this profile shares posts or reels, they will appear here."}
                       </span>
+                      <div style={profileEmptyStateActionRowStyle}>
+                        {isOwnProfile ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const composer = document.getElementById("profile-composer");
+                              composer?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }}
+                            style={primaryButtonStyle}
+                          >
+                            Create First Post
+                          </button>
+                        ) : (
+                          <Link href="/dashboard" style={{ ...secondaryButtonStyle, textDecoration: "none" }}>
+                            Back to feed
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div style={feedStackStyle}>
@@ -8869,13 +9158,13 @@ function getFriendStatusPillStyle(friendStatus: FriendRequestStatus): CSSPropert
 
 const mainCardStyle: CSSProperties = {
   background:
-    "linear-gradient(180deg, rgba(255,255,255,0.040) 0%, rgba(255,255,255,0.022) 100%)",
-  borderRadius: "14px",
-  padding: "18px",
-  border: "1px solid rgba(255,255,255,0.085)",
+    "linear-gradient(180deg, rgba(255,255,255,0.044) 0%, rgba(255,255,255,0.024) 100%)",
+  borderRadius: "18px",
+  padding: "20px",
+  border: "1px solid rgba(255,255,255,0.09)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
-  boxShadow: "0 12px 30px rgba(0,0,0,0.20)",
+  boxShadow: "0 14px 34px rgba(0,0,0,0.22)",
   transition: "border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease",
 };
 
@@ -11238,20 +11527,29 @@ const profileShowcaseCreateButtonStyle: CSSProperties = {
 
 const profileTabsShellStyle: CSSProperties = {
   padding: "0 14px 14px",
+  display: "grid",
+  gap: "10px",
 };
 
 const profileTabsStyle: CSSProperties = {
-  display: "flex",
-  gap: "6px",
-  padding: "6px",
-  borderRadius: "16px",
-  background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.032))",
-  border: "1px solid rgba(255,255,255,0.085)",
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: "7px",
+  padding: "7px",
+  borderRadius: "20px",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.028))",
+  border: "1px solid rgba(255,255,255,0.09)",
   overflowX: "auto",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.050), 0 14px 34px rgba(0,0,0,0.20)",
 };
 
 const profileTabStyle: CSSProperties = {
+  display: "grid",
+  gap: "4px",
+  alignContent: "center",
+  justifyItems: "start",
+  minHeight: "54px",
   background: "transparent",
   color: "#aeb3c2",
   borderTopWidth: "1px",
@@ -11263,28 +11561,108 @@ const profileTabStyle: CSSProperties = {
   borderRightColor: "transparent",
   borderBottomColor: "transparent",
   borderLeftColor: "transparent",
-  padding: "11px 16px",
+  padding: "10px 13px",
   fontWeight: 850,
   cursor: "pointer",
-  borderRadius: "12px",
+  borderRadius: "15px",
   whiteSpace: "nowrap",
+  textAlign: "left",
+  fontFamily: "inherit",
+  transition: "background 150ms ease, border-color 150ms ease, transform 150ms ease, color 150ms ease",
 };
 
 const profileActiveTabStyle: CSSProperties = {
   ...profileTabStyle,
-  background: "rgba(168,85,247,0.16)",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.22), rgba(59,130,246,0.10))",
   color: "#ffffff",
   borderTopWidth: "1px",
   borderRightWidth: "1px",
   borderBottomWidth: "2px",
   borderLeftWidth: "1px",
   borderStyle: "solid",
-  borderTopColor: "rgba(168,85,247,0.22)",
-  borderRightColor: "rgba(168,85,247,0.22)",
+  borderTopColor: "rgba(216,180,254,0.24)",
+  borderRightColor: "rgba(216,180,254,0.22)",
   borderBottomColor: "#a855f7",
-  borderLeftColor: "rgba(168,85,247,0.22)",
-  borderRadius: "12px",
-  boxShadow: "none",
+  borderLeftColor: "rgba(216,180,254,0.22)",
+  borderRadius: "15px",
+  boxShadow: "0 12px 26px rgba(124,58,237,0.20), inset 0 1px 0 rgba(255,255,255,0.07)",
+};
+
+const profileTabLabelStyle: CSSProperties = {
+  display: "block",
+  fontSize: "14px",
+  lineHeight: 1.05,
+  fontWeight: 950,
+  letterSpacing: "-0.02em",
+};
+
+const profileTabDetailStyle: CSSProperties = {
+  display: "block",
+  maxWidth: "100%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  color: "#7f8797",
+  fontSize: "10px",
+  lineHeight: 1.1,
+  fontWeight: 850,
+};
+
+const profileActiveTabDetailStyle: CSSProperties = {
+  ...profileTabDetailStyle,
+  color: "#d8b4fe",
+};
+
+const profileTabSummaryStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "center",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: "18px",
+  background:
+    "radial-gradient(circle at 4% 0%, rgba(168,85,247,0.15), transparent 32%), rgba(255,255,255,0.030)",
+  padding: "12px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+};
+
+const profileTabSummaryIconStyle: CSSProperties = {
+  width: "42px",
+  height: "42px",
+  borderRadius: "15px",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.92), rgba(59,130,246,0.70))",
+  color: "#ffffff",
+  fontSize: "17px",
+  fontWeight: 950,
+  boxShadow: "0 12px 26px rgba(124,58,237,0.26)",
+};
+
+const profileTabSummaryEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#c084fc",
+  fontSize: "10px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.09em",
+};
+
+const profileTabSummaryTitleStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#ffffff",
+  fontSize: "16px",
+  fontWeight: 950,
+  letterSpacing: "-0.035em",
+};
+
+const profileTabSummaryMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#9ca3af",
+  fontSize: "12px",
+  lineHeight: 1.45,
+  fontWeight: 750,
 };
 
 const profileMobileTabSelectStyle: CSSProperties = {
@@ -11417,6 +11795,65 @@ const aboutComingSoonStyle: CSSProperties = {
   borderRadius: "22px",
   background: "rgba(255,255,255,0.025)",
   padding: "18px",
+};
+
+const profilePolishedEmptyStateStyle: CSSProperties = {
+  ...aboutComingSoonStyle,
+  minHeight: "220px",
+  gap: "10px",
+  border: "1px dashed rgba(216,180,254,0.18)",
+  background:
+    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.14), transparent 36%), rgba(255,255,255,0.030)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+};
+
+const profileEmptyStateIconStyle: CSSProperties = {
+  width: "54px",
+  height: "54px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "18px",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.78), rgba(59,130,246,0.52))",
+  color: "#ffffff",
+  fontSize: "24px",
+  fontWeight: 950,
+  boxShadow: "0 16px 34px rgba(124,58,237,0.24)",
+};
+
+const profileEmptyStateTitleStyle: CSSProperties = {
+  color: "#ffffff",
+  fontSize: "18px",
+  lineHeight: 1.2,
+  fontWeight: 950,
+  letterSpacing: "-0.03em",
+};
+
+const profileEmptyStateCopyStyle: CSSProperties = {
+  maxWidth: "520px",
+  color: "#9ca3af",
+  fontSize: "14px",
+  lineHeight: 1.6,
+  fontWeight: 750,
+};
+
+const profileEmptyStateActionRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap",
+  marginTop: "6px",
+};
+
+const profileEmptyStateMiniGridStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  gap: "8px",
+  flexWrap: "wrap",
+  marginTop: "6px",
+  color: "#d8b4fe",
+  fontSize: "12px",
+  fontWeight: 900,
 };
 
 const miniReelGridStyle: CSSProperties = {

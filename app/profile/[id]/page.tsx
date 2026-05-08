@@ -6887,6 +6887,352 @@ return (
         }
       }
 
+
+      /* Profile Header Fine-Tuning v37: cleaner lines, tighter identity flow, less bubble */
+      .profile-polish-surface .profile-hero-shell {
+        border-radius: 18px !important;
+        border-color: rgba(255,255,255,0.095) !important;
+        box-shadow: 0 18px 44px rgba(0,0,0,0.28) !important;
+      }
+
+      .profile-polish-surface .profile-cover-zone::after {
+        content: "" !important;
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: 42% !important;
+        background: linear-gradient(180deg, rgba(7,9,14,0), rgba(7,9,14,0.74)) !important;
+        pointer-events: none !important;
+        z-index: 1 !important;
+      }
+
+      .profile-polish-surface .profile-hero-content {
+        padding-left: clamp(18px, 2.1vw, 28px) !important;
+        padding-right: clamp(18px, 2.1vw, 28px) !important;
+        padding-bottom: 24px !important;
+        gap: clamp(18px, 2.2vw, 28px) !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap {
+        padding: 4px !important;
+        box-shadow: 0 0 0 1px rgba(216,180,254,0.18), 0 18px 34px rgba(0,0,0,0.36), 0 0 22px rgba(168,85,247,0.18) !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap img,
+      .profile-polish-surface .profile-avatar-wrap > div {
+        border-width: 3px !important;
+      }
+
+      .profile-polish-surface .profile-avatar-online-ring::after {
+        box-shadow: 0 0 14px rgba(168,85,247,0.24), 0 0 22px rgba(34,211,238,0.10) !important;
+      }
+
+      .profile-polish-surface .profile-avatar-edit-button {
+        width: 34px !important;
+        height: 34px !important;
+        right: -8px !important;
+        bottom: 8px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, rgba(12,14,22,0.86), rgba(124,58,237,0.38)) !important;
+        border: 1px solid rgba(216,180,254,0.34) !important;
+        box-shadow: 0 9px 20px rgba(0,0,0,0.28), 0 0 14px rgba(168,85,247,0.18) !important;
+      }
+
+      .profile-polish-surface .profile-hero-topline {
+        margin-bottom: 8px !important;
+      }
+
+      .profile-polish-surface .profile-hero-topline h1 {
+        letter-spacing: -0.048em !important;
+        text-shadow: 0 8px 22px rgba(0,0,0,0.22) !important;
+      }
+
+      .profile-polish-surface .profile-hero-topline p {
+        color: #b8bdc8 !important;
+        letter-spacing: 0.005em !important;
+      }
+
+      .profile-polish-surface .profile-hero-actions {
+        gap: 8px !important;
+        align-items: center !important;
+      }
+
+      .profile-polish-surface .profile-hero-actions button,
+      .profile-polish-surface .profile-hero-actions a {
+        border-radius: 12px !important;
+        min-height: 40px !important;
+        padding-top: 9px !important;
+        padding-bottom: 9px !important;
+        box-shadow: none !important;
+      }
+
+      .profile-polish-surface .profile-hero-actions button:hover,
+      .profile-polish-surface .profile-hero-actions a:hover {
+        transform: translateY(-1px) !important;
+      }
+
+      .profile-polish-surface .profile-meta-row {
+        margin-top: 12px !important;
+        padding-top: 10px !important;
+        border-top: 1px solid rgba(255,255,255,0.055) !important;
+      }
+
+      .profile-polish-surface .profile-stats-bar {
+        border-top: 1px solid rgba(255,255,255,0.075) !important;
+        background: linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0.035)) !important;
+      }
+
+      @media (min-width: 721px) {
+        .profile-polish-surface .profile-cover-zone {
+          height: clamp(210px, 22vw, 286px) !important;
+        }
+
+        .profile-polish-surface .profile-hero-content {
+          margin-top: -76px !important;
+        }
+
+        .profile-polish-surface .profile-hero-info {
+          padding-top: clamp(64px, 6.2vw, 86px) !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-polish-surface .profile-cover-zone {
+          height: 138px !important;
+        }
+
+        .profile-polish-surface .profile-hero-content {
+          margin-top: -44px !important;
+          padding: 0 15px 15px !important;
+          background: linear-gradient(180deg, rgba(7,9,14,0) 0%, rgba(12,14,20,0.88) 30%, rgba(12,14,20,0.98) 100%) !important;
+        }
+
+        .profile-polish-surface .profile-avatar-wrap {
+          width: 94px !important;
+          height: 94px !important;
+          min-width: 94px !important;
+          margin-bottom: 10px !important;
+        }
+
+        .profile-polish-surface .profile-avatar-edit-button,
+        .profile-polish-surface .profile-mobile-camera-real {
+          width: 31px !important;
+          height: 31px !important;
+          right: -8px !important;
+          bottom: 4px !important;
+          border-radius: 11px !important;
+          font-size: 13px !important;
+        }
+
+        .profile-polish-surface .profile-hero-topline h1 {
+          font-size: clamp(26px, 7.3vw, 34px) !important;
+          letter-spacing: -0.04em !important;
+        }
+
+        .profile-polish-surface .profile-hero-topline p {
+          font-size: 12.5px !important;
+          margin-top: 4px !important;
+        }
+
+        .profile-polish-surface .profile-hero-actions {
+          width: 100% !important;
+          justify-content: flex-start !important;
+          margin-top: 10px !important;
+        }
+
+        .profile-polish-surface .profile-hero-actions button,
+        .profile-polish-surface .profile-hero-actions a {
+          min-height: 38px !important;
+          padding: 8px 12px !important;
+          font-size: 12.5px !important;
+        }
+
+        .profile-polish-surface .profile-meta-row {
+          width: 100% !important;
+          padding-top: 9px !important;
+          margin-top: 11px !important;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .profile-polish-surface .profile-cover-zone {
+          height: 132px !important;
+        }
+
+        .profile-polish-surface .profile-avatar-wrap {
+          width: 90px !important;
+          height: 90px !important;
+          min-width: 90px !important;
+        }
+      }
+
+
+      /* Profile Header Regression Fix v38: restore balanced cover/avatar spacing after v37 */
+      @media (min-width: 721px) {
+        .profile-polish-surface.profile-mobile-first-polish .profile-cover-zone {
+          height: clamp(224px, 22.5vw, 292px) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-content {
+          margin-top: -58px !important;
+          padding-bottom: 26px !important;
+          align-items: flex-start !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-info {
+          padding-top: clamp(50px, 5vw, 72px) !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-polish-surface.profile-mobile-first-polish .profile-cover-zone {
+          height: clamp(164px, 34vw, 204px) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-content {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          text-align: left !important;
+          margin-top: -56px !important;
+          padding: 0 18px 20px !important;
+          background: linear-gradient(180deg, rgba(7,9,14,0) 0%, rgba(12,14,20,0.82) 30%, rgba(12,14,20,0.98) 100%) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-avatar-wrap {
+          width: 112px !important;
+          height: 112px !important;
+          min-width: 112px !important;
+          margin: 0 0 14px 0 !important;
+          padding: 4px !important;
+          box-shadow: 0 0 0 1px rgba(216,180,254,0.18), 0 16px 32px rgba(0,0,0,0.34), 0 0 24px rgba(34,211,238,0.18) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-info {
+          width: 100% !important;
+          padding-top: 0 !important;
+          text-align: left !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-topline {
+          align-items: flex-start !important;
+          gap: 10px !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-topline h1 {
+          font-size: clamp(30px, 8.2vw, 42px) !important;
+          line-height: 1.04 !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-avatar-edit-button,
+        .profile-polish-surface.profile-mobile-first-polish .profile-mobile-camera-real {
+          width: 34px !important;
+          height: 34px !important;
+          right: -7px !important;
+          bottom: 6px !important;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .profile-polish-surface.profile-mobile-first-polish .profile-cover-zone {
+          height: 158px !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-content {
+          margin-top: -52px !important;
+          padding-left: 16px !important;
+          padding-right: 16px !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-avatar-wrap {
+          width: 106px !important;
+          height: 106px !important;
+          min-width: 106px !important;
+        }
+      }
+
+
+      /* Profile Header Fix v39: keep avatar above cover and reduce cover overlap */
+      .profile-polish-surface .profile-cover-zone {
+        position: relative !important;
+        z-index: 1 !important;
+        overflow: hidden !important;
+      }
+
+      .profile-polish-surface .profile-cover-zone::after {
+        z-index: 2 !important;
+      }
+
+      .profile-polish-surface .profile-hero-content {
+        position: relative !important;
+        z-index: 5 !important;
+        isolation: isolate !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap,
+      .profile-polish-surface .profile-mobile-avatar-shell-real {
+        position: relative !important;
+        z-index: 12 !important;
+        isolation: isolate !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap img,
+      .profile-polish-surface .profile-avatar-wrap > div,
+      .profile-polish-surface .profile-mobile-avatar-image-real,
+      .profile-polish-surface .profile-mobile-avatar-fallback-real {
+        position: relative !important;
+        z-index: 13 !important;
+      }
+
+      .profile-polish-surface .profile-avatar-edit-button,
+      .profile-polish-surface .profile-mobile-camera-real {
+        z-index: 15 !important;
+      }
+
+      @media (min-width: 721px) {
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-content {
+          margin-top: -38px !important;
+          padding-top: 0 !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-info {
+          padding-top: clamp(32px, 3.6vw, 52px) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-avatar-wrap {
+          transform: translateY(4px) !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-polish-surface.profile-mobile-first-polish .profile-cover-zone {
+          height: clamp(170px, 36vw, 210px) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-content {
+          margin-top: -34px !important;
+          padding-top: 0 !important;
+          background: linear-gradient(180deg, rgba(7,9,14,0) 0%, rgba(12,14,20,0.9) 18%, rgba(12,14,20,0.99) 100%) !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-avatar-wrap {
+          margin-top: 0 !important;
+          margin-bottom: 16px !important;
+          transform: translateY(0) !important;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .profile-polish-surface.profile-mobile-first-polish .profile-cover-zone {
+          height: 166px !important;
+        }
+
+        .profile-polish-surface.profile-mobile-first-polish .profile-hero-content {
+          margin-top: -30px !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}

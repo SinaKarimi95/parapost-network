@@ -480,6 +480,86 @@ export default function EditProfilePage() {
 
   return (
     <div style={pageShellStyle}>
+      <style>{`
+        .cover-editor-block {
+          scroll-margin-top: 18px;
+        }
+
+        .cover-main-preview {
+          min-height: clamp(240px, 34vw, 330px) !important;
+        }
+
+        .cover-control-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 14px;
+        }
+
+        .cover-preview-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          align-items: start;
+        }
+
+        .cover-device-preview-card {
+          display: grid;
+          gap: 7px;
+          min-width: 0;
+        }
+
+        .cover-device-preview-box {
+          width: 100%;
+        }
+
+        .profile-photo-edit-section {
+          margin-top: 8px;
+          padding-top: 22px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        @media (max-width: 720px) {
+          .cover-editor-block {
+            gap: 16px !important;
+          }
+
+          .cover-main-preview {
+            min-height: 255px !important;
+            border-radius: 20px !important;
+          }
+
+          .cover-control-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          .cover-preview-grid {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+          }
+
+          .cover-device-preview-box {
+            border-radius: 18px !important;
+          }
+
+          .cover-device-preview-desktop .cover-device-preview-box {
+            height: 96px !important;
+          }
+
+          .cover-device-preview-tablet .cover-device-preview-box {
+            height: 116px !important;
+          }
+
+          .cover-device-preview-mobile .cover-device-preview-box {
+            height: 190px !important;
+          }
+
+          .profile-photo-edit-section {
+            margin-top: 12px !important;
+            padding-top: 24px !important;
+          }
+        }
+      `}</style>
       <div style={containerStyle}>
         <div style={{ display: "grid", gap: "20px" }}>
           <div style={cardStyle}>
@@ -582,15 +662,16 @@ export default function EditProfilePage() {
                   onSubmit={handleSave}
                   style={{ display: "grid", gap: "18px" }}
                 >
-                  <div style={{ display: "grid", gap: "14px" }}>
+                  <div className="cover-editor-block" style={{ display: "grid", gap: "14px" }}>
                     <div>
                       <label style={labelStyle}>Cover photo</label>
                       <p style={{ margin: "0 0 12px", color: "#9ca3af", fontSize: "13px", lineHeight: 1.6 }}>
-                        Upload one cover image, then drag with a mouse or finger to fine-tune the focus across desktop, tablet, and mobile.
+                        Upload one cover image. Drag the large preview with your mouse or finger, then use the sliders only if you need small adjustments.
                       </p>
                     </div>
 
                     <div
+                      className="cover-main-preview"
                       ref={coverPreviewRef}
                       role={coverUrl ? "button" : undefined}
                       tabIndex={coverUrl ? 0 : undefined}
@@ -716,7 +797,7 @@ export default function EditProfilePage() {
                             Responsive cover
                           </div>
                           <div style={{ fontSize: "13px", color: "#e5e7eb", marginTop: "4px" }}>
-                            Drag to position. Adjust once. Works across devices.
+                            Drag to position. One cover adapts everywhere.
                           </div>
                         </div>
 
@@ -732,6 +813,21 @@ export default function EditProfilePage() {
                       </div>
                     </div>
 
+                    <div
+                      style={{
+                        border: "1px solid rgba(216,180,254,0.12)",
+                        background: "rgba(168,85,247,0.055)",
+                        borderRadius: "18px",
+                        padding: "12px 14px",
+                        color: "#d8b4fe",
+                        fontSize: "12px",
+                        lineHeight: 1.6,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Tip: keep important faces, logos, and text near the center. Parapost will crop the same cover differently on desktop, tablet, and mobile.
+                    </div>
+
                     <input
                       ref={coverFileInputRef}
                       type="file"
@@ -742,13 +838,7 @@ export default function EditProfilePage() {
                       }
                     />
 
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                        gap: "14px",
-                      }}
-                    >
+                    <div className="cover-control-grid">
                       <div>
                         <label htmlFor="coverPositionX" style={labelStyle}>
                           Horizontal focus
@@ -788,23 +878,28 @@ export default function EditProfilePage() {
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                        gap: "12px",
-                      }}
-                    >
+                    <div style={{ display: "grid", gap: "10px" }}>
+                      <div>
+                        <div style={{ color: "#e5e7eb", fontSize: "13px", fontWeight: 900 }}>
+                          Device previews
+                        </div>
+                        <div style={{ color: "#9ca3af", fontSize: "12px", marginTop: "4px", lineHeight: 1.5 }}>
+                          These previews show how the same cover focus adapts across different screens.
+                        </div>
+                      </div>
+
+                      <div className="cover-preview-grid">
                       {[
                         { label: "Desktop", height: 88 },
                         { label: "Tablet", height: 110 },
                         { label: "Mobile", height: 136 },
                       ].map((preview) => (
-                        <div key={preview.label} style={{ display: "grid", gap: "7px" }}>
+                        <div key={preview.label} className={`cover-device-preview-card cover-device-preview-${preview.label.toLowerCase()}`} style={{ display: "grid", gap: "7px" }}>
                           <div style={{ fontSize: "12px", color: "#9ca3af", fontWeight: 800 }}>
                             {preview.label} preview
                           </div>
                           <div
+                            className="cover-device-preview-box"
                             style={{
                               height: `${preview.height}px`,
                               borderRadius: "16px",
@@ -821,10 +916,12 @@ export default function EditProfilePage() {
                           />
                         </div>
                       ))}
+                      </div>
                     </div>
                   </div>
 
                   <div
+                    className="profile-photo-edit-section"
                     style={{
                       display: "flex",
                       alignItems: "center",

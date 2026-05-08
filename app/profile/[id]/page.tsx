@@ -5651,14 +5651,6 @@ return (
         overflow: hidden !important;
       }
 
-      .profile-polish-surface .profile-cover-zone button {
-        opacity: 0.88 !important;
-      }
-
-      .profile-polish-surface .profile-cover-zone button:hover {
-        opacity: 1 !important;
-      }
-
       .profile-polish-surface .profile-hero-content {
         align-items: flex-start !important;
       }
@@ -6970,14 +6962,6 @@ return (
               <div className="profile-hero-shell" style={profileHeroShellStyle}>
                 <div className="profile-cover-zone" style={profileCoverDisplayStyle}>
                   <div style={profileCoverOverlayStyle} />
-                  {isOwnProfile ? (
-                    <button
-                      onClick={() => router.push(`/profile/${viewerId}/edit`)}
-                      style={editCoverButtonStyle}
-                    >
-                      ✎ Edit Cover
-                    </button>
-                  ) : null}
                 </div>
 
                 <div className="profile-mobile-header-real">

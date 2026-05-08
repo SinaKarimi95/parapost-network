@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -10,11 +10,16 @@ type ProfileRow = {
   full_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  cover_url?: string | null;
+  cover_position_x?: number | string | null;
+  cover_position_y?: number | string | null;
   is_online?: boolean | null;
 };
 
 const BIO_MAX_LENGTH = 175;
 const USERNAME_TAKEN_MESSAGE = "That username already exists. Please choose another one.";
+const COVER_BUCKET_NAME = "profile-covers";
+const COVER_MAX_SIZE_MB = 10;
 
 type StatusKind = "success" | "error" | "info";
 
@@ -115,6 +120,11 @@ function normalizeUsername(value: string) {
     .slice(0, 30);
 }
 
+function clampCoverPosition(value: number) {
+  if (Number.isNaN(value)) return 50;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 function isDuplicateUsernameError(error: unknown) {
   const message =
     error && typeof error === "object" && "message" in error
@@ -176,8 +186,22 @@ export default function EditProfilePage() {
   const [fullName, setFullName] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [coverPositionX, setCoverPositionX] = useState(50);
+  const [coverPositionY, setCoverPositionY] = useState(50);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const coverFileInputRef = useRef<HTMLInputElement | null>(null);
+  const coverPreviewRef = useRef<HTMLDivElement | null>(null);
+  const coverDragStartRef = useRef<{
+    pointerX: number;
+    pointerY: number;
+    startX: number;
+    startY: number;
+    pointerType: string;
+  } | null>(null);
+  const [coverDragging, setCoverDragging] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -198,7 +222,7 @@ export default function EditProfilePage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, full_name, bio, avatar_url, is_online")
+        .select("id, username, full_name, bio, avatar_url, cover_url, cover_position_x, cover_position_y, is_online")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -215,6 +239,9 @@ export default function EditProfilePage() {
       setFullName(profile?.full_name || "");
       setBio((profile?.bio || "").slice(0, BIO_MAX_LENGTH));
       setAvatarUrl(profile?.avatar_url || "");
+      setCoverUrl(profile?.cover_url || "");
+      setCoverPositionX(clampCoverPosition(Number(profile?.cover_position_x ?? 50)));
+      setCoverPositionY(clampCoverPosition(Number(profile?.cover_position_y ?? 50)));
       setLoading(false);
     };
 
@@ -264,6 +291,118 @@ export default function EditProfilePage() {
     setUploadingAvatar(false);
     setStatusKind("success");
     setStatusMessage("Avatar updated.");
+  };
+
+  const handleCoverUpload = async (file: File | null) => {
+    if (!file || !currentUserId) return;
+
+    if (!file.type.startsWith("image/")) {
+      setStatusKind("error");
+      setStatusMessage("Please choose a cover photo image file.");
+      return;
+    }
+
+    if (file.size > COVER_MAX_SIZE_MB * 1024 * 1024) {
+      setStatusKind("error");
+      setStatusMessage(`Please choose a cover photo under ${COVER_MAX_SIZE_MB}MB.`);
+      return;
+    }
+
+    setUploadingCover(true);
+    setStatusMessage("");
+    setStatusKind("info");
+
+    const extension = file.name.split(".").pop() || "jpg";
+    const fileName = `${currentUserId}/cover-${Date.now()}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(COVER_BUCKET_NAME)
+      .upload(fileName, file, { cacheControl: "604800", upsert: false });
+
+    if (uploadError) {
+      setUploadingCover(false);
+      setStatusKind("error");
+      setStatusMessage(`Cover upload error: ${uploadError.message}`);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(COVER_BUCKET_NAME)
+      .getPublicUrl(fileName);
+
+    const nextCoverUrl = publicUrlData.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        cover_url: nextCoverUrl,
+        cover_position_x: coverPositionX,
+        cover_position_y: coverPositionY,
+      })
+      .eq("id", currentUserId);
+
+    if (updateError) {
+      setUploadingCover(false);
+      setStatusKind("error");
+      setStatusMessage(`Cover save error: ${updateError.message}`);
+      return;
+    }
+
+    setCoverUrl(nextCoverUrl);
+    setUploadingCover(false);
+    setStatusKind("success");
+    setStatusMessage("Cover photo updated. Drag the preview or use the sliders to fine-tune, then save changes.");
+  };
+
+  const updateCoverPositionFromPointer = (clientX: number, clientY: number) => {
+    const preview = coverPreviewRef.current;
+    const dragStart = coverDragStartRef.current;
+    if (!preview || !dragStart) return;
+
+    const rect = preview.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    // Mobile/tablet users need a controlled touch adjustment rather than a harsh jump.
+    // This uses movement from the original touch point, so the cover can be nudged into place
+    // across many phone sizes while still allowing enough range for meaningful adjustments.
+    const isTouchLike = dragStart.pointerType === "touch" || dragStart.pointerType === "pen";
+    const sensitivity = isTouchLike ? 0.74 : 0.92;
+    const deltaX = ((clientX - dragStart.pointerX) / rect.width) * 100 * sensitivity;
+    const deltaY = ((clientY - dragStart.pointerY) / rect.height) * 100 * sensitivity;
+
+    const nextX = clampCoverPosition(dragStart.startX + deltaX);
+    const nextY = clampCoverPosition(dragStart.startY + deltaY);
+
+    setCoverPositionX(nextX);
+    setCoverPositionY(nextY);
+  };
+
+  const handleCoverPreviewPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!coverUrl) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    coverDragStartRef.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      startX: coverPositionX,
+      startY: coverPositionY,
+      pointerType: event.pointerType || "mouse",
+    };
+    setCoverDragging(true);
+  };
+
+  const handleCoverPreviewPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!coverUrl || !coverDragging || !coverDragStartRef.current) return;
+
+    event.preventDefault();
+    updateCoverPositionFromPointer(event.clientX, event.clientY);
+  };
+
+  const handleCoverPreviewPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    coverDragStartRef.current = null;
+    setCoverDragging(false);
   };
 
   const handleSave = async (event: FormEvent) => {
@@ -316,6 +455,9 @@ export default function EditProfilePage() {
       username: cleanedUsername,
       full_name: cleanedFullName || "",
       bio: cleanedBio || "",
+      cover_url: coverUrl || null,
+      cover_position_x: coverPositionX,
+      cover_position_y: coverPositionY,
     });
 
     if (error) {
@@ -440,6 +582,248 @@ export default function EditProfilePage() {
                   onSubmit={handleSave}
                   style={{ display: "grid", gap: "18px" }}
                 >
+                  <div style={{ display: "grid", gap: "14px" }}>
+                    <div>
+                      <label style={labelStyle}>Cover photo</label>
+                      <p style={{ margin: "0 0 12px", color: "#9ca3af", fontSize: "13px", lineHeight: 1.6 }}>
+                        Upload one cover image, then drag with a mouse or finger to fine-tune the focus across desktop, tablet, and mobile.
+                      </p>
+                    </div>
+
+                    <div
+                      ref={coverPreviewRef}
+                      role={coverUrl ? "button" : undefined}
+                      tabIndex={coverUrl ? 0 : undefined}
+                      aria-label={coverUrl ? "Drag to reposition cover photo" : undefined}
+                      onPointerDown={handleCoverPreviewPointerDown}
+                      onPointerMove={handleCoverPreviewPointerMove}
+                      onPointerUp={handleCoverPreviewPointerEnd}
+                      onPointerCancel={handleCoverPreviewPointerEnd}
+                      onLostPointerCapture={handleCoverPreviewPointerEnd}
+                      style={{
+                        position: "relative",
+                        minHeight: "210px",
+                        borderRadius: "24px",
+                        overflow: "hidden",
+                        border: coverDragging
+                          ? "1px solid rgba(216,180,254,0.46)"
+                          : "1px solid rgba(216,180,254,0.18)",
+                        backgroundColor: coverUrl ? "#0b0f19" : "#0f1020",
+                        backgroundImage: coverUrl
+                          ? `linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.44)), url(${coverUrl})`
+                          : "radial-gradient(circle at 50% 30%, rgba(168,85,247,0.62) 0%, rgba(88,28,135,0.35) 28%, rgba(3,7,18,0.78) 58%), linear-gradient(135deg, #0f1020 0%, #16162a 44%, #05070b 100%)",
+                        backgroundSize: "cover",
+                        backgroundPosition: `${coverPositionX}% ${coverPositionY}%`,
+                        backgroundRepeat: "no-repeat",
+                        boxShadow: coverDragging
+                          ? "0 22px 58px rgba(0,0,0,0.34), 0 0 0 1px rgba(168,85,247,0.20) inset"
+                          : "0 18px 48px rgba(0,0,0,0.28)",
+                        cursor: coverUrl ? (coverDragging ? "grabbing" : "grab") : "default",
+                        touchAction: "none",
+                        overscrollBehavior: "contain",
+                        userSelect: "none",
+                        WebkitUserSelect: "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background: "linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.52))",
+                          pointerEvents: "none",
+                        }}
+                      />
+
+                      {coverUrl ? (
+                        <>
+                          <div
+                            style={{
+                              position: "absolute",
+                              left: `${coverPositionX}%`,
+                              top: 0,
+                              bottom: 0,
+                              width: "1px",
+                              background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.28), transparent)",
+                              pointerEvents: "none",
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: `${coverPositionY}%`,
+                              left: 0,
+                              right: 0,
+                              height: "1px",
+                              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent)",
+                              pointerEvents: "none",
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: "absolute",
+                              left: `${coverPositionX}%`,
+                              top: `${coverPositionY}%`,
+                              width: "18px",
+                              height: "18px",
+                              borderRadius: "999px",
+                              border: "2px solid rgba(255,255,255,0.92)",
+                              background: "rgba(168,85,247,0.76)",
+                              boxShadow: "0 0 0 5px rgba(168,85,247,0.18), 0 8px 20px rgba(0,0,0,0.34)",
+                              transform: "translate(-50%, -50%)",
+                              pointerEvents: "none",
+                            }}
+                          />
+                        </>
+                      ) : null}
+
+                      {coverUrl ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "14px",
+                            left: "14px",
+                            zIndex: 2,
+                            borderRadius: "999px",
+                            padding: "7px 10px",
+                            border: "1px solid rgba(255,255,255,0.16)",
+                            background: "rgba(3,7,18,0.48)",
+                            color: "#f8fafc",
+                            fontSize: "12px",
+                            fontWeight: 900,
+                            letterSpacing: "0.02em",
+                            backdropFilter: "blur(12px)",
+                          }}
+                        >
+                          {coverDragging ? "Fine-tuning cover…" : "Drag or touch to reposition"}
+                        </div>
+                      ) : null}
+
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: "18px",
+                          right: "18px",
+                          bottom: "16px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "12px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: "12px", color: "#c084fc", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                            Responsive cover
+                          </div>
+                          <div style={{ fontSize: "13px", color: "#e5e7eb", marginTop: "4px" }}>
+                            Drag to position. Adjust once. Works across devices.
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={() => coverFileInputRef.current?.click()}
+                          style={secondaryButtonStyle}
+                          disabled={uploadingCover}
+                        >
+                          {uploadingCover ? "Uploading..." : coverUrl ? "Change Cover" : "Upload Cover"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <input
+                      ref={coverFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(event) =>
+                        handleCoverUpload(event.target.files?.[0] || null)
+                      }
+                    />
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: "14px",
+                      }}
+                    >
+                      <div>
+                        <label htmlFor="coverPositionX" style={labelStyle}>
+                          Horizontal focus
+                        </label>
+                        <input
+                          id="coverPositionX"
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={coverPositionX}
+                          onChange={(event) => setCoverPositionX(clampCoverPosition(Number(event.target.value)))}
+                          style={{ width: "100%" }}
+                        />
+                        <div style={helperRowStyle}>
+                          <span>Drag/touch preview or fine-tune left/right.</span>
+                          <span>{coverPositionX}%</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="coverPositionY" style={labelStyle}>
+                          Vertical focus
+                        </label>
+                        <input
+                          id="coverPositionY"
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={coverPositionY}
+                          onChange={(event) => setCoverPositionY(clampCoverPosition(Number(event.target.value)))}
+                          style={{ width: "100%" }}
+                        />
+                        <div style={helperRowStyle}>
+                          <span>Drag/touch preview or fine-tune up/down.</span>
+                          <span>{coverPositionY}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                        gap: "12px",
+                      }}
+                    >
+                      {[
+                        { label: "Desktop", height: 88 },
+                        { label: "Tablet", height: 110 },
+                        { label: "Mobile", height: 136 },
+                      ].map((preview) => (
+                        <div key={preview.label} style={{ display: "grid", gap: "7px" }}>
+                          <div style={{ fontSize: "12px", color: "#9ca3af", fontWeight: 800 }}>
+                            {preview.label} preview
+                          </div>
+                          <div
+                            style={{
+                              height: `${preview.height}px`,
+                              borderRadius: "16px",
+                              border: "1px solid rgba(255,255,255,0.10)",
+                              backgroundColor: coverUrl ? "#0b0f19" : "#111827",
+                              backgroundImage: coverUrl
+                                ? `url(${coverUrl})`
+                                : "radial-gradient(circle at 50% 30%, rgba(168,85,247,0.54), rgba(15,23,42,0.9))",
+                              backgroundSize: "cover",
+                              backgroundPosition: `${coverPositionX}% ${coverPositionY}%`,
+                              backgroundRepeat: "no-repeat",
+                              overflow: "hidden",
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div
                     style={{
                       display: "flex",
@@ -629,7 +1013,7 @@ export default function EditProfilePage() {
 
                 <p style={{ margin: 0 }}>
                   Bio is limited to {BIO_MAX_LENGTH} characters to keep profile
-                  headers clean and consistent across desktop, tablet, and mobile.
+                  headers clean and consistent across desktop, tablet, and mobile. Cover photo focus settings help one uploaded cover fit across devices.
                 </p>
               </div>
             </div>

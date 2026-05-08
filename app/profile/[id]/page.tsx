@@ -22,6 +22,9 @@ type ProfileRow = {
   full_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  cover_url?: string | null;
+  cover_position_x?: number | string | null;
+  cover_position_y?: number | string | null;
   is_online?: boolean | null;
   verified?: boolean | null;
   location?: string | null;
@@ -851,6 +854,9 @@ const showFriendStatus = useCallback((message: string) => {
   full_name,
   bio,
   avatar_url,
+  cover_url,
+  cover_position_x,
+  cover_position_y,
   is_online,
   location,
   website,
@@ -2285,6 +2291,16 @@ useEffect(() => {
   ];
   const activeProfileTabItem =
     profileTabItems.find((tab) => tab.value === activeProfileTab) || profileTabItems[0];
+  const profileCoverPositionX = clampShowcaseTextPercent(Number(profile?.cover_position_x ?? 50), 0, 100);
+  const profileCoverPositionY = clampShowcaseTextPercent(Number(profile?.cover_position_y ?? 50), 0, 100);
+  const profileCoverDisplayStyle: CSSProperties = profile?.cover_url
+    ? {
+        ...profileCoverStyle,
+        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.18) 46%, rgba(5,7,11,0.78) 100%), url(${profile.cover_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: `${profileCoverPositionX}% ${profileCoverPositionY}%`,
+      }
+    : profileCoverStyle;
 
 return (
   <div
@@ -6952,7 +6968,7 @@ return (
           <section className="profile-center-column min-w-0">
             <div className="profile-stream-stack mx-auto w-full space-y-4 md:space-y-5" style={{ maxWidth: "980px" }}>
               <div className="profile-hero-shell" style={profileHeroShellStyle}>
-                <div className="profile-cover-zone" style={profileCoverStyle}>
+                <div className="profile-cover-zone" style={profileCoverDisplayStyle}>
                   <div style={profileCoverOverlayStyle} />
                   {isOwnProfile ? (
                     <button

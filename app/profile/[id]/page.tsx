@@ -6069,6 +6069,169 @@ return (
 }
 
 
+
+
+      /* Profile timeline polish v1: cleaner cards, stronger owner menu, and better mobile spacing. */
+      .profile-feed-post-card {
+        border-radius: 20px !important;
+        background:
+          radial-gradient(circle at 0% 0%, rgba(168,85,247,0.070), transparent 34%),
+          linear-gradient(180deg, rgba(255,255,255,0.044), rgba(255,255,255,0.020)) !important;
+        border-color: rgba(255,255,255,0.095) !important;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.22) !important;
+      }
+
+      .profile-feed-post-card:hover {
+        border-color: rgba(168,85,247,0.24) !important;
+        box-shadow: 0 18px 42px rgba(0,0,0,0.28), 0 0 26px rgba(168,85,247,0.055) !important;
+      }
+
+      .profile-post-menu-wrap {
+        position: relative !important;
+        z-index: 80 !important;
+      }
+
+      .profile-post-menu-trigger {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 13px !important;
+        background: rgba(255,255,255,0.045) !important;
+        border-color: rgba(255,255,255,0.105) !important;
+        color: #e5e7eb !important;
+      }
+
+      .profile-post-menu-trigger:hover,
+      .profile-post-menu-trigger:focus-visible {
+        background: rgba(168,85,247,0.14) !important;
+        border-color: rgba(216,180,254,0.26) !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.24), 0 0 18px rgba(168,85,247,0.12) !important;
+        outline: none !important;
+      }
+
+      .profile-post-menu {
+        top: 42px !important;
+        right: 0 !important;
+        min-width: 196px !important;
+        padding: 7px !important;
+        border-radius: 17px !important;
+        background: #11131a !important;
+        border: 1px solid rgba(255,255,255,0.14) !important;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.58), 0 0 0 1px rgba(255,255,255,0.045) !important;
+        overflow: visible !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      .profile-post-menu::before {
+        content: "Post options";
+        display: block;
+        padding: 7px 9px 8px;
+        color: #8b93a4;
+        font-size: 10px;
+        font-weight: 950;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 6px;
+      }
+
+      .profile-post-menu-item {
+        min-height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        border-radius: 12px !important;
+        border: 1px solid transparent !important;
+        background: rgba(255,255,255,0.035) !important;
+        color: #f8fafc !important;
+        padding: 10px 11px !important;
+        font-size: 13px !important;
+        font-weight: 900 !important;
+      }
+
+      .profile-post-menu-item + .profile-post-menu-item {
+        margin-top: 6px !important;
+      }
+
+      .profile-post-menu-item:hover,
+      .profile-post-menu-item:focus-visible {
+        background: rgba(168,85,247,0.14) !important;
+        border-color: rgba(216,180,254,0.22) !important;
+        outline: none !important;
+      }
+
+      .profile-post-menu-delete {
+        background: rgba(127,29,29,0.22) !important;
+        color: #fecaca !important;
+      }
+
+      .profile-post-menu-delete:hover,
+      .profile-post-menu-delete:focus-visible {
+        background: rgba(127,29,29,0.34) !important;
+        border-color: rgba(248,113,113,0.24) !important;
+      }
+
+      .profile-post-editor-shell {
+        border: 1px solid rgba(216,180,254,0.12) !important;
+        border-radius: 18px !important;
+        padding: 12px !important;
+        background: rgba(0,0,0,0.16) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.035) !important;
+      }
+
+      .profile-post-like-button {
+        min-width: 62px !important;
+        border-radius: 13px !important;
+      }
+
+      .profile-post-like-button-active {
+        box-shadow: 0 10px 24px rgba(236,72,153,0.12), 0 0 18px rgba(168,85,247,0.10) !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-mobile-first-polish .profile-feed-section-card {
+          padding: 12px !important;
+        }
+
+        .profile-mobile-first-polish .profile-feed-post-card {
+          border-radius: 17px !important;
+          padding: 13px !important;
+          box-shadow: 0 10px 22px rgba(0,0,0,0.22) !important;
+        }
+
+        .profile-mobile-first-polish .profile-feed-post-card header {
+          gap: 10px !important;
+          margin-bottom: 10px !important;
+          padding-bottom: 9px !important;
+        }
+
+        .profile-mobile-first-polish .profile-post-menu {
+          position: fixed !important;
+          left: 14px !important;
+          right: 14px !important;
+          top: auto !important;
+          bottom: calc(98px + env(safe-area-inset-bottom)) !important;
+          width: auto !important;
+          min-width: 0 !important;
+          z-index: 2147482200 !important;
+          border-radius: 20px !important;
+          padding: 9px !important;
+        }
+
+        .profile-mobile-first-polish .profile-post-menu-item {
+          min-height: 50px !important;
+          font-size: 14px !important;
+          justify-content: flex-start !important;
+        }
+
+        .profile-mobile-first-polish .profile-post-editor-shell {
+          margin-top: 12px !important;
+          padding: 10px !important;
+          border-radius: 16px !important;
+        }
+      }
+
+
       /* Profile feed/post premium polish overrides */
       .profile-feed-card {
         position: relative !important;
@@ -7789,6 +7952,47 @@ return (
         }
       }
 
+
+
+      /* Profile Polish Pass 2: mobile/tablet badge access. Desktop keeps the right rail. */
+      .profile-mobile-badges-panel {
+        display: grid;
+      }
+
+      @media (min-width: 1280px) {
+        .profile-mobile-badges-panel {
+          display: none !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-mobile-badges-panel {
+          margin: 0 !important;
+          border-radius: 0 !important;
+          border-left: 0 !important;
+          border-right: 0 !important;
+          padding: 14px !important;
+        }
+
+        .profile-mobile-badges-featured {
+          grid-template-columns: 58px minmax(0, 1fr) !important;
+          min-height: 76px !important;
+        }
+
+        .profile-mobile-badges-row {
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          flex-wrap: nowrap !important;
+          scrollbar-width: none !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding-bottom: 2px !important;
+        }
+
+        .profile-mobile-badges-row::-webkit-scrollbar {
+          display: none !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}
@@ -8206,6 +8410,18 @@ return (
                                 <span>
                                   <strong>Open reels</strong>
                                   <small>View short videos</small>
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => openProfileBadgesViewer()}
+                                style={profileDesktopActionItemStyle}
+                              >
+                                <span style={profileActionIconStyle}>◆</span>
+                                <span>
+                                  <strong>{isOwnProfile ? "My Badges" : "View badges"}</strong>
+                                  <small>{isOwnProfile ? "View your earned Para Ghost badges" : "See this member’s earned badges"}</small>
                                 </span>
                               </button>
 
@@ -9667,9 +9883,10 @@ return (
                               </div>
 
                               {isPostOwner ? (
-                                <div style={{ position: "relative", flexShrink: 0 }}>
+                                <div className="profile-post-menu-wrap" style={{ position: "relative", flexShrink: 0 }}>
                                   <button
                                     type="button"
+                                    className="profile-post-menu-trigger"
                                     onClick={(event) => {
                                       event.preventDefault();
                                       event.stopPropagation();
@@ -9682,9 +9899,10 @@ return (
                                   </button>
 
                                   {openPostMenuId === post.id ? (
-                                    <div style={postMenuStyle} onClick={(event) => event.stopPropagation()}>
+                                    <div className="profile-post-menu" style={postMenuStyle} onClick={(event) => event.stopPropagation()}>
                                       <button
                                         type="button"
+                                        className="profile-post-menu-item"
                                         style={menuItemStyle}
                                         onClick={(event) => {
                                           event.preventDefault();
@@ -9696,6 +9914,7 @@ return (
                                       </button>
                                       <button
                                         type="button"
+                                        className="profile-post-menu-item profile-post-menu-delete"
                                         style={{ ...menuItemStyle, color: "#fca5a5", borderBottomColor: "transparent" }}
                                         onClick={(event) => {
                                           event.preventDefault();
@@ -9712,7 +9931,7 @@ return (
                             </header>
 
                             {isEditingPost ? (
-                              <div style={{ display: "grid", gap: "12px", marginTop: "14px" }}>
+                              <div className="profile-post-editor-shell" style={{ display: "grid", gap: "12px", marginTop: "14px" }}>
                                 <textarea
                                   value={editingPostContent}
                                   onChange={(event) => setEditingPostContent(event.target.value)}
@@ -9742,6 +9961,7 @@ return (
 
                             <div style={postActionsRowStyle}>
                               <button
+                                className={`profile-post-like-button ${liked ? "profile-post-like-button-active" : ""}`}
                                 onClick={() => handleLikeToggle(post.id)}
                                 style={liked ? postLikeButtonActiveStyle : actionButtonStyle}
                                 aria-pressed={liked}
@@ -10066,6 +10286,18 @@ return (
 
           <button
             type="button"
+            onClick={() => openProfileBadgesViewer()}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>◆</span>
+            <span>
+              <strong>{isOwnProfile ? "My Badges" : "View badges"}</strong>
+              <small>{isOwnProfile ? "View your earned Para Ghost badges" : "See this member’s earned badges"}</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleCopyProfileLink}
             style={profileDesktopActionItemStyle}
           >
@@ -10239,6 +10471,18 @@ return (
 
               <button
                 type="button"
+                onClick={() => openProfileBadgesViewer()}
+                style={profileActionItemStyle}
+              >
+                <span style={profileActionIconStyle}>◆</span>
+                <span>
+                  <strong>{isOwnProfile ? "My Badges" : "View badges"}</strong>
+                  <small>{isOwnProfile ? "View your earned Para Ghost badges" : "See this member’s earned badges"}</small>
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleCopyProfileLink}
                 style={profileActionItemStyle}
               >
@@ -10332,6 +10576,205 @@ return (
     </div>
   );
 }   
+
+
+const profileMobileBadgesPanelStyle: CSSProperties = {
+  margin: "0 14px 14px",
+  padding: "15px",
+  borderRadius: "18px",
+  border: "1px solid rgba(216,180,254,0.14)",
+  background:
+    "radial-gradient(circle at 8% 0%, rgba(168,85,247,0.16), transparent 34%), linear-gradient(180deg, rgba(20,22,31,0.92), rgba(13,15,22,0.96))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 12px 30px rgba(0,0,0,0.18)",
+  gap: "12px",
+};
+
+const profileMobileBadgesHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "12px",
+  paddingBottom: "10px",
+  borderBottom: "1px solid rgba(255,255,255,0.065)",
+};
+
+const profileMobileBadgesEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#c084fc",
+  fontSize: "10px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.14em",
+};
+
+const profileMobileBadgesTitleStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#ffffff",
+  fontSize: "17px",
+  lineHeight: 1.15,
+  fontWeight: 950,
+  letterSpacing: "-0.035em",
+};
+
+const profileMobileBadgesSubtitleStyle: CSSProperties = {
+  margin: "5px 0 0",
+  color: "#9ca3af",
+  fontSize: "12px",
+  lineHeight: 1.45,
+  fontWeight: 750,
+};
+
+const profileMobileBadgesCountButtonStyle: CSSProperties = {
+  flex: "0 0 auto",
+  minHeight: "32px",
+  border: "1px solid rgba(216,180,254,0.24)",
+  borderRadius: "999px",
+  background: "rgba(168,85,247,0.11)",
+  color: "#e9d5ff",
+  padding: "7px 10px",
+  fontSize: "10px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  fontFamily: "inherit",
+};
+
+const profileMobileBadgesStackStyle: CSSProperties = {
+  display: "grid",
+  gap: "10px",
+};
+
+const profileMobileBadgesFeaturedStyle: CSSProperties = {
+  width: "100%",
+  display: "grid",
+  gridTemplateColumns: "64px minmax(0, 1fr) 22px",
+  alignItems: "center",
+  gap: "12px",
+  minHeight: "84px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "20px",
+  background:
+    "linear-gradient(145deg, rgba(255,255,255,0.064), rgba(255,255,255,0.028))",
+  color: "#f8fafc",
+  textAlign: "left",
+  padding: "11px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const profileMobileBadgesFeaturedIconStyle: CSSProperties = {
+  width: "62px",
+  height: "62px",
+  borderRadius: "19px",
+  display: "grid",
+  placeItems: "center",
+  border: "1px solid rgba(255,255,255,0.12)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+};
+
+const profileMobileBadgesFeaturedNameStyle: CSSProperties = {
+  color: "#ffffff",
+  fontSize: "14px",
+  lineHeight: 1.18,
+  fontWeight: 950,
+  letterSpacing: "-0.02em",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+};
+
+const profileMobileBadgesFeaturedMetaStyle: CSSProperties = {
+  display: "block",
+  marginTop: "5px",
+  color: "#9ca3af",
+  fontSize: "11px",
+  lineHeight: 1.25,
+  fontWeight: 850,
+};
+
+const profileMobileBadgesChevronStyle: CSSProperties = {
+  color: "#c4b5fd",
+  fontSize: "28px",
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
+const profileMobileBadgesRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "stretch",
+  gap: "9px",
+  flexWrap: "wrap",
+};
+
+const profileMobileBadgeMiniButtonStyle: CSSProperties = {
+  width: "92px",
+  minWidth: "92px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "16px",
+  background: "rgba(255,255,255,0.035)",
+  color: "#e5e7eb",
+  padding: "9px 8px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  display: "grid",
+  justifyItems: "center",
+  gap: "6px",
+  textAlign: "center",
+  fontSize: "10px",
+  fontWeight: 900,
+  lineHeight: 1.15,
+};
+
+const profileMobileBadgeMoreButtonStyle: CSSProperties = {
+  width: "54px",
+  minWidth: "54px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "16px",
+  background: "rgba(255,255,255,0.055)",
+  color: "#d8b4fe",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontSize: "14px",
+  fontWeight: 950,
+};
+
+const profileMobileBadgesHintStyle: CSSProperties = {
+  margin: "0",
+  color: "#8b93a4",
+  fontSize: "12px",
+  lineHeight: 1.45,
+  fontWeight: 750,
+};
+
+const profileMobileBadgesDetailsButtonStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "38px",
+  borderRadius: "13px",
+  border: "1px solid rgba(216,180,254,0.20)",
+  background: "rgba(168,85,247,0.10)",
+  color: "#e9d5ff",
+  fontSize: "12px",
+  fontWeight: 950,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const profileMobileBadgesEmptyStyle: CSSProperties = {
+  minHeight: "72px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "16px",
+  border: "1px dashed rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.030)",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 850,
+  textAlign: "center",
+  padding: "12px",
+};
+
 
 const profileStarterCardStyle: CSSProperties = {
   margin: "14px 14px 16px",

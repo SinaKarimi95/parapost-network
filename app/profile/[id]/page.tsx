@@ -1039,6 +1039,18 @@ export default function ProfilePage() {
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
   const canManageProfileShowcases = Boolean(viewerId && profileId && viewerId === profileId);
+
+  const canManageProfilePost = useCallback(
+    (post: Post | null | undefined) => {
+      if (!post || !isOwnProfile) return false;
+
+      const postBelongsToViewer = Boolean(viewerId && post.user_id === viewerId);
+      const postBelongsToProfile = Boolean(profileId && post.user_id === profileId);
+
+      return postBelongsToViewer || postBelongsToProfile;
+    },
+    [isOwnProfile, profileId, viewerId]
+  );
   const canCreateShowcase = canManageProfileShowcases;
 
   const showcaseStorageKey = useMemo(
@@ -1736,10 +1748,14 @@ useEffect(() => {
 
 
   const handleStartEditPost = (post: Post) => {
-    if (post.user_id !== viewerId) return;
+    // This keeps normal profile posts manageable from your own profile timeline.
+    // The visible 3-dot menu already proves the viewer owns the profile, so this helper
+    // accepts either the viewer id or the profile route id as the owner id.
+    if (!canManageProfilePost(post)) return;
+
+    setOpenPostMenuId(null);
     setEditingPostId(post.id);
     setEditingPostContent(post.content || "");
-    setOpenPostMenuId(null);
   };
 
   const handleCancelPostEdit = () => {
@@ -1747,14 +1763,17 @@ useEffect(() => {
     setEditingPostContent("");
   };
 
-  const handleSavePostEdit = async (postId: string) => {
+  const handleSavePostEdit = async (post: Post) => {
+    if (!canManageProfilePost(post)) return;
+
     const trimmed = editingPostContent.trim();
+    const ownerId = post.user_id || profileId || viewerId;
 
     const { error } = await supabase
       .from("posts")
       .update({ content: trimmed })
-      .eq("id", postId)
-      .eq("user_id", viewerId);
+      .eq("id", post.id)
+      .eq("user_id", ownerId);
 
     if (error) {
       alert(`Edit post error: ${error.message}`);
@@ -1762,21 +1781,30 @@ useEffect(() => {
     }
 
     setPosts((prev) =>
-      prev.map((post) => (post.id === postId ? { ...post, content: trimmed } : post))
+      prev.map((existingPost) =>
+        existingPost.id === post.id ? { ...existingPost, content: trimmed } : existingPost
+      )
     );
 
     setEditingPostId(null);
     setEditingPostContent("");
+    setOpenPostMenuId(null);
   };
 
-  const handleDeletePost = async (postId: string) => {
+  const handleDeletePost = async (post: Post) => {
+    if (!canManageProfilePost(post)) return;
+
+    setOpenPostMenuId(null);
+
     const confirmed = window.confirm("Delete this post from your profile and the homepage feed?");
     if (!confirmed) return;
+
+    const ownerId = post.user_id || profileId || viewerId;
 
     const { error: likesDeleteError } = await supabase
       .from("likes")
       .delete()
-      .eq("post_id", postId);
+      .eq("post_id", post.id);
 
     if (likesDeleteError) {
       console.warn("Profile post likes cleanup skipped:", likesDeleteError.message);
@@ -1785,26 +1813,27 @@ useEffect(() => {
     const { error: postDeleteError } = await supabase
       .from("posts")
       .delete()
-      .eq("id", postId)
-      .eq("user_id", viewerId);
+      .eq("id", post.id)
+      .eq("user_id", ownerId);
 
     if (postDeleteError) {
       alert(`Delete post error: ${postDeleteError.message}`);
       return;
     }
 
-    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setPosts((prev) => prev.filter((existingPost) => existingPost.id !== post.id));
     setLikeCounts((prev) => {
       const next = { ...prev };
-      delete next[postId];
+      delete next[post.id];
       return next;
     });
     setUserLikes((prev) => {
       const next = { ...prev };
-      delete next[postId];
+      delete next[post.id];
       return next;
     });
-    setOpenPostMenuId(null);
+    setEditingPostId((current) => (current === post.id ? null : current));
+    setEditingPostContent((current) => (editingPostId === post.id ? "" : current));
   };
 
   const handleLikeToggle = async (postId: string) => {
@@ -9600,7 +9629,7 @@ return (
                         const post = item;
                         const liked = !!userLikes[post.id];
                         const likeCount = likeCounts[post.id] || 0;
-                        const isPostOwner = viewerId === post.user_id;
+                        const isPostOwner = canManageProfilePost(post);
                         const isEditingPost = editingPostId === post.id;
 
                         return (
@@ -9654,12 +9683,25 @@ return (
 
                                   {openPostMenuId === post.id ? (
                                     <div style={postMenuStyle} onClick={(event) => event.stopPropagation()}>
-                                      <button style={menuItemStyle} onClick={() => handleStartEditPost(post)}>
+                                      <button
+                                        type="button"
+                                        style={menuItemStyle}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          handleStartEditPost(post);
+                                        }}
+                                      >
                                         Edit post
                                       </button>
                                       <button
+                                        type="button"
                                         style={{ ...menuItemStyle, color: "#fca5a5", borderBottomColor: "transparent" }}
-                                        onClick={() => handleDeletePost(post.id)}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          handleDeletePost(post);
+                                        }}
                                       >
                                         Delete post
                                       </button>
@@ -9682,7 +9724,7 @@ return (
                                   <button type="button" onClick={handleCancelPostEdit} style={secondaryButtonStyle}>
                                     Cancel
                                   </button>
-                                  <button type="button" onClick={() => handleSavePostEdit(post.id)} style={primaryButtonStyle}>
+                                  <button type="button" onClick={() => handleSavePostEdit(post)} style={primaryButtonStyle}>
                                     Save changes
                                   </button>
                                 </div>
@@ -11004,7 +11046,7 @@ const postMenuStyle: CSSProperties = {
   position: "absolute",
   top: "44px",
   right: 0,
-  zIndex: 20,
+  zIndex: 9999,
   minWidth: "176px",
   background: "rgba(8,12,20,0.98)",
   border: "1px solid rgba(255,255,255,0.13)",

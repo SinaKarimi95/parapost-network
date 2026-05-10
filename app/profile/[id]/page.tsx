@@ -9721,7 +9721,7 @@ return (
                         <button
                           type="button"
                           onClick={() => profilePostFileInputRef.current?.click()}
-                          style={secondaryButtonStyle}
+                          style={profileCompactSecondaryButtonStyle}
                         >
                           {profilePostImage ? "Change image" : "Upload image"}
                         </button>
@@ -9777,7 +9777,7 @@ return (
                       onClick={handleCreateProfilePost}
                       disabled={profilePostLoading || (!profilePostContent.trim() && !profilePostImage)}
                       style={{
-                        ...primaryButtonStyle,
+                        ...profileCompactPrimaryButtonStyle,
                         background: "linear-gradient(135deg, #ffffff, #e9d5ff)",
                         boxShadow: "0 12px 28px rgba(168,85,247,0.24)",
                         opacity: profilePostLoading || (!profilePostContent.trim() && !profilePostImage) ? 0.62 : 1,
@@ -9808,7 +9808,7 @@ return (
                       <span style={feedCountPillStyle}>{sharedReelPosts.length} Reel Shares</span>
                       <Link
                         href="/dashboard"
-                        style={{ ...secondaryButtonStyle, textDecoration: "none" }}
+                        style={profileFeedBackButtonStyle}
                       >
                         Back to feed
                       </Link>
@@ -11270,14 +11270,17 @@ const feedCountPillStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  minHeight: "36px",
+  minHeight: "30px",
+  height: "30px",
   borderRadius: "999px",
   border: "1px solid rgba(168,85,247,0.22)",
   background: "rgba(168,85,247,0.10)",
   color: "#e9d5ff",
-  padding: "8px 12px",
-  fontSize: "12px",
+  padding: "0 10px",
+  fontSize: "11px",
+  lineHeight: 1,
   fontWeight: 900,
+  whiteSpace: "nowrap",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
 };
 
@@ -11467,6 +11470,43 @@ const secondaryButtonStyle: CSSProperties = {
   cursor: "pointer",
   minHeight: "42px",
   transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+};
+
+const profileCompactPrimaryButtonStyle: CSSProperties = {
+  ...primaryButtonStyle,
+  minHeight: "32px",
+  height: "32px",
+  padding: "0 13px",
+  fontSize: "12px",
+  lineHeight: 1,
+  fontWeight: 850,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
+};
+
+const profileCompactSecondaryButtonStyle: CSSProperties = {
+  ...secondaryButtonStyle,
+  minHeight: "32px",
+  height: "32px",
+  padding: "0 13px",
+  fontSize: "12px",
+  lineHeight: 1,
+  fontWeight: 850,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
+};
+
+const profileFeedBackButtonStyle: CSSProperties = {
+  ...profileCompactSecondaryButtonStyle,
+  minHeight: "30px",
+  height: "30px",
+  padding: "0 11px",
+  fontSize: "11px",
+  textDecoration: "none",
 };
 
 const miniLinkStyle: CSSProperties = {

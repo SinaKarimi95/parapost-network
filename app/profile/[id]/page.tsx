@@ -4382,7 +4382,8 @@ return (
         z-index: 1;
       }
 
-      .profile-mobile-inline-more {
+      .profile-mobile-inline-more,
+      .profile-mobile-cover-more {
         display: none !important;
       }
 
@@ -5887,9 +5888,9 @@ return (
           width: 100% !important;
           max-width: none !important;
           display: grid !important;
-          grid-template-columns: minmax(0, 1fr) 52px !important;
-          align-items: end !important;
-          gap: 14px !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          align-items: start !important;
+          gap: 0 !important;
           margin-top: 14px !important;
         }
 
@@ -5897,7 +5898,7 @@ return (
           margin: 0 !important;
           justify-items: start !important;
           text-align: left !important;
-          max-width: none !important;
+          max-width: calc(100% - 66px) !important;
           width: 100% !important;
           gap: 9px !important;
         }
@@ -5909,36 +5910,49 @@ return (
         }
 
         .profile-mobile-inline-more {
+          display: none !important;
+        }
+
+               .profile-mobile-cover-more {
+          position: absolute !important;
+          top: 194px !important;
+          right: 18px !important;
+          z-index: 45 !important;
           display: grid !important;
           place-items: center !important;
           width: 50px !important;
           height: 46px !important;
-          border-radius: 13px !important;
-          border: 1px solid rgba(216,180,254,0.24) !important;
-          background: linear-gradient(135deg, rgba(255,255,255,0.075), rgba(168,85,247,0.16)) !important;
+          border-radius: 14px !important;
+          border: 1px solid rgba(216,180,254,0.26) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(168,85,247,0.20)) !important;
           color: #ffffff !important;
           font-size: 16px !important;
-          font-weight: 900 !important;
+          font-weight: 950 !important;
           letter-spacing: 0.12em !important;
           cursor: pointer !important;
-          align-self: end !important;
-          box-shadow: 0 12px 26px rgba(0,0,0,0.26), 0 0 18px rgba(168,85,247,0.12) !important;
-          backdrop-filter: blur(14px) !important;
-          -webkit-backdrop-filter: blur(14px) !important;
+          box-shadow: 0 14px 30px rgba(0,0,0,0.34), 0 0 20px rgba(168,85,247,0.16) !important;
+          backdrop-filter: blur(16px) !important;
+          -webkit-backdrop-filter: blur(16px) !important;
         }
+
+        .profile-mobile-cover-more:active {
+          transform: scale(0.97) !important;
+        } 
 
         .profile-mobile-first-polish .profile-mobile-meta-action-row + * {
           margin-top: 0 !important;
         }
       }
 
-      @media (max-width: 420px) {
+       @media (max-width: 420px) {
         .profile-mobile-meta-action-row {
-          grid-template-columns: minmax(0, 1fr) 48px !important;
-          gap: 10px !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          gap: 0 !important;
         }
 
-        .profile-mobile-inline-more {
+        .profile-mobile-cover-more {
+          top: 184px !important;
+          right: 16px !important;
           width: 48px !important;
           height: 44px !important;
         }
@@ -8069,6 +8083,22 @@ return (
                 <div className="profile-cover-zone" style={profileCoverDisplayStyle}>
                   <div style={profileCoverOverlayStyle} />
                 </div>
+
+                {profileIsReady ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setProfileActionsOpen((value) => !value);
+                    }}
+                    className="profile-mobile-cover-more"
+                    aria-label="Profile options"
+                    title="Profile options"
+                  >
+                    •••
+                  </button>
+                ) : null}
 
                 <div className="profile-mobile-header-real">
                   <div className={`profile-mobile-avatar-shell-real ${profile?.is_online ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`}>

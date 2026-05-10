@@ -8007,6 +8007,117 @@ return (
         }
       }
 
+
+
+      /* Profile Mobile Polish vNext: tighter Showcase / tab / composer spacing.
+         Added as one final override block so Bryan-jon can replace the whole page file once. */
+      @media (max-width: 720px) {
+        .profile-mobile-first-polish .profile-stories-row {
+          min-height: 92px !important;
+          padding: 11px 14px 13px !important;
+          gap: 10px !important;
+        }
+
+        .profile-mobile-first-polish .profile-story-circle,
+        .profile-mobile-first-polish .profile-stories-row > div > div:first-child {
+          width: 54px !important;
+          height: 54px !important;
+          min-width: 54px !important;
+          border-radius: 15px !important;
+        }
+
+        .profile-mobile-first-polish .profile-stories-row span,
+        .profile-mobile-first-polish .profile-stories-row p {
+          font-size: 10px !important;
+          line-height: 1.15 !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-shell {
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop {
+          padding: 7px 10px !important;
+          gap: 8px !important;
+          align-items: stretch !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button {
+          min-height: 40px !important;
+          padding: 7px 6px !important;
+          border-radius: 10px !important;
+          line-height: 1.1 !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button strong,
+        .profile-mobile-first-polish .profile-tabs-desktop button span:first-child {
+          font-size: 10px !important;
+          line-height: 1.1 !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button small,
+        .profile-mobile-first-polish .profile-tabs-desktop button span:last-child {
+          font-size: 8px !important;
+          line-height: 1.1 !important;
+          opacity: 0.72 !important;
+        }
+
+        .profile-mobile-first-polish .profile-stream-stack {
+          gap: 10px !important;
+          padding-bottom: 140px !important;
+        }
+
+        .profile-mobile-first-polish .profile-content-card,
+        .profile-mobile-first-polish .profile-composer-card,
+        .profile-mobile-first-polish .profile-feed-section-card {
+          border-radius: 15px !important;
+        }
+
+        .profile-mobile-first-polish .profile-composer-card,
+        .profile-mobile-first-polish .profile-feed-section-card {
+          margin-top: 12px !important;
+        }
+
+        .profile-page-shell {
+          padding-bottom: 170px !important;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .profile-mobile-first-polish .profile-stories-row {
+          min-height: 86px !important;
+          padding: 10px 12px 12px !important;
+        }
+
+        .profile-mobile-first-polish .profile-story-circle,
+        .profile-mobile-first-polish .profile-stories-row > div > div:first-child {
+          width: 50px !important;
+          height: 50px !important;
+          min-width: 50px !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop {
+          padding: 7px 8px !important;
+          gap: 6px !important;
+        }
+
+        .profile-mobile-first-polish .profile-tabs-desktop button {
+          min-height: 38px !important;
+          padding: 6px 5px !important;
+        }
+
+        .profile-mobile-first-polish .profile-stream-stack {
+          padding-bottom: 150px !important;
+        }
+
+        .profile-page-shell {
+          padding-bottom: 180px !important;
+        }
+      }
+
 `}</style>
 
     {/* Mobile Top Bar */}

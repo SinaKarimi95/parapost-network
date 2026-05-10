@@ -9840,17 +9840,29 @@ return (
                   </div>
                 ) : null}
               </div>
-
-
-              {activeProfileTab === "About" && (
+              {activeProfileTab === "About" ? (
                 <div className="profile-content-card" style={mainCardStyle}>
                   <ProfileAboutSection
-                    profile={profile}
+                    profile={
+                      profile
+                        ? ({
+                            ...profile,
+                            interests: Array.isArray(profile.interests)
+                              ? profile.interests.filter(
+                                  (interest): interest is string => typeof interest === "string"
+                                )
+                              : typeof profile.interests === "string"
+                                ? profile.interests
+                                : null,
+                            profile_links: profile.profile_links ?? null,
+                          } as any)
+                        : null
+                    }
                     isOwnProfile={isOwnProfile}
                     onSave={handleSaveProfileAbout}
                   />
                 </div>
-              )}
+              ) : null}
 
               {activeProfileTab === "Reels" ? (
                 <div className="profile-content-card" style={mainCardStyle}>

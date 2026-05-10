@@ -35,6 +35,16 @@ type ProfileRow = {
   equipment?: string | null;
   favorite_locations?: string | null;
   availability?: string | null;
+  about_intro?: string | null;
+  category?: string | null;
+  hometown?: string | null;
+  relationship_status?: string | null;
+  company?: string | null;
+  education?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  interests?: unknown;
+  profile_links?: unknown;
 };
 
 type Post = {
@@ -1021,6 +1031,7 @@ export default function ProfilePage() {
   const [profileBadges, setProfileBadges] = useState<ProfileBadge[]>([]);
   const [profileBadgesLoading, setProfileBadgesLoading] = useState(false);
   const [profileBadgesViewerOpen, setProfileBadgesViewerOpen] = useState(false);
+  const [profileStrengthViewerOpen, setProfileStrengthViewerOpen] = useState(false);
   const [activeProfileBadge, setActiveProfileBadge] = useState<ProfileBadge | null>(null);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1487,7 +1498,7 @@ useEffect(() => {
 }, [profileActionsOpen]);
 
 useEffect(() => {
-  if (!profileBadgesViewerOpen || typeof window === "undefined") return;
+  if ((!profileBadgesViewerOpen && !profileStrengthViewerOpen) || typeof window === "undefined") return;
 
   const scrollY = window.scrollY;
   const body = document.body;
@@ -1520,7 +1531,7 @@ useEffect(() => {
 
     window.scrollTo(0, scrollY);
   };
-}, [profileBadgesViewerOpen]);
+}, [profileBadgesViewerOpen, profileStrengthViewerOpen]);
 
 useEffect(() => {
   const targetIsInsideProfileActions = (event: Event) => {
@@ -2703,6 +2714,120 @@ useEffect(() => {
       profile?.availability
   );
   const profileHasFirstPost = posts.length > 0;
+  const profilePostCount = posts.length;
+  const profileReelCount = reels.length;
+  const profileShowcaseCount = visibleProfileShowcases.length;
+  const profileBadgeCount = profileBadges.length;
+  const profileHasTenPosts = profilePostCount >= 10;
+  const profileHasSixReels = profileReelCount >= 6;
+  const profileHasThreeShowcases = profileShowcaseCount >= 3;
+  const profileHasTwoBadges = profileBadgeCount >= 2;
+  const hasProfileFieldValue = (value: unknown): boolean => {
+    if (typeof value === "string") return value.trim().length > 0;
+    if (typeof value === "number") return Number.isFinite(value);
+    if (typeof value === "boolean") return value;
+    if (Array.isArray(value)) return value.some((item) => hasProfileFieldValue(item));
+    if (value && typeof value === "object") {
+      return Object.values(value as Record<string, unknown>).some((item) => hasProfileFieldValue(item));
+    }
+
+    return false;
+  };
+  const profileHasCoverPhoto = Boolean(profile?.cover_url);
+  const profileHasDisplayName = Boolean((profile?.full_name || "").trim());
+  const profileHasUsername = Boolean((profile?.username || "").trim());
+  const profileHasLocation = Boolean((profile?.location || "").trim());
+  const profileHasWebsite = Boolean((profile?.website || "").trim());
+  const profileHasWorkOrFocus = Boolean(
+    (profile?.occupation || "").trim() ||
+      (profile?.paranormal_focus || "").trim() ||
+      (profile?.category || "").trim()
+  );
+  const profileHasDetailedAbout = Boolean(
+    (profile?.about_intro || "").trim() ||
+      (profile?.hometown || "").trim() ||
+      (profile?.relationship_status || "").trim() ||
+      (profile?.company || "").trim() ||
+      (profile?.education || "").trim() ||
+      (profile?.email || "").trim() ||
+      (profile?.phone || "").trim() ||
+      hasProfileFieldValue(profile?.interests) ||
+      hasProfileFieldValue(profile?.profile_links) ||
+      (profile?.experience_years || "").trim() ||
+      (profile?.equipment || "").trim() ||
+      (profile?.favorite_locations || "").trim() ||
+      (profile?.availability || "").trim()
+  );
+  const profileStrengthChecks = [
+    { key: "avatar", label: "Add a profile photo", shortLabel: "Profile photo", done: profileHasAvatar, points: 8 },
+    { key: "cover", label: "Add a cover photo", shortLabel: "Cover photo", done: profileHasCoverPhoto, points: 8 },
+    { key: "name", label: "Add your display name", shortLabel: "Name", done: profileHasDisplayName, points: 6 },
+    { key: "username", label: "Choose a username", shortLabel: "Username", done: profileHasUsername, points: 6 },
+    { key: "bio", label: "Write a bio", shortLabel: "Bio", done: profileHasUsefulBio, points: 8 },
+    { key: "location", label: "Add your location", shortLabel: "Location", done: profileHasLocation, points: 5 },
+    { key: "website", label: "Add a website or link", shortLabel: "Website", done: profileHasWebsite, points: 5 },
+    { key: "focus", label: "Add work, creator, or focus details", shortLabel: "Focus", done: profileHasWorkOrFocus, points: 6 },
+    { key: "about", label: "Fill in more About details", shortLabel: "About details", done: profileHasDetailedAbout, points: 6 },
+    { key: "posts-ten", label: "Reach 10 profile posts", shortLabel: "10 posts", done: profileHasTenPosts, points: 8 },
+    { key: "reels-six", label: "Reach 6 Parapost Reels", shortLabel: "6 Reels", done: profileHasSixReels, points: 8 },
+    { key: "showcases-three", label: "Create at least 3 Showcases", shortLabel: "3 Showcases", done: profileHasThreeShowcases, points: 10 },
+    { key: "badges-two", label: "Earn at least 2 badges", shortLabel: "2 badges", done: profileHasTwoBadges, points: 8 },
+  ];
+  const profileStrengthTotalPoints = profileStrengthChecks.reduce((total, item) => total + item.points, 0);
+  const profileStrengthCompletedPoints = profileStrengthChecks.reduce(
+    (total, item) => total + (item.done ? item.points : 0),
+    0
+  );
+  const profileStrengthPercent = Math.min(
+    100,
+    Math.max(0, Math.round((profileStrengthCompletedPoints / profileStrengthTotalPoints) * 100))
+  );
+  const profileStrengthDegrees = Math.round((profileStrengthPercent / 100) * 360);
+  const profileStrengthMissingItems = profileStrengthChecks.filter((item) => !item.done);
+  const profileStrengthCompletedCount = profileStrengthChecks.filter((item) => item.done).length;
+  const profileStrengthLabel =
+    profileStrengthPercent >= 95
+      ? "Elite Profile"
+      : profileStrengthPercent >= 85
+        ? "Excellent Profile"
+        : profileStrengthPercent >= 70
+          ? "Strong Profile"
+          : profileStrengthPercent >= 50
+            ? "Building Profile"
+            : profileStrengthPercent >= 25
+              ? "Getting Started"
+              : "New Profile";
+  const profileStrengthHeaderLabel =
+    profileStrengthPercent >= 95
+      ? "Elite"
+      : profileStrengthPercent >= 85
+        ? "Excellent"
+        : profileStrengthPercent >= 70
+          ? "Strong"
+          : profileStrengthPercent >= 50
+            ? "Building"
+            : "Needs Setup";
+  const profileStrengthAccent =
+    profileStrengthPercent >= 95
+      ? "#fbbf24"
+      : profileStrengthPercent >= 85
+        ? "#22d3ee"
+        : profileStrengthPercent >= 70
+          ? "#67e8f9"
+          : profileStrengthPercent >= 50
+            ? "#c084fc"
+            : "#fbbf24";
+  const profileStrengthHelpText =
+    profileStrengthPercent >= 100
+      ? "Elite profile complete. Keep posting, sharing Reels, earning badges, and updating Showcases."
+      : profileStrengthMissingItems.length > 0
+        ? `Next: ${profileStrengthMissingItems.map((item) => item.shortLabel).join(", ")}.`
+        : "Keep posts, reels, badges, and Showcases active to help people discover this profile.";
+  const profileStrengthRingDynamicStyle: CSSProperties = {
+    ...profileStrengthRingStyle,
+    background: `linear-gradient(145deg, rgba(124,58,237,0.20), rgba(8,10,16,0.96)), conic-gradient(from 0deg, ${profileStrengthAccent} 0deg, #a855f7 ${profileStrengthDegrees}deg, rgba(255,255,255,0.10) ${profileStrengthDegrees}deg, rgba(255,255,255,0.10) 360deg)`,
+    boxShadow: `0 10px 22px rgba(0,0,0,0.22), 0 0 22px ${profileStrengthAccent}24`,
+  };
   const shouldShowProfileStarter =
     isOwnProfile &&
     !loading &&
@@ -2781,6 +2906,15 @@ useEffect(() => {
     setActiveProfileBadge(null);
   }, []);
 
+  const openProfileStrengthViewer = useCallback(() => {
+    setProfileStrengthViewerOpen(true);
+    setProfileActionsOpen(false);
+  }, []);
+
+  const closeProfileStrengthViewer = useCallback(() => {
+    setProfileStrengthViewerOpen(false);
+  }, []);
+
   const activeProfileTabItem =
     profileTabItems.find((tab) => tab.value === activeProfileTab) || profileTabItems[0];
   const profileCoverPositionX = clampShowcaseTextPercent(Number(profile?.cover_position_x ?? 50), 0, 100);
@@ -2793,6 +2927,67 @@ useEffect(() => {
         backgroundPosition: `${profileCoverPositionX}% ${profileCoverPositionY}%`,
       }
     : profileCoverStyle;
+
+  const renderProfileStrengthCard = (className?: string, style?: CSSProperties) => (
+    <div className={className} style={style || rightPanelCardStyle}>
+      <div style={rightPanelHeaderStyle}>
+        <h3 style={rightPanelTitleStyle}>Profile Strength</h3>
+        <span style={{ ...miniPurpleLinkStyle, color: profileStrengthAccent }}>{profileStrengthHeaderLabel}</span>
+      </div>
+
+      <div style={profileStrengthBodyStyle}>
+        <div style={profileStrengthRingDynamicStyle}>
+          <span style={{ fontSize: "20px", fontWeight: 900 }}>{profileStrengthPercent}%</span>
+        </div>
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ color: profileStrengthAccent, fontWeight: 950, marginBottom: "4px" }}>
+            {profileStrengthLabel}
+          </div>
+          <p style={rightPanelTextStyle}>{profileStrengthHelpText}</p>
+        </div>
+      </div>
+
+      <div style={profileStrengthProgressTrackStyle} aria-hidden="true">
+        <span
+          style={{
+            ...profileStrengthProgressFillStyle,
+            width: `${profileStrengthPercent}%`,
+            background: `linear-gradient(90deg, ${profileStrengthAccent}, #a855f7)`,
+          }}
+        />
+      </div>
+
+      <div style={profileStrengthMetaRowStyle}>
+        <span>{profileStrengthCompletedCount}/{profileStrengthChecks.length} complete</span>
+        <span>{profileStrengthMissingItems.length === 0 ? "Fully set up" : `${profileStrengthMissingItems.length} next steps`}</span>
+      </div>
+
+      {profileStrengthMissingItems.length > 0 ? (
+        <div style={profileStrengthChecklistStyle}>
+          {profileStrengthMissingItems.map((item) => (
+            <span key={item.key} style={profileStrengthStepChipStyle}>
+              + {item.shortLabel}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div style={profileStrengthCompleteStyle}>
+          Profile setup looks complete. Keep creating posts, Reels, and Showcases.
+        </div>
+      )}
+
+      {isOwnProfile ? (
+        <button
+          type="button"
+          onClick={() => router.push(`/profile/${viewerId}/edit`)}
+          style={wideGlassButtonStyle}
+        >
+          Improve Profile
+        </button>
+      ) : null}
+    </div>
+  );
 
 return (
   <div
@@ -2813,6 +3008,14 @@ return (
 
       .profile-badges-viewer-overlay {
         isolation: isolate;
+      }
+
+      .profile-strength-viewer-card {
+        box-shadow: none !important;
+      }
+
+      .profile-strength-viewer-shell .profile-strength-viewer-card {
+        margin-top: 12px !important;
       }
 
       .profile-badges-viewer-shell {
@@ -8788,6 +8991,8 @@ return (
                   </section>
                 ) : null}
 
+                {/* Profile Strength stays in the public profile-options scroll on mobile/tablet. Desktop keeps the right-rail card. */}
+
                 {isClientMounted && showcaseComposerOpen
                   ? createPortal(
                       (
@@ -9443,6 +9648,58 @@ return (
                                 </div>
                               </div>
                             ) : null}
+                          </div>
+                        </div>
+                      ),
+                      document.body
+                    )
+                  : null}
+
+                {isClientMounted && profileStrengthViewerOpen
+                  ? createPortal(
+                      (
+                        <div
+                          className="profile-badges-viewer-overlay profile-strength-viewer-overlay"
+                          style={profileBadgesViewerOverlayStyle}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="Profile Strength viewer"
+                          onClick={closeProfileStrengthViewer}
+                        >
+                          <div
+                            className="profile-badges-viewer-shell profile-strength-viewer-shell"
+                            style={{ ...profileBadgesViewerShellStyle, maxWidth: "560px" }}
+                            onClick={(event) => event.stopPropagation()}
+                            onWheel={(event) => event.stopPropagation()}
+                            onTouchMove={(event) => event.stopPropagation()}
+                          >
+                            <div className="profile-badges-viewer-header" style={profileBadgesViewerHeaderStyle}>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={profileBadgesViewerEyebrowStyle}>Parapost Network</p>
+                                <h3 className="profile-badges-viewer-title" style={profileBadgesViewerTitleStyle}>Profile Strength</h3>
+                                <p style={profileBadgesViewerSubtextStyle}>
+                                  See how complete this profile is based on real profile details, posts, Reels, Showcases, and badges.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={closeProfileStrengthViewer}
+                                style={profileBadgesViewerCloseStyle}
+                                aria-label="Close profile strength viewer"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            {renderProfileStrengthCard(
+                              "profile-strength-viewer-card",
+                              {
+                                ...profileStrengthFlowCardStyle,
+                                margin: 0,
+                                width: "100%",
+                              }
+                            )}
                           </div>
                         </div>
                       ),
@@ -10123,37 +10380,7 @@ return (
           </section>
 
           <aside className="hidden xl:flex" style={rightRailStyle}>
-            <div style={rightPanelCardStyle}>
-              <div style={rightPanelHeaderStyle}>
-                <h3 style={rightPanelTitleStyle}>Profile Strength</h3>
-                <span style={miniPurpleLinkStyle}>Great Job</span>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                <div style={profileStrengthRingStyle}>
-                  <span style={{ fontSize: "20px", fontWeight: 900 }}>85%</span>
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ color: "#67e8f9", fontWeight: 900, marginBottom: "4px" }}>
-                    Strong Profile
-                  </div>
-                  <p style={rightPanelTextStyle}>
-                    Keep your bio, links, reels, and posts active to help people discover your profile.
-                  </p>
-                </div>
-              </div>
-
-              {isOwnProfile ? (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/profile/${viewerId}/edit`)}
-                  style={wideGlassButtonStyle}
-                >
-                  Improve Profile
-                </button>
-              ) : null}
-            </div>
+            {renderProfileStrengthCard("profile-strength-right-card", rightPanelCardStyle)}
 
             <div style={rightPanelCardStyle}>
               <div style={rightPanelHeaderStyle}>
@@ -10619,6 +10846,18 @@ return (
                 <span>
                   <strong>{isOwnProfile ? "My Badges" : "View badges"}</strong>
                   <small>{isOwnProfile ? "View your earned Para Ghost badges" : "See this member’s earned badges"}</small>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openProfileStrengthViewer}
+                style={profileActionItemStyle}
+              >
+                <span style={profileActionIconStyle}>◉</span>
+                <span>
+                  <strong>Profile Strength</strong>
+                  <small>View this profile’s real setup score</small>
                 </span>
               </button>
 
@@ -13952,6 +14191,12 @@ const rightPanelCardStyle: CSSProperties = {
   backdropFilter: "blur(14px)",
 };
 
+const profileStrengthFlowCardStyle: CSSProperties = {
+  ...rightPanelCardStyle,
+  marginTop: "14px",
+  marginBottom: "14px",
+};
+
 const rightPanelHeaderStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -13997,6 +14242,75 @@ const profileStrengthRingStyle: CSSProperties = {
     "linear-gradient(145deg, rgba(124,58,237,0.20), rgba(8,10,16,0.96)), conic-gradient(from 0deg, #7c3aed 0deg, #a855f7 306deg, rgba(255,255,255,0.10) 306deg)",
   boxShadow: "0 10px 22px rgba(0,0,0,0.22), 0 0 20px rgba(168,85,247,0.18)",
   border: "1px solid rgba(255,255,255,0.105)",
+};
+
+const profileStrengthBodyStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "16px",
+};
+
+const profileStrengthProgressTrackStyle: CSSProperties = {
+  width: "100%",
+  height: "7px",
+  marginTop: "14px",
+  borderRadius: "999px",
+  overflow: "hidden",
+  background: "rgba(255,255,255,0.070)",
+  border: "1px solid rgba(255,255,255,0.055)",
+};
+
+const profileStrengthProgressFillStyle: CSSProperties = {
+  display: "block",
+  height: "100%",
+  minWidth: "8px",
+  borderRadius: "999px",
+  transition: "width 220ms ease",
+};
+
+const profileStrengthMetaRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  marginTop: "10px",
+  color: "#9ca3af",
+  fontSize: "11px",
+  fontWeight: 850,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+};
+
+const profileStrengthChecklistStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "7px",
+  marginTop: "12px",
+};
+
+const profileStrengthStepChipStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: "24px",
+  padding: "0 9px",
+  borderRadius: "999px",
+  background: "rgba(168,85,247,0.105)",
+  border: "1px solid rgba(216,180,254,0.18)",
+  color: "#e9d5ff",
+  fontSize: "11px",
+  fontWeight: 900,
+};
+
+const profileStrengthCompleteStyle: CSSProperties = {
+  marginTop: "12px",
+  padding: "10px 11px",
+  borderRadius: "13px",
+  background: "rgba(34,211,238,0.075)",
+  border: "1px solid rgba(34,211,238,0.16)",
+  color: "#cffafe",
+  fontSize: "12px",
+  fontWeight: 800,
+  lineHeight: 1.45,
 };
 
 const wideGlassButtonStyle: CSSProperties = {

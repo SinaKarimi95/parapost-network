@@ -26,6 +26,19 @@ type ProfilePreview = {
   is_online?: boolean | null;
 };
 
+type DashboardShowcaseItem = {
+  id: string;
+  user_id: string;
+  title: string | null;
+  cover_text: string | null;
+  media_url: string | null;
+  media_type: string | null;
+  visibility: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+  profile: ProfilePreview | null;
+};
+
 type Post = {
   id: string;
   content: string;
@@ -58,14 +71,6 @@ type ToggleMap = Record<string, boolean>;
 type FollowMap = Record<string, boolean>;
 
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
-
-const demoShowcaseProfiles = [
-  { name: "Jessica R.", handle: "jessica", color: "#a855f7" },
-  { name: "Paranormal Central", handle: "paracentral", color: "#06b6d4" },
-  { name: "Ethan D.", handle: "ethan", color: "#8b5cf6" },
-  { name: "Ghost Hunters", handle: "hunters", color: "#7c3aed" },
-  { name: "Maya L.", handle: "maya", color: "#f97316" },
-];
 
 function isLikelyShortenedLink(hostname: string) {
   const shortenerDomains = [
@@ -370,6 +375,31 @@ function Avatar({
   );
 }
 
+function ParaGhostLogoIcon({ size = 34 }: { size?: number }) {
+  return (
+    <img
+      src="/parapost-icon-white.png"
+      alt=""
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        display: "block",
+        objectFit: "contain",
+        filter: "drop-shadow(0 0 10px rgba(168,85,247,0.42))",
+      }}
+    />
+  );
+}
+
+function NewShowcaseIcon() {
+  return (
+    <div style={newShowcaseIconStyle}>
+      <span style={newShowcasePlusInnerStyle}>+</span>
+    </div>
+  );
+}
+
 function SearchIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -512,6 +542,7 @@ export default function DashboardPage() {
   const [notificationsCount, setNotificationsCount] = useState(0);
   const [pendingFriendRequestCount, setPendingFriendRequestCount] = useState(0);
   const [recentlyViewed, setRecentlyViewed] = useState<ProfilePreview[]>([]);
+  const [friendShowcases, setFriendShowcases] = useState<DashboardShowcaseItem[]>([]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -701,6 +732,91 @@ export default function DashboardPage() {
     setPendingFriendRequestCount(requestCount || 0);
   }, []);
 
+  const fetchFriendShowcases = useCallback(async (userId?: string) => {
+    if (!userId) {
+      setFriendShowcases([]);
+      return [] as DashboardShowcaseItem[];
+    }
+
+    const { data: friendshipRows, error: friendshipError } = await supabase
+      .from("friend_requests")
+      .select("sender_id, receiver_id, status")
+      .eq("status", "accepted")
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+
+    if (friendshipError) {
+      console.error("Error fetching dashboard friend showcase relationships:", friendshipError.message);
+      setFriendShowcases([]);
+      return [] as DashboardShowcaseItem[];
+    }
+
+    const friendIds = [
+      ...new Set(
+        (friendshipRows || [])
+          .map((row) => (row.sender_id === userId ? row.receiver_id : row.sender_id))
+          .filter(Boolean)
+      ),
+    ] as string[];
+
+    if (friendIds.length === 0) {
+      setFriendShowcases([]);
+      return [] as DashboardShowcaseItem[];
+    }
+
+    const [{ data: profilesData, error: profilesError }, { data: showcaseData, error: showcaseError }] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url, bio, location, is_online")
+          .in("id", friendIds)
+          .limit(32),
+        supabase
+          .from("profile_showcases")
+          .select("id, user_id, title, cover_text, media_url, media_type, visibility, expires_at, created_at")
+          .in("user_id", friendIds)
+          .order("created_at", { ascending: false })
+          .limit(24),
+      ]);
+
+    if (profilesError) {
+      console.error("Error fetching dashboard friend profiles:", profilesError.message);
+    }
+
+    if (showcaseError) {
+      console.error("Error fetching dashboard friend showcases:", showcaseError.message);
+      setFriendShowcases([]);
+      return [] as DashboardShowcaseItem[];
+    }
+
+    const profileMap = new Map<string, ProfilePreview>();
+    for (const profile of (profilesData || []) as ProfilePreview[]) {
+      profileMap.set(profile.id, profile);
+    }
+
+    const now = Date.now();
+    const nextItems = ((showcaseData || []) as Array<{
+      id: string;
+      user_id: string;
+      title: string | null;
+      cover_text: string | null;
+      media_url: string | null;
+      media_type: string | null;
+      visibility: string | null;
+      expires_at: string | null;
+      created_at: string | null;
+    }>)
+      .filter((item) => item.user_id && friendIds.includes(item.user_id))
+      .filter((item) => item.visibility !== "private")
+      .filter((item) => !item.expires_at || new Date(item.expires_at).getTime() > now)
+      .map((item) => ({
+        ...item,
+        profile: profileMap.get(item.user_id) || null,
+      }));
+
+    setFriendShowcases(nextItems);
+    return nextItems;
+  }, []);
+
   const fetchRecentlyViewed = useCallback(async (userId?: string) => {
     if (!userId) {
       setRecentlyViewed([]);
@@ -823,12 +939,12 @@ export default function DashboardPage() {
       blockedIds =
         blocksData?.map((row) => (row.blocker_id === user.id ? row.blocked_id : row.blocker_id)) || [];
 
-      await Promise.all([fetchFollowData(user.id), fetchNotifications(user.id), fetchRecentlyViewed(user.id)]);
+      await Promise.all([fetchFollowData(user.id), fetchNotifications(user.id), fetchRecentlyViewed(user.id), fetchFriendShowcases(user.id)]);
     } else {
       setCurrentUserId("");
       setUserEmail("");
       setCurrentProfile(null);
-      await Promise.all([fetchFollowData(), fetchNotifications(), fetchRecentlyViewed()]);
+      await Promise.all([fetchFollowData(), fetchNotifications(), fetchRecentlyViewed(), fetchFriendShowcases()]);
     }
 
     const { data: postsData, error: postsError } = await supabase
@@ -860,7 +976,7 @@ export default function DashboardPage() {
     await Promise.all([fetchProfileMap(profileIds), fetchCounts(userId || undefined, visiblePosts.map((post) => post.id))]);
 
     setFetchingPosts(false);
-  }, [fetchCounts, fetchFollowData, fetchNotifications, fetchProfileMap, fetchRecentlyViewed, fetchSharedReels]);
+  }, [fetchCounts, fetchFollowData, fetchFriendShowcases, fetchNotifications, fetchProfileMap, fetchRecentlyViewed, fetchSharedReels]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -1293,7 +1409,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <ShowcaseQuickActions currentProfile={currentProfile} currentUserId={currentUserId} onCreatePost={scrollToComposer} />
+            <ShowcaseQuickActions currentProfile={currentProfile} currentUserId={currentUserId} friendShowcases={friendShowcases} onCreatePost={scrollToComposer} />
 
             <ComposerCard
               composerRef={mainComposerRef}
@@ -2260,6 +2376,27 @@ export default function DashboardPage() {
           }
         }
 
+
+        .dashboard-showcase-row {
+          overflow: hidden !important;
+        }
+
+        .dashboard-showcase-scroller {
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: none !important;
+        }
+
+        .dashboard-showcase-scroller::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-showcase-row {
+            padding: 11px !important;
+            border-radius: 22px !important;
+          }
+        }
+
         @media (min-width: 761px) {
           .dashboard-mobile-header,
           .dashboard-bottom-nav {
@@ -2274,7 +2411,7 @@ export default function DashboardPage() {
 function SidebarLogo() {
   return (
     <Link href="/dashboard" style={sidebarLogoStyle}>
-      <div style={logoGhostCircleStyle}>P</div>
+      <div style={logoGhostCircleStyle}><ParaGhostLogoIcon size={42} /></div>
       <div>
         <div style={logoWordStyle}>PARAPOST</div>
         <div style={logoNetworkStyle}>NETWORK</div>
@@ -2327,7 +2464,7 @@ function MobileDashboardHeader({
   return (
     <header className="dashboard-mobile-header" style={mobileHeaderStyle}>
       <Link href="/dashboard" style={mobileLogoStyle}>
-        <div style={mobileLogoCircleStyle}>P</div>
+        <div style={mobileLogoCircleStyle}><ParaGhostLogoIcon size={32} /></div>
         <div>
           <div style={{ fontSize: 26, fontWeight: 950, lineHeight: 1 }}>PARAPOST</div>
           <div style={{ color: "#c084fc", letterSpacing: "0.42em", fontSize: 13, fontWeight: 900 }}>NETWORK</div>
@@ -2352,32 +2489,51 @@ function MobileDashboardHeader({
 }
 
 function ShowcaseQuickActions({
-  currentProfile,
   currentUserId,
+  friendShowcases,
 }: {
   currentProfile: ProfilePreview | null;
   currentUserId: string;
+  friendShowcases: DashboardShowcaseItem[];
   onCreatePost: () => void;
 }) {
+  const visibleFriendShowcases = friendShowcases.slice(0, 12);
+
   return (
     <section className="dashboard-card dashboard-showcase-row" style={showcaseCardStyle}>
       <div className="dashboard-showcase-scroller" style={showcaseScrollerStyle}>
         <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={createShowcaseTileStyle}>
-          <Avatar profile={currentProfile} size={68} />
-          <span style={showcasePlusStyle}>+</span>
-          <strong style={{ marginTop: 8, fontSize: 13 }}>Create Showcase</strong>
+          <NewShowcaseIcon />
+          <strong style={showcaseNameStrongStyle}>New</strong>
+          <span style={createShowcaseHintStyle}>Create Showcase</span>
         </Link>
 
-        {demoShowcaseProfiles.map((item) => (
-          <div key={item.handle} style={showcaseTileStyle}>
-            <div style={{ ...demoAvatarStyle, borderColor: item.color }}>
-              {item.name.charAt(0)}
-            </div>
-            <span style={showcaseNameStyle}>{item.name}</span>
-          </div>
-        ))}
+        {visibleFriendShowcases.length > 0 ? (
+          visibleFriendShowcases.map((showcase) => {
+            const profile = showcase.profile;
+            const label = showcase.title || showcase.cover_text || profile?.full_name?.split(" ")[0] || profile?.username || "Showcase";
 
-        <button type="button" style={showcaseArrowStyle} aria-label="More showcases">
+            return (
+              <Link key={showcase.id} href={`/profile/${showcase.user_id}`} style={showcaseTileStyle}>
+                <div style={friendShowcaseBubbleStyle}>
+                  {showcase.media_url && showcase.media_type !== "text" ? (
+                    <img src={showcase.media_url} alt="Friend Showcase" style={friendShowcaseMediaStyle} />
+                  ) : (
+                    <Avatar profile={profile} size={70} />
+                  )}
+                </div>
+                <span style={showcaseNameStyle}>{label}</span>
+              </Link>
+            );
+          })
+        ) : (
+          <div style={emptyFriendShowcaseTileStyle}>
+            <div style={emptyFriendShowcaseIconStyle}>✦</div>
+            <span style={showcaseNameStyle}>Friend Showcases</span>
+          </div>
+        )}
+
+        <button type="button" style={showcaseArrowStyle} aria-label="More friend showcases">
           ›
         </button>
       </div>
@@ -2407,7 +2563,7 @@ function ComposerCard({
   image: File | null;
   imagePreviewUrl: string;
   loading: boolean;
-  fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+  fileInputRef: RefObject<HTMLInputElement | null>;
   onImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveImage: () => void;
   onPost: () => void;
@@ -3482,21 +3638,28 @@ const topIconButtonStyle: CSSProperties = { position: "relative", width: 44, hei
 const topProfileButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 16, display: "grid", placeItems: "center", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", overflow: "visible" };
 const topBadgeStyle: CSSProperties = { position: "absolute", top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 999, background: "#7c3aed", color: "#fff", fontSize: 12, fontWeight: 950, display: "grid", placeItems: "center", padding: "0 6px" };
 
-const showcaseCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 16, marginBottom: 18, overflow: "hidden" };
+const showcaseCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 14, marginBottom: 18, overflow: "hidden" };
 const showcaseQuickGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1.34fr) minmax(260px, 0.66fr)", gap: 16, alignItems: "stretch" };
 const showcaseColumnStyle: CSSProperties = { minWidth: 0, display: "flex", flexDirection: "column", gap: 12 };
 const showcaseSectionHeaderStyle: CSSProperties = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" };
 const showcaseSectionTitleStyle: CSSProperties = { margin: 0, color: "#fff", fontSize: 18, fontWeight: 950, letterSpacing: "-0.02em" };
 const showcaseSectionSubtitleStyle: CSSProperties = { margin: "4px 0 0", color: "#9ca3af", fontSize: 12.5, lineHeight: 1.35 };
 const showcaseSmallLinkStyle: CSSProperties = { minHeight: 32, borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.055)", color: "#e9d5ff", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 11px", fontSize: 12, fontWeight: 900, whiteSpace: "nowrap" };
-const showcaseScrollerStyle: CSSProperties = { display: "flex", gap: 18, alignItems: "stretch", overflowX: "auto", paddingBottom: 2 };
-const createShowcaseTileStyle: CSSProperties = { position: "relative", minWidth: 110, display: "grid", justifyItems: "center", alignContent: "center", borderRadius: 18, border: "1px solid rgba(255,255,255,0.11)", color: "#fff", textDecoration: "none", background: "rgba(0,0,0,0.18)", padding: 10 };
+const showcaseScrollerStyle: CSSProperties = { display: "flex", gap: 16, alignItems: "stretch", overflowX: "auto", overflowY: "hidden", padding: "2px 2px 4px", scrollSnapType: "x proximity" };
+const createShowcaseTileStyle: CSSProperties = { position: "relative", width: 104, minWidth: 104, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 6, borderRadius: 18, border: "1px solid rgba(168,85,247,0.22)", color: "#fff", textDecoration: "none", background: "linear-gradient(180deg, rgba(168,85,247,0.14), rgba(0,0,0,0.18))", padding: 10, scrollSnapAlign: "start" };
 const showcasePlusStyle: CSSProperties = { position: "absolute", right: 20, top: 62, width: 27, height: 27, borderRadius: 999, background: "#7c3aed", color: "#fff", display: "grid", placeItems: "center", border: "2px solid #0a0d14", fontWeight: 950 };
-const createShowcaseHintStyle: CSSProperties = { marginTop: 4, color: "#c4b5fd", fontSize: 11, fontWeight: 800, textAlign: "center" };
-const showcaseTileStyle: CSSProperties = { minWidth: 106, display: "grid", justifyItems: "center", gap: 8, color: "#fff" };
+const createShowcaseHintStyle: CSSProperties = { color: "#c4b5fd", fontSize: 11, fontWeight: 850, textAlign: "center", lineHeight: 1.15 };
+const showcaseTileStyle: CSSProperties = { width: 104, minWidth: 104, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 8, color: "#fff", textDecoration: "none", scrollSnapAlign: "start" };
 const demoAvatarStyle: CSSProperties = { width: 78, height: 78, borderRadius: 999, border: "3px solid #7c3aed", display: "grid", placeItems: "center", background: "linear-gradient(135deg, rgba(168,85,247,0.28), rgba(0,0,0,0.8))", fontWeight: 950, fontSize: 26, boxShadow: "0 0 22px rgba(126,34,206,0.32)" };
-const showcaseNameStyle: CSSProperties = { fontSize: 13, textAlign: "center", color: "#e5e7eb", lineHeight: 1.2 };
-const showcaseArrowStyle: CSSProperties = { alignSelf: "center", width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 30, cursor: "pointer" };
+const showcaseNameStyle: CSSProperties = { width: "100%", fontSize: 12.5, textAlign: "center", color: "#e5e7eb", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+const showcaseNameStrongStyle: CSSProperties = { color: "#fff", fontSize: 13, fontWeight: 950, textAlign: "center", lineHeight: 1.05 };
+const newShowcaseIconStyle: CSSProperties = { width: 70, height: 70, borderRadius: 999, display: "grid", placeItems: "center", background: "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.24), rgba(168,85,247,0.18) 42%, rgba(7,9,13,0.98) 76%)", border: "3px solid rgba(168,85,247,0.86)", boxShadow: "0 0 22px rgba(168,85,247,0.36), inset 0 1px 0 rgba(255,255,255,0.13)" };
+const newShowcasePlusInnerStyle: CSSProperties = { width: 34, height: 34, borderRadius: 999, display: "grid", placeItems: "center", background: "linear-gradient(135deg, #a855f7, #7c3aed)", color: "#fff", fontSize: 24, fontWeight: 950, boxShadow: "0 10px 22px rgba(126,34,206,0.34)" };
+const friendShowcaseBubbleStyle: CSSProperties = { width: 76, height: 76, borderRadius: 999, display: "grid", placeItems: "center", overflow: "hidden", padding: 3, background: "linear-gradient(135deg, rgba(168,85,247,0.9), rgba(6,182,212,0.72))", boxShadow: "0 0 22px rgba(168,85,247,0.32)", border: "1px solid rgba(255,255,255,0.12)" };
+const friendShowcaseMediaStyle: CSSProperties = { width: "100%", height: "100%", borderRadius: 999, objectFit: "cover", display: "block", border: "2px solid #07090d" };
+const emptyFriendShowcaseTileStyle: CSSProperties = { width: 146, minWidth: 146, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 8, borderRadius: 18, border: "1px dashed rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.025)", color: "#d1d5db", scrollSnapAlign: "start" };
+const emptyFriendShowcaseIconStyle: CSSProperties = { width: 54, height: 54, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid rgba(168,85,247,0.42)", color: "#c084fc", background: "rgba(168,85,247,0.10)", fontWeight: 950 };
+const showcaseArrowStyle: CSSProperties = { alignSelf: "center", minWidth: 38, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 30, cursor: "pointer" };
 const quickActionsColumnStyle: CSSProperties = { borderRadius: 22, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.18)", padding: 12, display: "flex", flexDirection: "column", gap: 12, minWidth: 0 };
 const quickActionsHeaderStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 2 };
 const quickActionsEyebrowStyle: CSSProperties = { color: "#c084fc", fontSize: 11, fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase" };

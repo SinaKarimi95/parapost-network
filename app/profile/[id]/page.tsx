@@ -167,6 +167,20 @@ type ProfileBadge = {
   awardedAt: string | null;
 };
 
+type RecentlyViewedProfile = {
+  rowId: string;
+  profileId: string;
+  viewedAt: string;
+  profile: ProfileRow | null;
+};
+
+type RecentlyViewedProfileRow = {
+  id: string;
+  viewer_id: string;
+  profile_id: string;
+  viewed_at: string;
+};
+
 type LooseBadgeRow = Record<string, any>;
 type LooseUserBadgeRow = Record<string, any>;
 
@@ -1032,6 +1046,9 @@ export default function ProfilePage() {
   const [profileBadgesLoading, setProfileBadgesLoading] = useState(false);
   const [profileBadgesViewerOpen, setProfileBadgesViewerOpen] = useState(false);
   const [profileStrengthViewerOpen, setProfileStrengthViewerOpen] = useState(false);
+  const [recentlyViewedProfiles, setRecentlyViewedProfiles] = useState<RecentlyViewedProfile[]>([]);
+  const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(false);
+  const [recentlyViewedViewerOpen, setRecentlyViewedViewerOpen] = useState(false);
   const [activeProfileBadge, setActiveProfileBadge] = useState<ProfileBadge | null>(null);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1224,6 +1241,68 @@ const showFriendStatus = useCallback((message: string) => {
   return () => clearTimeout(timer);
 }, []);
 
+const loadRecentlyViewedProfiles = useCallback(async (nextViewerId: string) => {
+  if (!nextViewerId) {
+    setRecentlyViewedProfiles([]);
+    setRecentlyViewedLoading(false);
+    return;
+  }
+
+  setRecentlyViewedLoading(true);
+
+  try {
+    const { data: recentRowsData, error: recentRowsError } = await supabase
+      .from("recently_viewed_profiles")
+      .select("id, viewer_id, profile_id, viewed_at")
+      .eq("viewer_id", nextViewerId)
+      .order("viewed_at", { ascending: false })
+      .limit(8);
+
+    if (recentRowsError) {
+      console.warn("Recently viewed profiles could not load:", recentRowsError.message);
+      setRecentlyViewedProfiles([]);
+      return;
+    }
+
+    const recentRows = ((recentRowsData as RecentlyViewedProfileRow[]) || []).filter(Boolean);
+    const recentProfileIds = [...new Set(recentRows.map((row) => row.profile_id).filter(Boolean))];
+
+    if (recentProfileIds.length === 0) {
+      setRecentlyViewedProfiles([]);
+      return;
+    }
+
+    const { data: recentProfilesData, error: recentProfilesError } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, bio, avatar_url, is_online, location, website, occupation, paranormal_focus, experience_years, equipment, favorite_locations, availability")
+      .in("id", recentProfileIds);
+
+    if (recentProfilesError) {
+      console.warn("Recently viewed profile details could not load:", recentProfilesError.message);
+      setRecentlyViewedProfiles([]);
+      return;
+    }
+
+    const profileMap = new Map(
+      ((recentProfilesData as ProfileRow[]) || []).map((recentProfile) => [recentProfile.id, recentProfile])
+    );
+
+    setRecentlyViewedProfiles(
+      recentRows.map((row) => ({
+        rowId: row.id,
+        profileId: row.profile_id,
+        viewedAt: row.viewed_at,
+        profile: profileMap.get(row.profile_id) || null,
+      }))
+    );
+  } catch (error) {
+    console.warn("Recently viewed profiles error:", error);
+    setRecentlyViewedProfiles([]);
+  } finally {
+    setRecentlyViewedLoading(false);
+  }
+}, []);
+
   const loadPage = useCallback(async () => {
     if (!profileId) {
       setErrorMessage("Profile not found.");
@@ -1245,6 +1324,30 @@ const showFriendStatus = useCallback((message: string) => {
     const nextViewerId = user?.id || "";
     setViewerId(nextViewerId);
     setViewerEmail(user?.email || "");
+
+    if (nextViewerId) {
+      if (profileId && nextViewerId !== profileId) {
+        const { error: recentlyViewedSaveError } = await supabase
+          .from("recently_viewed_profiles")
+          .upsert(
+            {
+              viewer_id: nextViewerId,
+              profile_id: profileId,
+              viewed_at: new Date().toISOString(),
+            },
+            { onConflict: "viewer_id,profile_id" }
+          );
+
+        if (recentlyViewedSaveError) {
+          console.warn("Recently viewed profile could not be saved:", recentlyViewedSaveError.message);
+        }
+      }
+
+      void loadRecentlyViewedProfiles(nextViewerId);
+    } else {
+      setRecentlyViewedProfiles([]);
+      setRecentlyViewedLoading(false);
+    }
 
     const [
       profileResult,
@@ -1458,7 +1561,7 @@ const showFriendStatus = useCallback((message: string) => {
     }
 
     setLoading(false);
-  }, [profileId]);
+  }, [profileId, loadRecentlyViewedProfiles]);
 
   useEffect(() => {
   loadPage();
@@ -1498,7 +1601,7 @@ useEffect(() => {
 }, [profileActionsOpen]);
 
 useEffect(() => {
-  if ((!profileBadgesViewerOpen && !profileStrengthViewerOpen) || typeof window === "undefined") return;
+  if ((!profileBadgesViewerOpen && !profileStrengthViewerOpen && !recentlyViewedViewerOpen) || typeof window === "undefined") return;
 
   const scrollY = window.scrollY;
   const body = document.body;
@@ -1531,7 +1634,7 @@ useEffect(() => {
 
     window.scrollTo(0, scrollY);
   };
-}, [profileBadgesViewerOpen, profileStrengthViewerOpen]);
+}, [profileBadgesViewerOpen, profileStrengthViewerOpen, recentlyViewedViewerOpen]);
 
 useEffect(() => {
   const targetIsInsideProfileActions = (event: Event) => {
@@ -1564,6 +1667,8 @@ useEffect(() => {
       setProfileActionsOpen(false);
       setActiveProfileShowcase(null);
       setProfileBadgesViewerOpen(false);
+      setProfileStrengthViewerOpen(false);
+      setRecentlyViewedViewerOpen(false);
       setActiveProfileBadge(null);
     }
   };
@@ -2915,6 +3020,15 @@ useEffect(() => {
     setProfileStrengthViewerOpen(false);
   }, []);
 
+  const openRecentlyViewedViewer = useCallback(() => {
+    setRecentlyViewedViewerOpen(true);
+    setProfileActionsOpen(false);
+  }, []);
+
+  const closeRecentlyViewedViewer = useCallback(() => {
+    setRecentlyViewedViewerOpen(false);
+  }, []);
+
   const activeProfileTabItem =
     profileTabItems.find((tab) => tab.value === activeProfileTab) || profileTabItems[0];
   const profileCoverPositionX = clampShowcaseTextPercent(Number(profile?.cover_position_x ?? 50), 0, 100);
@@ -2986,6 +3100,72 @@ useEffect(() => {
           Improve Profile
         </button>
       ) : null}
+    </div>
+  );
+
+  const renderRecentlyViewedCard = (className?: string, style?: CSSProperties) => (
+    <div className={className} style={style || rightPanelCardStyle}>
+      <div style={rightPanelHeaderStyle}>
+        <h3 style={rightPanelTitleStyle}>Recently Viewed</h3>
+        <span style={miniPurpleLinkStyle}>Private</span>
+      </div>
+
+      <p style={{ ...rightPanelTextStyle, marginBottom: "12px" }}>
+        Only you can see profiles you recently viewed. Parapost Network does not show a public visitor list.
+      </p>
+
+      {recentlyViewedLoading ? (
+        <div style={recentlyViewedEmptyStyle}>Loading recently viewed profiles...</div>
+      ) : recentlyViewedProfiles.length === 0 ? (
+        <div style={recentlyViewedEmptyStyle}>Profiles you view will appear here privately.</div>
+      ) : (
+        <div style={recentlyViewedListStyle}>
+          {recentlyViewedProfiles.slice(0, 5).map((item) => {
+            const recentProfile = item.profile;
+            const recentName = recentProfile?.full_name || recentProfile?.username || "Parapost Member";
+            const recentHandle = recentProfile?.username ? `@${recentProfile.username}` : "Recently viewed";
+            const recentInitial = getInitial(recentProfile?.full_name, recentProfile?.username) || "P";
+
+            return (
+              <Link
+                key={item.rowId}
+                href={`/profile/${item.profileId}`}
+                style={recentlyViewedRowStyle}
+                onClick={() => setRecentlyViewedViewerOpen(false)}
+              >
+                <span style={recentlyViewedAvatarStyle}>
+                  {recentProfile?.avatar_url ? (
+                    <img
+                      src={recentProfile.avatar_url}
+                      alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                    />
+                  ) : (
+                    <span>{recentInitial}</span>
+                  )}
+                </span>
+                <span style={recentlyViewedTextStyle}>
+                  <strong>{recentName}</strong>
+                  <small>{recentHandle} · {formatTimeAgo(item.viewedAt)}</small>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={openRecentlyViewedViewer}
+        disabled={!viewerId}
+        style={{
+          ...wideGlassButtonStyle,
+          opacity: viewerId ? 1 : 0.62,
+          cursor: viewerId ? "pointer" : "default",
+        }}
+      >
+        Open Recently Viewed
+      </button>
     </div>
   );
 
@@ -9707,6 +9887,95 @@ return (
                     )
                   : null}
 
+                {isClientMounted && recentlyViewedViewerOpen
+                  ? createPortal(
+                      (
+                        <div
+                          className="profile-badges-viewer-overlay profile-recently-viewed-viewer-overlay"
+                          style={profileBadgesViewerOverlayStyle}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="Recently Viewed profiles viewer"
+                          onClick={closeRecentlyViewedViewer}
+                        >
+                          <div
+                            className="profile-badges-viewer-shell profile-recently-viewed-viewer-shell"
+                            style={{ ...profileBadgesViewerShellStyle, maxWidth: "620px" }}
+                            onClick={(event) => event.stopPropagation()}
+                            onWheel={(event) => event.stopPropagation()}
+                            onTouchMove={(event) => event.stopPropagation()}
+                          >
+                            <div className="profile-badges-viewer-header" style={profileBadgesViewerHeaderStyle}>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={profileBadgesViewerEyebrowStyle}>Private to you</p>
+                                <h3 className="profile-badges-viewer-title" style={profileBadgesViewerTitleStyle}>Recently Viewed</h3>
+                                <p style={profileBadgesViewerSubtextStyle}>
+                                  Quickly return to profiles you viewed. Other users cannot see this list.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={closeRecentlyViewedViewer}
+                                style={profileBadgesViewerCloseStyle}
+                                aria-label="Close recently viewed viewer"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            {recentlyViewedLoading ? (
+                              <div style={recentlyViewedViewerEmptyStyle}>Loading recently viewed profiles...</div>
+                            ) : recentlyViewedProfiles.length === 0 ? (
+                              <div style={recentlyViewedViewerEmptyStyle}>
+                                <strong>No recently viewed profiles yet</strong>
+                                <span>Profiles you visit will appear here privately.</span>
+                              </div>
+                            ) : (
+                              <div style={recentlyViewedViewerListStyle}>
+                                {recentlyViewedProfiles.map((item) => {
+                                  const recentProfile = item.profile;
+                                  const recentName = recentProfile?.full_name || recentProfile?.username || "Parapost Member";
+                                  const recentHandle = recentProfile?.username ? `@${recentProfile.username}` : "Recently viewed profile";
+                                  const recentInitial = getInitial(recentProfile?.full_name, recentProfile?.username) || "P";
+
+                                  return (
+                                    <Link
+                                      key={item.rowId}
+                                      href={`/profile/${item.profileId}`}
+                                      style={recentlyViewedViewerRowStyle}
+                                      onClick={closeRecentlyViewedViewer}
+                                    >
+                                      <span style={recentlyViewedViewerAvatarStyle}>
+                                        {recentProfile?.avatar_url ? (
+                                          <img
+                                            src={recentProfile.avatar_url}
+                                            alt=""
+                                            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                                          />
+                                        ) : (
+                                          <span>{recentInitial}</span>
+                                        )}
+                                      </span>
+
+                                      <span style={recentlyViewedTextStyle}>
+                                        <strong>{recentName}</strong>
+                                        <small>{recentHandle} · Viewed {formatTimeAgo(item.viewedAt)}</small>
+                                      </span>
+
+                                      <span style={recentlyViewedOpenPillStyle}>Open</span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ),
+                      document.body
+                    )
+                  : null}
+
                 {shouldShowProfileStarter ? (
                   <section className="profile-starter-card" style={profileStarterCardStyle} aria-label="Complete your profile">
                     <div style={profileStarterHeaderStyle}>
@@ -10530,28 +10799,7 @@ return (
               )}
             </div>
 
-            <div style={rightPanelCardStyle}>
-              <div style={rightPanelHeaderStyle}>
-                <h3 style={rightPanelTitleStyle}>Recent Visitors</h3>
-                <span style={miniPurpleLinkStyle}>See all</span>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {[profile, profile, profile, null, null].map((visitor, index) => (
-                  <div key={index} style={visitorAvatarStyle}>
-                    {visitor?.avatar_url ? (
-                      <img
-                        src={visitor.avatar_url}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-                      />
-                    ) : (
-                      <span>{index === 4 ? "👻" : getInitial(profile?.full_name, profile?.username)}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {viewerId ? renderRecentlyViewedCard("recently-viewed-right-card", rightPanelCardStyle) : null}
 
             <div style={rightPanelCardStyle}>
               <div style={rightPanelHeaderStyle}>
@@ -10872,6 +11120,20 @@ return (
                   <small>View this profile’s real setup score</small>
                 </span>
               </button>
+
+              {viewerId ? (
+                <button
+                  type="button"
+                  onClick={openRecentlyViewedViewer}
+                  style={profileActionItemStyle}
+                >
+                  <span style={profileActionIconStyle}>◌</span>
+                  <span>
+                    <strong>Recently viewed</strong>
+                    <small>Private profiles you recently opened</small>
+                  </span>
+                </button>
+              ) : null}
 
               <button
                 type="button"
@@ -14740,6 +15002,108 @@ const visitorAvatarStyle: CSSProperties = {
   border: "1px solid rgba(168,85,247,0.42)",
   overflow: "hidden",
   fontWeight: 900,
+};
+
+const recentlyViewedListStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  marginBottom: "12px",
+};
+
+const recentlyViewedRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "10px",
+  textDecoration: "none",
+  color: "#f8fafc",
+  padding: "8px",
+  borderRadius: "14px",
+  border: "1px solid rgba(255,255,255,0.075)",
+  background: "rgba(255,255,255,0.030)",
+};
+
+const recentlyViewedAvatarStyle: CSSProperties = {
+  width: "42px",
+  height: "42px",
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  color: "#f9fafb",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.42), rgba(37,99,235,0.28))",
+  border: "1px solid rgba(168,85,247,0.38)",
+  overflow: "hidden",
+  fontWeight: 950,
+  flexShrink: 0,
+};
+
+const recentlyViewedTextStyle: CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "2px",
+};
+
+const recentlyViewedEmptyStyle: CSSProperties = {
+  border: "1px dashed rgba(216,180,254,0.16)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.030)",
+  color: "#9ca3af",
+  padding: "12px",
+  fontSize: "12px",
+  fontWeight: 800,
+  lineHeight: 1.45,
+  marginBottom: "12px",
+};
+
+const recentlyViewedViewerListStyle: CSSProperties = {
+  display: "grid",
+  gap: "10px",
+};
+
+const recentlyViewedViewerRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "52px minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: "12px",
+  textDecoration: "none",
+  color: "#f8fafc",
+  padding: "12px",
+  borderRadius: "18px",
+  border: "1px solid rgba(255,255,255,0.085)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.10), rgba(255,255,255,0.035))",
+};
+
+const recentlyViewedViewerAvatarStyle: CSSProperties = {
+  ...recentlyViewedAvatarStyle,
+  width: "52px",
+  height: "52px",
+};
+
+const recentlyViewedViewerEmptyStyle: CSSProperties = {
+  minHeight: "180px",
+  display: "grid",
+  placeItems: "center",
+  textAlign: "center",
+  gap: "6px",
+  border: "1px dashed rgba(216,180,254,0.18)",
+  borderRadius: "20px",
+  background: "rgba(255,255,255,0.030)",
+  color: "#9ca3af",
+  padding: "20px",
+};
+
+const recentlyViewedOpenPillStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "32px",
+  borderRadius: "999px",
+  border: "1px solid rgba(216,180,254,0.26)",
+  background: "rgba(168,85,247,0.12)",
+  color: "#e9d5ff",
+  padding: "0 12px",
+  fontSize: "12px",
+  fontWeight: 950,
 };
 
 const activityRowStyle: CSSProperties = {

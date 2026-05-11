@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -45,6 +45,18 @@ type ProfileRow = {
   phone?: string | null;
   interests?: unknown;
   profile_links?: unknown;
+};
+
+type ProfileSearchResult = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  location?: string | null;
+  occupation?: string | null;
+  paranormal_focus?: string | null;
+  is_online?: boolean | null;
 };
 
 type Post = {
@@ -1049,6 +1061,12 @@ export default function ProfilePage() {
   const [recentlyViewedProfiles, setRecentlyViewedProfiles] = useState<RecentlyViewedProfile[]>([]);
   const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(false);
   const [recentlyViewedViewerOpen, setRecentlyViewedViewerOpen] = useState(false);
+  const [profileSearchQuery, setProfileSearchQuery] = useState("");
+  const [profileSearchResults, setProfileSearchResults] = useState<ProfileSearchResult[]>([]);
+  const [profileSearchLoading, setProfileSearchLoading] = useState(false);
+  const [profileSearchOpen, setProfileSearchOpen] = useState(false);
+  const [profileMobileSearchOpen, setProfileMobileSearchOpen] = useState(false);
+  const [profileSearchMessage, setProfileSearchMessage] = useState("");
   const [activeProfileBadge, setActiveProfileBadge] = useState<ProfileBadge | null>(null);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1302,6 +1320,106 @@ const loadRecentlyViewedProfiles = useCallback(async (nextViewerId: string) => {
     setRecentlyViewedLoading(false);
   }
 }, []);
+
+const cleanProfileSearchTerm = (value: string) =>
+  value
+    .replace(/[,%()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48);
+
+useEffect(() => {
+  const query = cleanProfileSearchTerm(profileSearchQuery);
+
+  if (!query) {
+    setProfileSearchResults([]);
+    setProfileSearchLoading(false);
+    setProfileSearchMessage("");
+    return;
+  }
+
+  if (query.length < 2) {
+    setProfileSearchResults([]);
+    setProfileSearchLoading(false);
+    setProfileSearchMessage("Type at least 2 characters.");
+    return;
+  }
+
+  let cancelled = false;
+  setProfileSearchLoading(true);
+  setProfileSearchMessage("");
+
+  const timer = window.setTimeout(async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, bio, avatar_url, location, occupation, paranormal_focus, is_online")
+      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+      .limit(8);
+
+    if (cancelled) return;
+
+    if (error) {
+      console.warn("Profile search error:", error.message);
+      setProfileSearchResults([]);
+      setProfileSearchMessage("Search is having trouble right now.");
+      setProfileSearchLoading(false);
+      return;
+    }
+
+    const results = ((data as ProfileSearchResult[]) || [])
+      .filter((item) => item?.id)
+      .sort((a, b) => {
+        const aName = (a.full_name || a.username || "").toLowerCase();
+        const bName = (b.full_name || b.username || "").toLowerCase();
+        return aName.localeCompare(bName);
+      });
+
+    setProfileSearchResults(results);
+    setProfileSearchMessage(results.length === 0 ? "No profiles found." : "");
+    setProfileSearchLoading(false);
+  }, 220);
+
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timer);
+  };
+}, [profileSearchQuery]);
+
+const openProfileSearchResult = useCallback(
+  (result: ProfileSearchResult) => {
+    if (!result?.id) return;
+
+    setProfileSearchOpen(false);
+    setProfileMobileSearchOpen(false);
+    setProfileSearchQuery("");
+    setProfileSearchResults([]);
+    setProfileSearchMessage("");
+    router.push(`/profile/${result.id}`);
+  },
+  [router]
+);
+
+const handleProfileSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+
+  if (profileSearchResults[0]) {
+    openProfileSearchResult(profileSearchResults[0]);
+  }
+};
+
+const openProfileMobileSearch = useCallback(() => {
+  setProfileMobileSearchOpen(true);
+  setProfileSearchOpen(true);
+}, []);
+
+const closeProfileMobileSearch = useCallback(() => {
+  setProfileMobileSearchOpen(false);
+  setProfileSearchOpen(false);
+  setProfileSearchQuery("");
+  setProfileSearchResults([]);
+  setProfileSearchMessage("");
+}, []);
+
 
   const loadPage = useCallback(async () => {
     if (!profileId) {
@@ -3041,6 +3159,93 @@ useEffect(() => {
         backgroundPosition: `${profileCoverPositionX}% ${profileCoverPositionY}%`,
       }
     : profileCoverStyle;
+
+  const renderParapostProfileSearch = (className?: string) => {
+    const showSearchDropdown =
+      profileSearchOpen &&
+      (profileSearchQuery.trim().length > 0 || profileSearchResults.length > 0 || profileSearchLoading);
+
+    return (
+      <div className={className} style={parapostSearchWrapStyle}>
+        <form onSubmit={handleProfileSearchSubmit} style={parapostSearchFormStyle}>
+          <span style={parapostSearchIconStyle} aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+              <path
+                d="M10.8 18.1a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              />
+              <path
+                d="m16.2 16.2 4.3 4.3"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <input
+            type="search"
+            value={profileSearchQuery}
+            onChange={(event) => {
+              setProfileSearchQuery(event.target.value);
+              setProfileSearchOpen(true);
+            }}
+            onFocus={() => setProfileSearchOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setProfileSearchOpen(false);
+                event.currentTarget.blur();
+              }
+            }}
+            placeholder="Search Parapost"
+            aria-label="Search Parapost profiles"
+            style={parapostSearchInputStyle}
+          />
+        </form>
+
+        {showSearchDropdown ? (
+          <div style={parapostSearchDropdownStyle}>
+            {profileSearchLoading ? (
+              <div style={parapostSearchStatusStyle}>Searching profiles...</div>
+            ) : profileSearchResults.length > 0 ? (
+              profileSearchResults.map((result) => {
+                const resultName = result.full_name || result.username || "Parapost Member";
+                const resultHandle = result.username ? `@${result.username}` : "Parapost profile";
+                const resultSubline = result.location || result.occupation || result.paranormal_focus || result.bio || "View profile";
+                const resultInitial = getInitial(result.full_name, result.username) || "P";
+
+                return (
+                  <button
+                    key={result.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => openProfileSearchResult(result)}
+                    style={parapostSearchResultStyle}
+                  >
+                    <span style={parapostSearchAvatarStyle}>
+                      {result.avatar_url ? (
+                        <img src={result.avatar_url} alt="" style={parapostSearchAvatarImageStyle} />
+                      ) : (
+                        resultInitial
+                      )}
+                    </span>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <strong style={parapostSearchResultNameStyle}>{resultName}</strong>
+                      <span style={parapostSearchResultHandleStyle}>{resultHandle}</span>
+                      <span style={parapostSearchResultMetaStyle}>{resultSubline}</span>
+                    </span>
+                  </button>
+                );
+              })
+            ) : (
+              <div style={parapostSearchStatusStyle}>{profileSearchMessage || "Type to search profiles."}</div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
 
   const renderProfileStrengthCard = (className?: string, style?: CSSProperties) => (
     <div className={className} style={style || rightPanelCardStyle}>
@@ -8501,6 +8706,87 @@ return (
         }
       }
 
+        .profile-top-search input::placeholder {
+          color: rgba(226, 232, 240, 0.76);
+          opacity: 1;
+        }
+
+        .profile-top-search form:focus-within {
+          background: rgba(255,255,255,0.16) !important;
+          border-color: rgba(216,180,254,0.30) !important;
+          box-shadow: 0 0 0 3px rgba(168,85,247,0.14), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+        }
+
+        .profile-top-search button:hover {
+          background: rgba(168,85,247,0.12) !important;
+        }
+
+        @media (max-width: 420px) {
+          .profile-top-search {
+            width: 156px !important;
+          }
+        }
+
+
+
+        /* === PROFILE SEARCH BAR RESPONSIVE FIX === */
+        .profile-top-search-full {
+          display: block !important;
+        }
+
+        .profile-top-search-icon-button {
+          display: none !important;
+        }
+
+        .profile-top-search input::placeholder,
+        .profile-mobile-search-field input::placeholder {
+          color: rgba(226, 232, 240, 0.76);
+          opacity: 1;
+        }
+
+        .profile-top-search form:focus-within,
+        .profile-mobile-search-field form:focus-within {
+          background: rgba(255,255,255,0.16) !important;
+          border-color: rgba(216,180,254,0.30) !important;
+          box-shadow: 0 0 0 3px rgba(168,85,247,0.14), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+        }
+
+        .profile-mobile-search-field {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+        }
+
+        .profile-mobile-search-field form {
+          height: 44px !important;
+          padding: 0 14px !important;
+        }
+
+        .profile-mobile-search-field input {
+          display: block !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+        }
+
+        @media (max-width: 720px) {
+          .profile-top-search-full {
+            display: none !important;
+          }
+
+          .profile-top-search-icon-button {
+            display: inline-flex !important;
+            flex: 0 0 auto !important;
+          }
+
+          .profile-top-brand,
+          .profile-brand-logo,
+          .profile-mobile-brand {
+            flex-shrink: 0 !important;
+            overflow: visible !important;
+            max-width: none !important;
+          }
+        }
+
 `}</style>
 
     {/* Mobile Top Bar */}
@@ -8514,24 +8800,89 @@ return (
         ‹
       </button>
 
-      <div style={{ textAlign: "center", minWidth: 0 }}>
-        <div style={{ fontWeight: 950, letterSpacing: "0.04em" }}>
-          PARAPOST
-        </div>
-        <div
-          style={{
-            color: "#a855f7",
-            fontSize: "11px",
-            letterSpacing: "0.32em",
-            fontWeight: 900,
-          }}
+      <div style={profileTopBrandActionsStyle}>
+        {renderParapostProfileSearch("profile-top-search profile-top-search-full")}
+
+        <button
+          type="button"
+          className="profile-top-search-icon-button"
+          onClick={openProfileMobileSearch}
+          style={profileTopSearchIconButtonStyle}
+          aria-label="Search Parapost"
         >
-          NETWORK
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+            <path
+              d="M10.8 18.1a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            />
+            <path
+              d="m16.2 16.2 4.3 4.3"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
+        <div style={profileTopBrandMarkStyle}>
+          <div style={{ fontWeight: 950, letterSpacing: "0.04em" }}>
+            PARAPOST
+          </div>
+          <div
+            style={{
+              color: "#a855f7",
+              fontSize: "11px",
+              letterSpacing: "0.32em",
+              fontWeight: 900,
+            }}
+          >
+            NETWORK
+          </div>
         </div>
       </div>
 
-
     </div>
+
+    {isClientMounted && profileMobileSearchOpen
+      ? createPortal(
+          (
+            <div
+              className="profile-mobile-search-overlay"
+              style={profileMobileSearchOverlayStyle}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Search Parapost"
+              onClick={closeProfileMobileSearch}
+            >
+              <div
+                className="profile-mobile-search-sheet"
+                style={profileMobileSearchSheetStyle}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div style={profileMobileSearchHeaderStyle}>
+                  <span>
+                    <p style={profileMobileSearchEyebrowStyle}>Parapost Network</p>
+                    <h3 style={profileMobileSearchTitleStyle}>Search Parapost</h3>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={closeProfileMobileSearch}
+                    style={profileMobileSearchCloseStyle}
+                    aria-label="Close Search Parapost"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {renderParapostProfileSearch("profile-mobile-search-field")}
+              </div>
+            </div>
+          ),
+          document.body
+        )
+      : null}
 
       <div className="profile-page-shell mx-auto w-full px-3 py-4 sm:px-4 lg:px-6" style={{ maxWidth: "1680px", paddingBottom: "96px" }}>
         <div className="profile-layout-grid grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-[240px_minmax(0,1fr)_340px]">
@@ -15144,6 +15495,223 @@ const offlineStatusPillStyle: CSSProperties = {
 };
 
 
+
+const profileTopBrandActionsStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: "10px",
+  minWidth: 0,
+  flex: 1,
+};
+
+const profileTopBrandMarkStyle: CSSProperties = {
+  textAlign: "right",
+  minWidth: "82px",
+  color: "#f8fafc",
+  lineHeight: 1.05,
+};
+
+const profileTopSearchIconButtonStyle: CSSProperties = {
+  width: "36px",
+  height: "34px",
+  minWidth: "36px",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.13)",
+  color: "rgba(226,232,240,0.86)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 26px rgba(0,0,0,0.22)",
+  cursor: "pointer",
+};
+
+const parapostSearchWrapStyle: CSSProperties = {
+  position: "relative",
+  width: "clamp(156px, 28vw, 205px)",
+  minWidth: 0,
+  zIndex: 90,
+};
+
+const parapostSearchFormStyle: CSSProperties = {
+  height: "38px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.13)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  padding: "0 13px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+};
+
+const parapostSearchIconStyle: CSSProperties = {
+  color: "rgba(226,232,240,0.76)",
+  display: "inline-flex",
+  flex: "0 0 auto",
+};
+
+const parapostSearchInputStyle: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  border: 0,
+  outline: "none",
+  background: "transparent",
+  color: "#f8fafc",
+  fontSize: "13px",
+  fontWeight: 750,
+  lineHeight: 1,
+};
+
+const parapostSearchDropdownStyle: CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 9px)",
+  right: 0,
+  width: "min(340px, 86vw)",
+  maxHeight: "390px",
+  overflowY: "auto",
+  borderRadius: "20px",
+  border: "1px solid rgba(216,180,254,0.20)",
+  background: "rgba(9,10,18,0.97)",
+  backdropFilter: "blur(22px)",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.54), 0 0 28px rgba(168,85,247,0.12)",
+  padding: "8px",
+  zIndex: 120,
+};
+
+const parapostSearchStatusStyle: CSSProperties = {
+  padding: "14px 12px",
+  color: "#c4b5fd",
+  fontSize: "12px",
+  fontWeight: 800,
+  textAlign: "center",
+};
+
+const parapostSearchResultStyle: CSSProperties = {
+  width: "100%",
+  border: 0,
+  borderRadius: "15px",
+  background: "transparent",
+  color: "#f8fafc",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  padding: "10px",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const parapostSearchAvatarStyle: CSSProperties = {
+  width: "38px",
+  height: "38px",
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  flex: "0 0 auto",
+  overflow: "hidden",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.95), rgba(34,211,238,0.78))",
+  color: "#fff",
+  fontSize: "13px",
+  fontWeight: 950,
+  boxShadow: "0 0 0 1px rgba(255,255,255,0.12)",
+};
+
+const parapostSearchAvatarImageStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
+};
+
+const parapostSearchResultNameStyle: CSSProperties = {
+  display: "block",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: "13px",
+  fontWeight: 950,
+};
+
+const parapostSearchResultHandleStyle: CSSProperties = {
+  display: "block",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  color: "#c4b5fd",
+  fontSize: "11px",
+  fontWeight: 850,
+};
+
+const parapostSearchResultMetaStyle: CSSProperties = {
+  display: "block",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  color: "#94a3b8",
+  fontSize: "11px",
+  fontWeight: 650,
+  marginTop: "2px",
+};
+
+const profileMobileSearchOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 2200,
+  background: "rgba(0,0,0,0.64)",
+  backdropFilter: "blur(16px)",
+  padding: "84px 16px 24px",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+};
+
+const profileMobileSearchSheetStyle: CSSProperties = {
+  width: "min(420px, 100%)",
+  borderRadius: "24px",
+  border: "1px solid rgba(216,180,254,0.20)",
+  background: "linear-gradient(180deg, rgba(30,18,48,0.98), rgba(8,10,18,0.98))",
+  boxShadow: "0 24px 80px rgba(0,0,0,0.58), 0 0 32px rgba(168,85,247,0.14)",
+  padding: "16px",
+};
+
+const profileMobileSearchHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "14px",
+  marginBottom: "14px",
+};
+
+const profileMobileSearchEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#c084fc",
+  fontSize: "10px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.18em",
+};
+
+const profileMobileSearchTitleStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#f8fafc",
+  fontSize: "19px",
+  fontWeight: 950,
+  letterSpacing: "-0.03em",
+};
+
+const profileMobileSearchCloseStyle: CSSProperties = {
+  width: "34px",
+  height: "34px",
+  minWidth: "34px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.10)",
+  color: "#f8fafc",
+  fontSize: "22px",
+  lineHeight: 1,
+  fontWeight: 900,
+  cursor: "pointer",
+};
 
 const mobileTopBarStyle: CSSProperties = {
   position: "sticky",

@@ -2203,7 +2203,7 @@ function ComposerCard({
   onRemoveImage,
   onPost,
 }: {
-  composerRef: RefObject<HTMLDivElement | null>;
+  composerRef: RefObject<HTMLElement | null>;
   currentProfile: ProfilePreview | null;
   firstName: string;
   content: string;

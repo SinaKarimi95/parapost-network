@@ -5,6 +5,7 @@ import {
   CSSProperties,
   ReactNode,
   RefObject,
+  DragEvent as ReactDragEvent,
   MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
@@ -26,18 +27,57 @@ type ProfilePreview = {
   is_online?: boolean | null;
 };
 
+type ShowcaseDuration = "24h" | "30d" | "permanent";
+type ShowcaseVisibility = "public" | "friends" | "private";
+type ShowcaseMediaType = "image" | "video" | "text";
+type ShowcaseFontValue =
+  | "inter"
+  | "roboto"
+  | "openSans"
+  | "montserrat"
+  | "poppins"
+  | "lato"
+  | "nunito"
+  | "raleway"
+  | "playfair"
+  | "merriweather";
+
 type DashboardShowcaseItem = {
   id: string;
   user_id: string;
   title: string | null;
   cover_text: string | null;
   media_url: string | null;
-  media_type: string | null;
-  visibility: string | null;
+  media_type: ShowcaseMediaType | string | null;
+  media_filename?: string | null;
+  font_key?: string | null;
+  text_position_x?: number | string | null;
+  text_position_y?: number | string | null;
+  overlay_font_size?: number | null;
+  duration?: ShowcaseDuration | string | null;
+  visibility: ShowcaseVisibility | string | null;
   expires_at: string | null;
   created_at: string | null;
   profile: ProfilePreview | null;
 };
+
+
+const SHOWCASE_OVERLAY_MIN_FONT_SIZE = 16;
+const SHOWCASE_OVERLAY_MAX_FONT_SIZE = 64;
+const SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE = 30;
+
+const SHOWCASE_FONT_OPTIONS: Array<{ value: ShowcaseFontValue; label: string; family: string }> = [
+  { value: "inter", label: "Parapost Default", family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
+  { value: "roboto", label: "Clean Modern", family: "Arial, Helvetica, sans-serif" },
+  { value: "openSans", label: "Open Sans", family: "Verdana, Geneva, sans-serif" },
+  { value: "montserrat", label: "Montserrat", family: "Trebuchet MS, Arial, sans-serif" },
+  { value: "poppins", label: "Poppins", family: "Poppins, Arial, sans-serif" },
+  { value: "lato", label: "Lato", family: "Lato, Arial, sans-serif" },
+  { value: "nunito", label: "Nunito", family: "Nunito, Arial, sans-serif" },
+  { value: "raleway", label: "Raleway", family: "Raleway, Arial, sans-serif" },
+  { value: "playfair", label: "Playfair", family: "Georgia, 'Times New Roman', serif" },
+  { value: "merriweather", label: "Merriweather", family: "Merriweather, Georgia, serif" },
+];
 
 type Post = {
   id: string;
@@ -65,12 +105,13 @@ type MixedFeedItem =
   | { type: "post"; id: string; created_at: string; post: Post }
   | { type: "reel_share"; id: string; created_at: string; share: SharedReelItem };
 
-type FeedMode = "for_you" | "following" | "live" | "ghost_hunts";
+type FeedMode = "for_you" | "friends" | "following";
 type CountMap = Record<string, number>;
 type ToggleMap = Record<string, boolean>;
 type FollowMap = Record<string, boolean>;
 
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
+const POST_CHARACTER_LIMIT = 63206;
 
 function isLikelyShortenedLink(hostname: string) {
   const shortenerDomains = [
@@ -400,6 +441,51 @@ function NewShowcaseIcon() {
   );
 }
 
+function getShowcaseFontOption(fontKey?: string | null) {
+  return SHOWCASE_FONT_OPTIONS.find((font) => font.value === fontKey) || SHOWCASE_FONT_OPTIONS[0];
+}
+
+function getDashboardShowcaseFontFamily(fontKey?: string | null) {
+  return getShowcaseFontOption(fontKey).family;
+}
+
+function clampShowcaseOverlayFontSize(value: number) {
+  if (!Number.isFinite(value)) return SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE;
+  return Math.max(SHOWCASE_OVERLAY_MIN_FONT_SIZE, Math.min(SHOWCASE_OVERLAY_MAX_FONT_SIZE, Math.round(value)));
+}
+
+function getShowcaseOverlayDisplayFontSize(text: string, requestedSize: number) {
+  const clean = text.trim();
+  const base = clampShowcaseOverlayFontSize(requestedSize);
+  if (clean.length > 70) return Math.max(16, Math.round(base * 0.64));
+  if (clean.length > 42) return Math.max(17, Math.round(base * 0.76));
+  if (clean.length > 24) return Math.max(19, Math.round(base * 0.88));
+  return base;
+}
+
+function getShowcaseOverlayTextWidth(text: string) {
+  const clean = text.trim();
+  if (clean.length > 75) return "86%";
+  if (clean.length > 42) return "78%";
+  if (clean.length > 18) return "68%";
+  return "58%";
+}
+
+function clampDashboardShowcaseFontSize(value?: number | null) {
+  if (!value || Number.isNaN(Number(value))) return 10;
+  return Math.max(8, Math.min(14, Math.round(Number(value) * 0.45)));
+}
+
+function getDashboardShowcaseLabel(showcase: DashboardShowcaseItem) {
+  return (
+    showcase.title ||
+    showcase.cover_text ||
+    showcase.profile?.full_name?.split(" ")[0] ||
+    showcase.profile?.username ||
+    "Showcase"
+  );
+}
+
 function SearchIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -531,6 +617,7 @@ export default function DashboardPage() {
   const [fetchingPosts, setFetchingPosts] = useState(true);
   const [feedMode, setFeedMode] = useState<FeedMode>("for_you");
   const [followedUserIds, setFollowedUserIds] = useState<string[]>([]);
+  const [acceptedFriendUserIds, setAcceptedFriendUserIds] = useState<string[]>([]);
   const [followingMap, setFollowingMap] = useState<FollowMap>({});
   const [likeCounts, setLikeCounts] = useState<CountMap>({});
   const [commentCounts, setCommentCounts] = useState<CountMap>({});
@@ -543,6 +630,23 @@ export default function DashboardPage() {
   const [pendingFriendRequestCount, setPendingFriendRequestCount] = useState(0);
   const [recentlyViewed, setRecentlyViewed] = useState<ProfilePreview[]>([]);
   const [friendShowcases, setFriendShowcases] = useState<DashboardShowcaseItem[]>([]);
+  const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
+  const [dashboardShowcaseTitle, setDashboardShowcaseTitle] = useState("");
+  const [dashboardShowcaseCoverText, setDashboardShowcaseCoverText] = useState("");
+  const [dashboardShowcaseDuration, setDashboardShowcaseDuration] = useState<ShowcaseDuration>("24h");
+  const [dashboardShowcaseVisibility, setDashboardShowcaseVisibility] = useState<ShowcaseVisibility>("friends");
+  const [dashboardShowcaseMediaFile, setDashboardShowcaseMediaFile] = useState<File | null>(null);
+  const [dashboardShowcaseMediaPreviewUrl, setDashboardShowcaseMediaPreviewUrl] = useState("");
+  const [dashboardShowcaseMediaType, setDashboardShowcaseMediaType] = useState<ShowcaseMediaType>("text");
+  const [dashboardShowcaseMediaFileName, setDashboardShowcaseMediaFileName] = useState("");
+  const [dashboardShowcaseFontKey, setDashboardShowcaseFontKey] = useState<ShowcaseFontValue>("inter");
+  const [dashboardShowcaseOverlayFontSize, setDashboardShowcaseOverlayFontSize] = useState(SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE);
+  const [dashboardShowcaseTextPosition, setDashboardShowcaseTextPosition] = useState({ x: 50, y: 50 });
+  const [dashboardShowcaseCustomizeOpen, setDashboardShowcaseCustomizeOpen] = useState(false);
+  const [dashboardShowcasePreviewExpanded, setDashboardShowcasePreviewExpanded] = useState(false);
+  const [dashboardShowcaseMediaDragActive, setDashboardShowcaseMediaDragActive] = useState(false);
+  const [dashboardShowcaseError, setDashboardShowcaseError] = useState("");
+  const [dashboardShowcaseSaving, setDashboardShowcaseSaving] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -550,6 +654,7 @@ export default function DashboardPage() {
   const [searchLoading, setSearchLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dashboardShowcaseInputRef = useRef<HTMLInputElement | null>(null);
   const mainComposerRef = useRef<HTMLElement | null>(null);
 
   const currentName = currentProfile?.full_name || currentProfile?.username || "there";
@@ -576,6 +681,13 @@ export default function DashboardPage() {
   }, [posts, sharedReelItems]);
 
   const filteredFeedItems = useMemo(() => {
+    if (feedMode === "friends" && currentUserId) {
+      return mixedFeedItems.filter((item) => {
+        const authorId = item.type === "post" ? item.post.user_id : item.share.user_id;
+        return acceptedFriendUserIds.includes(authorId);
+      });
+    }
+
     if (feedMode === "following" && currentUserId) {
       return mixedFeedItems.filter((item) => {
         const authorId = item.type === "post" ? item.post.user_id : item.share.user_id;
@@ -583,22 +695,8 @@ export default function DashboardPage() {
       });
     }
 
-    if (feedMode === "live") {
-      return mixedFeedItems.filter((item) => {
-        const text = item.type === "post" ? item.post.content : item.share.caption || item.share.reel_caption || "";
-        return /live|stream|watching|event/i.test(text);
-      });
-    }
-
-    if (feedMode === "ghost_hunts") {
-      return mixedFeedItems.filter((item) => {
-        const text = item.type === "post" ? item.post.content : item.share.caption || item.share.reel_caption || "";
-        return /ghost|haunt|paranormal|evp|investigation/i.test(text);
-      });
-    }
-
     return mixedFeedItems;
-  }, [currentUserId, feedMode, followedUserIds, mixedFeedItems]);
+  }, [acceptedFriendUserIds, currentUserId, feedMode, followedUserIds, mixedFeedItems]);
 
   const totalLikes = useMemo(() => {
     return Object.values(likeCounts).reduce((sum, count) => sum + count, 0);
@@ -734,6 +832,7 @@ export default function DashboardPage() {
 
   const fetchFriendShowcases = useCallback(async (userId?: string) => {
     if (!userId) {
+      setAcceptedFriendUserIds([]);
       setFriendShowcases([]);
       return [] as DashboardShowcaseItem[];
     }
@@ -746,6 +845,7 @@ export default function DashboardPage() {
 
     if (friendshipError) {
       console.error("Error fetching dashboard friend showcase relationships:", friendshipError.message);
+      setAcceptedFriendUserIds([]);
       setFriendShowcases([]);
       return [] as DashboardShowcaseItem[];
     }
@@ -758,7 +858,14 @@ export default function DashboardPage() {
       ),
     ] as string[];
 
-    if (friendIds.length === 0) {
+    setAcceptedFriendUserIds(friendIds);
+
+    // Dashboard Showcases are the user's own Showcases plus Showcases from accepted friends only.
+    // This keeps the homepage automatic: users create their own Showcase from Dashboard/profile,
+    // and friends' Showcases appear here without showing a separate “friend showcase” tile.
+    const showcaseUserIds = [...new Set([userId, ...friendIds].filter(Boolean))] as string[];
+
+    if (showcaseUserIds.length === 0) {
       setFriendShowcases([]);
       return [] as DashboardShowcaseItem[];
     }
@@ -768,14 +875,14 @@ export default function DashboardPage() {
         supabase
           .from("profiles")
           .select("id, username, full_name, avatar_url, bio, location, is_online")
-          .in("id", friendIds)
-          .limit(32),
+          .in("id", showcaseUserIds)
+          .limit(36),
         supabase
           .from("profile_showcases")
-          .select("id, user_id, title, cover_text, media_url, media_type, visibility, expires_at, created_at")
-          .in("user_id", friendIds)
+          .select("id, user_id, title, cover_text, media_url, media_type, media_filename, font_key, text_position_x, text_position_y, overlay_font_size, duration, visibility, expires_at, created_at")
+          .in("user_id", showcaseUserIds)
           .order("created_at", { ascending: false })
-          .limit(24),
+          .limit(30),
       ]);
 
     if (profilesError) {
@@ -801,12 +908,18 @@ export default function DashboardPage() {
       cover_text: string | null;
       media_url: string | null;
       media_type: string | null;
+      media_filename?: string | null;
+      font_key?: string | null;
+      text_position_x?: number | string | null;
+      text_position_y?: number | string | null;
+      overlay_font_size?: number | null;
+      duration?: string | null;
       visibility: string | null;
       expires_at: string | null;
       created_at: string | null;
     }>)
-      .filter((item) => item.user_id && friendIds.includes(item.user_id))
-      .filter((item) => item.visibility !== "private")
+      .filter((item) => item.user_id && showcaseUserIds.includes(item.user_id))
+      .filter((item) => item.user_id === userId || item.visibility !== "private")
       .filter((item) => !item.expires_at || new Date(item.expires_at).getTime() > now)
       .map((item) => ({
         ...item,
@@ -995,6 +1108,39 @@ export default function DashboardPage() {
   }, [image]);
 
   useEffect(() => {
+    if (!dashboardShowcaseMediaFile) {
+      setDashboardShowcaseMediaPreviewUrl("");
+      setDashboardShowcaseMediaFileName("");
+      setDashboardShowcaseMediaType("text");
+      return;
+    }
+
+    let cancelled = false;
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (cancelled) return;
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setDashboardShowcaseMediaPreviewUrl(result);
+      setDashboardShowcaseMediaFileName(dashboardShowcaseMediaFile.name);
+      setDashboardShowcaseMediaType(
+        dashboardShowcaseMediaFile.type.startsWith("video/") ? "video" : "image"
+      );
+    };
+
+    reader.onerror = () => {
+      if (cancelled) return;
+      setDashboardShowcaseError("Could not preview this Showcase media. Try another file.");
+    };
+
+    reader.readAsDataURL(dashboardShowcaseMediaFile);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardShowcaseMediaFile]);
+
+  useEffect(() => {
     const handleGlobalClick = () => setOpenPostMenuId(null);
     window.addEventListener("click", handleGlobalClick);
     window.addEventListener("scroll", handleGlobalClick);
@@ -1049,6 +1195,137 @@ export default function DashboardPage() {
 
     return () => window.clearTimeout(timeout);
   }, [searchQuery]);
+
+  const handleOpenDashboardShowcaseComposer = () => {
+    if (!currentUserId) {
+      alert("Please sign in to create a Showcase.");
+      return;
+    }
+
+    setShowcaseComposerOpen(true);
+    setDashboardShowcaseError("");
+  };
+
+  const handleCloseDashboardShowcaseComposer = () => {
+    if (dashboardShowcaseSaving) return;
+
+    setShowcaseComposerOpen(false);
+    setDashboardShowcaseTitle("");
+    setDashboardShowcaseCoverText("");
+    setDashboardShowcaseDuration("24h");
+    setDashboardShowcaseVisibility("friends");
+    setDashboardShowcaseMediaFile(null);
+    setDashboardShowcaseMediaPreviewUrl("");
+    setDashboardShowcaseMediaType("text");
+    setDashboardShowcaseMediaFileName("");
+    setDashboardShowcaseFontKey("inter");
+    setDashboardShowcaseOverlayFontSize(SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE);
+    setDashboardShowcaseTextPosition({ x: 50, y: 50 });
+    setDashboardShowcaseCustomizeOpen(false);
+    setDashboardShowcasePreviewExpanded(false);
+    setDashboardShowcaseMediaDragActive(false);
+    setDashboardShowcaseError("");
+
+    if (dashboardShowcaseInputRef.current) {
+      dashboardShowcaseInputRef.current.value = "";
+    }
+  };
+
+  const setDashboardShowcaseMediaFromFile = (file: File | null) => {
+    setDashboardShowcaseError("");
+    setDashboardShowcaseMediaDragActive(false);
+    setDashboardShowcaseMediaFile(file);
+  };
+
+  const handleDashboardShowcaseMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setDashboardShowcaseMediaFromFile(file);
+  };
+
+  const handleDashboardShowcaseMediaDrop = (event: ReactDragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const file = event.dataTransfer.files?.[0] || null;
+    setDashboardShowcaseMediaFromFile(file);
+  };
+
+  const handleDashboardShowcaseMediaDragOver = (event: ReactDragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDashboardShowcaseMediaDragActive(true);
+  };
+
+  const handleDashboardShowcaseMediaDragLeave = (event: ReactDragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDashboardShowcaseMediaDragActive(false);
+  };
+
+  const handleClearDashboardShowcaseMedia = () => {
+    setDashboardShowcaseMediaFile(null);
+    setDashboardShowcaseMediaPreviewUrl("");
+    setDashboardShowcaseMediaType("text");
+    setDashboardShowcaseMediaFileName("");
+    setDashboardShowcaseMediaDragActive(false);
+    if (dashboardShowcaseInputRef.current) {
+      dashboardShowcaseInputRef.current.value = "";
+    }
+  };
+
+  const handleCreateDashboardShowcase = async () => {
+    if (!currentUserId) {
+      setDashboardShowcaseError("Please sign in to create a Showcase.");
+      return;
+    }
+
+    const cleanTitle = dashboardShowcaseTitle.trim();
+    const cleanCoverText = dashboardShowcaseCoverText.trim();
+
+    if (!cleanTitle && !cleanCoverText && !dashboardShowcaseMediaPreviewUrl) {
+      setDashboardShowcaseError("Add a title, text, photo, or video first.");
+      return;
+    }
+
+    setDashboardShowcaseSaving(true);
+    setDashboardShowcaseError("");
+
+    const now = Date.now();
+    const expiresAt =
+      dashboardShowcaseDuration === "24h"
+        ? new Date(now + 24 * 60 * 60 * 1000).toISOString()
+        : dashboardShowcaseDuration === "30d"
+          ? new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : null;
+
+    const insertPayload = {
+      user_id: currentUserId,
+      title: cleanTitle || cleanCoverText || "Showcase",
+      cover_text: cleanCoverText,
+      media_url: dashboardShowcaseMediaPreviewUrl || null,
+      media_type: dashboardShowcaseMediaPreviewUrl ? dashboardShowcaseMediaType : "text",
+      media_filename: dashboardShowcaseMediaFileName || null,
+      font_key: dashboardShowcaseFontKey,
+      text_position_x: dashboardShowcaseTextPosition.x,
+      text_position_y: dashboardShowcaseTextPosition.y,
+      overlay_font_size: clampShowcaseOverlayFontSize(dashboardShowcaseOverlayFontSize),
+      duration: dashboardShowcaseDuration,
+      visibility: dashboardShowcaseVisibility,
+      expires_at: expiresAt,
+    };
+
+    const { error } = await supabase.from("profile_showcases").insert(insertPayload);
+
+    if (error) {
+      console.error("Could not create dashboard Showcase:", error);
+      setDashboardShowcaseError(`Could not create Showcase: ${error.message}`);
+      setDashboardShowcaseSaving(false);
+      return;
+    }
+
+    await fetchFriendShowcases(currentUserId);
+    setDashboardShowcaseSaving(false);
+    handleCloseDashboardShowcaseComposer();
+  };
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
@@ -1409,7 +1686,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <ShowcaseQuickActions currentProfile={currentProfile} currentUserId={currentUserId} friendShowcases={friendShowcases} onCreatePost={scrollToComposer} />
+            <ShowcaseQuickActions currentProfile={currentProfile} currentUserId={currentUserId} friendShowcases={friendShowcases} onCreateShowcase={handleOpenDashboardShowcaseComposer} />
 
             <ComposerCard
               composerRef={mainComposerRef}
@@ -1455,11 +1732,19 @@ export default function DashboardPage() {
                 <DashboardEmptyState title="Loading your feed" text="Parapost Network is pulling in posts, shared reels, and profile activity." />
               ) : filteredFeedItems.length === 0 ? (
                 <DashboardEmptyState
-                  title={feedMode === "following" ? "No followed posts yet" : "No posts yet"}
+                  title={
+                    feedMode === "friends"
+                      ? "No friend posts yet"
+                      : feedMode === "following"
+                        ? "No followed posts yet"
+                        : "No posts yet"
+                  }
                   text={
-                    feedMode === "following"
-                      ? "Follow more members to build your personal feed."
-                      : "Be the first to share an update, photo, investigation, or Parapost Reel."
+                    feedMode === "friends"
+                      ? "Posts from accepted friends will appear here automatically."
+                      : feedMode === "following"
+                        ? "Follow more members to build your personal feed."
+                        : "Be the first to share an update, photo, video, thought, or Parapost Reel."
                   }
                 />
               ) : (
@@ -1475,6 +1760,7 @@ export default function DashboardPage() {
                       commentCount={commentCounts[item.post.id] || 0}
                       shareCount={shareCounts[item.post.id] || 0}
                       isFollowing={!!followingMap[item.post.user_id]}
+                      isFriend={acceptedFriendUserIds.includes(item.post.user_id)}
                       openPostMenuId={openPostMenuId}
                       editingPostId={editingPostId}
                       editingPostContent={editingPostContent}
@@ -1482,7 +1768,6 @@ export default function DashboardPage() {
                       setOpenPostMenuId={setOpenPostMenuId}
                       onLike={() => handleLikeToggle(item.post.id)}
                       onShare={() => handleShare(item.post.id)}
-                      onFollow={() => handleFollowToggle(item.post.user_id)}
                       onStartEdit={() => handleStartEditPost(item.post)}
                       onSaveEdit={() => handleSavePostEdit(item.post.id)}
                       onCancelEdit={() => {
@@ -1591,6 +1876,44 @@ export default function DashboardPage() {
           </aside>
         </div>
       </div>
+
+      {showcaseComposerOpen ? (
+        <DashboardShowcaseComposerModal
+          currentProfile={currentProfile}
+          title={dashboardShowcaseTitle}
+          coverText={dashboardShowcaseCoverText}
+          duration={dashboardShowcaseDuration}
+          visibility={dashboardShowcaseVisibility}
+          mediaPreviewUrl={dashboardShowcaseMediaPreviewUrl}
+          mediaType={dashboardShowcaseMediaType}
+          mediaFileName={dashboardShowcaseMediaFileName}
+          fontKey={dashboardShowcaseFontKey}
+          overlayFontSize={dashboardShowcaseOverlayFontSize}
+          textPosition={dashboardShowcaseTextPosition}
+          customizeOpen={dashboardShowcaseCustomizeOpen}
+          previewExpanded={dashboardShowcasePreviewExpanded}
+          mediaDragActive={dashboardShowcaseMediaDragActive}
+          error={dashboardShowcaseError}
+          saving={dashboardShowcaseSaving}
+          mediaInputRef={dashboardShowcaseInputRef}
+          setTitle={setDashboardShowcaseTitle}
+          setCoverText={setDashboardShowcaseCoverText}
+          setDuration={setDashboardShowcaseDuration}
+          setVisibility={setDashboardShowcaseVisibility}
+          setFontKey={setDashboardShowcaseFontKey}
+          setOverlayFontSize={setDashboardShowcaseOverlayFontSize}
+          setTextPosition={setDashboardShowcaseTextPosition}
+          setCustomizeOpen={setDashboardShowcaseCustomizeOpen}
+          setPreviewExpanded={setDashboardShowcasePreviewExpanded}
+          onMediaChange={handleDashboardShowcaseMediaChange}
+          onMediaDrop={handleDashboardShowcaseMediaDrop}
+          onMediaDragOver={handleDashboardShowcaseMediaDragOver}
+          onMediaDragLeave={handleDashboardShowcaseMediaDragLeave}
+          onClearMedia={handleClearDashboardShowcaseMedia}
+          onClose={handleCloseDashboardShowcaseComposer}
+          onCreate={handleCreateDashboardShowcase}
+        />
+      ) : null}
 
       <MobileBottomNav currentUserId={currentUserId} notificationsCount={notificationsCount} onCreatePost={scrollToComposer} />
 
@@ -2397,6 +2720,78 @@ export default function DashboardPage() {
           }
         }
 
+
+        .dashboard-showcase-scroller::-webkit-scrollbar {
+          height: 6px;
+        }
+
+        .dashboard-showcase-scroller::-webkit-scrollbar-thumb {
+          background: rgba(168,85,247,0.42);
+          border-radius: 999px;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-showcase-row {
+            border-radius: 22px !important;
+            padding-top: 9px !important;
+            padding-bottom: 14px !important;
+          }
+        }
+
+        @media (max-width: 720px) {
+          [aria-label="Create Showcase"] > div {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+
+        @media (max-width: 920px) {
+          .profile-showcase-studio-layout {
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-showcase-preview-column {
+            border-left: 0 !important;
+            padding-left: 0 !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .profile-showcase-modal-overlay {
+            padding: 10px !important;
+            align-items: stretch !important;
+          }
+
+          .profile-showcase-modal-shell {
+            width: 100% !important;
+            height: calc(100vh - 20px) !important;
+            max-height: calc(100vh - 20px) !important;
+            border-radius: 24px !important;
+            padding: 14px !important;
+          }
+
+          .profile-showcase-modal-header {
+            gap: 10px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .profile-showcase-upload-card {
+            grid-template-columns: 48px minmax(0, 1fr) !important;
+            min-height: 118px !important;
+            padding: 16px !important;
+            border-radius: 20px !important;
+          }
+
+          .profile-showcase-duration-options {
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-showcase-preview-phone {
+            min-height: 320px !important;
+            height: 340px !important;
+          }
+        }
+
         @media (min-width: 761px) {
           .dashboard-mobile-header,
           .dashboard-bottom-nav {
@@ -2491,51 +2886,69 @@ function MobileDashboardHeader({
 function ShowcaseQuickActions({
   currentUserId,
   friendShowcases,
+  onCreateShowcase,
 }: {
   currentProfile: ProfilePreview | null;
   currentUserId: string;
   friendShowcases: DashboardShowcaseItem[];
-  onCreatePost: () => void;
+  onCreateShowcase: () => void;
 }) {
-  const visibleFriendShowcases = friendShowcases.slice(0, 12);
+  const visibleFriendShowcases = friendShowcases.slice(0, 18);
 
   return (
-    <section className="dashboard-card dashboard-showcase-row" style={showcaseCardStyle}>
-      <div className="dashboard-showcase-scroller" style={showcaseScrollerStyle}>
-        <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={createShowcaseTileStyle}>
-          <NewShowcaseIcon />
-          <strong style={showcaseNameStrongStyle}>New</strong>
-          <span style={createShowcaseHintStyle}>Create Showcase</span>
-        </Link>
+    <section className="dashboard-card dashboard-showcase-row" style={dashboardProfileShowcasesPanelStyle}>
+      <div style={dashboardShowcasesHeaderStyle}>
+        <h3 style={dashboardShowcasesTitleStyle}>Showcases</h3>
+      </div>
 
-        {visibleFriendShowcases.length > 0 ? (
-          visibleFriendShowcases.map((showcase) => {
-            const profile = showcase.profile;
-            const label = showcase.title || showcase.cover_text || profile?.full_name?.split(" ")[0] || profile?.username || "Showcase";
+      <div className="dashboard-showcase-scroller" style={dashboardProfileShowcasesRowStyle}>
+        <button
+          type="button"
+          style={dashboardProfileShowcaseNewItemStyle}
+          onClick={onCreateShowcase}
+          aria-label="Create a new Showcase"
+        >
+          <span style={dashboardProfileShowcasePlusCircleStyle}>+</span>
+          <span style={dashboardProfileShowcaseLabelStyle}>New</span>
+        </button>
+
+        {visibleFriendShowcases.map((showcase) => {
+            const coverText = (showcase.cover_text || showcase.title || showcase.profile?.full_name || "Showcase").trim();
+            const x = Number(showcase.text_position_x ?? 50);
+            const y = Number(showcase.text_position_y ?? 50);
+            const mediaType = showcase.media_type === "image" || showcase.media_type === "video" ? showcase.media_type : "text";
 
             return (
-              <Link key={showcase.id} href={`/profile/${showcase.user_id}`} style={showcaseTileStyle}>
-                <div style={friendShowcaseBubbleStyle}>
-                  {showcase.media_url && showcase.media_type !== "text" ? (
-                    <img src={showcase.media_url} alt="Friend Showcase" style={friendShowcaseMediaStyle} />
-                  ) : (
-                    <Avatar profile={profile} size={70} />
-                  )}
-                </div>
-                <span style={showcaseNameStyle}>{label}</span>
+              <Link
+                key={showcase.id}
+                href={`/profile/${showcase.user_id}`}
+                style={dashboardProfileShowcaseItemStyle}
+                aria-label={`Open ${getDashboardShowcaseLabel(showcase)} Showcase`}
+              >
+                <span style={dashboardProfileShowcaseCoverCircleStyle}>
+                  {showcase.media_url && mediaType === "image" ? (
+                    <img src={showcase.media_url} alt="" style={dashboardProfileShowcaseCoverMediaStyle} />
+                  ) : showcase.media_url && mediaType === "video" ? (
+                    <video src={showcase.media_url} muted playsInline style={dashboardProfileShowcaseCoverMediaStyle} />
+                  ) : null}
+
+                  <span style={{ ...dashboardProfileShowcaseCoverShadeStyle, opacity: showcase.media_url ? 1 : 0 }} />
+                  <span
+                    style={{
+                      ...dashboardProfileShowcaseCoverTextStyle,
+                      left: `${Number.isFinite(x) ? x : 50}%`,
+                      top: `${Number.isFinite(y) ? y : 50}%`,
+                      fontFamily: getDashboardShowcaseFontFamily(showcase.font_key),
+                      fontSize: `${clampDashboardShowcaseFontSize(showcase.overlay_font_size)}px`,
+                    }}
+                  >
+                    {coverText}
+                  </span>
+                </span>
+                <span style={dashboardProfileShowcaseLabelStyle}>{getDashboardShowcaseLabel(showcase)}</span>
               </Link>
             );
-          })
-        ) : (
-          <div style={emptyFriendShowcaseTileStyle}>
-            <div style={emptyFriendShowcaseIconStyle}>✦</div>
-            <span style={showcaseNameStyle}>Friend Showcases</span>
-          </div>
-        )}
-
-        <button type="button" style={showcaseArrowStyle} aria-label="More friend showcases">
-          ›
-        </button>
+          })}
       </div>
     </section>
   );
@@ -2572,25 +2985,15 @@ function ComposerCard({
 
   return (
     <section id="dashboard-create-post" ref={composerRef} className="dashboard-card dashboard-composer-card" style={composerCardStyle}>
-      <div style={composerHeaderStyle}>
-        <div style={composerIdentityStyle}>
-          <Avatar profile={currentProfile} size={42} />
-          <div style={{ minWidth: 0 }}>
-            <h2 style={composerTitleStyle}>Create a Post</h2>
-            <p style={composerSubtitleStyle}>Share updates, evidence, photos, links, or a quick thought with Parapost Network.</p>
-          </div>
-        </div>
-        <span style={composerDestinationBadgeStyle}>Profile + Feed</span>
-      </div>
-
       <div className="dashboard-composer-top-row" style={composerTopRowStyle}>
         <Avatar profile={currentProfile} size={48} />
         <textarea
           id="dashboard-create-post-input"
           value={content}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={(event) => setContent(event.target.value.slice(0, POST_CHARACTER_LIMIT))}
           placeholder={`What's on your mind, ${firstName}?`}
           rows={2}
+          maxLength={POST_CHARACTER_LIMIT}
           style={composerInputStyle}
         />
         <button type="button" onClick={() => fileInputRef.current?.click()} style={composerImageButtonStyle} aria-label="Upload image">
@@ -2616,14 +3019,12 @@ function ComposerCard({
       <div className="dashboard-composer-actions" style={composerActionGridStyle}>
         <ComposerActionPill label="Photo / Video" icon="▣" tone="green" onClick={() => fileInputRef.current?.click()} />
         <ComposerActionPill label="Parapost Reel" icon="▶" tone="pink" href="/reels" />
-        <ComposerActionPill label="Live Stream" icon="◎" tone="red" onClick={() => alert("Live Stream will be connected in a later dashboard pass.")} />
+        <ComposerActionPill label="Live Stream" icon="◎" tone="red" disabled note="Coming soon" />
         <ComposerActionPill label="Feeling / Activity" icon="●" tone="gold" onClick={() => alert("Feeling and activity options will be connected in a later dashboard pass.")} />
       </div>
 
       <div className="dashboard-composer-footer" style={composerFooterStyle}>
-        <span style={composerHelperTextStyle}>
-          {content.length} characters · Add text, an image, or both before publishing.
-        </span>
+        <span aria-hidden="true" style={{ display: "none" }} />
         <button
           type="button"
           disabled={!canPublish || loading}
@@ -2647,20 +3048,40 @@ function ComposerActionPill({
   tone,
   href,
   onClick,
+  disabled = false,
+  note,
 }: {
   label: string;
   icon: string;
   tone: "green" | "pink" | "red" | "gold";
   href?: string;
   onClick?: () => void;
+  disabled?: boolean;
+  note?: string;
 }) {
   const toneStyle = composerActionToneStyles[tone];
   const content = (
     <>
       <span style={{ ...composerActionIconStyle, ...toneStyle }}>{icon}</span>
-      <span>{label}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        {note ? <span style={composerActionNoteStyle}>{note}</span> : null}
+      </span>
     </>
   );
+
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Live Stream is coming soon."
+        style={{ ...composerActionPillStyle, ...composerActionDisabledStyle }}
+      >
+        {content}
+      </button>
+    );
+  }
 
   if (href) {
     return (
@@ -2681,9 +3102,9 @@ function FeedTabs({ feedMode, setFeedMode }: { feedMode: FeedMode; setFeedMode: 
   return (
     <div className="dashboard-card" style={feedTabsStyle}>
       <FeedTab label="For You" active={feedMode === "for_you"} onClick={() => setFeedMode("for_you")} />
+      <FeedTab label="Friends" active={feedMode === "friends"} onClick={() => setFeedMode("friends")} />
       <FeedTab label="Following" active={feedMode === "following"} onClick={() => setFeedMode("following")} />
-      <FeedTab label="Live" active={feedMode === "live"} onClick={() => setFeedMode("live")} />
-      <FeedTab label="Ghost Hunts" active={feedMode === "ghost_hunts"} onClick={() => setFeedMode("ghost_hunts")} />
+      <FeedTab label="Live" disabled />
       <button type="button" style={feedFilterButtonStyle} aria-label="Feed filters">
         <span style={{ display: "block", width: 18, height: 2, borderRadius: 99, background: "currentColor" }} />
         <span style={{ display: "block", width: 12, height: 2, borderRadius: 99, background: "currentColor" }} />
@@ -2692,9 +3113,24 @@ function FeedTabs({ feedMode, setFeedMode }: { feedMode: FeedMode; setFeedMode: 
   );
 }
 
-function FeedTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FeedTab({
+  label,
+  active = false,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <button type="button" onClick={onClick} style={active ? activeFeedTabStyle : feedTabStyle}>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      style={disabled ? disabledFeedTabStyle : active ? activeFeedTabStyle : feedTabStyle}
+    >
       {label}
     </button>
   );
@@ -2744,6 +3180,7 @@ function PostCard({
   commentCount,
   shareCount,
   isFollowing,
+  isFriend,
   openPostMenuId,
   editingPostId,
   editingPostContent,
@@ -2751,7 +3188,6 @@ function PostCard({
   setOpenPostMenuId,
   onLike,
   onShare,
-  onFollow,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
@@ -2765,6 +3201,7 @@ function PostCard({
   commentCount: number;
   shareCount: number;
   isFollowing: boolean;
+  isFriend: boolean;
   openPostMenuId: string | null;
   editingPostId: string | null;
   editingPostContent: string;
@@ -2772,7 +3209,6 @@ function PostCard({
   setOpenPostMenuId: (value: string | null | ((prev: string | null) => string | null)) => void;
   onLike: () => void;
   onShare: () => void;
-  onFollow: () => void;
   onStartEdit: () => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
@@ -2781,16 +3217,19 @@ function PostCard({
   const isPostOwner = currentUserId === post.user_id;
   const isEditing = editingPostId === post.id;
   const displayName = profile?.full_name || profile?.username || "Parapost user";
+  const profileHref = `/profile/${post.user_id}`;
+  const relationshipLabel = isPostOwner ? "Profile" : isFriend ? "Friends" : isFollowing ? "Following" : "Profile";
 
   return (
     <article id={`post-${post.id}`} className="dashboard-card dashboard-feed-card" style={postCardStyle} onClick={(event) => event.stopPropagation()}>
       <div className="dashboard-post-header" style={postHeaderStyle}>
         <div style={postAuthorStyle}>
-          <Avatar profile={profile} size={54} href={`/profile/${post.user_id}`} />
+          <Avatar profile={profile} size={54} href={profileHref} />
           <div style={{ minWidth: 0 }}>
-            <Link href={`/profile/${post.user_id}`} style={postAuthorNameStyle}>{displayName}</Link>
+            <Link href={profileHref} style={postAuthorNameStyle}>{displayName}</Link>
             <div style={postMetaStyle}>
-              @{profile?.username || "member"} · {formatRelativeTime(post.created_at)} · <span style={postPrivacyBadgeStyle}>Public</span>
+              @{profile?.username || "member"} · {formatRelativeTime(post.created_at)} · {" "}
+              <Link href={profileHref} style={postStatusLinkStyle}>{relationshipLabel}</Link>
             </div>
           </div>
         </div>
@@ -2815,11 +3254,7 @@ function PostCard({
               </div>
             ) : null}
           </div>
-        ) : (
-          <button type="button" onClick={onFollow} style={isFollowing ? followingButtonStyle : followButtonStyle}>
-            {isFollowing ? "Following" : "Follow"}
-          </button>
-        )}
+        ) : null}
       </div>
 
       {isEditing ? (
@@ -2839,13 +3274,13 @@ function PostCard({
 
       {post.image_url ? <img src={post.image_url} alt="Post" style={postImageStyle} /> : null}
 
-      <div style={reactionSummaryStyle}>
-        <span style={reactionBubblesStyle}>Reactions</span>
-        <span style={reactionCountStyle}>{likeCount}</span>
-        <span style={{ marginLeft: "auto" }}>{commentCount} Comments</span>
-        <span>·</span>
-        <span>{shareCount} Shares</span>
-      </div>
+      {commentCount > 0 || shareCount > 0 ? (
+        <div style={postStatsSummaryStyle}>
+          <span>{commentCount} Comments</span>
+          <span>·</span>
+          <span>{shareCount} Shares</span>
+        </div>
+      ) : null}
 
       <div className="dashboard-post-actions" style={postActionsStyle}>
         <ActionButton onClick={onLike} active={isLiked}><HeartIcon filled={isLiked} /> Like</ActionButton>
@@ -3170,6 +3605,410 @@ function SearchModal({
         </div>
         <div style={{ marginTop: 14 }}>
           <SearchResults searchLoading={searchLoading} searchResults={searchResults} onClose={onClose} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardShowcaseComposerModal({
+  title,
+  coverText,
+  duration,
+  visibility,
+  mediaPreviewUrl,
+  mediaType,
+  mediaFileName,
+  fontKey,
+  overlayFontSize,
+  textPosition,
+  customizeOpen,
+  previewExpanded,
+  mediaDragActive,
+  error,
+  saving,
+  mediaInputRef,
+  setTitle,
+  setCoverText,
+  setDuration,
+  setVisibility,
+  setFontKey,
+  setOverlayFontSize,
+  setTextPosition,
+  setCustomizeOpen,
+  setPreviewExpanded,
+  onMediaChange,
+  onMediaDrop,
+  onMediaDragOver,
+  onMediaDragLeave,
+  onClearMedia,
+  onClose,
+  onCreate,
+}: {
+  currentProfile: ProfilePreview | null;
+  title: string;
+  coverText: string;
+  duration: ShowcaseDuration;
+  visibility: ShowcaseVisibility;
+  mediaPreviewUrl: string;
+  mediaType: ShowcaseMediaType;
+  mediaFileName: string;
+  fontKey: ShowcaseFontValue;
+  overlayFontSize: number;
+  textPosition: { x: number; y: number };
+  customizeOpen: boolean;
+  previewExpanded: boolean;
+  mediaDragActive: boolean;
+  error: string;
+  saving: boolean;
+  mediaInputRef: RefObject<HTMLInputElement | null>;
+  setTitle: (value: string) => void;
+  setCoverText: (value: string) => void;
+  setDuration: (value: ShowcaseDuration) => void;
+  setVisibility: (value: ShowcaseVisibility) => void;
+  setFontKey: (value: ShowcaseFontValue) => void;
+  setOverlayFontSize: (value: number) => void;
+  setTextPosition: (value: { x: number; y: number }) => void;
+  setCustomizeOpen: (value: boolean | ((current: boolean) => boolean)) => void;
+  setPreviewExpanded: (value: boolean | ((current: boolean) => boolean)) => void;
+  onMediaChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onMediaDrop: (event: ReactDragEvent<HTMLButtonElement>) => void;
+  onMediaDragOver: (event: ReactDragEvent<HTMLButtonElement>) => void;
+  onMediaDragLeave: (event: ReactDragEvent<HTMLButtonElement>) => void;
+  onClearMedia: () => void;
+  onClose: () => void;
+  onCreate: () => void;
+}) {
+  const cleanCoverText = coverText.trim();
+  const previewCopy = cleanCoverText || title.trim() || "Showcase";
+  const fontOption = getShowcaseFontOption(fontKey);
+  const displayFontSize = getShowcaseOverlayDisplayFontSize(previewCopy, overlayFontSize);
+  const overlayWidth = getShowcaseOverlayTextWidth(previewCopy);
+
+  return (
+    <div
+      className={`profile-showcase-modal-overlay profile-showcase-mobile-open ${previewExpanded ? "profile-showcase-preview-expanded" : ""}`}
+      style={profileShowcaseModalOverlayStyle}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create Showcase"
+    >
+      <div className="profile-showcase-modal-shell" style={profileShowcaseModalStyle}>
+        <div className="profile-showcase-modal-header" style={profileShowcaseModalHeaderStyle}>
+          <div style={profileShowcaseModalBrandRowStyle}>
+            <span style={profileShowcaseModalLogoStyle}>
+              <img
+                src="/parapost-icon-white.png"
+                alt=""
+                aria-hidden="true"
+                style={profileShowcaseModalLogoImageStyle}
+              />
+            </span>
+            <span>
+              <p style={profileShowcaseModalEyebrowStyle}>Parapost Showcases</p>
+              <h3 style={profileShowcaseModalTitleStyle}>Create Showcase</h3>
+              <p style={profileShowcaseModalSubtitleStyle}>
+                Add a photo or video, name it, choose a duration, and create.
+              </p>
+              <div style={profileShowcaseModalFlowPillsStyle}>
+                <span style={profileShowcaseModalFlowPillStyle}>Simple first</span>
+                <span style={profileShowcaseModalFlowPillStyle}>Customize optional</span>
+              </div>
+            </span>
+          </div>
+          <button type="button" onClick={onClose} style={profileShowcaseModalCloseStyle} aria-label="Close Showcase creator">
+            ×
+          </button>
+        </div>
+
+        <div className="profile-showcase-studio-layout" style={profileShowcaseSimpleStudioStyle}>
+          <div className="profile-showcase-simple-controls" style={profileShowcaseSimpleControlsStyle}>
+            <button
+              className="profile-showcase-upload-card"
+              type="button"
+              onClick={() => mediaInputRef.current?.click()}
+              onDrop={onMediaDrop}
+              onDragOver={onMediaDragOver}
+              onDragLeave={onMediaDragLeave}
+              style={
+                mediaPreviewUrl
+                  ? profileShowcaseSimpleUploadCardSelectedStyle
+                  : mediaDragActive
+                    ? profileShowcaseSimpleUploadCardActiveStyle
+                    : profileShowcaseSimpleUploadCardStyle
+              }
+            >
+              <span style={profileShowcaseSimpleUploadIconStyle}>{mediaPreviewUrl ? "✓" : "⇧"}</span>
+              <span className="profile-showcase-upload-copy">
+                <strong style={profileShowcaseUploadTitleTextStyle}>
+                  {mediaPreviewUrl ? "Media selected" : "Upload Photo or Video"}
+                </strong>
+                <small style={profileShowcaseUploadHelpTextStyle}>
+                  {mediaPreviewUrl ? "Tap to replace this Showcase media" : "Tap to choose from your device"}
+                </small>
+                <small style={profileShowcaseUploadHelpTextStyle}>{mediaFileName || "JPG, PNG, MP4"}</small>
+              </span>
+            </button>
+
+            <input ref={mediaInputRef} type="file" accept="image/*,video/*" onChange={onMediaChange} style={{ display: "none" }} />
+
+            {mediaFileName ? (
+              <div style={profileShowcaseSelectedFileStyle}>
+                <span>{mediaType === "video" ? "Video" : "Photo"} ready: {mediaFileName}</span>
+                <button type="button" onClick={onClearMedia} style={profileShowcaseTinyButtonStyle}>
+                  Remove
+                </button>
+              </div>
+            ) : null}
+
+            <label style={profileShowcaseFieldLabelStyle}>
+              Showcase name
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Give your Showcase a name"
+                style={profileShowcaseInputStyle}
+                maxLength={16}
+              />
+            </label>
+
+            <div style={profileShowcaseDurationGroupStyle}>
+              <div>
+                <strong style={profileShowcaseDurationTitleStyle}>Duration</strong>
+                <p style={profileShowcaseDurationHelpStyle}>Choose how long this Showcase stays on your profile.</p>
+              </div>
+
+              <div className="profile-showcase-duration-options" style={profileShowcaseDurationOptionsStyle}>
+                {[
+                  { value: "24h" as const, label: "24 hours", help: "Quick update" },
+                  { value: "30d" as const, label: "30 days", help: "Recent feature" },
+                  { value: "permanent" as const, label: "Permanent", help: "Until removed" },
+                ].map((option) => {
+                  const selected = duration === option.value;
+                  return (
+                    <button
+                      className="profile-showcase-duration-option"
+                      key={option.value}
+                      type="button"
+                      onClick={() => setDuration(option.value)}
+                      style={selected ? profileShowcaseDurationOptionActiveStyle : profileShowcaseDurationOptionStyle}
+                      aria-pressed={selected}
+                    >
+                      <span style={profileShowcaseDurationOptionLabelTextStyle}>{option.label}</span>
+                      <small style={profileShowcaseDurationOptionHelpTextStyle}>{option.help}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={profileShowcaseAdvancedDividerStyle}>
+              <span />
+              <small>Advanced options</small>
+              <span />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCustomizeOpen((value) => !value)}
+              style={customizeOpen ? profileShowcaseCustomizeButtonActiveStyle : profileShowcaseCustomizeButtonStyle}
+              aria-expanded={customizeOpen}
+            >
+              ⚙ Customize
+            </button>
+
+            {customizeOpen ? (
+              <div style={profileShowcaseCustomizePanelStyle}>
+                <div style={profileShowcaseCustomizeIntroStyle}>
+                  <strong>Customize Showcase</strong>
+                  <small>Add cover text, choose a font, then adjust the preview.</small>
+                </div>
+
+                <label style={profileShowcaseFieldLabelStyle}>
+                  Cover text <span style={profileShowcaseOptionalTextStyle}>Optional</span>
+                  <textarea
+                    value={coverText}
+                    onChange={(event) => setCoverText(event.target.value)}
+                    placeholder="Add text over your Showcase"
+                    style={profileShowcaseTextareaStyle}
+                    rows={3}
+                  />
+                </label>
+
+                <div style={profileShowcaseFontGroupStyle}>
+                  <strong style={profileShowcaseDurationTitleStyle}>Text overlay font</strong>
+                  <p style={profileShowcaseDurationHelpStyle}>This changes the text shown over your photo, video, or text Showcase.</p>
+                  <select
+                    className="profile-showcase-font-select"
+                    value={fontKey}
+                    onChange={(event) => setFontKey(event.target.value as ShowcaseFontValue)}
+                    style={profileShowcaseFontSelectStyle}
+                    aria-label="Choose Showcase font"
+                  >
+                    {SHOWCASE_FONT_OPTIONS.map((font) => (
+                      <option key={font.value} value={font.value}>{font.label}</option>
+                    ))}
+                  </select>
+                  <div style={{ ...profileShowcaseFontPreviewStyle, fontFamily: fontOption.family }}>
+                    {cleanCoverText || "Preview optional overlay text"}
+                  </div>
+                </div>
+
+                <div style={profileShowcaseDurationGroupStyle}>
+                  <div>
+                    <strong style={profileShowcaseDurationTitleStyle}>Visibility</strong>
+                    <p style={profileShowcaseDurationHelpStyle}>Choose who can see this Showcase.</p>
+                  </div>
+                  <div style={profileShowcaseVisibilityOptionsStyle}>
+                    {[
+                      { value: "public" as const, label: "Public", help: "Everyone" },
+                      { value: "friends" as const, label: "Friends", help: "Friends only" },
+                      { value: "private" as const, label: "Only me", help: "Private" },
+                    ].map((option) => {
+                      const selected = visibility === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setVisibility(option.value)}
+                          style={selected ? profileShowcaseVisibilityOptionActiveStyle : profileShowcaseVisibilityOptionStyle}
+                          aria-pressed={selected}
+                        >
+                          <span style={profileShowcaseVisibilityIconStyle} />
+                          <span style={profileShowcaseVisibilityTextStyle}>
+                            <strong>{option.label}</strong>
+                            <small>{option.help}</small>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="profile-showcase-preview-column" style={profileShowcasePreviewColumnStyle}>
+            <div className="profile-showcase-preview-header" style={profileShowcasePreviewHeaderStyle}>
+              <strong className="profile-showcase-preview-title" style={profileShowcaseDurationTitleStyle}>Live preview</strong>
+              {customizeOpen ? <small className="profile-showcase-preview-help">Preview your overlay</small> : null}
+            </div>
+
+            <div
+              className="profile-showcase-preview-phone"
+              style={profileShowcasePreviewPhoneStyle}
+              role="button"
+              tabIndex={0}
+              aria-label={previewExpanded ? "Return Showcase preview to normal size" : "Stretch Showcase preview"}
+              onClick={() => {
+                if (!customizeOpen) setPreviewExpanded((value) => !value);
+              }}
+              onKeyDown={(event) => {
+                if (!customizeOpen && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  setPreviewExpanded((value) => !value);
+                }
+              }}
+            >
+              {mediaPreviewUrl && mediaType === "image" ? (
+                <img src={mediaPreviewUrl} alt="" style={profileShowcasePreviewMediaStyle} />
+              ) : mediaPreviewUrl && mediaType === "video" ? (
+                <video src={mediaPreviewUrl} muted playsInline controls style={profileShowcasePreviewMediaStyle} />
+              ) : (
+                <div style={profileShowcasePreviewCanvasStyle} />
+              )}
+
+              <div style={profileShowcasePreviewOverlayStyle}>
+                {customizeOpen && cleanCoverText ? (
+                  <div style={profileShowcaseVerticalSizeRailStyle}>
+                    <input
+                      className="profile-showcase-vertical-size-slider"
+                      type="range"
+                      min={SHOWCASE_OVERLAY_MIN_FONT_SIZE}
+                      max={SHOWCASE_OVERLAY_MAX_FONT_SIZE}
+                      step={1}
+                      value={overlayFontSize}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) => setOverlayFontSize(clampShowcaseOverlayFontSize(Number(event.target.value)))}
+                      style={profileShowcaseVerticalSizeSliderStyle}
+                      aria-label="Showcase text size"
+                    />
+                  </div>
+                ) : null}
+
+                {customizeOpen && cleanCoverText ? (
+                  <>
+                    <span style={profileShowcaseCenterGuideVerticalStyle} />
+                    <span style={profileShowcaseCenterGuideHorizontalStyle} />
+                  </>
+                ) : null}
+
+                {previewCopy ? (
+                  <span
+                    style={{
+                      ...profileShowcasePreviewTextStyle,
+                      left: `${textPosition.x}%`,
+                      top: `${textPosition.y}%`,
+                      fontFamily: fontOption.family,
+                      fontSize: `${displayFontSize}px`,
+                      width: overlayWidth,
+                      maxWidth: overlayWidth,
+                    }}
+                  >
+                    {previewCopy}
+                  </span>
+                ) : null}
+
+                {customizeOpen && cleanCoverText ? (
+                  <small style={profileShowcaseDragHintStyle}>Centered</small>
+                ) : null}
+              </div>
+            </div>
+
+            {customizeOpen && cleanCoverText ? (
+              <div style={profileShowcasePositionControlsStyle}>
+                <label>
+                  Horizontal position
+                  <input
+                    type="range"
+                    min={10}
+                    max={90}
+                    value={textPosition.x}
+                    onChange={(event) => setTextPosition({ ...textPosition, x: Number(event.target.value) })}
+                  />
+                </label>
+                <label>
+                  Vertical position
+                  <input
+                    type="range"
+                    min={10}
+                    max={90}
+                    value={textPosition.y}
+                    onChange={(event) => setTextPosition({ ...textPosition, y: Number(event.target.value) })}
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div style={profileShowcasePreviewMetaStyle}>
+              <span>
+                {customizeOpen
+                  ? "Move text, choose font, and set visibility."
+                  : cleanCoverText
+                    ? "This is how your Showcase will look."
+                    : "Overlay text is optional. Use Customize if you want to add writing."}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {error ? <p style={profileShowcaseErrorStyle}>{error}</p> : null}
+
+        <div className="profile-showcase-modal-actions" style={profileShowcaseModalActionsStyle}>
+          <button type="button" onClick={onClose} style={profileShowcaseCancelButtonStyle}>Cancel</button>
+          <button type="button" onClick={onCreate} disabled={saving} style={{ ...profileShowcaseCreateButtonStyle, opacity: saving ? 0.66 : 1 }}>
+            {saving ? "Creating..." : "✨ Create Showcase"}
+          </button>
         </div>
       </div>
     </div>
@@ -3670,17 +4509,862 @@ const quickActionIconStyle: CSSProperties = { width: 32, height: 32, borderRadiu
 const quickActionLabelStyle: CSSProperties = { display: "block", color: "#fff", fontSize: 13, fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const quickActionTextStyle: CSSProperties = { display: "block", color: "#9ca3af", fontSize: 11.5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
-const composerCardStyle: CSSProperties = { borderRadius: 28, border: "1px solid rgba(255,255,255,0.13)", background: "linear-gradient(180deg, rgba(20,26,43,0.92), rgba(9,12,21,0.92))", padding: 18, marginBottom: 16, boxShadow: "0 20px 54px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.055)", overflow: "hidden", scrollMarginTop: 96 };
+const dashboardProfileShowcasesPanelStyle: CSSProperties = {
+  marginBottom: 18,
+  padding: "12px 0 16px",
+  borderRadius: 18,
+  borderTop: "1px solid rgba(255,255,255,0.08)",
+  borderRight: "1px solid rgba(255,255,255,0.06)",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  borderLeft: "1px solid rgba(255,255,255,0.06)",
+  background: "linear-gradient(180deg, rgba(38,25,52,0.68), rgba(17,19,24,0.86))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 16px 38px rgba(0,0,0,0.24)",
+  overflow: "hidden",
+};
+
+const dashboardShowcasesHeaderStyle: CSSProperties = {
+  margin: "0 14px 10px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const dashboardShowcasesTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#ffffff",
+  fontSize: 15,
+  fontWeight: 950,
+  letterSpacing: "-0.02em",
+};
+
+const dashboardShowcasesSubtitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#9ca3af",
+  fontSize: 12,
+  lineHeight: 1.35,
+};
+
+const dashboardProfileShowcasesRowStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 3,
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 16,
+  minHeight: 92,
+  overflowX: "auto",
+  overflowY: "visible",
+  padding: "0 14px 12px",
+  scrollbarWidth: "thin",
+  scrollbarColor: "rgba(168,85,247,0.42) rgba(255,255,255,0.04)",
+};
+
+const dashboardProfileShowcaseNewItemStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 5,
+  display: "grid",
+  justifyItems: "center",
+  gap: 6,
+  minWidth: 78,
+  width: 78,
+  border: 0,
+  background: "transparent",
+  padding: "0 0 4px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const dashboardProfileShowcasePlusCircleStyle: CSSProperties = {
+  width: 62,
+  height: 62,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  border: "1px solid rgba(255,255,255,0.18)",
+  background:
+    "radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), transparent 23%), linear-gradient(135deg, #a855f7, #7c3aed 58%, #4f46e5)",
+  color: "#ffffff",
+  fontSize: 40,
+  fontWeight: 950,
+  lineHeight: 0.86,
+  paddingBottom: 4,
+  boxShadow:
+    "0 16px 34px rgba(124,58,237,0.38), 0 0 34px rgba(168,85,247,0.28), inset 0 1px 0 rgba(255,255,255,0.16)",
+};
+
+const dashboardProfileShowcaseLabelStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 6,
+  display: "block",
+  maxWidth: 86,
+  color: "#f3e8ff",
+  fontSize: 11,
+  fontWeight: 900,
+  lineHeight: 1.1,
+  textAlign: "center",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  letterSpacing: "0.01em",
+};
+
+const dashboardProfileShowcaseItemStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 4,
+  display: "grid",
+  justifyItems: "center",
+  gap: 6,
+  minWidth: 78,
+  width: 78,
+  border: 0,
+  background: "transparent",
+  padding: "0 0 4px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  textDecoration: "none",
+};
+
+const dashboardProfileShowcaseCoverCircleStyle: CSSProperties = {
+  position: "relative",
+  width: 58,
+  height: 58,
+  display: "grid",
+  placeItems: "center",
+  overflow: "hidden",
+  borderRadius: 999,
+  border: "1px solid rgba(216,180,254,0.30)",
+  background:
+    "radial-gradient(circle at 36% 18%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, rgba(88,28,135,0.96), rgba(59,130,246,0.58))",
+  boxShadow: "0 0 22px rgba(168,85,247,0.20), 0 12px 24px rgba(0,0,0,0.24)",
+};
+
+const dashboardProfileShowcaseCoverMediaStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  zIndex: 0,
+};
+
+const dashboardProfileShowcaseCoverShadeStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  zIndex: 1,
+  background: "linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.48))",
+  pointerEvents: "none",
+};
+
+const dashboardProfileShowcaseCoverTextStyle: CSSProperties = {
+  position: "absolute",
+  zIndex: 2,
+  width: "78%",
+  maxWidth: "78%",
+  color: "#ffffff",
+  fontWeight: 950,
+  lineHeight: 1.05,
+  letterSpacing: "-0.02em",
+  textAlign: "center",
+  textShadow: "0 2px 10px rgba(0,0,0,0.52)",
+  transform: "translate(-50%, -50%)",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+};
+
+const dashboardShowcaseEmptyFriendStyle: CSSProperties = {
+  display: "grid",
+  justifyItems: "center",
+  gap: 6,
+  minWidth: 110,
+  color: "#d1d5db",
+  opacity: 0.88,
+};
+
+const dashboardShowcaseEmptyIconStyle: CSSProperties = {
+  width: 58,
+  height: 58,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  border: "1px dashed rgba(216,180,254,0.24)",
+  background: "rgba(168,85,247,0.08)",
+  color: "#c084fc",
+  fontWeight: 950,
+};
+
+const profileShowcaseOptionalTextStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 750,
+};
+
+const profileShowcaseModalOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 2147483647,
+  display: "flex",
+  alignItems: "stretch",
+  justifyContent: "center",
+  padding: "18px",
+  background: "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.88)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+};
+
+const profileShowcaseModalStyle: CSSProperties = {
+  width: "min(1180px, calc(100vw - 32px))",
+  height: "min(840px, calc(100vh - 32px))",
+  maxHeight: "calc(100vh - 32px)",
+  overflowY: "auto",
+  borderRadius: "32px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
+  boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
+  padding: "22px",
+};
+
+const profileShowcaseModalHeaderStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 20,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "14px",
+  alignItems: "flex-start",
+  marginBottom: "18px",
+  paddingBottom: "14px",
+  background: "transparent",
+};
+
+const profileShowcaseModalBrandRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "center",
+};
+
+const profileShowcaseModalLogoStyle: CSSProperties = {
+  width: "42px",
+  height: "42px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "15px",
+  background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
+  color: "#ffffff",
+  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  overflow: "hidden",
+};
+
+const profileShowcaseModalLogoImageStyle: CSSProperties = {
+  width: "27px",
+  height: "27px",
+  objectFit: "contain",
+  display: "block",
+  filter: "drop-shadow(0 0 8px rgba(255,255,255,0.16))",
+};
+
+const profileShowcaseModalEyebrowStyle: CSSProperties = {
+  margin: 0,
+  color: "#c084fc",
+  fontSize: "11px",
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const profileShowcaseModalTitleStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 950,
+  letterSpacing: "-0.04em",
+};
+
+const profileShowcaseModalSubtitleStyle: CSSProperties = {
+  margin: "6px 0 0",
+  color: "#9ca3af",
+  fontSize: "13px",
+  lineHeight: 1.35,
+  fontWeight: 750,
+};
+
+const profileShowcaseModalFlowPillsStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "6px",
+  marginTop: "10px",
+};
+
+const profileShowcaseModalFlowPillStyle: CSSProperties = {
+  border: "1px solid rgba(216,180,254,0.18)",
+  borderRadius: "999px",
+  background: "rgba(168,85,247,0.10)",
+  color: "#d8b4fe",
+  padding: "5px 8px",
+  fontSize: "10px",
+  fontWeight: 900,
+};
+
+const profileShowcaseModalCloseStyle: CSSProperties = {
+  width: "38px",
+  height: "38px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.07)",
+  color: "#ffffff",
+  fontSize: "20px",
+  fontWeight: 900,
+  cursor: "pointer",
+  flex: "0 0 auto",
+  boxShadow: "0 12px 24px rgba(0,0,0,0.24)",
+};
+
+const profileShowcaseSimpleStudioStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(330px, 0.88fr) minmax(410px, 1.12fr)",
+  gap: "26px",
+  alignItems: "start",
+};
+
+const profileShowcaseSimpleControlsStyle: CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "12px",
+};
+
+const profileShowcaseSimpleUploadCardStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "144px",
+  border: "1px dashed rgba(216,180,254,0.52)",
+  borderRadius: "24px",
+  background: "radial-gradient(circle at 20% 0%, rgba(168,85,247,0.20), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.11), rgba(255,255,255,0.035))",
+  color: "#ffffff",
+  display: "grid",
+  gridTemplateColumns: "58px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "16px",
+  padding: "20px",
+  textAlign: "left",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 50px rgba(0,0,0,0.24)",
+};
+
+const profileShowcaseSimpleUploadCardActiveStyle: CSSProperties = {
+  ...profileShowcaseSimpleUploadCardStyle,
+  border: "1px dashed rgba(34,211,238,0.70)",
+  background: "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.18), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.14), rgba(34,211,238,0.055))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(34,211,238,0.18), 0 22px 52px rgba(0,0,0,0.26)",
+};
+
+const profileShowcaseSimpleUploadCardSelectedStyle: CSSProperties = {
+  ...profileShowcaseSimpleUploadCardStyle,
+  border: "1px solid rgba(74,222,128,0.32)",
+  background: "radial-gradient(circle at 22% 0%, rgba(74,222,128,0.12), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.10), rgba(74,222,128,0.040))",
+};
+
+const profileShowcaseSimpleUploadIconStyle: CSSProperties = {
+  width: "58px",
+  height: "58px",
+  borderRadius: "20px",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.95), rgba(124,58,237,0.90))",
+  color: "#ffffff",
+  fontSize: "28px",
+  fontWeight: 950,
+  boxShadow: "0 14px 28px rgba(124,58,237,0.30)",
+};
+
+const profileShowcaseUploadTitleTextStyle: CSSProperties = {
+  display: "block",
+  color: "#ffffff",
+  fontSize: "13px",
+  lineHeight: 1.14,
+  fontWeight: 950,
+  letterSpacing: "-0.01em",
+  margin: 0,
+};
+
+const profileShowcaseUploadHelpTextStyle: CSSProperties = {
+  display: "block",
+  color: "rgba(226,232,240,0.74)",
+  fontSize: "10px",
+  lineHeight: 1.18,
+  fontWeight: 800,
+  marginTop: "4px",
+};
+
+const profileShowcaseSelectedFileStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  margin: "9px 0 12px",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "13px",
+  background: "rgba(255,255,255,0.045)",
+  color: "#d1d5db",
+  padding: "8px 10px",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const profileShowcaseTinyButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.11)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.06)",
+  color: "#ffffff",
+  padding: "7px 10px",
+  fontSize: "12px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const profileShowcaseFieldLabelStyle: CSSProperties = {
+  display: "grid",
+  gap: "6px",
+  color: "#e5e7eb",
+  fontSize: "12px",
+  fontWeight: 900,
+};
+
+const profileShowcaseInputStyle: CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "13px",
+  background: "rgba(0,0,0,0.24)",
+  color: "#ffffff",
+  padding: "10px 12px",
+  outline: "none",
+  fontSize: "14px",
+  fontFamily: "inherit",
+};
+
+const profileShowcaseTextareaStyle: CSSProperties = {
+  ...profileShowcaseInputStyle,
+  minHeight: "86px",
+  lineHeight: 1.35,
+  resize: "vertical",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  whiteSpace: "pre-wrap",
+};
+
+const profileShowcaseDurationGroupStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  marginTop: "10px",
+};
+
+const profileShowcaseDurationTitleStyle: CSSProperties = {
+  display: "block",
+  color: "#ffffff",
+  fontSize: "13px",
+};
+
+const profileShowcaseDurationHelpStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#9ca3af",
+  fontSize: "12px",
+  lineHeight: 1.35,
+};
+
+const profileShowcaseDurationOptionsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const profileShowcaseDurationOptionStyle: CSSProperties = {
+  display: "grid",
+  gap: "4px",
+  minHeight: "74px",
+  alignContent: "start",
+  textAlign: "left",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "13px",
+  background: "rgba(255,255,255,0.04)",
+  color: "#e5e7eb",
+  padding: "9px 10px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontWeight: 850,
+};
+
+const profileShowcaseDurationOptionActiveStyle: CSSProperties = {
+  ...profileShowcaseDurationOptionStyle,
+  border: "1px solid rgba(216,180,254,0.42)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
+  boxShadow: "0 0 22px rgba(168,85,247,0.16)",
+};
+
+const profileShowcaseDurationOptionLabelTextStyle: CSSProperties = {
+  display: "block",
+  fontSize: "13px",
+  lineHeight: 1.08,
+  fontWeight: 900,
+  letterSpacing: "-0.01em",
+  whiteSpace: "normal",
+};
+
+const profileShowcaseDurationOptionHelpTextStyle: CSSProperties = {
+  display: "block",
+  fontSize: "10px",
+  lineHeight: 1.12,
+  color: "#9ca3af",
+  fontWeight: 800,
+};
+
+const profileShowcaseAdvancedDividerStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  alignItems: "center",
+  gap: "10px",
+  margin: "14px 0 10px",
+  color: "#8b93a4",
+  fontSize: "11px",
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const profileShowcaseCustomizeButtonStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "42px",
+  border: "1px solid rgba(216,180,254,0.26)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.035)",
+  color: "#d8b4fe",
+  fontSize: "14px",
+  fontWeight: 950,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const profileShowcaseCustomizeButtonActiveStyle: CSSProperties = {
+  ...profileShowcaseCustomizeButtonStyle,
+  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
+  border: "1px solid rgba(216,180,254,0.42)",
+  color: "#ffffff",
+};
+
+const profileShowcaseCustomizePanelStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+  marginTop: "12px",
+  border: "1px solid rgba(216,180,254,0.13)",
+  borderRadius: "20px",
+  background: "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.10), transparent 38%), rgba(0,0,0,0.18)",
+  padding: "13px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+};
+
+const profileShowcaseCustomizeIntroStyle: CSSProperties = {
+  display: "grid",
+  gap: "4px",
+  border: "1px solid rgba(216,180,254,0.15)",
+  borderRadius: "15px",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.13), rgba(37,99,235,0.055))",
+  padding: "11px",
+  color: "#ffffff",
+  fontSize: "13px",
+  fontWeight: 900,
+};
+
+const profileShowcaseFontGroupStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+};
+
+const profileShowcaseFontSelectStyle: CSSProperties = {
+  ...profileShowcaseInputStyle,
+  minHeight: "42px",
+};
+
+const profileShowcaseFontPreviewStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "13px",
+  background: "rgba(255,255,255,0.035)",
+  color: "#ffffff",
+  padding: "10px 12px",
+  fontSize: "16px",
+  fontWeight: 900,
+};
+
+const profileShowcaseVisibilityOptionsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const profileShowcaseVisibilityOptionStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.035)",
+  color: "#ffffff",
+  padding: "10px",
+  display: "grid",
+  gridTemplateColumns: "34px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "9px",
+  textAlign: "left",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  minHeight: "58px",
+};
+
+const profileShowcaseVisibilityOptionActiveStyle: CSSProperties = {
+  ...profileShowcaseVisibilityOptionStyle,
+  border: "1px solid rgba(216,180,254,0.58)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(37,99,235,0.11))",
+  boxShadow: "0 0 0 1px rgba(168,85,247,0.12), 0 14px 30px rgba(124,58,237,0.18)",
+};
+
+const profileShowcaseVisibilityIconStyle: CSSProperties = {
+  width: "36px",
+  height: "36px",
+  borderRadius: "13px",
+  display: "grid",
+  placeItems: "center",
+  background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.16), transparent 28%), rgba(168,85,247,0.16)",
+  border: "1px solid rgba(216,180,254,0.20)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+  position: "relative",
+};
+
+const profileShowcaseVisibilityTextStyle: CSSProperties = {
+  display: "grid",
+  gap: "2px",
+  minWidth: 0,
+};
+
+const profileShowcasePreviewColumnStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+  minWidth: 0,
+  borderLeft: "1px solid rgba(255,255,255,0.085)",
+  paddingLeft: "24px",
+  alignContent: "start",
+  justifyItems: "stretch",
+};
+
+const profileShowcasePreviewHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 850,
+};
+
+const profileShowcasePreviewPhoneStyle: CSSProperties = {
+  position: "relative",
+  width: "100%",
+  height: "clamp(330px, 42vh, 440px)",
+  minHeight: "330px",
+  maxHeight: "440px",
+  justifySelf: "stretch",
+  alignSelf: "start",
+  borderRadius: "32px",
+  overflow: "hidden",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.90) 52%, rgba(168,85,247,0.84))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 34px 86px rgba(0,0,0,0.50)",
+};
+
+const profileShowcasePreviewCanvasStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background: "linear-gradient(135deg, rgba(20,184,166,0.80), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.86))",
+};
+
+const profileShowcasePreviewMediaStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  objectPosition: "center center",
+  display: "block",
+  backgroundColor: "#05060a",
+};
+
+const profileShowcasePreviewOverlayStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "block",
+  padding: "18px",
+  background: "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.10) 45%, rgba(0,0,0,0.42))",
+  touchAction: "none",
+  cursor: "grab",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  contain: "layout paint",
+};
+
+const profileShowcasePreviewTextStyle: CSSProperties = {
+  position: "absolute",
+  transform: "translate3d(-50%, -50%, 0)",
+  color: "#ffffff",
+  fontSize: "28px",
+  fontWeight: 950,
+  textAlign: "center",
+  lineHeight: 1.08,
+  textShadow: "0 4px 16px rgba(0,0,0,0.42)",
+  pointerEvents: "none",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
+  maxHeight: "72%",
+  overflow: "hidden",
+  padding: "0 8px",
+  minWidth: "120px",
+  boxSizing: "border-box",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  willChange: "left, top, transform",
+  transition: "none",
+  contain: "layout paint",
+  backfaceVisibility: "hidden",
+};
+
+const profileShowcaseVerticalSizeRailStyle: CSSProperties = {
+  position: "absolute",
+  right: "10px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  zIndex: 4,
+  height: "180px",
+  display: "grid",
+  placeItems: "center",
+};
+
+const profileShowcaseVerticalSizeSliderStyle: CSSProperties = {
+  width: "180px",
+  transform: "rotate(-90deg)",
+  accentColor: "#a855f7",
+};
+
+const profileShowcaseCenterGuideVerticalStyle: CSSProperties = {
+  position: "absolute",
+  top: "8%",
+  bottom: "8%",
+  left: "50%",
+  width: "1px",
+  transform: "translateX(-50%)",
+  background: "repeating-linear-gradient(to bottom, rgba(255,255,255,0.42) 0 5px, transparent 5px 10px)",
+  boxShadow: "0 0 12px rgba(168,85,247,0.22)",
+  pointerEvents: "none",
+};
+
+const profileShowcaseCenterGuideHorizontalStyle: CSSProperties = {
+  position: "absolute",
+  left: "8%",
+  right: "8%",
+  top: "50%",
+  height: "1px",
+  transform: "translateY(-50%)",
+  background: "repeating-linear-gradient(to right, rgba(255,255,255,0.42) 0 5px, transparent 5px 10px)",
+  boxShadow: "0 0 12px rgba(168,85,247,0.22)",
+  pointerEvents: "none",
+};
+
+const profileShowcaseDragHintStyle: CSSProperties = {
+  position: "absolute",
+  left: "50%",
+  bottom: "10px",
+  transform: "translateX(-50%)",
+  borderRadius: "999px",
+  background: "rgba(0,0,0,0.48)",
+  color: "rgba(255,255,255,0.88)",
+  padding: "6px 10px",
+  fontSize: "10px",
+  fontWeight: 900,
+  pointerEvents: "none",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.26)",
+};
+
+const profileShowcasePositionControlsStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "14px",
+  padding: "10px",
+  color: "#d1d5db",
+  fontSize: "12px",
+  fontWeight: 850,
+};
+
+const profileShowcasePreviewMetaStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+  width: "100%",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 800,
+};
+
+const profileShowcaseErrorStyle: CSSProperties = {
+  margin: "12px 0 0",
+  color: "#fecaca",
+  fontSize: "13px",
+  fontWeight: 850,
+};
+
+const profileShowcaseModalActionsStyle: CSSProperties = {
+  position: "static",
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "10px",
+  marginTop: "16px",
+  paddingTop: "12px",
+  borderTop: "1px solid rgba(255,255,255,0.07)",
+  background: "transparent",
+  zIndex: 1,
+};
+
+const profileShowcaseCancelButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#ffffff",
+  borderRadius: "12px",
+  padding: "11px 13px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const profileShowcaseCreateButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.13)",
+  background: "linear-gradient(135deg, #a855f7, #7c3aed 58%, #2563eb)",
+  color: "#ffffff",
+  borderRadius: "15px",
+  padding: "12px 18px",
+  fontWeight: 950,
+  cursor: "pointer",
+  boxShadow: "0 20px 38px rgba(124,58,237,0.34)",
+};
+
+const composerCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(20,26,43,0.90), rgba(9,12,21,0.92))", padding: 16, marginBottom: 16, boxShadow: "0 18px 46px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.045)", overflow: "hidden", scrollMarginTop: 96 };
 const composerHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 14 };
 const composerIdentityStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
 const composerTitleStyle: CSSProperties = { margin: 0, color: "#fff", fontSize: 17, fontWeight: 950, letterSpacing: "-0.02em" };
 const composerSubtitleStyle: CSSProperties = { margin: "3px 0 0", color: "#9ca3af", fontSize: 12.5, lineHeight: 1.35 };
 const composerDestinationBadgeStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 30, borderRadius: 999, padding: "0 11px", color: "#f5f3ff", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap", background: "rgba(126,34,206,0.32)", border: "1px solid rgba(168,85,247,0.35)", boxShadow: "0 10px 24px rgba(126,34,206,0.18)" };
 const composerTopRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", gap: 12, alignItems: "center" };
-const composerInputStyle: CSSProperties = { width: "100%", minHeight: 58, maxHeight: 140, resize: "vertical", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, background: "rgba(255,255,255,0.045)", color: "#fff", outline: 0, padding: "18px 20px", fontSize: 16, lineHeight: 1.35, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)" };
-const composerImageButtonStyle: CSSProperties = { width: 50, height: 50, borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 };
-const composerActionGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, alignItems: "center", marginTop: 14 };
-const composerActionPillStyle: CSSProperties = { minHeight: 42, borderRadius: 999, border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.045)", color: "#fff", padding: "0 14px", fontWeight: 850, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", whiteSpace: "nowrap", fontSize: 13 };
+const composerInputStyle: CSSProperties = { width: "100%", minHeight: 58, maxHeight: 190, resize: "none", overflowY: "auto", border: "1px solid rgba(255,255,255,0.11)", borderRadius: 18, background: "rgba(255,255,255,0.04)", color: "#fff", outline: 0, padding: "16px 18px", fontSize: 15.5, lineHeight: 1.45, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" };
+const composerImageButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 15, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 };
+const composerActionGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 9, alignItems: "center", marginTop: 13 };
+const composerActionPillStyle: CSSProperties = { minHeight: 39, borderRadius: 14, border: "1px solid rgba(255,255,255,0.085)", background: "rgba(255,255,255,0.038)", color: "#fff", padding: "0 12px", fontWeight: 850, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", whiteSpace: "nowrap", fontSize: 12.5, transition: "border-color 160ms ease, background 160ms ease, transform 160ms ease" };
+const composerActionDisabledStyle: CSSProperties = { opacity: 0.46, background: "rgba(255,255,255,0.018)", border: "1px dashed rgba(255,255,255,0.11)", cursor: "not-allowed", color: "#9ca3af" };
+const composerActionNoteStyle: CSSProperties = { borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", color: "#a1a1aa", padding: "2px 6px", fontSize: 10, fontWeight: 900, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 };
 const composerActionIconStyle: CSSProperties = { width: 24, height: 24, borderRadius: 8, display: "grid", placeItems: "center", color: "#fff", fontSize: 13, fontWeight: 950, lineHeight: 1 };
 const composerActionToneStyles: Record<"green" | "pink" | "red" | "gold", CSSProperties> = {
   green: { background: "rgba(34,197,94,0.18)", color: "#86efac" },
@@ -3688,9 +5372,9 @@ const composerActionToneStyles: Record<"green" | "pink" | "red" | "gold", CSSPro
   red: { background: "rgba(239,68,68,0.18)", color: "#fca5a5" },
   gold: { background: "rgba(245,158,11,0.18)", color: "#fde68a" },
 };
-const composerFooterStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14, flexWrap: "wrap" };
-const composerHelperTextStyle: CSSProperties = { color: "#6b7280", fontSize: 12.5, lineHeight: 1.35 };
-const publishButtonStyle: CSSProperties = { marginLeft: "auto", minHeight: 40, borderRadius: 999, border: 0, background: "linear-gradient(135deg, #ffffff, #c4b5fd)", color: "#111827", fontWeight: 950, padding: "0 18px", cursor: "pointer", boxShadow: "0 12px 24px rgba(168,85,247,0.24)", whiteSpace: "nowrap" };
+const composerFooterStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 13, flexWrap: "wrap" };
+const composerHelperTextStyle: CSSProperties = { color: "#6b7280", fontSize: 11.5, lineHeight: 1.35 };
+const publishButtonStyle: CSSProperties = { marginLeft: "auto", minHeight: 35, borderRadius: 14, border: 0, background: "linear-gradient(135deg, #ffffff, #d8b4fe)", color: "#111827", fontWeight: 900, padding: "0 15px", cursor: "pointer", boxShadow: "0 10px 20px rgba(168,85,247,0.18)", whiteSpace: "nowrap", fontSize: 12.5 };
 
 const imagePreviewWrapStyle: CSSProperties = { marginTop: 14, borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(0,0,0,0.22)", position: "relative" };
 const imagePreviewStyle: CSSProperties = { width: "100%", maxHeight: 360, objectFit: "cover", display: "block" };
@@ -3701,6 +5385,7 @@ const selectedImageNameStyle: CSSProperties = { maxWidth: "70%", overflow: "hidd
 const feedTabsStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 8, margin: "16px 0", overflowX: "auto" };
 const feedTabStyle: CSSProperties = { border: 0, background: "transparent", color: "#d1d5db", padding: "12px 18px", borderRadius: 18, cursor: "pointer", fontSize: 16, whiteSpace: "nowrap" };
 const activeFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "#c084fc", background: "rgba(126,34,206,0.18)", boxShadow: "inset 0 -3px 0 #a855f7", fontWeight: 900 };
+const disabledFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "rgba(229,231,235,0.42)", background: "transparent", border: "1px solid transparent", cursor: "default", opacity: 0.55 };
 const feedFilterButtonStyle: CSSProperties = { marginLeft: "auto", minWidth: 44, height: 44, borderRadius: 15, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.04)", color: "#e5e7eb", display: "grid", placeItems: "center", gap: 4, cursor: "pointer" };
 
 const feedStackStyle: CSSProperties = { display: "grid", gap: 16 };
@@ -3758,10 +5443,8 @@ const followingButtonStyle: CSSProperties = { ...followButtonStyle, background: 
 const editTextareaStyle: CSSProperties = { width: "100%", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, background: "rgba(255,255,255,0.04)", color: "#fff", outline: 0, padding: 14, resize: "vertical" };
 const softButtonStyle: CSSProperties = { border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#fff", minHeight: 38, padding: "0 16px", fontWeight: 850, cursor: "pointer" };
 const softDangerButtonStyle: CSSProperties = { ...softButtonStyle, color: "#fecaca", border: "1px solid rgba(248,113,113,0.24)" };
-const reactionSummaryStyle: CSSProperties = { display: "flex", gap: 9, alignItems: "center", color: "#d1d5db", fontSize: 14, borderBottom: "1px solid rgba(255,255,255,0.10)", paddingBottom: 12, marginTop: 14 };
-const reactionBubblesStyle: CSSProperties = { borderRadius: 999, background: "linear-gradient(135deg, #3b82f6, #ec4899)", padding: "3px 7px", color: "#fff", fontSize: 12, fontWeight: 900 };
-const reactionCountStyle: CSSProperties = { color: "#f9fafb", fontWeight: 850 };
-const postPrivacyBadgeStyle: CSSProperties = { color: "#c4b5fd", fontWeight: 850 };
+const postStatsSummaryStyle: CSSProperties = { display: "flex", justifyContent: "flex-end", gap: 9, alignItems: "center", color: "#d1d5db", fontSize: 13, borderBottom: "1px solid rgba(255,255,255,0.10)", paddingBottom: 12, marginTop: 14 };
+const postStatusLinkStyle: CSSProperties = { color: "#c4b5fd", fontWeight: 900, textDecoration: "none" };
 const postActionsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 10 };
 const actionButtonStyle: CSSProperties = { minHeight: 42, borderRadius: 14, border: "1px solid transparent", background: "transparent", color: "#e5e7eb", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 850, cursor: "pointer" };
 const activeActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: "#c084fc", background: "rgba(126,34,206,0.12)", border: "1px solid rgba(168,85,247,0.22)" };

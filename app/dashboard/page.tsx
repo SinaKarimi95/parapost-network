@@ -2064,6 +2064,202 @@ export default function DashboardPage() {
           }
         }
 
+
+        /* === Dashboard mobile template hard fix: stop horizontal overflow and match uploaded mobile mockup === */
+        html,
+        body {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow-x: hidden !important;
+          background: #05070d !important;
+        }
+
+        *,
+        *::before,
+        *::after {
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 1180px) {
+          .dashboard-grid-desktop-safe {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            grid-template-columns: 1fr !important;
+            gap: 0 !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
+            height: auto !important;
+            min-height: auto !important;
+          }
+
+          .dashboard-main-column {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
+            height: auto !important;
+            min-height: auto !important;
+          }
+
+          .dashboard-card,
+          .dashboard-feed-card,
+          .dashboard-composer-card,
+          .dashboard-mobile-insights {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shell-pad {
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
+            height: auto !important;
+            min-height: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+
+          .dashboard-main-column {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+          }
+
+          .dashboard-showcase-row {
+            padding: 12px !important;
+            margin-bottom: 14px !important;
+            border-radius: 24px !important;
+            overflow: hidden !important;
+          }
+
+          .dashboard-showcase-scroller {
+            display: flex !important;
+            gap: 14px !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            max-width: 100% !important;
+            padding: 0 0 8px !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+
+          .dashboard-showcase-scroller::-webkit-scrollbar {
+            display: none;
+          }
+
+          .dashboard-showcase-scroller > a,
+          .dashboard-showcase-scroller > div {
+            flex: 0 0 auto !important;
+          }
+
+          .dashboard-composer-card {
+            overflow: hidden !important;
+          }
+
+          .dashboard-composer-card textarea,
+          .dashboard-composer-card input,
+          .dashboard-composer-card button,
+          .dashboard-composer-card a {
+            max-width: 100% !important;
+          }
+
+          .dashboard-composer-top-row {
+            grid-template-columns: 42px minmax(0, 1fr) !important;
+            align-items: start !important;
+          }
+
+          .dashboard-composer-top-row textarea {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+
+          .dashboard-composer-actions > * {
+            min-width: 0 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+          }
+
+          .dashboard-feed-card {
+            overflow: hidden !important;
+          }
+
+          .dashboard-post-header,
+          .dashboard-post-header > div:first-child {
+            min-width: 0 !important;
+          }
+
+          .dashboard-post-header button {
+            white-space: nowrap !important;
+            min-width: fit-content !important;
+            flex-shrink: 0 !important;
+          }
+
+          .dashboard-post-actions > button {
+            min-width: 0 !important;
+            white-space: nowrap !important;
+          }
+
+          .dashboard-feed-pulse-stats,
+          .dashboard-mobile-insights,
+          .dashboard-mobile-insights * {
+            min-width: 0 !important;
+          }
+        }
+
+        /* === Dashboard mobile vertical scroll fix === */
+        html,
+        body {
+          min-height: 100% !important;
+          height: auto !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          overscroll-behavior-y: auto !important;
+        }
+
+        body {
+          position: static !important;
+          touch-action: pan-y manipulation !important;
+        }
+
+        @media (max-width: 1180px) {
+          #__next,
+          [data-nextjs-scroll-focus-boundary],
+          .dashboard-shell-pad,
+          .dashboard-grid-desktop-safe,
+          .dashboard-main-column {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow-y: visible !important;
+            overscroll-behavior-y: auto !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shell-pad {
+            padding-bottom: calc(142px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .dashboard-main-column {
+            padding-bottom: 36px !important;
+          }
+
+          .dashboard-bottom-nav {
+            pointer-events: auto !important;
+          }
+        }
+
         @media (min-width: 761px) {
           .dashboard-mobile-header,
           .dashboard-bottom-nav {
@@ -2164,8 +2360,8 @@ function ShowcaseQuickActions({
   onCreatePost: () => void;
 }) {
   return (
-    <section className="dashboard-card" style={showcaseCardStyle}>
-      <div style={showcaseScrollerStyle}>
+    <section className="dashboard-card dashboard-showcase-row" style={showcaseCardStyle}>
+      <div className="dashboard-showcase-scroller" style={showcaseScrollerStyle}>
         <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={createShowcaseTileStyle}>
           <Avatar profile={currentProfile} size={68} />
           <span style={showcasePlusStyle}>+</span>
@@ -3124,8 +3320,12 @@ const sponsorIconStyle: CSSProperties = {
 
 const dashboardRootStyle: CSSProperties = {
   minHeight: "100vh",
+  height: "auto",
+  width: "100%",
+  maxWidth: "100vw",
   position: "relative",
   overflowX: "hidden",
+  overflowY: "visible",
   background:
     "radial-gradient(circle at 55% 0%, rgba(56,189,248,0.11), transparent 34%), radial-gradient(circle at 10% 10%, rgba(147,51,234,0.18), transparent 30%), #05070d",
   color: "#f9fafb",

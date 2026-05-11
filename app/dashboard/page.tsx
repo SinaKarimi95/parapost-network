@@ -4,6 +4,7 @@ import {
   ChangeEvent,
   CSSProperties,
   ReactNode,
+  RefObject,
   MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
@@ -2202,6 +2203,7 @@ function ComposerCard({
   onRemoveImage,
   onPost,
 }: {
+  composerRef: RefObject<HTMLDivElement | null>;
   currentProfile: ProfilePreview | null;
   firstName: string;
   content: string;

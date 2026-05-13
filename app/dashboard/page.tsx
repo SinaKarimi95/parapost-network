@@ -1412,14 +1412,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!currentUserId) return;
 
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+   let refreshTimer: number | null = null; 
 
     const schedulePulseRefresh = () => {
-      if (refreshTimer) window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(() => {
-        void fetchDashboardData(false);
-      }, 350);
-    };
+  if (refreshTimer) {
+    window.clearTimeout(refreshTimer);
+  }
+
+  refreshTimer = window.setTimeout(() => {
+    void fetchDashboardData(false);
+  }, 350);
+};
 
     const channel = supabase
       .channel(`dashboard-network-pulse-${currentUserId}`)

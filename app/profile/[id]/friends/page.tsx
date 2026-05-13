@@ -12,6 +12,7 @@ type ProfileRow = {
   avatar_url: string | null;
   bio?: string | null;
   is_online?: boolean | null;
+  is_private?: boolean | null;
 };
 
 type FriendRequestRow = {
@@ -27,6 +28,10 @@ const PAGE_SIZE = 12;
 
 function uniqueIds(ids: string[]) {
   return Array.from(new Set(ids.filter(Boolean)));
+}
+
+function isValidUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function getDisplayName(profile: ProfileRow) {
@@ -48,6 +53,8 @@ function getOtherUserId(row: FriendRequestRow, userId: string) {
 }
 
 async function getAcceptedFriendIds(userId: string): Promise<string[]> {
+  if (!userId || !isValidUuid(userId)) return [];
+
   const { data, error } = await supabase
     .from("friend_requests")
     .select("sender_id, receiver_id, status")
@@ -62,6 +69,27 @@ async function getAcceptedFriendIds(userId: string): Promise<string[]> {
     (data as FriendRequestRow[] | null)?.map((row) => getOtherUserId(row, userId)) ?? [];
 
   return uniqueIds(ids.filter((value): value is string => Boolean(value)));
+}
+
+async function checkAcceptedFriendship(viewerId: string, profileId: string) {
+  if (!viewerId || !profileId || viewerId === profileId) return false;
+  if (!isValidUuid(viewerId) || !isValidUuid(profileId)) return false;
+
+  const { data, error } = await supabase
+    .from("friend_requests")
+    .select("sender_id, receiver_id, status")
+    .eq("status", "accepted")
+    .or(
+      `and(sender_id.eq.${viewerId},receiver_id.eq.${profileId}),and(sender_id.eq.${profileId},receiver_id.eq.${viewerId})`
+    )
+    .limit(1);
+
+  if (error) {
+    console.warn("Could not verify friend access:", error.message);
+    return false;
+  }
+
+  return Boolean(data && data.length > 0);
 }
 
 function FriendAvatar({ profile }: { profile: ProfileRow }) {
@@ -145,20 +173,27 @@ export default function ProfileFriendsPage() {
   const [mutualFriendIds, setMutualFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [canViewFriends, setCanViewFriends] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [sortMode, setSortMode] = useState<SortMode>("default");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const isOwnProfile = !!viewerId && viewerId === profileId;
+  const isOwnProfile = Boolean(viewerId && viewerId === profileId);
+  const isPrivateProfile = Boolean(profile?.is_private);
+  const isPrivateLocked = Boolean(profile && isPrivateProfile && !canViewFriends);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadPage() {
-      if (!profileId) {
+      if (!profileId || !isValidUuid(profileId)) {
         if (isMounted) {
+          setProfile(null);
+          setFriends([]);
+          setMutualFriendIds([]);
+          setCanViewFriends(false);
           setErrorMessage("Profile not found.");
           setLoading(false);
         }
@@ -168,6 +203,9 @@ export default function ProfileFriendsPage() {
       try {
         setLoading(true);
         setErrorMessage("");
+        setFriends([]);
+        setMutualFriendIds([]);
+        setCanViewFriends(false);
 
         const {
           data: { user },
@@ -180,7 +218,7 @@ export default function ProfileFriendsPage() {
 
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, bio, is_online")
+          .select("id, username, full_name, avatar_url, bio, is_online, is_private")
           .eq("id", profileId)
           .maybeSingle();
 
@@ -195,9 +233,31 @@ export default function ProfileFriendsPage() {
             setProfile(null);
             setFriends([]);
             setMutualFriendIds([]);
+            setCanViewFriends(false);
             setErrorMessage("This profile could not be found.");
             setLoading(false);
           }
+          return;
+        }
+
+        const profileIsPrivate = Boolean(profileRow.is_private);
+        const viewerIsOwner = Boolean(currentViewerId && currentViewerId === profileId);
+        const viewerIsFriend =
+          profileIsPrivate && currentViewerId && !viewerIsOwner
+            ? await checkAcceptedFriendship(currentViewerId, profileId)
+            : false;
+
+        const nextCanViewFriends = !profileIsPrivate || viewerIsOwner || viewerIsFriend;
+
+        if (!isMounted) return;
+
+        setProfile(profileRow);
+        setCanViewFriends(nextCanViewFriends);
+
+        if (!nextCanViewFriends) {
+          setFriends([]);
+          setMutualFriendIds([]);
+          setLoading(false);
           return;
         }
 
@@ -229,7 +289,6 @@ export default function ProfileFriendsPage() {
 
         if (!isMounted) return;
 
-        setProfile(profileRow);
         setFriends(friendProfiles);
         setMutualFriendIds(mutualIds);
         setLoading(false);
@@ -239,11 +298,14 @@ export default function ProfileFriendsPage() {
         setErrorMessage(
           error instanceof Error ? error.message : "Unable to load this friends page."
         );
+        setFriends([]);
+        setMutualFriendIds([]);
+        setCanViewFriends(false);
         setLoading(false);
       }
     }
 
-    loadPage();
+    void loadPage();
 
     return () => {
       isMounted = false;
@@ -255,6 +317,8 @@ export default function ProfileFriendsPage() {
   }, [searchTerm, filterMode, sortMode]);
 
   const filteredFriends = useMemo(() => {
+    if (!canViewFriends) return [];
+
     const term = searchTerm.trim().toLowerCase();
     const mutualSet = new Set(mutualFriendIds);
 
@@ -281,7 +345,7 @@ export default function ProfileFriendsPage() {
     }
 
     return next;
-  }, [friends, mutualFriendIds, searchTerm, filterMode, sortMode]);
+  }, [canViewFriends, friends, mutualFriendIds, searchTerm, filterMode, sortMode]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFriends.length / PAGE_SIZE));
 
@@ -300,7 +364,7 @@ export default function ProfileFriendsPage() {
   const onlineCount = useMemo(() => friends.filter((friend) => !!friend.is_online).length, [friends]);
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
+    <div className="min-h-screen text-white" style={pageShellStyle}>
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
         <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-[260px_minmax(0,1fr)_300px]">
           <aside style={sideCardStyle}>
@@ -331,8 +395,12 @@ export default function ProfileFriendsPage() {
               <Link href="/notifications" style={navItemLinkStyle}>
                 Notifications
               </Link>
-              <div style={navItemStyle}>Messages</div>
-              <div style={navItemStyle}>Settings</div>
+              <Link href="/messages" style={navItemLinkStyle}>
+                Parachat
+              </Link>
+              <Link href="/settings" style={navItemLinkStyle}>
+                Settings
+              </Link>
             </div>
           </aside>
 
@@ -363,7 +431,9 @@ export default function ProfileFriendsPage() {
                       {loading
                         ? "Loading friends..."
                         : profile
-                        ? isOwnProfile
+                        ? isPrivateLocked
+                          ? "This profile keeps its friends list private unless you are connected."
+                          : isOwnProfile
                           ? "All of your accepted friends in one place."
                           : "Browse this profile's friends list and see who you know in common."
                         : "Friends list"}
@@ -388,7 +458,7 @@ export default function ProfileFriendsPage() {
                   </div>
                 </div>
 
-                {!loading && !errorMessage && profile ? (
+                {!loading && !errorMessage && profile && canViewFriends ? (
                   <div
                     style={{
                       display: "grid",
@@ -418,7 +488,7 @@ export default function ProfileFriendsPage() {
               </div>
 
               <div style={mainCardStyle}>
-                {!loading && !errorMessage && profile ? (
+                {!loading && !errorMessage && profile && canViewFriends ? (
                   <div style={{ marginBottom: "16px" }}>
                     <div
                       style={{
@@ -483,6 +553,29 @@ export default function ProfileFriendsPage() {
                   <div style={messageBoxStyle}>{errorMessage}</div>
                 ) : !profile ? (
                   <div style={messageBoxStyle}>This profile could not be found.</div>
+                ) : isPrivateLocked ? (
+                  <div style={privateProfileBoxStyle}>
+                    <div style={privateProfileBadgeStyle}>Private</div>
+                    <h2 style={privateProfileTitleStyle}>This user&apos;s profile is private.</h2>
+                    <p style={privateProfileTextStyle}>
+                      You can still view this profile&apos;s basic information, but their friends list is hidden unless you are connected.
+                    </p>
+
+                    <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginTop: "18px" }}>
+                      <Link
+                        href={`/profile/${profile.id}`}
+                        style={{ ...primaryButtonStyle, textDecoration: "none" }}
+                      >
+                        View Profile
+                      </Link>
+                      <Link
+                        href="/dashboard"
+                        style={{ ...secondaryButtonStyle, textDecoration: "none" }}
+                      >
+                        Back to Feed
+                      </Link>
+                    </div>
+                  </div>
                 ) : friends.length === 0 ? (
                   <div style={messageBoxStyle}>
                     {isOwnProfile
@@ -628,15 +721,24 @@ export default function ProfileFriendsPage() {
                   {profile ? getDisplayName(profile) : "Loading..."}
                 </strong>
               </p>
-              <p style={{ color: "#d1d5db", marginBottom: "10px" }}>
-                Count: <strong style={{ color: "white" }}>{friends.length}</strong>
-              </p>
-              {!isOwnProfile ? (
+
+              {isPrivateLocked ? (
                 <p style={{ color: "#d1d5db", marginBottom: 0 }}>
-                  Mutual:{" "}
-                  <strong style={{ color: "white" }}>{mutualFriendIds.length}</strong>
+                  Visibility: <strong style={{ color: "white" }}>Private</strong>
                 </p>
-              ) : null}
+              ) : (
+                <>
+                  <p style={{ color: "#d1d5db", marginBottom: "10px" }}>
+                    Count: <strong style={{ color: "white" }}>{friends.length}</strong>
+                  </p>
+                  {!isOwnProfile ? (
+                    <p style={{ color: "#d1d5db", marginBottom: 0 }}>
+                      Mutual:{" "}
+                      <strong style={{ color: "white" }}>{mutualFriendIds.length}</strong>
+                    </p>
+                  ) : null}
+                </>
+              )}
             </div>
 
             <div style={sideCardStyle}>
@@ -644,7 +746,9 @@ export default function ProfileFriendsPage() {
               <p style={{ color: "#d1d5db", lineHeight: 1.7, marginBottom: "12px" }}>
                 Search by profile name, narrow the list to mutual or online friends, and move through pages without overcrowding the screen.
               </p>
-              <div style={mutedPillStyle}>Social-style browsing added</div>
+              <div style={mutedPillStyle}>
+                {isPrivateLocked ? "Private profile protected" : "Social-style browsing added"}
+              </div>
             </div>
           </aside>
         </div>
@@ -679,39 +783,49 @@ function getPagerButtonStyle(isDisabled: boolean): CSSProperties {
   };
 }
 
+const pageShellStyle: CSSProperties = {
+  background:
+    "radial-gradient(circle at 18% 0%, rgba(139,92,246,0.22), transparent 34%), radial-gradient(circle at 82% 10%, rgba(217,70,239,0.14), transparent 30%), linear-gradient(180deg, #05050b 0%, #080812 52%, #05060b 100%)",
+};
+
 const mainCardStyle: CSSProperties = {
-  background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.04) 100%)",
+  background:
+    "linear-gradient(135deg, rgba(124,58,237,0.16) 0%, rgba(255,255,255,0.055) 46%, rgba(15,23,42,0.58) 100%)",
   borderRadius: "28px",
   padding: "18px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  backdropFilter: "blur(10px)",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
+  border: "1px solid rgba(196,181,253,0.16)",
+  backdropFilter: "blur(14px)",
+  boxShadow: "0 18px 46px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.05)",
 };
 
 const sideCardStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
+  background:
+    "linear-gradient(180deg, rgba(124,58,237,0.12) 0%, rgba(255,255,255,0.045) 100%)",
   borderRadius: "28px",
   padding: "20px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+  border: "1px solid rgba(196,181,253,0.14)",
+  boxShadow: "0 14px 34px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.045)",
   height: "fit-content",
+  backdropFilter: "blur(12px)",
 };
 
 const friendCardStyle: CSSProperties = {
-  background: "linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.035) 100%)",
-  border: "1px solid rgba(255,255,255,0.12)",
+  background:
+    "linear-gradient(180deg, rgba(168,85,247,0.095) 0%, rgba(255,255,255,0.038) 100%)",
+  border: "1px solid rgba(196,181,253,0.14)",
   borderRadius: "26px",
   padding: "16px",
-  boxShadow: "0 10px 26px rgba(0,0,0,0.24)",
+  boxShadow: "0 14px 32px rgba(0,0,0,0.30)",
 };
 
 const navItemStyle: CSSProperties = {
   padding: "12px 14px",
   borderRadius: "16px",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background:
+    "linear-gradient(135deg, rgba(124,58,237,0.13), rgba(255,255,255,0.045))",
+  border: "1px solid rgba(196,181,253,0.13)",
   color: "#f9fafb",
-  fontWeight: 500,
+  fontWeight: 650,
 };
 
 const navItemLinkStyle: CSSProperties = {
@@ -720,20 +834,34 @@ const navItemLinkStyle: CSSProperties = {
   display: "block",
 };
 
-const secondaryButtonStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  color: "white",
-  border: "1px solid rgba(255,255,255,0.10)",
+const primaryButtonStyle: CSSProperties = {
+  background: "linear-gradient(135deg, #8b5cf6, #d946ef)",
+  color: "#ffffff",
+  border: "1px solid rgba(255,255,255,0.14)",
   borderRadius: "999px",
   padding: "10px 16px",
-  fontWeight: 600,
+  fontWeight: 850,
   cursor: "pointer",
   minHeight: "42px",
+  boxShadow: "0 10px 22px rgba(124,58,237,0.24)",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  background: "rgba(255,255,255,0.055)",
+  color: "white",
+  border: "1px solid rgba(196,181,253,0.16)",
+  borderRadius: "999px",
+  padding: "10px 16px",
+  fontWeight: 700,
+  cursor: "pointer",
+  minHeight: "42px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045)",
 };
 
 const statPillStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background:
+    "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(255,255,255,0.04))",
+  border: "1px solid rgba(196,181,253,0.13)",
   borderRadius: "20px",
   padding: "14px",
   display: "flex",
@@ -748,18 +876,60 @@ const statNumberStyle: CSSProperties = {
 };
 
 const statLabelStyle: CSSProperties = {
-  color: "#9ca3af",
+  color: "#c4b5fd",
   fontSize: "12px",
   textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  letterSpacing: "0.06em",
+  fontWeight: 800,
 };
 
 const messageBoxStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  border: "1px solid rgba(196,181,253,0.14)",
   color: "#f9fafb",
   borderRadius: "20px",
   padding: "14px",
+};
+
+const privateProfileBoxStyle: CSSProperties = {
+  ...messageBoxStyle,
+  minHeight: "340px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  padding: "34px 18px",
+};
+
+const privateProfileBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  minHeight: "32px",
+  alignItems: "center",
+  borderRadius: "999px",
+  padding: "0 12px",
+  background: "rgba(255,255,255,0.07)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  color: "#d1d5db",
+  fontSize: "12px",
+  fontWeight: 800,
+  marginBottom: "14px",
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const privateProfileTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#ffffff",
+  fontSize: "28px",
+  lineHeight: 1.12,
+};
+
+const privateProfileTextStyle: CSSProperties = {
+  margin: "12px auto 0",
+  maxWidth: "520px",
+  color: "#aeb7c6",
+  lineHeight: 1.65,
 };
 
 const mutualPillStyle: CSSProperties = {
@@ -768,10 +938,10 @@ const mutualPillStyle: CSSProperties = {
   minHeight: "30px",
   padding: "0 10px",
   borderRadius: "999px",
-  color: "#86efac",
-  background: "rgba(34,197,94,0.10)",
-  border: "1px solid rgba(34,197,94,0.24)",
-  fontWeight: 700,
+  color: "#ddd6fe",
+  background: "rgba(139,92,246,0.14)",
+  border: "1px solid rgba(196,181,253,0.24)",
+  fontWeight: 800,
   fontSize: "12px",
 };
 
@@ -795,8 +965,8 @@ const mutedPillStyle: CSSProperties = {
   padding: "0 10px",
   borderRadius: "999px",
   color: "#d1d5db",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  border: "1px solid rgba(196,181,253,0.12)",
   fontWeight: 700,
   fontSize: "12px",
 };
@@ -805,8 +975,8 @@ const searchInputStyle: CSSProperties = {
   width: "100%",
   minHeight: "46px",
   borderRadius: "16px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(196,181,253,0.14)",
+  background: "rgba(3,7,18,0.46)",
   color: "#ffffff",
   padding: "0 14px",
   outline: "none",
@@ -816,8 +986,8 @@ const selectStyle: CSSProperties = {
   width: "100%",
   minHeight: "46px",
   borderRadius: "16px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(196,181,253,0.14)",
+  background: "rgba(3,7,18,0.46)",
   color: "#ffffff",
   padding: "0 14px",
   outline: "none",

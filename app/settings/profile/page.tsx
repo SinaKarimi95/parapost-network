@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 type ProfileSettingsRow = {
   id: string;
@@ -18,28 +14,48 @@ type ProfileSettingsRow = {
   is_private: boolean | null;
 };
 
+type ProfileSettingsForm = {
+  full_name: string;
+  bio: string;
+  avatar_url: string;
+  is_private: boolean;
+};
+
+const emptyForm: ProfileSettingsForm = {
+  full_name: "",
+  bio: "",
+  avatar_url: "",
+  is_private: false,
+};
+
 export default function ProfileSettingsPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    full_name: "",
-    bio: "",
-    avatar_url: "",
-    is_private: false,
-  });
+  const [username, setUsername] = useState("");
+  const [form, setForm] = useState<ProfileSettingsForm>(emptyForm);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
+      setLoading(true);
+      setStatusMessage("");
+      setErrorMessage("");
+
       try {
         const {
           data: { user },
+          error: userError,
         } = await supabase.auth.getUser();
 
-        if (!user) {
+        if (cancelled) return;
+
+        if (userError || !user) {
           router.push("/");
           return;
         }
@@ -56,45 +72,64 @@ export default function ProfileSettingsPage() {
 
         const profile = data as ProfileSettingsRow;
 
+        if (cancelled) return;
+
+        setUsername(profile.username || "");
         setForm({
           full_name: profile.full_name || "",
           bio: profile.bio || "",
           avatar_url: profile.avatar_url || "",
-          is_private: !!profile.is_private,
+          is_private: Boolean(profile.is_private),
         });
       } catch (error) {
-        console.error("Error loading settings:", error);
+        console.error("Error loading profile settings:", error);
+        if (!cancelled) {
+          setErrorMessage("Could not load your profile settings. Please refresh and try again.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    loadData();
+    void loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleSave = async () => {
-    if (!userId) return;
+    if (!userId || saving) return;
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
 
     try {
-      setSaving(true);
+      const cleanFullName = form.full_name.trim();
+      const cleanBio = form.bio.trim();
+      const cleanAvatarUrl = form.avatar_url.trim();
 
       const { error } = await supabase
         .from("profiles")
         .update({
-          full_name: form.full_name || null,
-          bio: form.bio || null,
-          avatar_url: form.avatar_url || null,
+          full_name: cleanFullName || null,
+          bio: cleanBio || null,
+          avatar_url: cleanAvatarUrl || null,
           is_private: form.is_private,
         })
         .eq("id", userId);
 
       if (error) throw error;
 
-      alert("Profile updated successfully.");
-      router.push(`/profile/${userId}`);
+      setStatusMessage("Profile settings saved successfully.");
+
+      window.setTimeout(() => {
+        router.push(`/profile/${userId}`);
+      }, 700);
     } catch (error) {
-      console.error("Error saving profile:", error);
-      alert("Failed to update profile.");
+      console.error("Error saving profile settings:", error);
+      setErrorMessage("Failed to update profile settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -102,126 +137,187 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090d] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-10">
-          <div className="animate-pulse rounded-[32px] border border-white/10 bg-white/5 p-6">
-            <div className="mb-4 h-8 w-48 rounded bg-white/10" />
-            <div className="mb-3 h-12 rounded bg-white/10" />
-            <div className="mb-3 h-28 rounded bg-white/10" />
-            <div className="mb-3 h-12 rounded bg-white/10" />
-            <div className="h-12 w-32 rounded bg-white/10" />
+      <main className="min-h-screen bg-[#05050b] px-4 py-8 text-white">
+        <div className="mx-auto max-w-3xl">
+          <div className="animate-pulse rounded-[32px] border border-white/10 bg-white/[0.055] p-6 shadow-2xl">
+            <div className="mb-5 h-8 w-48 rounded bg-white/10" />
+            <div className="mb-3 h-12 rounded-2xl bg-white/10" />
+            <div className="mb-3 h-28 rounded-2xl bg-white/10" />
+            <div className="mb-3 h-12 rounded-2xl bg-white/10" />
+            <div className="h-12 w-32 rounded-2xl bg-white/10" />
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl">
-          <h1 className="text-2xl font-semibold">Profile Settings</h1>
-          <p className="mt-2 text-sm text-white/60">
-            Update your profile information and privacy.
-          </p>
+    <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-8 text-white sm:px-6">
+      <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
+      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
-          <div className="mt-6 space-y-5">
-            {/* Full Name */}
+      <section className="relative z-10 mx-auto max-w-3xl">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <Link href="/settings" className="text-sm font-bold text-purple-200 no-underline hover:text-white">
+            ← Back to Settings
+          </Link>
+
+          {userId ? (
+            <Link
+              href={`/profile/${userId}`}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-200 no-underline hover:bg-white/10"
+            >
+              View Profile
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="rounded-[32px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl sm:p-7">
+          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <label className="mb-2 block text-sm font-medium text-white/85">
-                Full Name
-              </label>
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+                Account
+              </p>
+              <h1 className="text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl">
+                Profile Settings
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+                Update your profile details and control whether your profile content is public or private.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">
+              @{username || "no-username"}
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-white/85">Full Name</span>
               <input
                 type="text"
                 value={form.full_name}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, full_name: e.target.value }))
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    full_name: event.target.value,
+                  }))
                 }
-                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-white/20"
+                className="w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-purple-300/50"
                 placeholder="Enter your full name"
               />
-            </div>
+            </label>
 
-            {/* Bio */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white/85">
-                Bio
-              </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-white/85">Bio</span>
               <textarea
                 value={form.bio}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, bio: e.target.value }))
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    bio: event.target.value,
+                  }))
                 }
                 rows={5}
-                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-white/20"
+                maxLength={280}
+                className="min-h-[140px] w-full resize-y rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-purple-300/50"
                 placeholder="Write something about yourself"
               />
-            </div>
+              <div className="mt-2 text-right text-xs font-bold text-slate-500">
+                {form.bio.trim().length}/280
+              </div>
+            </label>
 
-            {/* Avatar */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white/85">
-                Avatar URL
-              </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-white/85">Avatar URL</span>
               <input
                 type="text"
                 value={form.avatar_url}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, avatar_url: e.target.value }))
-                }
-                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-white/20"
-                placeholder="Paste image URL"
-              />
-            </div>
-
-            {/* Private Toggle */}
-            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
-              <div>
-                <p className="font-medium">Private Profile</p>
-                <p className="text-sm text-white/60">
-                  Only friends can see your posts
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
+                onChange={(event) =>
                   setForm((prev) => ({
                     ...prev,
-                    is_private: !prev.is_private,
+                    avatar_url: event.target.value,
                   }))
                 }
-                className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
-                  form.is_private ? "bg-white" : "bg-white/20"
-                }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-black transition ${
-                    form.is_private ? "translate-x-8" : "translate-x-1"
+                className="w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-purple-300/50"
+                placeholder="Paste image URL"
+              />
+            </label>
+
+            <div className="rounded-[24px] border border-white/10 bg-black/25 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-base font-black text-white">Private Profile</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    When private profile controls are fully connected, people can still see your profile shell,
+                    but your timeline content will be hidden behind a private profile message.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  aria-pressed={form.is_private}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      is_private: !prev.is_private,
+                    }))
+                  }
+                  className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
+                    form.is_private
+                      ? "border-purple-300/40 bg-purple-400"
+                      : "border-white/10 bg-white/15"
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
+                      form.is_private ? "translate-x-8" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm leading-6 text-slate-300">
+                Current setting:{" "}
+                <span className="font-black text-white">
+                  {form.is_private ? "Private" : "Public"}
+                </span>
+              </div>
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-3 pt-2">
+            {statusMessage ? (
+              <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
+                {statusMessage}
+              </div>
+            ) : null}
+
+            {errorMessage ? (
+              <div className="rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
+                {errorMessage}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
+                className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>
 
               <button
+                type="button"
                 onClick={() => router.back()}
-                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-white hover:bg-white/10"
+                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
               >
                 Cancel
               </button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

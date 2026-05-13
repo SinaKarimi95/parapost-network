@@ -2000,16 +2000,22 @@ export default function DashboardPage() {
               <SidebarButton label="Bookmarks" muted />
               <SidebarButton label="Explore" muted />
               <SidebarButton label="Events" muted />
-              <SidebarLink href="/settings/profile" label="Settings" />
+              <SidebarLink href="/settings" label="Settings" />
             </nav>
 
             <div style={sidebarDividerStyle} />
-            <div style={sidebarSectionLabelStyle}>Paranormal Hub</div>
+            <div style={sidebarSectionHeaderRowStyle}>
+              <div style={{ ...sidebarSectionLabelStyle, marginBottom: 0 }}>Paranormal Hub</div>
+              <span style={sidebarSectionSoonBadgeStyle}>Soon</span>
+            </div>
+            <div style={paranormalHubIntroStyle}>
+              Investigation tools, evidence collections, case files, and field reports are coming soon.
+            </div>
             <nav style={sidebarNavStyle}>
-              <SidebarButton label="Investigations" />
-              <SidebarButton label="Evidence Vault" />
-              <SidebarButton label="Case Files" />
-              <SidebarButton label="Reports" />
+              <SidebarButton label="Investigations" badge="Soon" muted />
+              <SidebarButton label="Evidence Vault" badge="Soon" muted />
+              <SidebarButton label="Case Files" badge="Soon" muted />
+              <SidebarButton label="Field Reports" badge="Soon" muted />
             </nav>
 
             <div style={goLiveCardStyle} aria-disabled="true" title="Live streaming is coming soon.">
@@ -3179,6 +3185,405 @@ export default function DashboardPage() {
           .profile-showcase-preview-phone {
             min-height: 320px !important;
             height: 340px !important;
+          }
+        }
+
+
+
+        /* === Phase 11 dashboard mobile/tablet layout polish === */
+        /* Controlled responsive pass only: tighter spacing, safer scrolling, cleaner tablet/mobile card flow. */
+        .dashboard-card,
+        .dashboard-feed-card,
+        .dashboard-mobile-insights,
+        .dashboard-feed-pulse {
+          box-sizing: border-box;
+        }
+
+        .dashboard-main-column > * {
+          max-width: 100%;
+        }
+
+        .dashboard-showcase-scroller,
+        .dashboard-mobile-insights,
+        .dashboard-mobile-insights * {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .dashboard-shell-pad {
+            padding: 20px clamp(18px, 3vw, 28px) 86px !important;
+          }
+
+          .dashboard-grid-desktop-safe {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+
+          .dashboard-main-column {
+            width: min(940px, 100%) !important;
+            max-width: 940px !important;
+            margin: 0 auto !important;
+            display: grid !important;
+            gap: 18px !important;
+            overflow: visible !important;
+          }
+
+          .dashboard-desktop-topbar {
+            top: 12px !important;
+            min-height: 66px !important;
+            margin: 0 0 2px !important;
+          }
+
+          .dashboard-search-parapost {
+            height: 52px !important;
+            max-width: min(610px, 62vw) !important;
+          }
+
+          .dashboard-showcase-row {
+            margin: 0 !important;
+            padding: 14px 0 12px !important;
+            border-radius: 28px !important;
+          }
+
+          .dashboard-showcase-scroller {
+            gap: 15px !important;
+            padding: 0 16px 9px !important;
+            scroll-padding-left: 16px !important;
+          }
+
+          .dashboard-composer-card,
+          .dashboard-feed-card,
+          .dashboard-feed-pulse,
+          .dashboard-mobile-insights,
+          .dashboard-card:not(.dashboard-showcase-row) {
+            border-radius: 28px !important;
+          }
+
+          .dashboard-composer-card {
+            margin-bottom: 0 !important;
+          }
+
+          .dashboard-composer-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            min-width: 0 !important;
+          }
+
+          .dashboard-feed-pulse {
+            grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr) !important;
+            margin: 0 !important;
+          }
+
+          .dashboard-feed-pulse-stats {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-mobile-insights {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            align-items: stretch !important;
+            gap: 14px !important;
+            padding: 16px !important;
+            margin: 0 !important;
+          }
+
+          .dashboard-mobile-insights > div {
+            min-width: 0 !important;
+          }
+
+          .dashboard-mobile-insights > div:first-child,
+          .dashboard-mobile-insights > div:nth-child(2),
+          .dashboard-mobile-insights > div:nth-child(7) {
+            grid-column: 1 / -1 !important;
+          }
+
+          .dashboard-mobile-insights > div:nth-child(3),
+          .dashboard-mobile-insights > div:nth-child(4),
+          .dashboard-mobile-insights > div:nth-child(5),
+          .dashboard-mobile-insights > div:nth-child(6) {
+            grid-column: auto !important;
+          }
+
+          .dashboard-mobile-insights > div:nth-child(3),
+          .dashboard-mobile-insights > div:nth-child(4) {
+            min-height: 136px !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: minmax(160px, 210px) minmax(0, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shell-pad {
+            padding: 0 0 calc(152px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .dashboard-grid-desktop-safe {
+            padding: 0 !important;
+          }
+
+          .dashboard-main-column {
+            display: grid !important;
+            gap: 13px !important;
+            padding: 0 clamp(10px, 3.6vw, 15px) 34px !important;
+            width: 100% !important;
+          }
+
+          .dashboard-mobile-header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 130 !important;
+            min-height: 68px !important;
+            padding: max(10px, env(safe-area-inset-top)) clamp(10px, 3.3vw, 14px) 10px !important;
+            gap: 8px !important;
+            background: linear-gradient(180deg, rgba(5,7,13,0.99), rgba(5,7,13,0.90)) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+          }
+
+          .dashboard-mobile-header a:first-child {
+            gap: 8px !important;
+            min-width: 0 !important;
+          }
+
+          .dashboard-mobile-header a:first-child > div:first-child {
+            width: clamp(42px, 11.5vw, 48px) !important;
+            height: clamp(42px, 11.5vw, 48px) !important;
+            min-width: clamp(42px, 11.5vw, 48px) !important;
+          }
+
+          .dashboard-mobile-header a:first-child > div:last-child > div:first-child {
+            font-size: clamp(18px, 6vw, 23px) !important;
+            letter-spacing: -0.02em !important;
+          }
+
+          .dashboard-mobile-header a:first-child > div:last-child > div:last-child {
+            font-size: clamp(9px, 2.7vw, 11px) !important;
+            letter-spacing: clamp(0.20em, 3.7vw, 0.34em) !important;
+          }
+
+          .dashboard-mobile-header button,
+          .dashboard-mobile-header a[aria-label="Notifications"],
+          .dashboard-mobile-header a[aria-label="Parachat"] {
+            width: clamp(36px, 10.5vw, 40px) !important;
+            height: clamp(36px, 10.5vw, 40px) !important;
+            min-width: clamp(36px, 10.5vw, 40px) !important;
+            border-radius: 13px !important;
+          }
+
+          .dashboard-showcase-row {
+            margin: 10px 0 0 !important;
+            padding: 10px 0 12px !important;
+            border-radius: 23px !important;
+          }
+
+          .dashboard-showcase-row h3 {
+            font-size: 15px !important;
+          }
+
+          .dashboard-showcase-scroller {
+            gap: 12px !important;
+            min-height: 84px !important;
+            padding: 0 12px 8px !important;
+            scroll-padding-left: 12px !important;
+          }
+
+          .dashboard-showcase-scroller > button,
+          .dashboard-showcase-scroller > a {
+            width: 70px !important;
+            min-width: 70px !important;
+          }
+
+          .dashboard-showcase-scroller > button > span:first-child,
+          .dashboard-showcase-scroller > a > span:first-child {
+            width: 56px !important;
+            height: 56px !important;
+          }
+
+          .dashboard-composer-card {
+            margin: 0 !important;
+            padding: 13px !important;
+            border-radius: 23px !important;
+          }
+
+          .dashboard-composer-top-row {
+            grid-template-columns: 42px minmax(0, 1fr) !important;
+            gap: 10px !important;
+          }
+
+          .dashboard-composer-top-row textarea {
+            min-height: 76px !important;
+            padding: 13px 14px !important;
+            font-size: 16px !important;
+            line-height: 1.42 !important;
+            border-radius: 19px !important;
+          }
+
+          .dashboard-composer-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-top: 11px !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            min-height: 41px !important;
+            padding: 8px 9px !important;
+            border-radius: 14px !important;
+            font-size: 12px !important;
+            justify-content: center !important;
+          }
+
+          .dashboard-composer-footer {
+            margin-top: 11px !important;
+          }
+
+          .dashboard-composer-footer > button {
+            min-height: 42px !important;
+            border-radius: 15px !important;
+          }
+
+          .dashboard-card:not(.dashboard-showcase-row),
+          .dashboard-feed-card,
+          .dashboard-feed-pulse,
+          .dashboard-mobile-insights {
+            border-radius: 23px !important;
+          }
+
+          .dashboard-feed-pulse {
+            margin: 0 !important;
+            padding: 13px !important;
+            gap: 12px !important;
+          }
+
+          .dashboard-feed-pulse-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .dashboard-mobile-insights {
+            margin: 0 !important;
+            padding: 13px !important;
+            gap: 11px !important;
+          }
+
+          .dashboard-mobile-insights > div:first-child {
+            align-items: flex-start !important;
+          }
+
+          .dashboard-mobile-insights > div:nth-child(3),
+          .dashboard-mobile-insights > div:nth-child(4) {
+            grid-column: 1 / -1 !important;
+          }
+
+          .dashboard-mobile-insights a,
+          .dashboard-mobile-insights button {
+            min-height: 40px !important;
+          }
+
+          .dashboard-mobile-insights [style*="overflow-x: auto"] {
+            scrollbar-width: none !important;
+          }
+
+          .dashboard-mobile-insights [style*="overflow-x: auto"]::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-post-header {
+            gap: 10px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .dashboard-post-header > div:first-child {
+            align-items: flex-start !important;
+          }
+
+          .dashboard-feed-card {
+            padding: 14px !important;
+          }
+
+          .dashboard-feed-card p {
+            font-size: 15px !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+
+          .dashboard-post-actions button {
+            min-height: 39px !important;
+            padding: 0 8px !important;
+            border-radius: 13px !important;
+            font-size: 12px !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+            padding: 11px !important;
+            border-radius: 20px !important;
+          }
+
+          .dashboard-shared-reel-frame a:first-child {
+            width: min(188px, 62vw) !important;
+            max-height: 334px !important;
+            margin: 0 auto !important;
+          }
+
+          .dashboard-bottom-nav {
+            left: clamp(8px, 2.8vw, 12px) !important;
+            right: clamp(8px, 2.8vw, 12px) !important;
+            bottom: max(9px, env(safe-area-inset-bottom)) !important;
+            min-height: 72px !important;
+            padding: 7px 8px !important;
+            border-radius: 24px !important;
+            z-index: 150 !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .dashboard-main-column {
+            gap: 12px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            font-size: 11.5px !important;
+            gap: 6px !important;
+          }
+
+          .dashboard-feed-pulse-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+
+        @media (max-width: 370px) {
+          .dashboard-mobile-header {
+            gap: 6px !important;
+          }
+
+          .dashboard-mobile-header a:first-child > div:last-child > div:last-child {
+            display: none !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            grid-template-columns: 1fr !important;
+          }
+
+          .dashboard-bottom-nav a span:last-child {
+            display: none !important;
           }
         }
 
@@ -5125,6 +5530,9 @@ const sidebarBadgeStyle: CSSProperties = { minWidth: 24, height: 24, borderRadiu
 const mutedSidebarBadgeStyle: CSSProperties = { ...sidebarBadgeStyle, background: "rgba(168,85,247,0.22)", color: "rgba(255,255,255,0.68)", border: "1px solid rgba(255,255,255,0.08)" };
 const sidebarDividerStyle: CSSProperties = { height: 1, background: "rgba(255,255,255,0.12)", margin: "20px 0" };
 const sidebarSectionLabelStyle: CSSProperties = { color: "#c084fc", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 };
+const sidebarSectionHeaderRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 };
+const sidebarSectionSoonBadgeStyle: CSSProperties = { borderRadius: 999, background: "rgba(168,85,247,0.18)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.76)", padding: "4px 8px", fontSize: 10, fontWeight: 950, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" };
+const paranormalHubIntroStyle: CSSProperties = { margin: "0 0 10px", borderRadius: 14, border: "1px solid rgba(168,85,247,0.16)", background: "linear-gradient(135deg, rgba(126,34,206,0.10), rgba(255,255,255,0.025))", color: "rgba(221,214,254,0.76)", fontSize: 12, lineHeight: 1.45, padding: "10px 12px" };
 
 const goLiveCardStyle: CSSProperties = {
   marginTop: 22,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -18,6 +18,7 @@ type ProfileRow = {
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  is_private: boolean | null;
 };
 
 function formatDate(value: string | null) {
@@ -25,6 +26,18 @@ function formatDate(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString();
+}
+
+function isValidUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getProfileName(profile: ProfileRow | null) {
+  return profile?.full_name || profile?.username || "Profile";
+}
+
+function getProfileInitial(profile: ProfileRow | null) {
+  return getProfileName(profile).charAt(0).toUpperCase();
 }
 
 export default function ProfileReelsGridPage() {
@@ -39,58 +52,120 @@ export default function ProfileReelsGridPage() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [canViewProfileContent, setCanViewProfileContent] = useState(false);
+
+  const isOwnProfile = Boolean(currentUserId && profileId && currentUserId === profileId);
+  const isPrivateProfile = Boolean(profile?.is_private);
+  const isPrivateLocked = Boolean(profile && isPrivateProfile && !canViewProfileContent);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadPage() {
-      if (!profileId) {
+      if (!profileId || !isValidUuid(profileId)) {
         if (!isMounted) return;
         setErrorMessage("Profile not found.");
+        setProfile(null);
+        setReels([]);
+        setCanViewProfileContent(false);
         setLoading(false);
         return;
       }
 
       setLoading(true);
       setErrorMessage("");
+      setProfile(null);
+      setReels([]);
+      setCanViewProfileContent(false);
 
-      const [profileResult, reelsResult] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, username, full_name, avatar_url")
-          .eq("id", profileId)
-          .maybeSingle(),
-        supabase
-          .from("reels")
-          .select("id, user_id, video_url, caption, created_at")
-          .eq("user_id", profileId)
-          .order("created_at", { ascending: false }),
-      ]);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!isMounted) return;
 
-      if (profileResult.error) {
-        setErrorMessage(profileResult.error.message || "Unable to load profile.");
+      const viewerId = user?.id || "";
+      setCurrentUserId(viewerId);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, is_private")
+        .eq("id", profileId)
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      if (profileError) {
+        setErrorMessage(profileError.message || "Unable to load profile.");
         setProfile(null);
         setReels([]);
+        setCanViewProfileContent(false);
         setLoading(false);
         return;
       }
 
-      setProfile((profileResult.data as ProfileRow | null) || null);
+      const nextProfile = (profileData as ProfileRow | null) || null;
+      setProfile(nextProfile);
 
-      if (reelsResult.error) {
-        setErrorMessage(reelsResult.error.message || "Unable to load reels.");
+      if (!nextProfile) {
+        setErrorMessage("Profile not found.");
+        setReels([]);
+        setCanViewProfileContent(false);
+        setLoading(false);
+        return;
+      }
+
+      const profileIsPrivate = Boolean(nextProfile.is_private);
+      const viewerIsOwner = Boolean(viewerId && viewerId === profileId);
+      let viewerIsFriend = false;
+
+      if (profileIsPrivate && viewerId && !viewerIsOwner) {
+        const { data: friendshipData, error: friendshipError } = await supabase
+          .from("friend_requests")
+          .select("id")
+          .eq("status", "accepted")
+          .or(
+            `and(sender_id.eq.${viewerId},receiver_id.eq.${profileId}),and(sender_id.eq.${profileId},receiver_id.eq.${viewerId})`
+          )
+          .limit(1);
+
+        if (!isMounted) return;
+
+        if (!friendshipError) {
+          viewerIsFriend = Boolean(friendshipData && friendshipData.length > 0);
+        }
+      }
+
+      const canView = !profileIsPrivate || viewerIsOwner || viewerIsFriend;
+      setCanViewProfileContent(canView);
+
+      if (!canView) {
         setReels([]);
         setLoading(false);
         return;
       }
 
-      setReels((reelsResult.data as Reel[]) || []);
+      const { data: reelsData, error: reelsError } = await supabase
+        .from("reels")
+        .select("id, user_id, video_url, caption, created_at")
+        .eq("user_id", profileId)
+        .order("created_at", { ascending: false });
+
+      if (!isMounted) return;
+
+      if (reelsError) {
+        setErrorMessage(reelsError.message || "Unable to load reels.");
+        setReels([]);
+        setLoading(false);
+        return;
+      }
+
+      setReels((reelsData as Reel[]) || []);
       setLoading(false);
     }
 
-    loadPage();
+    void loadPage();
 
     return () => {
       isMounted = false;
@@ -133,25 +208,46 @@ export default function ProfileReelsGridPage() {
               alignItems: "center",
             }}
           >
-            <div style={{ minWidth: 0 }}>
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: "1.8rem",
-                  lineHeight: 1.1,
-                }}
-              >
-                {profile?.full_name || profile?.username || "Profile"} Reels
-              </h1>
-              <p
-                style={{
-                  margin: "8px 0 0",
-                  color: "#9ca3af",
-                  fontSize: "0.95rem",
-                }}
-              >
-                Browse this profile’s reels in grid view.
-              </p>
+            <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: "14px" }}>
+              <div style={avatarStyle}>
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt=""
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                ) : (
+                  getProfileInitial(profile)
+                )}
+              </div>
+
+              <div style={{ minWidth: 0 }}>
+                <h1
+                  style={{
+                    margin: 0,
+                    fontSize: "1.8rem",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {getProfileName(profile)} Reels
+                </h1>
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    color: "#9ca3af",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  {isPrivateLocked
+                    ? "This profile keeps Reels private unless you are connected."
+                    : "Browse this profile’s reels in grid view."}
+                </p>
+              </div>
             </div>
 
             <div
@@ -161,10 +257,7 @@ export default function ProfileReelsGridPage() {
                 flexWrap: "wrap",
               }}
             >
-              <Link
-                href={`/profile/${profileId}`}
-                style={secondaryLinkStyle}
-              >
+              <Link href={`/profile/${profileId}`} style={secondaryLinkStyle}>
                 Back to Profile
               </Link>
             </div>
@@ -175,6 +268,22 @@ export default function ProfileReelsGridPage() {
           <div style={cardStyle}>Loading reels...</div>
         ) : errorMessage ? (
           <div style={{ ...cardStyle, color: "#ffb4b4" }}>{errorMessage}</div>
+        ) : isPrivateLocked ? (
+          <div style={privateCardStyle}>
+            <div style={privateIconStyle}>🔒</div>
+            <h2 style={privateTitleStyle}>This user’s profile is private.</h2>
+            <p style={privateTextStyle}>
+              You can still view this profile’s basic information, but their Reels are hidden unless you are connected.
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginTop: "18px" }}>
+              <Link href={`/profile/${profileId}`} style={primaryLinkStyle}>
+                View Profile
+              </Link>
+              <Link href="/dashboard" style={secondaryLinkStyle}>
+                Back to Dashboard
+              </Link>
+            </div>
+          </div>
         ) : reels.length === 0 ? (
           <div style={cardStyle}>No reels shared yet.</div>
         ) : (
@@ -330,7 +439,7 @@ export default function ProfileReelsGridPage() {
   );
 }
 
-const cardStyle: React.CSSProperties = {
+const cardStyle: CSSProperties = {
   background: "rgba(255,255,255,0.05)",
   borderRadius: "24px",
   padding: "18px",
@@ -338,7 +447,71 @@ const cardStyle: React.CSSProperties = {
   boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
 };
 
-const secondaryLinkStyle: React.CSSProperties = {
+const avatarStyle: CSSProperties = {
+  width: "54px",
+  height: "54px",
+  flex: "0 0 auto",
+  borderRadius: "999px",
+  overflow: "hidden",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, rgba(139,92,246,0.95), rgba(15,23,42,0.95))",
+  border: "1px solid rgba(255,255,255,0.14)",
+  color: "#fff",
+  fontSize: "22px",
+  fontWeight: 800,
+};
+
+const privateCardStyle: CSSProperties = {
+  ...cardStyle,
+  minHeight: "360px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  padding: "34px 18px",
+};
+
+const privateIconStyle: CSSProperties = {
+  width: "58px",
+  height: "58px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  fontSize: "24px",
+  marginBottom: "16px",
+};
+
+const privateTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "1.55rem",
+  lineHeight: 1.15,
+};
+
+const privateTextStyle: CSSProperties = {
+  margin: "12px auto 0",
+  maxWidth: "520px",
+  color: "#aeb7c6",
+  lineHeight: 1.6,
+};
+
+const primaryLinkStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  textDecoration: "none",
+  background: "#ffffff",
+  color: "#05050b",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "999px",
+  padding: "10px 16px",
+  fontWeight: 800,
+  minHeight: "42px",
+};
+
+const secondaryLinkStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   textDecoration: "none",

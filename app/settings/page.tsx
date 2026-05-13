@@ -21,6 +21,11 @@ type ProfilePreview = {
   avatar_url: string | null;
 };
 
+type AdminUserRow = {
+  user_id: string;
+  role: string;
+};
+
 const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string }> = [
   {
     value: "account",
@@ -133,10 +138,15 @@ function getTopicLabel(topic: SupportTopic) {
   return SUPPORT_TOPICS.find((item) => item.value === topic)?.label || "Other";
 }
 
+function isAdminRole(role: string) {
+  return ["owner", "admin", "support", "moderator"].includes(role);
+}
+
 export default function SettingsPage() {
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [adminRole, setAdminRole] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
 
   const [supportTopic, setSupportTopic] = useState<SupportTopic>("account");
@@ -151,6 +161,7 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState("");
 
   const displayName = currentProfile?.full_name || currentProfile?.username || "Parapost Member";
+  const canSeeAdminSupport = isAdminRole(adminRole);
 
   const selectedTopicHelper = useMemo(() => {
     return SUPPORT_TOPICS.find((item) => item.value === supportTopic)?.helper || "";
@@ -173,6 +184,7 @@ export default function SettingsPage() {
         setCurrentUserId("");
         setUserEmail("");
         setCurrentProfile(null);
+        setAdminRole("");
         setPageLoading(false);
         return;
       }
@@ -180,15 +192,26 @@ export default function SettingsPage() {
       setCurrentUserId(user.id);
       setUserEmail(user.email || "");
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
+      const [{ data: profileData }, { data: adminData }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("admin_users")
+          .select("user_id, role")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
 
       if (cancelled) return;
 
       setCurrentProfile((profileData as ProfilePreview | null) || null);
+
+      const adminRow = adminData as AdminUserRow | null;
+      setAdminRole(adminRow?.role && isAdminRole(adminRow.role) ? adminRow.role : "");
+
       setPageLoading(false);
     }
 
@@ -330,6 +353,14 @@ export default function SettingsPage() {
               >
                 Privacy & Safety
               </a>
+              {canSeeAdminSupport ? (
+                <Link
+                  href="/admin/support"
+                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                >
+                  Support Inbox
+                </Link>
+              ) : null}
             </div>
           </div>
 
@@ -348,6 +379,18 @@ export default function SettingsPage() {
                 <div className="truncate text-sm text-slate-400">{userEmail || "Signed out"}</div>
               </div>
             </div>
+
+            {!pageLoading && canSeeAdminSupport ? (
+              <Link
+                href="/admin/support"
+                className="mt-5 block rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-4 text-sm font-bold leading-6 text-emerald-100 no-underline transition hover:bg-emerald-400/15"
+              >
+                Admin Support Inbox
+                <span className="mt-1 block text-xs font-medium text-emerald-100/70">
+                  You have {adminRole} access.
+                </span>
+              </Link>
+            ) : null}
 
             {!pageLoading && !currentUserId ? (
               <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
@@ -505,6 +548,37 @@ export default function SettingsPage() {
           </div>
 
           <aside className="space-y-4">
+            {canSeeAdminSupport ? (
+              <Link href="/admin/support" className="block text-white no-underline">
+                <section className="rounded-[26px] border border-emerald-300/20 bg-emerald-400/10 p-5 shadow-xl transition hover:bg-emerald-400/15">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
+                      Admin
+                    </span>
+                    <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-black text-emerald-100">
+                      {adminRole}
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black tracking-[-0.02em]">Support Inbox</h3>
+                  <p className="mt-2 text-sm leading-6 text-emerald-100/80">
+                    Review support messages, data requests, bug reports, privacy/safety issues, and payment questions.
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {["Open messages", "Admin notes", "Status updates", "Priority control"].map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-emerald-300/20 bg-black/25 px-3 py-1.5 text-xs font-bold text-emerald-100"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              </Link>
+            ) : null}
+
             {SETTINGS_CARDS.map((card) => {
               const content = (
                 <section

@@ -72,6 +72,7 @@ type ProfileRow = {
   full_name?: string | null;
   display_name?: string | null;
   avatar_url?: string | null;
+  is_private?: boolean | null;
 };
 
 type MenuState = {
@@ -281,6 +282,10 @@ function formatRelativeTime(value?: string | null) {
   return `${years}y ago`;
 }
 
+function isValidUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function buildReelItems(rows: ReelDbRow[], profiles: ProfileRow[]): ReelItem[] {
   const profileMap = new Map<string, ProfileRow>();
   profiles.forEach((profile) => profileMap.set(profile.id, profile));
@@ -383,6 +388,8 @@ export default function ProfileReelsViewerPage() {
   const [holdPausedId, setHoldPausedId] = useState<string | null>(null);
   const [heartBurstId, setHeartBurstId] = useState<string | null>(null);
   const [isFetchingReels, setIsFetchingReels] = useState(true);
+  const [canViewProfileContent, setCanViewProfileContent] = useState(true);
+  const [pageErrorMessage, setPageErrorMessage] = useState("");
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -392,6 +399,19 @@ export default function ProfileReelsViewerPage() {
 
   const fetchReels = async () => {
     setIsFetchingReels(true);
+    setPageErrorMessage("");
+
+    if (!profileId || !isValidUuid(profileId)) {
+      setProfile(null);
+      setReels([]);
+      setComments([]);
+      setLikedMap({});
+      setFollowingMap({});
+      setCanViewProfileContent(false);
+      setPageErrorMessage("Profile not found.");
+      setIsFetchingReels(false);
+      return;
+    }
 
     const {
       data: { user },
@@ -400,12 +420,76 @@ export default function ProfileReelsViewerPage() {
     const nextUserId = user?.id || "";
     setCurrentUserId(nextUserId);
 
-    const [profileResult, reelsResult, followersResult] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, username, full_name, display_name, avatar_url")
-        .eq("id", profileId)
-        .maybeSingle(),
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, display_name, avatar_url, is_private")
+      .eq("id", profileId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Error loading profile:", profileError.message);
+      setProfile(null);
+      setReels([]);
+      setComments([]);
+      setLikedMap({});
+      setFollowingMap({});
+      setCanViewProfileContent(false);
+      setPageErrorMessage(profileError.message || "Unable to load profile.");
+      setIsFetchingReels(false);
+      return;
+    }
+
+    const loadedProfile = (profileData as ProfileRow | null) || null;
+    setProfile(loadedProfile);
+
+    if (!loadedProfile) {
+      setReels([]);
+      setComments([]);
+      setLikedMap({});
+      setFollowingMap({});
+      setCanViewProfileContent(false);
+      setPageErrorMessage("Profile not found.");
+      setIsFetchingReels(false);
+      return;
+    }
+
+    const profileIsPrivate = Boolean(loadedProfile.is_private);
+    const viewerIsOwner = Boolean(nextUserId && nextUserId === profileId);
+    let viewerIsFriend = false;
+
+    if (profileIsPrivate && nextUserId && !viewerIsOwner) {
+      const { data: friendshipRows, error: friendshipError } = await supabase
+        .from("friend_requests")
+        .select("id")
+        .eq("status", "accepted")
+        .or(
+          `and(sender_id.eq.${nextUserId},receiver_id.eq.${profileId}),and(sender_id.eq.${profileId},receiver_id.eq.${nextUserId})`
+        )
+        .limit(1);
+
+      if (friendshipError) {
+        console.warn("Private profile friendship check failed:", friendshipError.message);
+      } else {
+        viewerIsFriend = Boolean(friendshipRows && friendshipRows.length > 0);
+      }
+    }
+
+    const canView = !profileIsPrivate || viewerIsOwner || viewerIsFriend;
+    setCanViewProfileContent(canView);
+
+    if (!canView) {
+      setReels([]);
+      setComments([]);
+      setLikedMap({});
+      setFavoritedMap({});
+      setShareBoostMap({});
+      setActiveReelId("");
+      setFollowingMap({});
+      setIsFetchingReels(false);
+      return;
+    }
+
+    const [reelsResult, followersResult] = await Promise.all([
       supabase
         .from("reels")
         .select("*")
@@ -420,13 +504,6 @@ export default function ProfileReelsViewerPage() {
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
-
-    if (profileResult.error) {
-      console.error("Error loading profile:", profileResult.error.message);
-      setProfile(null);
-    } else {
-      setProfile((profileResult.data as ProfileRow | null) || null);
-    }
 
     if (followersResult.data) {
       setFollowingMap({ [profileId]: true });
@@ -460,6 +537,10 @@ export default function ProfileReelsViewerPage() {
       } else {
         profiles = (profileRows || []) as ProfileRow[];
       }
+    }
+
+    if (!profiles.some((item) => item.id === loadedProfile.id)) {
+      profiles = [loadedProfile, ...profiles];
     }
 
     let mapped = buildReelItems(rows, profiles);
@@ -507,9 +588,7 @@ export default function ProfileReelsViewerPage() {
       if (!commentsError && commentRows) {
         const profileMap = new Map<string, ProfileRow>();
         profiles.forEach((item) => profileMap.set(item.id, item));
-        if (profile) {
-          profileMap.set(profile.id, profile);
-        }
+        profileMap.set(loadedProfile.id, loadedProfile);
 
         const mappedComments = (commentRows as ReelCommentDbRow[]).map((row) => {
           const commentProfile = row.user_id ? profileMap.get(row.user_id) : undefined;
@@ -578,6 +657,8 @@ export default function ProfileReelsViewerPage() {
   }, [profileId]);
 
   useEffect(() => {
+    if (!profileId || !isValidUuid(profileId) || !canViewProfileContent) return;
+
     const channel = supabase
       .channel(`profile-reels-live-${profileId}-${currentUserId || "guest"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "reels" }, async () => {
@@ -594,7 +675,7 @@ export default function ProfileReelsViewerPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profileId, currentUserId]);
+  }, [profileId, currentUserId, canViewProfileContent]);
 
   useEffect(() => {
     const setWidth = () => setViewportWidth(window.innerWidth);
@@ -1237,6 +1318,101 @@ export default function ProfileReelsViewerPage() {
             </div>
             <div style={{ color: "#9ca3af", fontSize: "15px" }}>
               Pulling this profile&apos;s reel uploads from the database.
+            </div>
+          </div>
+        </div>
+      ) : pageErrorMessage ? (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "520px",
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.04)",
+              borderRadius: "28px",
+              padding: "28px",
+            }}
+          >
+            <div style={{ fontSize: "32px", fontWeight: 900, marginBottom: "10px" }}>
+              Profile unavailable
+            </div>
+            <div
+              style={{
+                color: "#d1d5db",
+                lineHeight: 1.7,
+                fontSize: "15px",
+                marginBottom: "18px",
+              }}
+            >
+              {pageErrorMessage}
+            </div>
+            <Link href="/dashboard" style={primaryButtonStyle}>
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      ) : !canViewProfileContent ? (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "560px",
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.04)",
+              borderRadius: "28px",
+              padding: "30px",
+              boxShadow: "0 16px 36px rgba(0,0,0,0.28)",
+            }}
+          >
+            <div
+              style={{
+                width: "62px",
+                height: "62px",
+                borderRadius: "999px",
+                display: "grid",
+                placeItems: "center",
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                margin: "0 auto 16px",
+                fontSize: "24px",
+              }}
+            >
+              🔒
+            </div>
+            <div style={{ fontSize: "32px", fontWeight: 900, marginBottom: "10px" }}>
+              This user&apos;s profile is private.
+            </div>
+            <div
+              style={{
+                color: "#d1d5db",
+                lineHeight: 1.7,
+                fontSize: "15px",
+                marginBottom: "18px",
+              }}
+            >
+              You can still view this profile&apos;s basic information, but direct Reels are hidden unless you are connected.
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
+              <Link href={`/profile/${profileId}`} style={primaryButtonStyle}>
+                View Profile
+              </Link>
+              <Link href="/dashboard" style={navLinkStyle}>
+                Back to Dashboard
+              </Link>
             </div>
           </div>
         </div>

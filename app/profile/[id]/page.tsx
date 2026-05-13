@@ -26,6 +26,7 @@ type ProfileRow = {
   cover_position_x?: number | string | null;
   cover_position_y?: number | string | null;
   is_online?: boolean | null;
+  is_private?: boolean | null;
   verified?: boolean | null;
   location?: string | null;
   website?: string | null;
@@ -1084,6 +1085,9 @@ export default function ProfilePage() {
   });
 
   const isOwnProfile = !!viewerId && viewerId === profileId;
+  const profileIsPrivate = Boolean(profile?.is_private);
+  const canViewPrivateProfileContent = !profileIsPrivate || isOwnProfile || friendStatus === "friends";
+  const isProfileContentLocked = Boolean(profile && profileIsPrivate && !canViewPrivateProfileContent);
   const canManageProfileShowcases = Boolean(viewerId && profileId && viewerId === profileId);
 
   const canManageProfilePost = useCallback(
@@ -1122,6 +1126,8 @@ export default function ProfilePage() {
   const visibleProfileShowcases = useMemo(() => {
     const now = Date.now();
 
+    if (isProfileContentLocked) return [];
+
     return profileShowcases.filter((showcase) => {
       const isExpired = showcase.expiresAt
         ? new Date(showcase.expiresAt).getTime() <= now
@@ -1137,7 +1143,7 @@ export default function ProfilePage() {
 
       return true;
     });
-  }, [profileShowcases, canManageProfileShowcases, friendStatus]);
+  }, [profileShowcases, canManageProfileShowcases, friendStatus, isProfileContentLocked]);
 
   const showcaseSizeRailVisible = showcaseCustomizeOpen && Boolean(showcaseCoverText.trim());
   const safeShowcaseTextPosition = getShowcaseSafeTextPosition(
@@ -1490,6 +1496,7 @@ const closeProfileMobileSearch = useCallback(() => {
   cover_position_x,
   cover_position_y,
   is_online,
+  is_private,
   location,
   website,
   occupation,
@@ -2885,6 +2892,18 @@ useEffect(() => {
   };
 
   const handleOpenProfileSection = (tab: string) => {
+    if (isProfileContentLocked) {
+      setActiveProfileTab("Posts");
+      setProfileActionsOpen(false);
+
+      window.setTimeout(() => {
+        const privateNotice = document.getElementById("profile-private-notice");
+        privateNotice?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+
+      return;
+    }
+
     setActiveProfileTab(tab);
     setProfileActionsOpen(false);
 
@@ -3066,30 +3085,40 @@ useEffect(() => {
     {
       value: "Posts",
       label: "Posts",
-      detail: `${profileFeedItems.length} update${profileFeedItems.length === 1 ? "" : "s"}`,
-      summary: isOwnProfile
+      detail: isProfileContentLocked
+        ? "Private"
+        : `${profileFeedItems.length} update${profileFeedItems.length === 1 ? "" : "s"}`,
+      summary: isProfileContentLocked
+        ? "This member's timeline is private."
+        : isOwnProfile
         ? "Create updates, share photos, and keep your profile timeline active."
         : "Browse this profile's posts, shared reels, and public updates.",
     },
     {
       value: "About",
       label: "About",
-      detail: isOwnProfile ? "Profile details" : "Member info",
-      summary: isOwnProfile
+      detail: isProfileContentLocked ? "Private" : isOwnProfile ? "Profile details" : "Member info",
+      summary: isProfileContentLocked
+        ? "Detailed profile information is private."
+        : isOwnProfile
         ? "Keep your intro, links, location, and profile details polished."
         : "View this member's profile details, links, and public information.",
     },
     {
       value: "Reels",
       label: "Reels",
-      detail: `${reels.length} reel${reels.length === 1 ? "" : "s"}`,
-      summary: "Watch short videos connected to this profile.",
+      detail: isProfileContentLocked ? "Private" : `${reels.length} reel${reels.length === 1 ? "" : "s"}`,
+      summary: isProfileContentLocked
+        ? "This member's Parapost Reels are private."
+        : "Watch short videos connected to this profile.",
     },
     {
       value: "Photos",
       label: "Photos",
-      detail: `${profilePhotoCount} photo${profilePhotoCount === 1 ? "" : "s"}`,
-      summary: "View photos shared through profile posts and media updates.",
+      detail: isProfileContentLocked ? "Private" : `${profilePhotoCount} photo${profilePhotoCount === 1 ? "" : "s"}`,
+      summary: isProfileContentLocked
+        ? "This member's photos are private."
+        : "View photos shared through profile posts and media updates.",
     },
     {
       value: "Events",
@@ -3306,6 +3335,125 @@ useEffect(() => {
         </button>
       ) : null}
     </div>
+  );
+
+  const renderPrivateProfileNotice = () => (
+    <section
+      id="profile-private-notice"
+      className="profile-content-card profile-private-profile-card"
+      style={{
+        ...mainCardStyle,
+        display: "grid",
+        placeItems: "center",
+        minHeight: "320px",
+        padding: "36px 20px",
+        textAlign: "center",
+        border: "1px solid rgba(168,85,247,0.22)",
+        background:
+          "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.024))",
+      }}
+      aria-label="Private profile notice"
+    >
+      <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+        <div
+          style={{
+            width: "70px",
+            height: "70px",
+            borderRadius: "24px",
+            display: "grid",
+            placeItems: "center",
+            margin: "0 auto 18px",
+            color: "#f8fafc",
+            fontSize: "30px",
+            fontWeight: 950,
+            border: "1px solid rgba(216,180,254,0.24)",
+            background: "linear-gradient(135deg, rgba(168,85,247,0.34), rgba(15,23,42,0.92))",
+            boxShadow: "0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)",
+          }}
+        >
+          🔒
+        </div>
+
+        <p
+          style={{
+            margin: 0,
+            color: "#d8b4fe",
+            fontSize: "11px",
+            fontWeight: 950,
+            textTransform: "uppercase",
+            letterSpacing: "0.18em",
+          }}
+        >
+          Private Profile
+        </p>
+
+        <h3
+          style={{
+            margin: "8px 0 0",
+            color: "#ffffff",
+            fontSize: "clamp(24px, 5vw, 34px)",
+            lineHeight: 1.05,
+            letterSpacing: "-0.055em",
+            fontWeight: 950,
+          }}
+        >
+          This user’s profile is private.
+        </h3>
+
+        <p
+          style={{
+            margin: "12px auto 0",
+            maxWidth: "480px",
+            color: "#cbd5e1",
+            fontSize: "14px",
+            lineHeight: 1.7,
+            fontWeight: 650,
+          }}
+        >
+          You can still view the profile shell, but this member’s timeline, posts, photos, Reels, and Showcases are hidden unless you are connected or the profile is made public.
+        </p>
+
+        <div
+          style={{
+            marginTop: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          {!viewerId ? (
+            <button type="button" onClick={() => router.push("/")} style={primaryButtonStyle}>
+              Sign in to connect
+            </button>
+          ) : friendStatus === "none" ? (
+            <button type="button" onClick={handleSendFriendRequest} disabled={friendLoading} style={primaryButtonStyle}>
+              {friendLoading ? "Sending..." : "Add Friend"}
+            </button>
+          ) : friendStatus === "outgoing_request" ? (
+            <button type="button" onClick={handleCancelFriendRequest} disabled={friendLoading} style={secondaryButtonStyle}>
+              {friendLoading ? "Saving..." : "Friend Request Sent"}
+            </button>
+          ) : friendStatus === "incoming_request" ? (
+            <>
+              <button type="button" onClick={handleAcceptFriendRequest} disabled={friendLoading} style={primaryButtonStyle}>
+                {friendLoading ? "Saving..." : "Accept Request"}
+              </button>
+              <button type="button" onClick={handleDeclineFriendRequest} disabled={friendLoading} style={secondaryButtonStyle}>
+                Decline
+              </button>
+            </>
+          ) : (
+            <span style={pillMutedStyle}>Connected</span>
+          )}
+
+          <Link href="/dashboard" style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+            Back to feed
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 
   const renderRecentlyViewedCard = (className?: string, style?: CSSProperties) => (
@@ -9426,7 +9574,7 @@ return (
                   </div>
                 </div>
 
-                {(canCreateShowcase || visibleProfileShowcases.length > 0) ? (
+                {!isProfileContentLocked && (canCreateShowcase || visibleProfileShowcases.length > 0) ? (
                   <section className="profile-showcases-panel profile-stories-row" style={profileShowcasesPanelStyle} data-profile-showcases="true">
                     <h3 style={profileShowcasesTitleStyle}>Showcases</h3>
 
@@ -10327,7 +10475,7 @@ return (
                     )
                   : null}
 
-                {shouldShowProfileStarter ? (
+                {!isProfileContentLocked && shouldShowProfileStarter ? (
                   <section className="profile-starter-card" style={profileStarterCardStyle} aria-label="Complete your profile">
                     <div style={profileStarterHeaderStyle}>
                       <div style={profileStarterIconStyle}>✦</div>
@@ -10398,8 +10546,11 @@ return (
                   </section>
                 ) : null}
 
-                <div className="profile-tabs-shell" style={profileTabsShellStyle}>
-                  <div className="profile-tabs-desktop" style={profileTabsStyle}>
+                {isProfileContentLocked ? renderPrivateProfileNotice() : null}
+
+                {!isProfileContentLocked ? (
+                  <div className="profile-tabs-shell" style={profileTabsShellStyle}>
+                    <div className="profile-tabs-desktop" style={profileTabsStyle}>
                     {profileTabItems.map((tab) => {
                       const isActive = activeProfileTab === tab.value;
 
@@ -10451,16 +10602,17 @@ return (
                       <h3 style={profileTabSummaryTitleStyle}>{activeProfileTabItem.label}</h3>
                       <p style={profileTabSummaryMetaStyle}>{activeProfileTabItem.summary}</p>
                     </div>
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
-                {!loading && !errorMessage && profile && !isOwnProfile ? (
+                {!loading && !errorMessage && profile && !isOwnProfile && !isProfileContentLocked ? (
                   <div style={{ padding: "0 14px 14px" }}>
                     <MutualFriendsPreviewCard currentUserId={viewerId} profileUserId={profileId} />
                   </div>
                 ) : null}
               </div>
-              {activeProfileTab === "About" ? (
+              {!isProfileContentLocked && activeProfileTab === "About" ? (
                 <div className="profile-content-card" style={mainCardStyle}>
                   <ProfileAboutSection
                     profile={
@@ -10484,7 +10636,7 @@ return (
                 </div>
               ) : null}
 
-              {activeProfileTab === "Reels" ? (
+              {!isProfileContentLocked && activeProfileTab === "Reels" ? (
                 <div className="profile-content-card" style={mainCardStyle}>
                   <div style={aboutHeaderStyle}>
                     <div>
@@ -10531,7 +10683,7 @@ return (
                 </div>
               ) : null}
 
-              {activeProfileTab === "Photos" ? (
+              {!isProfileContentLocked && activeProfileTab === "Photos" ? (
                 <div className="profile-content-card" style={mainCardStyle}>
                   <ProfilePhotosSection
                     profileId={profileId}
@@ -10560,7 +10712,7 @@ return (
                 </div>
               ) : null}
 
-              {activeProfileTab === "Posts" && isOwnProfile ? (
+              {!isProfileContentLocked && activeProfileTab === "Posts" && isOwnProfile ? (
                 <div id="profile-composer" className="profile-content-card profile-composer-card profile-composer-smooth" style={mainCardStyle}>
                   <div style={profileComposerHeaderStyle}>
                     <div style={profileComposerIconStyle}>✦</div>
@@ -10679,7 +10831,7 @@ return (
                 </div>
               ) : null}
 
-              {activeProfileTab === "Posts" ? (
+              {!isProfileContentLocked && activeProfileTab === "Posts" ? (
                 <div className="profile-content-card profile-feed-section-card" style={mainCardStyle}>
                   <div style={feedHeaderStyle}>
                     <div style={feedTitleBlockStyle}>

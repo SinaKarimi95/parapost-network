@@ -25,6 +25,8 @@ type ProfilePreview = {
   bio?: string | null;
   location?: string | null;
   is_online?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type ShowcaseDuration = "24h" | "30d" | "permanent";
@@ -106,12 +108,34 @@ type MixedFeedItem =
   | { type: "reel_share"; id: string; created_at: string; share: SharedReelItem };
 
 type FeedMode = "for_you" | "friends" | "following";
+
+type FeelingActivityOption = {
+  id: string;
+  label: string;
+  category: "Feeling" | "Activity";
+  helper: string;
+};
 type CountMap = Record<string, number>;
 type ToggleMap = Record<string, boolean>;
 type FollowMap = Record<string, boolean>;
 
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
 const POST_CHARACTER_LIMIT = 63206;
+
+const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
+  { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood" },
+  { id: "grateful", label: "Feeling grateful", category: "Feeling", helper: "Appreciation or good news" },
+  { id: "excited", label: "Feeling excited", category: "Feeling", helper: "Something new is happening" },
+  { id: "relaxed", label: "Feeling relaxed", category: "Feeling", helper: "A calm update" },
+  { id: "focused", label: "Feeling focused", category: "Feeling", helper: "Working on something important" },
+  { id: "creative", label: "Feeling creative", category: "Feeling", helper: "Ideas, art, projects, or content" },
+  { id: "working", label: "Working", category: "Activity", helper: "Share what you are building" },
+  { id: "watching", label: "Watching", category: "Activity", helper: "Shows, videos, events, or streams" },
+  { id: "listening", label: "Listening", category: "Activity", helper: "Music, podcasts, or audio" },
+  { id: "traveling", label: "Traveling", category: "Activity", helper: "Trips, places, and movement" },
+  { id: "exploring", label: "Exploring", category: "Activity", helper: "Adventures, events, or locations" },
+  { id: "celebrating", label: "Celebrating", category: "Activity", helper: "Milestones and special moments" },
+];
 
 function isLikelyShortenedLink(hostname: string) {
   const shortenerDomains = [
@@ -339,6 +363,153 @@ function formatRelativeTime(value?: string | null) {
 
   const years = Math.floor(days / 365);
   return `${years}y ago`;
+}
+
+function hasCompletedDiscoveryProfile(profile: ProfilePreview) {
+  const hasName = Boolean((profile.full_name || profile.username || "").trim());
+  const hasBio = Boolean((profile.bio || "").trim());
+  return hasName && hasBio;
+}
+
+function getDiscoverySortTime(profile: ProfilePreview) {
+  const value = profile.updated_at || profile.created_at || "";
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+
+const TREND_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "again",
+  "also",
+  "because",
+  "been",
+  "before",
+  "being",
+  "could",
+  "every",
+  "from",
+  "have",
+  "here",
+  "into",
+  "just",
+  "like",
+  "more",
+  "most",
+  "only",
+  "over",
+  "post",
+  "posts",
+  "reel",
+  "reels",
+  "share",
+  "shared",
+  "showcase",
+  "showcases",
+  "some",
+  "than",
+  "that",
+  "their",
+  "them",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "with",
+  "your",
+  "parapost",
+  "network",
+]);
+
+function formatTrendTitle(value: string) {
+  return value
+    .replace(/^#+/, "")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function addTrendCandidate(
+  map: Map<string, { title: string; count: number; latestTime: number; source: "hashtag" | "keyword" }>,
+  rawValue: string,
+  latestTime: number,
+  source: "hashtag" | "keyword"
+) {
+  const cleaned = rawValue.replace(/^#+/, "").replace(/[^a-zA-Z0-9_ -]/g, "").trim();
+  const key = cleaned.toLowerCase();
+
+  if (!key || key.length < 4 || TREND_STOP_WORDS.has(key)) return;
+  if (/^\d+$/.test(key)) return;
+
+  const existing = map.get(key);
+  const title = formatTrendTitle(cleaned);
+
+  if (existing) {
+    existing.count += source === "hashtag" ? 3 : 1;
+    existing.latestTime = Math.max(existing.latestTime, latestTime);
+    if (source === "hashtag") existing.source = "hashtag";
+    return;
+  }
+
+  map.set(key, {
+    title,
+    count: source === "hashtag" ? 3 : 1,
+    latestTime,
+    source,
+  });
+}
+
+function buildDashboardTrendingTopics(items: MixedFeedItem[]) {
+  const trendMap = new Map<string, { title: string; count: number; latestTime: number; source: "hashtag" | "keyword" }>();
+
+  items.forEach((item) => {
+    const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0;
+    const latestTime = Number.isNaN(createdAt) ? 0 : createdAt;
+    const text =
+      item.type === "post"
+        ? item.post.content || ""
+        : [item.share.caption, item.share.reel_title, item.share.reel_caption].filter(Boolean).join(" ");
+
+    const hashtags = text.match(/#[a-zA-Z0-9_]{3,}/g) || [];
+    hashtags.forEach((tag) => addTrendCandidate(trendMap, tag, latestTime, "hashtag"));
+
+    const words = text.match(/[a-zA-Z][a-zA-Z0-9'-]{3,}/g) || [];
+    words.slice(0, 30).forEach((word) => addTrendCandidate(trendMap, word, latestTime, "keyword"));
+  });
+
+  const dynamicTopics = Array.from(trendMap.values())
+    .sort((a, b) => b.count - a.count || b.latestTime - a.latestTime)
+    .slice(0, 5)
+    .map((topic) => ({
+      title: topic.title,
+      meta: topic.source === "hashtag" ? "Trending hashtag" : "Active topic",
+    }));
+
+  if (dynamicTopics.length >= 5) return dynamicTopics;
+
+  const fallbackTopics = [
+    { title: "New Posts", meta: "Fresh community updates" },
+    { title: "Creator Moments", meta: "Photos, videos, and stories" },
+    { title: "Parapost Reels", meta: "Short videos and clips" },
+    { title: "Community Highlights", meta: "What members are sharing" },
+    { title: "Shared Experiences", meta: "New conversations" },
+  ];
+
+  const existingTitles = new Set(dynamicTopics.map((topic) => topic.title.toLowerCase()));
+  const filledTopics = [...dynamicTopics];
+
+  for (const topic of fallbackTopics) {
+    if (filledTopics.length >= 5) break;
+    if (existingTitles.has(topic.title.toLowerCase())) continue;
+    filledTopics.push(topic);
+  }
+
+  return filledTopics;
 }
 
 function getAvatarShellStyle(size: number, isOnline?: boolean | null): CSSProperties {
@@ -603,6 +774,58 @@ function ReelsIcon() {
   );
 }
 
+function buildPostContentWithFeelingActivity(content: string, feelingActivity: FeelingActivityOption | null) {
+  const cleanContent = content.trim();
+  const activityLine = feelingActivity ? feelingActivity.label : "";
+  const combined = [activityLine, cleanContent].filter(Boolean).join("\n\n");
+  return combined.slice(0, POST_CHARACTER_LIMIT);
+}
+
+function getPostFeelingActivityHeaderText(label: string) {
+  const cleanLabel = label.trim();
+  if (!cleanLabel) return "";
+
+  const matchedOption = FEELING_ACTIVITY_OPTIONS.find(
+    (option) => option.label.toLowerCase() === cleanLabel.toLowerCase()
+  );
+
+  if (!matchedOption) return "";
+
+  if (matchedOption.category === "Feeling") {
+    return `is ${matchedOption.label.toLowerCase()}`;
+  }
+
+  return `is ${matchedOption.label.toLowerCase()}`;
+}
+
+function splitPostFeelingActivityContent(content: string) {
+  const lines = content.split(/\r?\n/);
+  const firstContentIndex = lines.findIndex((line) => line.trim().length > 0);
+
+  if (firstContentIndex === -1) {
+    return { headerActivityText: "", bodyContent: "" };
+  }
+
+  const firstContentLine = lines[firstContentIndex].trim();
+  const headerActivityText = getPostFeelingActivityHeaderText(firstContentLine);
+
+  if (!headerActivityText) {
+    return { headerActivityText: "", bodyContent: content };
+  }
+
+  const bodyLines = lines.slice(firstContentIndex + 1);
+
+  while (bodyLines.length > 0 && bodyLines[0].trim().length === 0) {
+    bodyLines.shift();
+  }
+
+  return {
+    headerActivityText,
+    bodyContent: bodyLines.join("\n").trimStart(),
+  };
+}
+
+
 export default function DashboardPage() {
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -629,6 +852,7 @@ export default function DashboardPage() {
   const [notificationsCount, setNotificationsCount] = useState(0);
   const [pendingFriendRequestCount, setPendingFriendRequestCount] = useState(0);
   const [recentlyViewed, setRecentlyViewed] = useState<ProfilePreview[]>([]);
+  const [discoverProfiles, setDiscoverProfiles] = useState<ProfilePreview[]>([]);
   const [friendShowcases, setFriendShowcases] = useState<DashboardShowcaseItem[]>([]);
   const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
   const [dashboardShowcaseTitle, setDashboardShowcaseTitle] = useState("");
@@ -647,6 +871,8 @@ export default function DashboardPage() {
   const [dashboardShowcaseMediaDragActive, setDashboardShowcaseMediaDragActive] = useState(false);
   const [dashboardShowcaseError, setDashboardShowcaseError] = useState("");
   const [dashboardShowcaseSaving, setDashboardShowcaseSaving] = useState(false);
+  const [feelingActivityOpen, setFeelingActivityOpen] = useState(false);
+  const [selectedFeelingActivity, setSelectedFeelingActivity] = useState<FeelingActivityOption | null>(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -656,6 +882,8 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dashboardShowcaseInputRef = useRef<HTMLInputElement | null>(null);
   const mainComposerRef = useRef<HTMLElement | null>(null);
+  const hasLoadedDashboardOnceRef = useRef(false);
+  const dashboardRefreshInFlightRef = useRef(false);
 
   const currentName = currentProfile?.full_name || currentProfile?.username || "there";
   const firstName = currentName.split(" ")[0] || "there";
@@ -711,10 +939,78 @@ export default function DashboardPage() {
   }, [shareCounts]);
 
   const peopleToDiscover = useMemo(() => {
-    return Object.values(profilesMap)
-      .filter((profile) => profile.id !== currentUserId)
-      .slice(0, 5);
-  }, [currentUserId, profilesMap]);
+    return discoverProfiles.slice(0, 4);
+  }, [discoverProfiles]);
+
+  const trendingTopics = useMemo(() => {
+    return buildDashboardTrendingTopics(mixedFeedItems);
+  }, [mixedFeedItems]);
+
+  const fetchPeopleToDiscover = useCallback(async (userId?: string) => {
+    if (!userId) {
+      setDiscoverProfiles([]);
+      return;
+    }
+
+    const [{ data: friendshipRows }, { data: followingRows }] = await Promise.all([
+      supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id, status")
+        .eq("status", "accepted")
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
+      supabase
+        .from("followers")
+        .select("following_id")
+        .eq("follower_id", userId),
+    ]);
+
+    const friendIds = new Set(
+      (friendshipRows || [])
+        .map((row) => (row.sender_id === userId ? row.receiver_id : row.sender_id))
+        .filter(Boolean) as string[]
+    );
+
+    const followingIds = new Set(
+      (followingRows || []).map((row) => row.following_id).filter(Boolean) as string[]
+    );
+
+    const hiddenIds = new Set<string>([userId, ...Array.from(friendIds), ...Array.from(followingIds)]);
+
+    const selectWithDates =
+      "id, username, full_name, avatar_url, bio, location, is_online, created_at, updated_at";
+
+    let profilesData: ProfilePreview[] = [];
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(selectWithDates)
+      .limit(80);
+
+    if (error) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, bio, location, is_online")
+        .limit(80);
+
+      if (fallbackError) {
+        console.error("Error fetching People to Discover:", fallbackError.message);
+        setDiscoverProfiles([]);
+        return;
+      }
+
+      profilesData = (fallbackData || []) as ProfilePreview[];
+    } else {
+      profilesData = (data || []) as ProfilePreview[];
+    }
+
+    const nextProfiles = profilesData
+      .filter((profile) => profile.id && !hiddenIds.has(profile.id))
+      .filter(hasCompletedDiscoveryProfile)
+      .sort((a, b) => getDiscoverySortTime(b) - getDiscoverySortTime(a))
+      .slice(0, 12);
+
+    setDiscoverProfiles(nextProfiles);
+  }, []);
 
   const fetchProfileMap = useCallback(async (userIds: string[]) => {
     const uniqueIds = [...new Set(userIds.filter(Boolean))];
@@ -1018,9 +1314,15 @@ export default function DashboardPage() {
     return nextShared;
   }, []);
 
-  const fetchDashboardData = useCallback(async () => {
-    setFetchingPosts(true);
+  const fetchDashboardData = useCallback(async (showFeedLoading = false) => {
+    if (dashboardRefreshInFlightRef.current) return;
 
+    dashboardRefreshInFlightRef.current = true;
+
+    const shouldShowFeedLoading = showFeedLoading || !hasLoadedDashboardOnceRef.current;
+    if (shouldShowFeedLoading) setFetchingPosts(true);
+
+    try {
     const {
       data: { user },
       error: userError,
@@ -1052,12 +1354,18 @@ export default function DashboardPage() {
       blockedIds =
         blocksData?.map((row) => (row.blocker_id === user.id ? row.blocked_id : row.blocker_id)) || [];
 
-      await Promise.all([fetchFollowData(user.id), fetchNotifications(user.id), fetchRecentlyViewed(user.id), fetchFriendShowcases(user.id)]);
+      await Promise.all([
+        fetchFollowData(user.id),
+        fetchNotifications(user.id),
+        fetchRecentlyViewed(user.id),
+        fetchFriendShowcases(user.id),
+        fetchPeopleToDiscover(user.id),
+      ]);
     } else {
       setCurrentUserId("");
       setUserEmail("");
       setCurrentProfile(null);
-      await Promise.all([fetchFollowData(), fetchNotifications(), fetchRecentlyViewed(), fetchFriendShowcases()]);
+      await Promise.all([fetchFollowData(), fetchNotifications(), fetchRecentlyViewed(), fetchFriendShowcases(), fetchPeopleToDiscover()]);
     }
 
     const { data: postsData, error: postsError } = await supabase
@@ -1068,8 +1376,7 @@ export default function DashboardPage() {
 
     if (postsError) {
       console.error("Error fetching posts:", postsError.message);
-      setPosts([]);
-      setFetchingPosts(false);
+      if (!hasLoadedDashboardOnceRef.current) setPosts([]);
       return;
     }
 
@@ -1087,13 +1394,72 @@ export default function DashboardPage() {
     ];
 
     await Promise.all([fetchProfileMap(profileIds), fetchCounts(userId || undefined, visiblePosts.map((post) => post.id))]);
-
-    setFetchingPosts(false);
-  }, [fetchCounts, fetchFollowData, fetchFriendShowcases, fetchNotifications, fetchProfileMap, fetchRecentlyViewed, fetchSharedReels]);
+    } catch (error) {
+      // Important: Supabase/network hiccups can throw TypeError: Failed to fetch.
+      // Keep the current timeline on screen instead of letting the dashboard crash or blink.
+      console.warn("Dashboard refresh skipped because the network request failed.", error);
+    } finally {
+      hasLoadedDashboardOnceRef.current = true;
+      dashboardRefreshInFlightRef.current = false;
+      setFetchingPosts(false);
+    }
+  }, [fetchCounts, fetchFollowData, fetchFriendShowcases, fetchNotifications, fetchPeopleToDiscover, fetchProfileMap, fetchRecentlyViewed, fetchSharedReels]);
 
   useEffect(() => {
-    fetchDashboardData();
+    void fetchDashboardData(true);
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const schedulePulseRefresh = () => {
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        void fetchDashboardData(false);
+      }, 350);
+    };
+
+    const channel = supabase
+      .channel(`dashboard-network-pulse-${currentUserId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shares" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "followers" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reel_shares" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profile_showcases" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "recently_viewed_profiles" }, schedulePulseRefresh)
+      .subscribe();
+
+    const intervalId = window.setInterval(() => {
+      void fetchDashboardData(false);
+    }, 30000);
+
+    const handleFocusRefresh = () => {
+      void fetchDashboardData(false);
+    };
+
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === "visible") {
+        void fetchDashboardData(false);
+      }
+    };
+
+    window.addEventListener("focus", handleFocusRefresh);
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+
+    return () => {
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocusRefresh);
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUserId, fetchDashboardData]);
 
   useEffect(() => {
     if (!image) {
@@ -1154,6 +1520,7 @@ export default function DashboardPage() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setSearchOpen(false);
+      setFeelingActivityOpen(false);
       setOpenPostMenuId(null);
     };
 
@@ -1339,8 +1706,8 @@ export default function DashboardPage() {
   };
 
   const handlePost = async () => {
-    if (!content.trim() && !image) {
-      alert("Please add text or choose an image.");
+    if (!content.trim() && !image && !selectedFeelingActivity) {
+      alert("Please add text, choose an image, or select a Feeling / Activity.");
       return;
     }
 
@@ -1379,9 +1746,11 @@ export default function DashboardPage() {
       imageUrl = publicUrlData.publicUrl;
     }
 
+    const finalContent = buildPostContentWithFeelingActivity(content, selectedFeelingActivity);
+
     const { error: insertError } = await supabase.from("posts").insert([
       {
-        content: content.trim(),
+        content: finalContent,
         user_id: user.id,
         image_url: imageUrl,
       },
@@ -1394,8 +1763,10 @@ export default function DashboardPage() {
     }
 
     setContent("");
+    setSelectedFeelingActivity(null);
+    setFeelingActivityOpen(false);
     handleRemoveImage();
-    await fetchDashboardData();
+    await fetchDashboardData(false);
     setLoading(false);
   };
 
@@ -1590,11 +1961,6 @@ export default function DashboardPage() {
         placeholder="Search Parapost"
         style={searchInputStyle}
       />
-      <button type="button" onClick={openSearch} style={searchFilterButtonStyle} aria-label="Open Search Parapost">
-        <span style={{ display: "block", width: 14, height: 2, background: "currentColor", borderRadius: 99 }} />
-        <span style={{ display: "block", width: 10, height: 2, background: "currentColor", borderRadius: 99 }} />
-      </button>
-
       {searchOpen && searchQuery.trim().length >= 2 ? (
         <div style={searchDropdownStyle}>
           <SearchResults
@@ -1622,15 +1988,15 @@ export default function DashboardPage() {
             <SidebarLogo />
             <nav style={sidebarNavStyle}>
               <SidebarLink href="/dashboard" active icon={<HomeIcon />} label="Home" />
-              <SidebarLink href="/reels" icon={<ReelsIcon />} label="Parapost Reels" />
-              <SidebarButton label="Live" badge="Soon" />
+              <SidebarLink href="/reels" icon={<SidebarParapostReelIcon />} label="Parapost Reels" />
+              <SidebarButton label="Live" badge="Soon" muted />
               <SidebarLink href="/friends" label="Friends" badge={pendingFriendRequestCount || undefined} />
-              <SidebarButton label="Groups" />
+              <SidebarButton label="Groups" muted />
               <SidebarLink href="/messages" label="Parachat" badge={notificationsCount || undefined} />
               <SidebarLink href="/notifications" label="Notifications" badge={notificationsCount || undefined} />
-              <SidebarButton label="Bookmarks" />
-              <SidebarButton label="Explore" />
-              <SidebarButton label="Events" />
+              <SidebarButton label="Bookmarks" muted />
+              <SidebarButton label="Explore" muted />
+              <SidebarButton label="Events" muted />
               <SidebarLink href="/settings/profile" label="Settings" />
             </nav>
 
@@ -1643,13 +2009,14 @@ export default function DashboardPage() {
               <SidebarButton label="Reports" />
             </nav>
 
-            <Link href="/reels" style={goLiveCardStyle}>
+            <div style={goLiveCardStyle} aria-disabled="true" title="Live streaming is coming soon.">
               <span style={goLiveIconStyle}>+</span>
-              <span>
+              <span style={{ minWidth: 0 }}>
                 <strong style={{ display: "block", color: "#fff" }}>Go Live</strong>
-                <span style={{ color: "#c4b5fd", fontSize: 12 }}>Share your experience</span>
+                <span style={{ color: "#c4b5fd", fontSize: 12 }}>Coming soon</span>
               </span>
-            </Link>
+              <span style={goLiveSoonBadgeStyle}>Soon</span>
+            </div>
 
             <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={sidebarProfileStyle}>
               <Avatar profile={currentProfile} size={38} />
@@ -1666,9 +2033,6 @@ export default function DashboardPage() {
             <div className="dashboard-desktop-topbar" style={desktopTopBarStyle}>
               {searchBox}
               <div style={topActionRowStyle}>
-                <button type="button" onClick={scrollToComposer} style={squarePurpleButtonStyle} aria-label="Create post">
-                  <PlusIcon />
-                </button>
                 <Link href="/notifications" style={topIconButtonStyle} aria-label="Notifications">
                   <BellIcon />
                   {notificationsCount > 0 ? <span style={topBadgeStyle}>{notificationsCount > 99 ? "99+" : notificationsCount}</span> : null}
@@ -1697,9 +2061,12 @@ export default function DashboardPage() {
               image={image}
               imagePreviewUrl={imagePreviewUrl}
               loading={loading}
+              selectedFeelingActivity={selectedFeelingActivity}
               fileInputRef={fileInputRef}
               onImageChange={handleImageChange}
               onRemoveImage={handleRemoveImage}
+              onOpenFeelingActivity={() => setFeelingActivityOpen(true)}
+              onClearFeelingActivity={() => setSelectedFeelingActivity(null)}
               onPost={handlePost}
             />
 
@@ -1792,24 +2159,26 @@ export default function DashboardPage() {
           </main>
 
           <aside className="dashboard-right-rail" style={rightRailStyle}>
-            <RightRailCard title="Dashboard Pulse" action="Live">
-              <RailHeroProfile
-                profile={currentProfile}
-                currentUserId={currentUserId}
-                userEmail={userEmail}
-              />
+            {currentUserId ? (
+              <RightRailCard title="Network Pulse" action="Active">
+                <RailHeroProfile
+                  profile={currentProfile}
+                  currentUserId={currentUserId}
+                  userEmail={userEmail}
+                />
 
-              <div style={railStatGridStyle}>
-                <RailStatTile label="Following" value={followedUserIds.length.toString()} />
-                <RailStatTile label="Feed Items" value={mixedFeedItems.length.toString()} />
-                <RailStatTile label="Likes" value={totalLikes.toString()} />
-                <RailStatTile label="Comments" value={totalComments.toString()} />
-              </div>
-            </RightRailCard>
+                <div style={railStatGridStyle}>
+                  <RailStatTile label="Following" value={followedUserIds.length.toString()} />
+                  <RailStatTile label="Feed Items" value={mixedFeedItems.length.toString()} />
+                  <RailStatTile label="Likes" value={totalLikes.toString()} />
+                  <RailStatTile label="Comments" value={totalComments.toString()} />
+                </div>
+              </RightRailCard>
+            ) : null}
 
-            <RightRailCard title="People to Discover" action="Explore">
+            <RightRailCard title="People to Discover" action="Fresh">
               {peopleToDiscover.length === 0 ? (
-                <p style={mutedTextStyle}>More members will appear here as your feed grows.</p>
+                <p style={mutedTextStyle}>New members with completed bios will appear here automatically.</p>
               ) : (
                 <div style={{ display: "grid", gap: 10 }}>
                   {peopleToDiscover.map((profile) => (
@@ -1856,20 +2225,23 @@ export default function DashboardPage() {
               <Link href="/reels" style={railPrimaryLinkStyle}>Open Explore Reels</Link>
             </RightRailCard>
 
-            <RightRailCard title="Trending in Parapost">
-              <TrendingItem rank="1" title="Shadow Figures" meta="Community conversations" />
-              <TrendingItem rank="2" title="EVP Voices" meta="Evidence and clips" />
-              <TrendingItem rank="3" title="Haunted Hospitals" meta="Investigations" />
-              <TrendingItem rank="4" title="UFO Sightings" meta="Reports and sightings" />
-              <TrendingItem rank="5" title="Abandoned Locations" meta="Creators exploring" />
+            <RightRailCard title="Trending in Parapost" action="Updated">
+              {trendingTopics.map((topic, index) => (
+                <TrendingItem
+                  key={`${topic.title}-${index}`}
+                  rank={(index + 1).toString()}
+                  title={topic.title}
+                  meta={topic.meta}
+                />
+              ))}
             </RightRailCard>
 
-            <RightRailCard title="Sponsor Space" action="Stripe later">
+            <RightRailCard title="Sponsor / Advertising" action="Coming soon">
               <div style={sponsorCardStyle}>
                 <div style={sponsorIconStyle}>★</div>
                 <div>
-                  <strong style={railNameStyle}>Future sponsored placement</strong>
-                  <span style={railMetaStyle}>Reserved for Stripe-powered sponsors, boosted posts, and partner campaigns later.</span>
+                  <strong style={railNameStyle}>Advertise with Parapost Network</strong>
+                  <span style={railMetaStyle}>Promote your brand, event, product, or creator campaign to the Parapost community. Sponsorship and advertising tools are coming soon.</span>
                 </div>
               </div>
             </RightRailCard>
@@ -1916,6 +2288,21 @@ export default function DashboardPage() {
       ) : null}
 
       <MobileBottomNav currentUserId={currentUserId} notificationsCount={notificationsCount} onCreatePost={scrollToComposer} />
+
+      {feelingActivityOpen ? (
+        <FeelingActivityModal
+          selectedFeelingActivity={selectedFeelingActivity}
+          onSelect={(option) => {
+            setSelectedFeelingActivity(option);
+            setFeelingActivityOpen(false);
+          }}
+          onClear={() => {
+            setSelectedFeelingActivity(null);
+            setFeelingActivityOpen(false);
+          }}
+          onClose={() => setFeelingActivityOpen(false)}
+        />
+      ) : null}
 
       {searchOpen ? (
         <SearchModal
@@ -2837,12 +3224,34 @@ function SidebarLink({
   );
 }
 
-function SidebarButton({ label, badge }: { label: string; badge?: number | string }) {
+function SidebarParapostReelIcon() {
   return (
-    <div style={sidebarItemStyle}>
-      <span style={sidebarIconWrapStyle}><span style={dotIconStyle} /></span>
+    <span style={sidebarComposerReelIconStyle} aria-hidden="true">
+      <span style={{ transform: "translateX(1px)", lineHeight: 1 }}>▶</span>
+    </span>
+  );
+}
+
+function SidebarButton({
+  label,
+  badge,
+  icon,
+  muted = false,
+}: {
+  label: string;
+  badge?: number | string;
+  icon?: ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      style={muted ? mutedSidebarItemStyle : sidebarItemStyle}
+      aria-disabled={muted ? "true" : undefined}
+      title={muted ? `${label} is planned for a future Parapost Network upgrade.` : undefined}
+    >
+      <span style={sidebarIconWrapStyle}>{icon || <span style={muted ? mutedDotIconStyle : dotIconStyle} />}</span>
       <span>{label}</span>
-      {badge ? <span style={sidebarBadgeStyle}>{badge}</span> : null}
+      {badge ? <span style={muted ? mutedSidebarBadgeStyle : sidebarBadgeStyle}>{badge}</span> : null}
     </div>
   );
 }
@@ -2963,9 +3372,12 @@ function ComposerCard({
   image,
   imagePreviewUrl,
   loading,
+  selectedFeelingActivity,
   fileInputRef,
   onImageChange,
   onRemoveImage,
+  onOpenFeelingActivity,
+  onClearFeelingActivity,
   onPost,
 }: {
   composerRef: RefObject<HTMLElement | null>;
@@ -2976,12 +3388,15 @@ function ComposerCard({
   image: File | null;
   imagePreviewUrl: string;
   loading: boolean;
+  selectedFeelingActivity: FeelingActivityOption | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveImage: () => void;
+  onOpenFeelingActivity: () => void;
+  onClearFeelingActivity: () => void;
   onPost: () => void;
 }) {
-  const canPublish = content.trim().length > 0 || !!image;
+  const canPublish = content.trim().length > 0 || !!image || !!selectedFeelingActivity;
 
   return (
     <section id="dashboard-create-post" ref={composerRef} className="dashboard-card dashboard-composer-card" style={composerCardStyle}>
@@ -3016,11 +3431,19 @@ function ComposerCard({
         </div>
       ) : null}
 
+      {selectedFeelingActivity ? (
+        <div style={selectedFeelingActivityStyle}>
+          <span style={selectedFeelingCategoryStyle}>{selectedFeelingActivity.category}</span>
+          <strong style={selectedFeelingLabelStyle}>{selectedFeelingActivity.label}</strong>
+          <button type="button" onClick={onClearFeelingActivity} style={selectedFeelingRemoveStyle}>Remove</button>
+        </div>
+      ) : null}
+
       <div className="dashboard-composer-actions" style={composerActionGridStyle}>
         <ComposerActionPill label="Photo / Video" icon="▣" tone="green" onClick={() => fileInputRef.current?.click()} />
         <ComposerActionPill label="Parapost Reel" icon="▶" tone="pink" href="/reels" />
         <ComposerActionPill label="Live Stream" icon="◎" tone="red" disabled note="Coming soon" />
-        <ComposerActionPill label="Feeling / Activity" icon="●" tone="gold" onClick={() => alert("Feeling and activity options will be connected in a later dashboard pass.")} />
+        <ComposerActionPill label="Feeling / Activity" icon="●" tone="gold" active={!!selectedFeelingActivity} onClick={onOpenFeelingActivity} />
       </div>
 
       <div className="dashboard-composer-footer" style={composerFooterStyle}>
@@ -3049,6 +3472,7 @@ function ComposerActionPill({
   href,
   onClick,
   disabled = false,
+  active = false,
   note,
 }: {
   label: string;
@@ -3057,6 +3481,7 @@ function ComposerActionPill({
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
+  active?: boolean;
   note?: string;
 }) {
   const toneStyle = composerActionToneStyles[tone];
@@ -3085,14 +3510,14 @@ function ComposerActionPill({
 
   if (href) {
     return (
-      <Link href={href} style={composerActionPillStyle}>
+      <Link href={href} style={active ? { ...composerActionPillStyle, ...composerActionPillActiveStyle } : composerActionPillStyle}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={onClick} style={composerActionPillStyle}>
+    <button type="button" onClick={onClick} style={active ? { ...composerActionPillStyle, ...composerActionPillActiveStyle } : composerActionPillStyle}>
       {content}
     </button>
   );
@@ -3105,10 +3530,6 @@ function FeedTabs({ feedMode, setFeedMode }: { feedMode: FeedMode; setFeedMode: 
       <FeedTab label="Friends" active={feedMode === "friends"} onClick={() => setFeedMode("friends")} />
       <FeedTab label="Following" active={feedMode === "following"} onClick={() => setFeedMode("following")} />
       <FeedTab label="Live" disabled />
-      <button type="button" style={feedFilterButtonStyle} aria-label="Feed filters">
-        <span style={{ display: "block", width: 18, height: 2, borderRadius: 99, background: "currentColor" }} />
-        <span style={{ display: "block", width: 12, height: 2, borderRadius: 99, background: "currentColor" }} />
-      </button>
     </div>
   );
 }
@@ -3219,6 +3640,7 @@ function PostCard({
   const displayName = profile?.full_name || profile?.username || "Parapost user";
   const profileHref = `/profile/${post.user_id}`;
   const relationshipLabel = isPostOwner ? "Profile" : isFriend ? "Friends" : isFollowing ? "Following" : "Profile";
+  const { headerActivityText, bodyContent } = splitPostFeelingActivityContent(post.content || "");
 
   return (
     <article id={`post-${post.id}`} className="dashboard-card dashboard-feed-card" style={postCardStyle} onClick={(event) => event.stopPropagation()}>
@@ -3226,7 +3648,10 @@ function PostCard({
         <div style={postAuthorStyle}>
           <Avatar profile={profile} size={54} href={profileHref} />
           <div style={{ minWidth: 0 }}>
-            <Link href={profileHref} style={postAuthorNameStyle}>{displayName}</Link>
+            <div style={postAuthorNameLineStyle}>
+              <Link href={profileHref} style={{ ...postAuthorNameStyle, display: "inline" }}>{displayName}</Link>
+              {headerActivityText ? <span style={postAuthorActivityTextStyle}>{headerActivityText}</span> : null}
+            </div>
             <div style={postMetaStyle}>
               @{profile?.username || "member"} · {formatRelativeTime(post.created_at)} · {" "}
               <Link href={profileHref} style={postStatusLinkStyle}>{relationshipLabel}</Link>
@@ -3265,10 +3690,10 @@ function PostCard({
             <button type="button" onClick={onCancelEdit} style={softButtonStyle}>Cancel</button>
           </div>
         </div>
-      ) : post.content ? (
+      ) : bodyContent ? (
         <>
-          <p style={postContentStyle}>{renderLinkedText(post.content)}</p>
-          <LinkPreviewCard text={post.content} />
+          <p style={postContentStyle}>{renderLinkedText(bodyContent)}</p>
+          <LinkPreviewCard text={bodyContent} />
         </>
       ) : null}
 
@@ -3367,7 +3792,7 @@ function MobileDashboardUtilityRail({
     <section className="dashboard-mobile-insights" style={mobileInsightsShellStyle}>
       <div style={mobileInsightsHeaderStyle}>
         <div>
-          <div style={miniEyebrowStyle}>Dashboard pulse</div>
+          <div style={miniEyebrowStyle}>Network Pulse</div>
           <h3 style={{ margin: "3px 0 0", fontSize: 16 }}>Your Parapost hub</h3>
         </div>
         <span style={privatePillStyle}>Mobile tools</span>
@@ -3424,11 +3849,11 @@ function MobileDashboardUtilityRail({
       <div style={mobileRecentlyViewedBoxStyle}>
         <div style={mobileSubHeaderStyle}>
           <strong>People to Discover</strong>
-          <span style={privateMiniTextStyle}>Explore</span>
+          <span style={privateMiniTextStyle}>Fresh</span>
         </div>
 
         {peopleToDiscover.length === 0 ? (
-          <p style={{ ...mutedTextStyle, margin: 0 }}>More member suggestions will appear as the feed grows.</p>
+          <p style={{ ...mutedTextStyle, margin: 0 }}>New members with completed bios will appear here automatically.</p>
         ) : (
           <div style={mobileProfileRailStyle}>
             {peopleToDiscover.slice(0, 5).map((profile) => (
@@ -3444,8 +3869,8 @@ function MobileDashboardUtilityRail({
       <div style={mobileSponsorPreviewStyle}>
         <div style={sponsorIconStyle}>★</div>
         <div style={{ minWidth: 0 }}>
-          <strong style={railNameStyle}>Sponsor Space</strong>
-          <span style={railMetaStyle}>Reserved for future Stripe-powered sponsors and boosted posts.</span>
+          <strong style={railNameStyle}>Sponsor / Advertising</strong>
+          <span style={railMetaStyle}>Reach the Parapost community with future sponsor spots, creator campaigns, and advertising options.</span>
         </div>
       </div>
     </section>
@@ -3501,8 +3926,8 @@ function RailHeroProfile({
 function RailStatTile({ label, value }: { label: string; value: string }) {
   return (
     <div style={railStatTileStyle}>
-      <strong>{value}</strong>
-      <span>{label}</span>
+      <strong style={railStatValueStyle}>{value}</strong>
+      <span style={railStatLabelStyle}>{label}</span>
     </div>
   );
 }
@@ -3567,6 +3992,96 @@ function SearchResults({
         </Link>
       ))}
     </div>
+  );
+}
+
+function FeelingActivityModal({
+  selectedFeelingActivity,
+  onSelect,
+  onClear,
+  onClose,
+}: {
+  selectedFeelingActivity: FeelingActivityOption | null;
+  onSelect: (option: FeelingActivityOption) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const feelingOptions = FEELING_ACTIVITY_OPTIONS.filter((option) => option.category === "Feeling");
+  const activityOptions = FEELING_ACTIVITY_OPTIONS.filter((option) => option.category === "Activity");
+
+  return (
+    <div style={modalOverlayStyle} onClick={onClose}>
+      <div style={feelingActivityModalStyle} onClick={(event) => event.stopPropagation()}>
+        <div style={modalHeaderStyle}>
+          <div>
+            <div style={modalEyebrowStyle}>Create a post</div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Feeling / Activity</h2>
+            <p style={feelingActivityIntroStyle}>Choose one to add context to your post. It will publish with your post and show on your profile timeline.</p>
+          </div>
+          <button type="button" onClick={onClose} style={modalCloseButtonStyle}>×</button>
+        </div>
+
+        {selectedFeelingActivity ? (
+          <div style={feelingActivitySelectedPreviewStyle}>
+            <span style={selectedFeelingCategoryStyle}>{selectedFeelingActivity.category}</span>
+            <strong style={selectedFeelingLabelStyle}>{selectedFeelingActivity.label}</strong>
+            <button type="button" onClick={onClear} style={selectedFeelingRemoveStyle}>Clear</button>
+          </div>
+        ) : null}
+
+        <div style={feelingActivitySectionStyle}>
+          <h3 style={feelingActivitySectionTitleStyle}>Feelings</h3>
+          <div style={feelingActivityGridStyle}>
+            {feelingOptions.map((option) => (
+              <FeelingActivityOptionButton
+                key={option.id}
+                option={option}
+                active={selectedFeelingActivity?.id === option.id}
+                onSelect={() => onSelect(option)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div style={feelingActivitySectionStyle}>
+          <h3 style={feelingActivitySectionTitleStyle}>Activities</h3>
+          <div style={feelingActivityGridStyle}>
+            {activityOptions.map((option) => (
+              <FeelingActivityOptionButton
+                key={option.id}
+                option={option}
+                active={selectedFeelingActivity?.id === option.id}
+                onSelect={() => onSelect(option)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeelingActivityOptionButton({
+  option,
+  active,
+  onSelect,
+}: {
+  option: FeelingActivityOption;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      style={active ? { ...feelingActivityOptionStyle, ...feelingActivityOptionActiveStyle } : feelingActivityOptionStyle}
+    >
+      <span style={feelingActivityOptionDotStyle} />
+      <span style={{ minWidth: 0 }}>
+        <strong style={feelingActivityOptionLabelStyle}>{option.label}</strong>
+        <span style={feelingActivityOptionHelperStyle}>{option.helper}</span>
+      </span>
+    </button>
   );
 }
 
@@ -4048,6 +4563,138 @@ function MobileBottomNav({
 }
 
 
+const selectedFeelingActivityStyle: CSSProperties = {
+  marginTop: 12,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  maxWidth: "100%",
+  borderRadius: 14,
+  border: "1px solid rgba(245,158,11,0.22)",
+  background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(168,85,247,0.08))",
+  color: "#fff",
+  padding: "8px 10px",
+};
+
+const selectedFeelingCategoryStyle: CSSProperties = {
+  color: "#fde68a",
+  fontSize: 11,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const selectedFeelingLabelStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 950,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const selectedFeelingRemoveStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.055)",
+  color: "#e5e7eb",
+  padding: "5px 8px",
+  fontSize: 11,
+  fontWeight: 900,
+  cursor: "pointer",
+  marginLeft: "auto",
+};
+
+const feelingActivityModalStyle: CSSProperties = {
+  width: "min(720px, 100%)",
+  borderRadius: 24,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(8,10,18,0.98))",
+  boxShadow: "0 28px 80px rgba(0,0,0,0.58)",
+  padding: 18,
+};
+
+const feelingActivityIntroStyle: CSSProperties = {
+  margin: "7px 0 0",
+  color: "#9ca3af",
+  fontSize: 13,
+  lineHeight: 1.45,
+};
+
+const feelingActivitySelectedPreviewStyle: CSSProperties = {
+  ...selectedFeelingActivityStyle,
+  display: "flex",
+  marginTop: 0,
+  marginBottom: 14,
+};
+
+const feelingActivitySectionStyle: CSSProperties = {
+  marginTop: 14,
+};
+
+const feelingActivitySectionTitleStyle: CSSProperties = {
+  margin: "0 0 10px",
+  color: "#f9fafb",
+  fontSize: 14,
+  fontWeight: 950,
+};
+
+const feelingActivityGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+};
+
+const feelingActivityOptionStyle: CSSProperties = {
+  minHeight: 58,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  borderRadius: 16,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  color: "#fff",
+  padding: "10px 12px",
+  cursor: "pointer",
+  textAlign: "left",
+  width: "100%",
+};
+
+const feelingActivityOptionActiveStyle: CSSProperties = {
+  border: "1px solid rgba(245,158,11,0.38)",
+  background: "linear-gradient(135deg, rgba(245,158,11,0.14), rgba(126,34,206,0.16))",
+  boxShadow: "0 0 22px rgba(168,85,247,0.18)",
+};
+
+const feelingActivityOptionDotStyle: CSSProperties = {
+  width: 30,
+  height: 30,
+  borderRadius: 12,
+  flexShrink: 0,
+  background: "linear-gradient(135deg, rgba(245,158,11,0.92), rgba(168,85,247,0.72))",
+  boxShadow: "0 0 18px rgba(245,158,11,0.24)",
+};
+
+const feelingActivityOptionLabelStyle: CSSProperties = {
+  display: "block",
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 950,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const feelingActivityOptionHelperStyle: CSSProperties = {
+  display: "block",
+  color: "#9ca3af",
+  fontSize: 11,
+  marginTop: 2,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
 const mobileInsightsShellStyle: CSSProperties = {
   display: "none",
   gap: 14,
@@ -4218,6 +4865,28 @@ const railStatTileStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.09)",
   background: "rgba(255,255,255,0.04)",
   padding: "10px 11px",
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  minWidth: 0,
+};
+
+const railStatValueStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 18,
+  fontWeight: 950,
+  lineHeight: 1,
+  flexShrink: 0,
+};
+
+const railStatLabelStyle: CSSProperties = {
+  color: "#d1d5db",
+  fontSize: 12,
+  fontWeight: 800,
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 
 const discoverProfileRowStyle: CSSProperties = {
@@ -4236,12 +4905,15 @@ const miniArrowStyle: CSSProperties = {
   width: 24,
   height: 24,
   borderRadius: 999,
-  display: "grid",
-  placeItems: "center",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   color: "#c4b5fd",
   background: "rgba(168,85,247,0.10)",
   border: "1px solid rgba(168,85,247,0.18)",
-  fontSize: 20,
+  fontSize: 18,
+  lineHeight: 1,
+  fontWeight: 900,
   flexShrink: 0,
 };
 
@@ -4421,9 +5093,33 @@ const activeSidebarItemStyle: CSSProperties = {
   boxShadow: "0 0 24px rgba(126,34,206,0.24)",
 };
 
+const mutedSidebarItemStyle: CSSProperties = {
+  ...sidebarItemStyle,
+  color: "rgba(209,213,219,0.44)",
+  opacity: 0.58,
+  cursor: "default",
+  pointerEvents: "none",
+  background: "rgba(255,255,255,0.015)",
+};
+
+const sidebarComposerReelIconStyle: CSSProperties = {
+  width: 24,
+  height: 24,
+  borderRadius: 8,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(236,72,153,0.18)",
+  color: "#f9a8d4",
+  fontSize: 12,
+  fontWeight: 950,
+  lineHeight: 1,
+};
+
 const sidebarIconWrapStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center" };
 const dotIconStyle: CSSProperties = { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.55)" };
+const mutedDotIconStyle: CSSProperties = { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.26)" };
 const sidebarBadgeStyle: CSSProperties = { minWidth: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "#7c3aed", color: "#fff", fontSize: 12, fontWeight: 900, padding: "0 7px" };
+const mutedSidebarBadgeStyle: CSSProperties = { ...sidebarBadgeStyle, background: "rgba(168,85,247,0.22)", color: "rgba(255,255,255,0.68)", border: "1px solid rgba(255,255,255,0.08)" };
 const sidebarDividerStyle: CSSProperties = { height: 1, background: "rgba(255,255,255,0.12)", margin: "20px 0" };
 const sidebarSectionLabelStyle: CSSProperties = { color: "#c084fc", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 };
 
@@ -4435,12 +5131,15 @@ const goLiveCardStyle: CSSProperties = {
   borderRadius: 18,
   padding: 16,
   textDecoration: "none",
-  background: "linear-gradient(135deg, rgba(126,34,206,0.72), rgba(76,29,149,0.46))",
-  border: "1px solid rgba(168,85,247,0.65)",
-  boxShadow: "0 0 26px rgba(126,34,206,0.28)",
+  background: "rgba(126,34,206,0.16)",
+  border: "1px solid rgba(168,85,247,0.24)",
+  boxShadow: "0 0 20px rgba(126,34,206,0.10)",
+  opacity: 0.66,
+  cursor: "default",
 };
 
-const goLiveIconStyle: CSSProperties = { width: 48, height: 48, borderRadius: 14, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 26 };
+const goLiveIconStyle: CSSProperties = { width: 48, height: 48, borderRadius: 14, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 26 };
+const goLiveSoonBadgeStyle: CSSProperties = { marginLeft: "auto", borderRadius: 999, background: "rgba(168,85,247,0.22)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.78)", padding: "5px 8px", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap" };
 const sidebarProfileStyle: CSSProperties = { marginTop: 22, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, padding: 10, background: "rgba(255,255,255,0.04)" };
 
 const desktopTopBarStyle: CSSProperties = {
@@ -4461,7 +5160,7 @@ const searchWrapStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 12,
-  padding: "0 14px 0 18px",
+  padding: "0 18px",
   color: "#d1d5db",
   flex: 1,
   maxWidth: 620,
@@ -5363,6 +6062,7 @@ const composerInputStyle: CSSProperties = { width: "100%", minHeight: 58, maxHei
 const composerImageButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 15, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 };
 const composerActionGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 9, alignItems: "center", marginTop: 13 };
 const composerActionPillStyle: CSSProperties = { minHeight: 39, borderRadius: 14, border: "1px solid rgba(255,255,255,0.085)", background: "rgba(255,255,255,0.038)", color: "#fff", padding: "0 12px", fontWeight: 850, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", whiteSpace: "nowrap", fontSize: 12.5, transition: "border-color 160ms ease, background 160ms ease, transform 160ms ease" };
+const composerActionPillActiveStyle: CSSProperties = { border: "1px solid rgba(245,158,11,0.34)", background: "linear-gradient(135deg, rgba(245,158,11,0.14), rgba(168,85,247,0.12))", boxShadow: "0 0 18px rgba(245,158,11,0.16)" };
 const composerActionDisabledStyle: CSSProperties = { opacity: 0.46, background: "rgba(255,255,255,0.018)", border: "1px dashed rgba(255,255,255,0.11)", cursor: "not-allowed", color: "#9ca3af" };
 const composerActionNoteStyle: CSSProperties = { borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", color: "#a1a1aa", padding: "2px 6px", fontSize: 10, fontWeight: 900, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 };
 const composerActionIconStyle: CSSProperties = { width: 24, height: 24, borderRadius: 8, display: "grid", placeItems: "center", color: "#fff", fontSize: 13, fontWeight: 950, lineHeight: 1 };
@@ -5386,7 +6086,6 @@ const feedTabsStyle: CSSProperties = { display: "flex", alignItems: "center", ga
 const feedTabStyle: CSSProperties = { border: 0, background: "transparent", color: "#d1d5db", padding: "12px 18px", borderRadius: 18, cursor: "pointer", fontSize: 16, whiteSpace: "nowrap" };
 const activeFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "#c084fc", background: "rgba(126,34,206,0.18)", boxShadow: "inset 0 -3px 0 #a855f7", fontWeight: 900 };
 const disabledFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "rgba(229,231,235,0.42)", background: "transparent", border: "1px solid transparent", cursor: "default", opacity: 0.55 };
-const feedFilterButtonStyle: CSSProperties = { marginLeft: "auto", minWidth: 44, height: 44, borderRadius: 15, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.04)", color: "#e5e7eb", display: "grid", placeItems: "center", gap: 4, cursor: "pointer" };
 
 const feedStackStyle: CSSProperties = { display: "grid", gap: 16 };
 const emptyStateStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", padding: 22 };
@@ -5431,7 +6130,9 @@ const linkPreviewDomainStyle: CSSProperties = { color: "#93c5fd", fontSize: 13, 
 const postCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(255,255,255,0.062), rgba(255,255,255,0.035))", padding: 18, boxShadow: "0 18px 44px rgba(0,0,0,0.24)" };
 const postHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 14 };
 const postAuthorStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
+const postAuthorNameLineStyle: CSSProperties = { display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap", minWidth: 0 };
 const postAuthorNameStyle: CSSProperties = { display: "block", color: "#fff", textDecoration: "none", fontWeight: 950, fontSize: 16, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+const postAuthorActivityTextStyle: CSSProperties = { color: "#e9d5ff", fontWeight: 900, fontSize: 16, lineHeight: 1.25 };
 const postMetaStyle: CSSProperties = { color: "#a1a1aa", fontSize: 13, marginTop: 3 };
 const postContentStyle: CSSProperties = { color: "#f9fafb", lineHeight: 1.58, fontSize: 16, whiteSpace: "pre-wrap", margin: "10px 0 0" };
 const postImageStyle: CSSProperties = { width: "100%", maxHeight: 680, objectFit: "cover", display: "block", borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", marginTop: 14, boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };

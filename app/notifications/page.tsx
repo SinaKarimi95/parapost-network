@@ -1,30 +1,21 @@
 "use client";
 
-import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-type NotificationType =
-  | "friend_request"
-  | "friend_accept"
-  | "post_like"
-  | "comment_like"
-  | "comment_reply"
-  | "reel_like"
-  | "reel_comment";
-
 type NotificationRow = {
   id: string;
   user_id: string;
-  actor_id: string;
-  type: NotificationType;
+  actor_id: string | null;
+  type: string | null;
   post_id: string | null;
   comment_id: string | null;
   friend_request_id: string | null;
   message: string | null;
-  is_read: boolean;
-  created_at: string;
+  is_read: boolean | null;
+  created_at: string | null;
 };
 
 type ProfilePreview = {
@@ -35,58 +26,132 @@ type ProfilePreview = {
   is_online?: boolean | null;
 };
 
+type NotificationCard = NotificationRow & {
+  actor: ProfilePreview | null;
+};
+
+function getDisplayName(profile: ProfilePreview | null) {
+  return profile?.full_name || profile?.username || "Parapost Member";
+}
+
+function getInitial(profile: ProfilePreview | null) {
+  return getDisplayName(profile).charAt(0).toUpperCase();
+}
+
+function formatRelativeTime(value?: string | null) {
+  if (!value) return "just now";
+
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "just now";
+
+  const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+
+  const years = Math.floor(days / 365);
+  return `${years}y ago`;
+}
+
+function getNotificationTitle(notification: NotificationCard) {
+  const actorName = getDisplayName(notification.actor);
+  const type = notification.type || "";
+
+  if (notification.message?.trim()) return notification.message.trim();
+
+  if (type === "friend_request") return `${actorName} sent you a friend request.`;
+  if (type === "friend_accept") return `${actorName} accepted your friend request.`;
+  if (type === "post_like") return `${actorName} liked your post.`;
+  if (type === "comment_like") return `${actorName} liked your comment.`;
+  if (type === "comment_reply") return `${actorName} replied to your comment.`;
+  if (type === "post_comment") return `${actorName} commented on your post.`;
+  if (type === "reel_like") return `${actorName} liked your Reel.`;
+  if (type === "reel_comment") return `${actorName} commented on your Reel.`;
+  if (type === "badge_award") return "You earned a new badge.";
+  if (type === "share") return `${actorName} shared your post.`;
+
+  return "You have a new notification.";
+}
+
+function getNotificationMeta(notification: NotificationCard) {
+  const type = notification.type || "";
+
+  if (type.includes("friend")) return "Friends";
+  if (type.includes("comment")) return "Comments";
+  if (type.includes("like")) return "Likes";
+  if (type.includes("reel")) return "Parapost Reels";
+  if (type.includes("badge")) return "Badges";
+  if (type.includes("share")) return "Shares";
+
+  return "Notification";
+}
+
+function getNotificationHref(notification: NotificationCard) {
+  const type = notification.type || "";
+
+  if (type === "friend_request" || type === "friend_accept") {
+    return "/friends/requests";
+  }
+
+  if (notification.post_id) {
+    return `/dashboard#post-${notification.post_id}`;
+  }
+
+  if (notification.actor_id) {
+    return `/profile/${notification.actor_id}`;
+  }
+
+  return "/dashboard";
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
 
   const [currentUserId, setCurrentUserId] = useState("");
-  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
-  const [profilesMap, setProfilesMap] = useState<Record<string, ProfilePreview>>({});
+  const [notifications, setNotifications] = useState<NotificationCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "friends" | "activity">("all");
   const [statusMessage, setStatusMessage] = useState("");
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const unreadCount = useMemo(() => {
+    return notifications.filter((notification) => !notification.is_read).length;
+  }, [notifications]);
 
-  const unreadCount = useMemo(
-    () => notifications.filter((item) => !item.is_read).length,
-    [notifications]
-  );
+  const friendsCount = useMemo(() => {
+    return notifications.filter((notification) => (notification.type || "").includes("friend")).length;
+  }, [notifications]);
+
+  const activityCount = useMemo(() => {
+    return notifications.filter((notification) => !(notification.type || "").includes("friend")).length;
+  }, [notifications]);
+
+  const filteredNotifications = useMemo(() => {
+    if (activeFilter === "unread") return notifications.filter((notification) => !notification.is_read);
+    if (activeFilter === "friends") return notifications.filter((notification) => (notification.type || "").includes("friend"));
+    if (activeFilter === "activity") return notifications.filter((notification) => !(notification.type || "").includes("friend"));
+    return notifications;
+  }, [activeFilter, notifications]);
 
   const showStatus = useCallback((message: string) => {
     setStatusMessage(message);
-    window.setTimeout(() => {
-      setStatusMessage("");
-    }, 2500);
+    window.setTimeout(() => setStatusMessage(""), 2600);
   }, []);
 
-  const fetchProfilesMap = useCallback(async (userIds: string[]) => {
-    const uniqueIds = [...new Set(userIds.filter(Boolean))];
-
-    if (uniqueIds.length === 0) {
-      setProfilesMap({});
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, username, full_name, avatar_url, is_online")
-      .in("id", uniqueIds);
-
-    if (error) {
-      console.error("Error fetching notification profiles:", error.message);
-      return;
-    }
-
-    const nextMap: Record<string, ProfilePreview> = {};
-    for (const profile of data || []) {
-      nextMap[profile.id] = profile as ProfilePreview;
-    }
-
-    setProfilesMap(nextMap);
-  }, []);
-
-  const fetchNotifications = useCallback(async (userId: string) => {
+  const loadNotifications = useCallback(async (userId: string) => {
     setLoading(true);
 
     const { data, error } = await supabase
@@ -94,30 +159,57 @@ export default function NotificationsPage() {
       .select("id, user_id, actor_id, type, post_id, comment_id, friend_request_id, message, is_read, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (error) {
-      console.error("Error fetching notifications:", error.message);
+      console.error("Notifications load error:", error.message);
       setNotifications([]);
       setLoading(false);
       return;
     }
 
     const rows = (data || []) as NotificationRow[];
-    setNotifications(rows);
+    const actorIds = [
+      ...new Set(rows.map((notification) => notification.actor_id).filter(Boolean) as string[]),
+    ];
 
-    const actorIds = rows.map((item) => item.actor_id).filter(Boolean);
-    await fetchProfilesMap(actorIds);
+    let profilesMap: Record<string, ProfilePreview> = {};
+
+    if (actorIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, is_online")
+        .in("id", actorIds);
+
+      if (profilesError) {
+        console.error("Notification profile load error:", profilesError.message);
+      } else {
+        profilesMap = Object.fromEntries(
+          ((profilesData || []) as ProfilePreview[]).map((profile) => [profile.id, profile])
+        );
+      }
+    }
+
+    setNotifications(
+      rows.map((notification) => ({
+        ...notification,
+        actor: notification.actor_id ? profilesMap[notification.actor_id] || null : null,
+      }))
+    );
 
     setLoading(false);
-  }, [fetchProfilesMap]);
+  }, []);
 
   useEffect(() => {
-    const initialize = async () => {
+    let cancelled = false;
+
+    async function initialize() {
       const {
         data: { user },
         error,
       } = await supabase.auth.getUser();
+
+      if (cancelled) return;
 
       if (error || !user) {
         setCurrentUserId("");
@@ -127,11 +219,15 @@ export default function NotificationsPage() {
       }
 
       setCurrentUserId(user.id);
-      await fetchNotifications(user.id);
-    };
+      await loadNotifications(user.id);
+    }
 
-    initialize();
-  }, [fetchNotifications]);
+    void initialize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadNotifications]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -140,22 +236,14 @@ export default function NotificationsPage() {
       .channel(`notifications-page-${currentUserId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        async (payload) => {
-          const incomingUserId =
-            (payload.new as { user_id?: string } | null)?.user_id ||
-            (payload.old as { user_id?: string } | null)?.user_id;
-
-          if (incomingUserId !== currentUserId) return;
-
-          await fetchNotifications(currentUserId);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
         async () => {
-          await fetchNotifications(currentUserId);
+          await loadNotifications(currentUserId);
         }
       )
       .subscribe();
@@ -163,99 +251,10 @@ export default function NotificationsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, fetchNotifications]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setOpenMenuId(null);
-      }
-    };
-
-    const handleScroll = () => setOpenMenuId(null);
-
-    window.addEventListener("click", handleClickOutside);
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("click", handleClickOutside);
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  const markAsRead = async (notificationId: string) => {
-    const { error } = await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notificationId);
-
-    if (error) {
-      console.error("Mark read error:", error.message);
-      return false;
-    }
-
-    setNotifications((prev) =>
-      prev.map((item) =>
-        item.id === notificationId ? { ...item, is_read: true } : item
-      )
-    );
-
-    return true;
-  };
-
-  const getNotificationDestination = (notification: NotificationRow) => {
-    if (notification.type === "friend_request") return "/friends/requests";
-    if (notification.type === "friend_accept") return "/friends";
-    if (notification.type === "reel_like" || notification.type === "reel_comment") {
-      return "/reels";
-    }
-    if (notification.post_id) return `/dashboard#post-${notification.post_id}`;
-    if (notification.actor_id) return `/profile/${notification.actor_id}`;
-    return "/notifications";
-  };
-
-  const handleOpenNotification = async (notification: NotificationRow) => {
-    setProcessingId(notification.id);
-    setOpenMenuId(null);
-
-    if (!notification.is_read) {
-      await markAsRead(notification.id);
-    }
-
-    const destination = getNotificationDestination(notification);
-    router.push(destination);
-    setProcessingId(null);
-  };
-
-  const handleDeleteNotification = async (notificationId: string) => {
-    setProcessingId(notificationId);
-    setOpenMenuId(null);
-
-    const { error } = await supabase
-      .from("notifications")
-      .delete()
-      .eq("id", notificationId);
-
-    if (error) {
-      alert(`Delete notification error: ${error.message}`);
-      setProcessingId(null);
-      return;
-    }
-
-    setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
-    setProcessingId(null);
-    showStatus("Notification deleted.");
-  };
+  }, [currentUserId, loadNotifications]);
 
   const handleMarkAllRead = async () => {
-    if (!currentUserId) return;
-
-    const unreadIds = notifications.filter((item) => !item.is_read).map((item) => item.id);
-    if (unreadIds.length === 0) {
-      showStatus("No unread notifications.");
-      return;
-    }
+    if (!currentUserId || unreadCount === 0) return;
 
     const { error } = await supabase
       .from("notifications")
@@ -264,454 +263,606 @@ export default function NotificationsPage() {
       .eq("is_read", false);
 
     if (error) {
-      alert(`Mark all read error: ${error.message}`);
+      alert(`Could not mark notifications read: ${error.message}`);
       return;
     }
 
-    setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
     showStatus("All notifications marked as read.");
   };
 
-  const getInitial = (name?: string | null, username?: string | null) => {
-    const value = name || username || "U";
-    return value.charAt(0).toUpperCase();
+  const handleOpenNotification = async (notification: NotificationCard) => {
+    const href = getNotificationHref(notification);
+
+    if (!notification.is_read) {
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === notification.id ? { ...item, is_read: true } : item))
+      );
+
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notification.id);
+    }
+
+    router.push(href);
   };
 
-  const formatRelativeTime = (value?: string | null) => {
-    if (!value) return "Just now";
+  const handleDeleteNotification = async (notification: NotificationCard) => {
+    const confirmed = window.confirm("Delete this notification?");
+    if (!confirmed) return;
 
-    const timestamp = new Date(value).getTime();
-    if (Number.isNaN(timestamp)) return "Just now";
+    setProcessingId(notification.id);
 
-    const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
-    if (seconds < 60) return `${seconds}s ago`;
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("id", notification.id);
 
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (error) {
+      alert(`Could not delete notification: ${error.message}`);
+      setProcessingId(null);
+      return;
+    }
 
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-
-    const weeks = Math.floor(days / 7);
-    if (weeks < 5) return `${weeks}w ago`;
-
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months}mo ago`;
-
-    const years = Math.floor(days / 365);
-    return `${years}y ago`;
+    setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+    setProcessingId(null);
+    showStatus("Notification deleted.");
   };
 
-  const getNotificationTargetLabel = (notification: NotificationRow) => {
-    if (notification.type === "friend_request") return "Opens Friend Requests";
-    if (notification.type === "friend_accept") return "Opens Friends List";
-    if (notification.type === "reel_like" || notification.type === "reel_comment") {
-      return "Opens Reels";
-    }
-    if (notification.post_id) return "Opens related post";
-    if (notification.actor_id) return "Opens profile";
-    return "Open";
-  };
-
-  const getNotificationMessage = (notification: NotificationRow) => {
-    const actor = profilesMap[notification.actor_id];
-    const actorName = actor?.full_name || actor?.username || "Someone";
-
-    if (notification.type === "friend_request") {
-      return `${actorName} sent you a friend request.`;
-    }
-
-    if (notification.type === "friend_accept") {
-      return `${actorName} accepted your friend request.`;
-    }
-
-    if (notification.type === "reel_like") {
-      return `${actorName} liked your reel.`;
-    }
-
-    if (notification.type === "reel_comment") {
-      return `${actorName} commented on your reel.`;
-    }
-
-    if (notification.message) {
-      return `${actorName} ${notification.message}`;
-    }
-
-    return `${actorName} sent you a notification.`;
-  };
+  const filterButtons: Array<{
+    key: "all" | "unread" | "friends" | "activity";
+    label: string;
+    count: number;
+  }> = [
+    { key: "all", label: "All", count: notifications.length },
+    { key: "unread", label: "Unread", count: unreadCount },
+    { key: "friends", label: "Friends", count: friendsCount },
+    { key: "activity", label: "Activity", count: activityCount },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
-        <div
-          style={{
-            background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.04) 100%)",
-            borderRadius: "28px",
-            padding: "20px",
-            border: "1px solid rgba(255,255,255,0.10)",
-            backdropFilter: "blur(10px)",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-              flexWrap: "wrap",
-              marginBottom: "18px",
-            }}
-          >
+    <main style={pageStyle}>
+      <div style={glowOneStyle} />
+      <div style={glowTwoStyle} />
+      <div style={glowThreeStyle} />
+
+      <div style={pageInnerStyle}>
+        <section style={heroStyle}>
+          <div style={heroTopStyle}>
             <div>
-              <h1 style={{ margin: 0, fontSize: "28px", fontWeight: 800 }}>Notifications</h1>
-              <p style={{ margin: "6px 0 0", color: "#9ca3af", fontSize: "14px" }}>
-                Friend requests open Friend Requests. Friend accepts open your Friends list. Reel interactions open Reels.
+              <div style={eyebrowStyle}>Parapost Network</div>
+              <h1 style={titleStyle}>Notifications</h1>
+              <p style={subtitleStyle}>
+                Friend requests, comments, likes, shares, Parapost Reels activity, and important updates appear here.
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <Link href="/dashboard" style={secondaryLinkStyle}>
+            <div style={heroActionsStyle}>
+              <Link href="/dashboard" style={secondaryButtonStyle}>
                 Back to Dashboard
               </Link>
+
               <span style={countPillStyle}>{notifications.length} total</span>
               <span style={unreadPillStyle}>{unreadCount} unread</span>
-              <button type="button" onClick={handleMarkAllRead} style={secondaryButtonStyle}>
+
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                disabled={unreadCount === 0}
+                style={{
+                  ...secondaryButtonStyle,
+                  opacity: unreadCount === 0 ? 0.55 : 1,
+                  cursor: unreadCount === 0 ? "not-allowed" : "pointer",
+                }}
+              >
                 Mark all read
               </button>
             </div>
           </div>
 
-          {statusMessage && (
-            <div
-              style={{
-                marginBottom: "16px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                color: "#f9fafb",
-                borderRadius: "18px",
-                padding: "12px 14px",
-              }}
-            >
-              {statusMessage}
-            </div>
-          )}
+          <div style={filterRowStyle}>
+            {filterButtons.map((filter) => {
+              const isActive = activeFilter === filter.key;
 
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.key)}
+                  style={{
+                    ...filterButtonStyle,
+                    ...(isActive ? activeFilterButtonStyle : {}),
+                  }}
+                >
+                  {filter.label}
+                  <span style={filterCountStyle}>{filter.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {statusMessage ? (
+          <div style={statusMessageStyle}>
+            <span style={statusDotStyle} />
+            {statusMessage}
+          </div>
+        ) : null}
+
+        <section style={contentShellStyle}>
           {loading ? (
-            <p style={{ color: "#9ca3af", margin: 0 }}>Loading notifications...</p>
-          ) : notifications.length === 0 ? (
-            <div
-              style={{
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: "24px",
-                padding: "24px",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              <h2 style={{ marginTop: 0, marginBottom: "8px", fontSize: "20px" }}>No notifications yet</h2>
-              <p style={{ margin: 0, color: "#9ca3af", lineHeight: 1.6 }}>
-                When someone sends a friend request, accepts one, or interacts with your posts or reels, it will show up here.
+            <div style={emptyStateStyle}>
+              <div style={emptyIconStyle}>N</div>
+              <h2 style={emptyTitleStyle}>Loading notifications...</h2>
+              <p style={emptyTextStyle}>Getting your latest Parapost Network activity.</p>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div style={emptyStateStyle}>
+              <div style={emptyIconStyle}>N</div>
+              <h2 style={emptyTitleStyle}>
+                {notifications.length === 0 ? "No notifications yet" : "No notifications in this filter"}
+              </h2>
+              <p style={emptyTextStyle}>
+                {notifications.length === 0
+                  ? "When someone sends a friend request, accepts one, comments, likes, shares, or interacts with your posts or Reels, it will show up here."
+                  : "Try switching to another notification filter."}
               </p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {notifications.map((notification) => {
-                const actor = profilesMap[notification.actor_id];
-                const actorName = actor?.full_name || actor?.username || "Unnamed User";
+            <div style={notificationListStyle}>
+              {filteredNotifications.map((notification) => {
+                const isUnread = !notification.is_read;
+                const title = getNotificationTitle(notification);
+                const meta = getNotificationMeta(notification);
+                const actorName = getDisplayName(notification.actor);
                 const isBusy = processingId === notification.id;
 
                 return (
-                  <div
+                  <article
                     key={notification.id}
                     style={{
                       ...notificationCardStyle,
-                      background: notification.is_read
-                        ? "linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.03) 100%)"
-                        : "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.05) 100%)",
-                      opacity: isBusy ? 0.8 : 1,
+                      ...(isUnread ? unreadCardStyle : {}),
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "14px",
-                        flexWrap: "wrap",
-                      }}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenNotification(notification)}
+                      style={notificationMainButtonStyle}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "12px",
-                          minWidth: 0,
-                          flex: 1,
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "relative",
-                            width: "54px",
-                            height: "54px",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {actor?.avatar_url ? (
-                            <img
-                              src={actor.avatar_url}
-                              alt={actorName}
-                              style={{
-                                width: "54px",
-                                height: "54px",
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                width: "54px",
-                                height: "54px",
-                                borderRadius: "50%",
-                                background: "#374151",
-                                color: "#f9fafb",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontWeight: 700,
-                                fontSize: "18px",
-                              }}
-                            >
-                              {getInitial(actor?.full_name, actor?.username)}
-                            </div>
-                          )}
-
-                          {actor?.is_online && (
-                            <span
-                              style={{
-                                position: "absolute",
-                                bottom: "2px",
-                                right: "2px",
-                                width: "12px",
-                                height: "12px",
-                                borderRadius: "50%",
-                                background: "#22c55e",
-                                border: "2px solid #07090d",
-                                boxShadow: "0 0 6px rgba(34,197,94,0.6)",
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        <div style={{ minWidth: 0, textAlign: "left", flex: 1 }}>
-                          <div
-                            style={{
-                              color: "#f9fafb",
-                              fontWeight: 700,
-                              fontSize: "16px",
-                              marginBottom: "6px",
-                            }}
-                          >
-                            {getNotificationMessage(notification)}
-                          </div>
-
-                          <div style={{ color: "#9ca3af", fontSize: "13px", marginBottom: "6px" }}>
-                            @{actor?.username || "no-username"} · {formatRelativeTime(notification.created_at)}
-                          </div>
-
-                          <div style={{ color: "#d1d5db", fontSize: "13px" }}>
-                            {getNotificationTargetLabel(notification)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        ref={openMenuId === notification.id ? menuRef : null}
-                        style={{ display: "flex", alignItems: "center", gap: "10px", position: "relative" }}
-                      >
-                        {!notification.is_read && <span style={unreadDotStyle} />}
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId((prev) => (prev === notification.id ? null : notification.id));
-                          }}
-                          style={dotsButtonStyle}
-                        >
-                          <DotsIcon />
-                        </button>
-
-                        {openMenuId === notification.id && (
-                          <div style={menuStyle}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenNotification(notification)}
-                              style={menuItemStyle}
-                            >
-                              Open
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteNotification(notification.id)}
-                              style={{ ...menuItemStyle, color: "#fca5a5" }}
-                            >
-                              Delete
-                            </button>
-                          </div>
+                      <div style={avatarShellStyle}>
+                        {notification.actor?.avatar_url ? (
+                          <img src={notification.actor.avatar_url} alt="" style={avatarImageStyle} />
+                        ) : (
+                          <span style={avatarFallbackStyle}>{getInitial(notification.actor)}</span>
                         )}
+
+                        {notification.actor?.is_online ? <span style={onlineDotStyle} /> : null}
                       </div>
-                    </div>
-                  </div>
+
+                      <div style={notificationTextStyle}>
+                        <div style={notificationTitleRowStyle}>
+                          <h2 style={notificationTitleStyle}>{title}</h2>
+                          {isUnread ? <span style={unreadDotStyle} /> : null}
+                        </div>
+
+                        <div style={notificationMetaStyle}>
+                          <span>{meta}</span>
+                          <span>·</span>
+                          <span>{actorName}</span>
+                          <span>·</span>
+                          <span>{formatRelativeTime(notification.created_at)}</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNotification(notification)}
+                      disabled={isBusy}
+                      style={{
+                        ...deleteButtonStyle,
+                        opacity: isBusy ? 0.6 : 1,
+                        cursor: isBusy ? "not-allowed" : "pointer",
+                      }}
+                      aria-label="Delete notification"
+                    >
+                      {isBusy ? "..." : "Delete"}
+                    </button>
+                  </article>
                 );
               })}
             </div>
           )}
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
-function DotsIcon() {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: "3px",
-        width: "16px",
-        height: "16px",
-      }}
-      aria-hidden="true"
-    >
-      <span style={dotStyle} />
-      <span style={dotStyle} />
-      <span style={dotStyle} />
-    </span>
-  );
-}
-
-const dotStyle: CSSProperties = {
-  width: "4px",
-  height: "4px",
-  borderRadius: "50%",
-  background: "#f9fafb",
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  position: "relative",
+  overflow: "hidden",
+  background:
+    "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 34%), radial-gradient(circle at 88% 16%, var(--parapost-accent-muted-bg), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 48%, #05050b 100%)",
+  color: "#ffffff",
 };
 
-const secondaryLinkStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "42px",
-  padding: "0 16px",
+const glowOneStyle: CSSProperties = {
+  position: "fixed",
+  right: "-180px",
+  top: "-180px",
+  width: "460px",
+  height: "460px",
   borderRadius: "999px",
-  textDecoration: "none",
-  color: "#f9fafb",
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  fontWeight: 600,
+  background: "var(--parapost-accent-soft)",
+  filter: "blur(78px)",
+  pointerEvents: "none",
+};
+
+const glowTwoStyle: CSSProperties = {
+  position: "fixed",
+  left: "-160px",
+  bottom: "-200px",
+  width: "520px",
+  height: "520px",
+  borderRadius: "999px",
+  background: "var(--parapost-accent-muted-bg)",
+  filter: "blur(90px)",
+  pointerEvents: "none",
+};
+
+const glowThreeStyle: CSSProperties = {
+  position: "fixed",
+  left: "45%",
+  top: "18%",
+  width: "320px",
+  height: "320px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.035)",
+  filter: "blur(70px)",
+  pointerEvents: "none",
+};
+
+const pageInnerStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 1,
+  width: "100%",
+  maxWidth: "1120px",
+  margin: "0 auto",
+  padding: "28px 16px 44px",
+};
+
+const heroStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "32px",
+  padding: "22px",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.60))",
+  boxShadow: "0 26px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  marginBottom: "16px",
+};
+
+const heroTopStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "18px",
+  flexWrap: "wrap",
+};
+
+const eyebrowStyle: CSSProperties = {
+  color: "var(--parapost-accent-text)",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  marginBottom: "8px",
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(34px, 5vw, 62px)",
+  lineHeight: 0.95,
+  letterSpacing: "-0.06em",
+  fontWeight: 950,
+  color: "#ffffff",
+};
+
+const subtitleStyle: CSSProperties = {
+  margin: "12px 0 0",
+  color: "#cbd5e1",
+  fontSize: "15px",
+  lineHeight: 1.6,
+  maxWidth: "680px",
+};
+
+const heroActionsStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+  gap: "10px",
 };
 
 const secondaryButtonStyle: CSSProperties = {
   minHeight: "42px",
-  padding: "0 16px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   borderRadius: "999px",
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  border: "1px solid var(--parapost-accent-border)",
+  background: "rgba(255,255,255,0.06)",
   color: "#f9fafb",
-  fontWeight: 600,
-  cursor: "pointer",
+  padding: "0 15px",
+  textDecoration: "none",
+  fontWeight: 900,
+  fontSize: "13px",
 };
 
 const countPillStyle: CSSProperties = {
+  minHeight: "42px",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  minHeight: "42px",
-  padding: "0 14px",
   borderRadius: "999px",
-  color: "#f9fafb",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  fontWeight: 700,
-  fontSize: "14px",
+  border: "1px solid var(--parapost-accent-border)",
+  background: "var(--parapost-accent-muted-bg)",
+  color: "var(--parapost-accent-readable-text)",
+  padding: "0 15px",
+  fontWeight: 950,
+  fontSize: "13px",
 };
 
 const unreadPillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "42px",
-  padding: "0 14px",
-  borderRadius: "999px",
-  color: "#86efac",
-  background: "rgba(34,197,94,0.10)",
-  border: "1px solid rgba(34,197,94,0.24)",
-  fontWeight: 700,
-  fontSize: "14px",
+  ...countPillStyle,
+  background: "var(--parapost-accent-active-bg)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  boxShadow: "0 0 20px var(--parapost-accent-glow)",
 };
 
-const notificationCardStyle: CSSProperties = {
-  width: "100%",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "24px",
-  padding: "16px",
-  boxShadow: "0 10px 26px rgba(0,0,0,0.24)",
+const filterRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+  marginTop: "18px",
 };
 
-const unreadDotStyle: CSSProperties = {
-  width: "10px",
-  height: "10px",
-  borderRadius: "50%",
-  background: "#22c55e",
-  boxShadow: "0 0 8px rgba(34,197,94,0.7)",
-};
-
-const dotsButtonStyle: CSSProperties = {
-  width: "38px",
-  height: "38px",
+const filterButtonStyle: CSSProperties = {
+  minHeight: "40px",
   borderRadius: "999px",
   border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.05)",
-  color: "#f9fafb",
+  background: "rgba(255,255,255,0.045)",
+  color: "#cbd5e1",
+  padding: "0 13px",
   display: "inline-flex",
   alignItems: "center",
-  justifyContent: "center",
+  gap: "8px",
+  fontWeight: 900,
   cursor: "pointer",
+};
+
+const activeFilterButtonStyle: CSSProperties = {
+  background: "var(--parapost-accent-active-bg)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  color: "var(--parapost-accent-readable-text)",
+  boxShadow: "0 0 18px var(--parapost-accent-glow)",
+};
+
+const filterCountStyle: CSSProperties = {
+  minWidth: "22px",
+  height: "22px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(0,0,0,0.25)",
+  color: "#ffffff",
+  fontSize: "11px",
+  fontWeight: 950,
+};
+
+const statusMessageStyle: CSSProperties = {
+  marginBottom: "16px",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  background: "var(--parapost-accent-muted-bg)",
+  border: "1px solid var(--parapost-accent-border)",
+  color: "#f9fafb",
+  borderRadius: "18px",
+  padding: "12px 14px",
+  fontWeight: 850,
+};
+
+const statusDotStyle: CSSProperties = {
+  width: "9px",
+  height: "9px",
+  borderRadius: "999px",
+  background: "var(--parapost-accent-2)",
+  boxShadow: "0 0 16px var(--parapost-accent-glow)",
   flexShrink: 0,
 };
 
-const menuStyle: CSSProperties = {
-  position: "absolute",
-  top: "44px",
-  right: 0,
-  minWidth: "140px",
-  borderRadius: "16px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "#111827",
-  boxShadow: "0 14px 30px rgba(0,0,0,0.35)",
-  overflow: "hidden",
-  zIndex: 50,
+const contentShellStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "32px",
+  background:
+    "linear-gradient(135deg, rgba(255,255,255,0.045), var(--parapost-accent-muted-bg), rgba(15,23,42,0.52))",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+  padding: "16px",
 };
 
-const menuItemStyle: CSSProperties = {
-  width: "100%",
-  textAlign: "left",
+const emptyStateStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "26px",
+  padding: "34px 18px",
+  textAlign: "center",
+  background: "rgba(0,0,0,0.22)",
+};
+
+const emptyIconStyle: CSSProperties = {
+  width: "60px",
+  height: "60px",
+  margin: "0 auto 14px",
+  borderRadius: "22px",
+  display: "grid",
+  placeItems: "center",
+  background: "var(--parapost-accent-active-bg)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  color: "var(--parapost-accent-readable-text)",
+  boxShadow: "0 0 24px var(--parapost-accent-glow)",
+  fontWeight: 950,
+};
+
+const emptyTitleStyle: CSSProperties = {
+  margin: "0 0 8px",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 950,
+  letterSpacing: "-0.03em",
+};
+
+const emptyTextStyle: CSSProperties = {
+  margin: 0,
+  color: "#9ca3af",
+  lineHeight: 1.6,
+  maxWidth: "680px",
+  marginLeft: "auto",
+  marginRight: "auto",
+};
+
+const notificationListStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+};
+
+const notificationCardStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "24px",
+  padding: "12px",
+  background: "rgba(0,0,0,0.24)",
+};
+
+const unreadCardStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-active-border)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(0,0,0,0.26))",
+  boxShadow: "0 0 22px var(--parapost-accent-glow)",
+};
+
+const notificationMainButtonStyle: CSSProperties = {
+  appearance: "none",
+  border: 0,
   background: "transparent",
-  border: "none",
-  color: "#f9fafb",
-  padding: "12px 14px",
+  color: "inherit",
+  padding: 0,
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  textAlign: "left",
   cursor: "pointer",
-  fontSize: "14px",
+  minWidth: 0,
+  flex: 1,
+};
+
+const avatarShellStyle: CSSProperties = {
+  width: "54px",
+  height: "54px",
+  minWidth: "54px",
+  borderRadius: "999px",
+  padding: "3px",
+  position: "relative",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+  boxShadow: "0 0 18px var(--parapost-accent-glow)",
+};
+
+const avatarImageStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  display: "block",
+  objectFit: "cover",
+  objectPosition: "center",
+  borderRadius: "999px",
+  border: "2px solid #07090d",
+};
+
+const avatarFallbackStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: "999px",
+  border: "2px solid #07090d",
+  display: "grid",
+  placeItems: "center",
+  color: "var(--parapost-accent-button-text)",
+  fontWeight: 950,
+};
+
+const onlineDotStyle: CSSProperties = {
+  position: "absolute",
+  right: "2px",
+  bottom: "3px",
+  width: "12px",
+  height: "12px",
+  borderRadius: "999px",
+  background: "#22c55e",
+  border: "2px solid #07090d",
+  boxShadow: "0 0 10px rgba(34,197,94,0.8)",
+};
+
+const notificationTextStyle: CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+};
+
+const notificationTitleRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const notificationTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#f9fafb",
+  fontSize: "15px",
+  fontWeight: 950,
+  lineHeight: 1.35,
+};
+
+const unreadDotStyle: CSSProperties = {
+  width: "9px",
+  height: "9px",
+  borderRadius: "999px",
+  background: "var(--parapost-accent-2)",
+  boxShadow: "0 0 12px var(--parapost-accent-glow)",
+  flexShrink: 0,
+};
+
+const notificationMetaStyle: CSSProperties = {
+  marginTop: "5px",
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "6px",
+  color: "#94a3b8",
+  fontSize: "12px",
+  fontWeight: 750,
+};
+
+const deleteButtonStyle: CSSProperties = {
+  minHeight: "36px",
+  borderRadius: "999px",
+  border: "1px solid rgba(248,113,113,0.25)",
+  background: "rgba(248,113,113,0.10)",
+  color: "#fecaca",
+  padding: "0 12px",
+  fontWeight: 850,
+  fontSize: "12px",
 };

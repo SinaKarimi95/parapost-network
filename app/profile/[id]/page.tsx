@@ -60,12 +60,23 @@ type ProfileSearchResult = {
   is_online?: boolean | null;
 };
 
+type PostImage = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  image_url: string;
+  storage_path: string | null;
+  display_order: number;
+  created_at?: string | null;
+};
+
 type Post = {
   id: string;
   content: string;
   image_url?: string | null;
   created_at: string;
   user_id: string;
+  images?: PostImage[];
 };
 
 type Reel = {
@@ -969,6 +980,123 @@ function LinkPreviewCard({ text }: { text: string }) {
   );
 }
 
+
+const MAX_POST_IMAGES = 10;
+
+async function fetchPostImagesMap(postIds: string[]) {
+  const uniquePostIds = [...new Set(postIds.filter(Boolean))];
+
+  if (uniquePostIds.length === 0) {
+    return {} as Record<string, PostImage[]>;
+  }
+
+  const { data, error } = await supabase
+    .from("post_images")
+    .select("id, post_id, user_id, image_url, storage_path, display_order, created_at")
+    .in("post_id", uniquePostIds)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.warn("Could not load profile post images:", error.message);
+    return {} as Record<string, PostImage[]>;
+  }
+
+  return ((data || []) as PostImage[]).reduce<Record<string, PostImage[]>>((map, image) => {
+    if (!image.post_id || !image.image_url) return map;
+    if (!map[image.post_id]) map[image.post_id] = [];
+    map[image.post_id].push(image);
+    return map;
+  }, {});
+}
+
+function attachImagesToPosts<T extends Post>(posts: T[], imageMap: Record<string, PostImage[]>) {
+  return posts.map((post) => ({
+    ...post,
+    images: imageMap[post.id] || [],
+  }));
+}
+
+function getPostImageUrls(post?: Pick<Post, "image_url" | "images"> | null) {
+  if (!post) return [];
+
+  const galleryUrls = (post.images || [])
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+    .map((image) => image.image_url)
+    .filter(Boolean);
+
+  if (galleryUrls.length > 0) return galleryUrls;
+  return post.image_url ? [post.image_url] : [];
+}
+
+function ProfilePostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string }) {
+  const safeUrls = imageUrls.filter(Boolean).slice(0, MAX_POST_IMAGES);
+  if (safeUrls.length === 0) return null;
+
+  if (safeUrls.length === 1) {
+    return <img src={safeUrls[0]} alt={alt} className="profile-post-image" style={postImageStyle} />;
+  }
+
+  const visibleUrls = safeUrls.slice(0, 4);
+  const extraCount = safeUrls.length - visibleUrls.length;
+
+  return (
+    <div style={profilePostImageGridStyle}>
+      {visibleUrls.map((url, index) => {
+        const isFirstInThreeGrid = safeUrls.length === 3 && index === 0;
+        const showOverlay = index === 3 && extraCount > 0;
+
+        return (
+          <div
+            key={`${url}-${index}`}
+            style={{
+              ...profilePostImageGridTileStyle,
+              ...(isFirstInThreeGrid ? profilePostImageGridLargeTileStyle : {}),
+            }}
+          >
+            <img src={url} alt={`${alt} ${index + 1}`} style={profilePostImageGridImageStyle} />
+            {showOverlay ? <div style={profilePostImageGridOverlayStyle}>+{extraCount}</div> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProfileComposerImagePreviewGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string }) {
+  const safeUrls = imageUrls.filter(Boolean).slice(0, MAX_POST_IMAGES);
+  if (safeUrls.length === 0) return null;
+
+  const visibleUrls = safeUrls.slice(0, 4);
+  const extraCount = safeUrls.length - visibleUrls.length;
+
+  return (
+    <div
+      style={{
+        ...profileComposerPreviewGridStyle,
+        ...(safeUrls.length === 1 ? profileComposerPreviewSingleGridStyle : {}),
+      }}
+    >
+      {visibleUrls.map((url, index) => {
+        const showOverlay = index === 3 && extraCount > 0;
+
+        return (
+          <div
+            key={`${url}-${index}`}
+            style={{
+              ...profileComposerPreviewTileStyle,
+              ...(safeUrls.length === 1 ? profileComposerPreviewSingleTileStyle : {}),
+            }}
+          >
+            <img src={url} alt={`${alt} ${index + 1}`} style={profileComposerPreviewImageStyle} />
+            {showOverlay ? <div style={profileComposerPreviewOverlayStyle}>+{extraCount}</div> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 function ParaGhostBadgeIcon({
   badge,
   size = "card",
@@ -1023,8 +1151,8 @@ export default function ProfilePage() {
   const [viewerEmail, setViewerEmail] = useState("");
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [profilePostContent, setProfilePostContent] = useState("");
-  const [profilePostImage, setProfilePostImage] = useState<File | null>(null);
-  const [profilePostImagePreviewUrl, setProfilePostImagePreviewUrl] = useState("");
+  const [profilePostImages, setProfilePostImages] = useState<File[]>([]);
+  const [profilePostImagePreviewUrls, setProfilePostImagePreviewUrls] = useState<string[]>([]);
   const [profilePostLoading, setProfilePostLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [sharedPostPosts, setSharedPostPosts] = useState<SharedProfilePost[]>([]);
@@ -1613,7 +1741,9 @@ const closeProfileMobileSearch = useCallback(() => {
       setErrorMessage(postsResult.error.message || "Unable to load posts.");
       setPosts([]);
     } else {
-      setPosts((postsResult.data as Post[]) || []);
+      const loadedPosts = (postsResult.data as Post[]) || [];
+      const postImagesMap = await fetchPostImagesMap(loadedPosts.map((post) => post.id));
+      setPosts(attachImagesToPosts(loadedPosts, postImagesMap));
     }
 
     if (sharesResult.error) {
@@ -1640,7 +1770,9 @@ const closeProfileMobileSearch = useCallback(() => {
           .in("id", sharedPostIds);
 
         if (!sharedPostsError) {
-          sharedOriginalPosts = (sharedPostsData as Post[]) || [];
+          const baseSharedPosts = (sharedPostsData as Post[]) || [];
+          const sharedPostImagesMap = await fetchPostImagesMap(baseSharedPosts.map((post) => post.id));
+          sharedOriginalPosts = attachImagesToPosts(baseSharedPosts, sharedPostImagesMap);
         }
       }
 
@@ -1901,18 +2033,18 @@ useEffect(() => {
 }, []);
 
   useEffect(() => {
-    if (!profilePostImage) {
-      setProfilePostImagePreviewUrl("");
+    if (profilePostImages.length === 0) {
+      setProfilePostImagePreviewUrls([]);
       return;
     }
 
-    const objectUrl = URL.createObjectURL(profilePostImage);
-    setProfilePostImagePreviewUrl(objectUrl);
+    const objectUrls = profilePostImages.map((file) => URL.createObjectURL(file));
+    setProfilePostImagePreviewUrls(objectUrls);
 
     return () => {
-      URL.revokeObjectURL(objectUrl);
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [profilePostImage]);
+  }, [profilePostImages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2030,13 +2162,38 @@ useEffect(() => {
   };
 
   const handleProfilePostImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    setProfilePostImage(file);
+    const selectedFiles = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (selectedFiles.length === 0) {
+      if (profilePostFileInputRef.current) profilePostFileInputRef.current.value = "";
+      return;
+    }
+
+    setProfilePostImages((prev) => {
+      const remainingSlots = Math.max(MAX_POST_IMAGES - prev.length, 0);
+      const acceptedFiles = selectedFiles.slice(0, remainingSlots);
+
+      if (selectedFiles.length > remainingSlots) {
+        alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
+      }
+
+      return [...prev, ...acceptedFiles];
+    });
+
+    if (profilePostFileInputRef.current) {
+      profilePostFileInputRef.current.value = "";
+    }
   };
 
-  const handleRemoveProfilePostImage = () => {
-    setProfilePostImage(null);
-    setProfilePostImagePreviewUrl("");
+  const handleRemoveProfilePostImage = (index?: number) => {
+    if (typeof index === "number") {
+      setProfilePostImages((prev) => prev.filter((_, imageIndex) => imageIndex !== index));
+    } else {
+      setProfilePostImages([]);
+      setProfilePostImagePreviewUrls([]);
+    }
 
     if (profilePostFileInputRef.current) {
       profilePostFileInputRef.current.value = "";
@@ -2046,22 +2203,28 @@ useEffect(() => {
   const handleCreateProfilePost = async () => {
     if (!isOwnProfile || !viewerId) return;
 
-    if (!profilePostContent.trim() && !profilePostImage) {
-      alert("Please add text or choose an image.");
+    if (!profilePostContent.trim() && profilePostImages.length === 0) {
+      alert("Please add text or choose photos.");
+      return;
+    }
+
+    if (profilePostImages.length > MAX_POST_IMAGES) {
+      alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
       return;
     }
 
     setProfilePostLoading(true);
 
-    let imageUrl: string | null = null;
+    const uploadedImages: Array<{ image_url: string; storage_path: string; display_order: number }> = [];
 
-    if (profilePostImage) {
-      const fileExt = profilePostImage.name.split(".").pop() || "jpg";
-      const fileName = `${viewerId}-${Date.now()}.${fileExt}`;
+    for (const [index, imageFile] of profilePostImages.entries()) {
+      const fileExt = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+      const safeExt = fileExt.replace(/[^a-z0-9]/g, "") || "jpg";
+      const fileName = `${viewerId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2)}.${safeExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("post-images")
-        .upload(fileName, profilePostImage, {
+        .upload(fileName, imageFile, {
           cacheControl: "604800",
           upsert: false,
         });
@@ -2076,21 +2239,47 @@ useEffect(() => {
         .from("post-images")
         .getPublicUrl(fileName);
 
-      imageUrl = publicUrlData.publicUrl;
+      uploadedImages.push({
+        image_url: publicUrlData.publicUrl,
+        storage_path: fileName,
+        display_order: index,
+      });
     }
 
-    const { error: insertError } = await supabase.from("posts").insert([
-      {
-        content: profilePostContent.trim(),
-        user_id: viewerId,
-        image_url: imageUrl,
-      },
-    ]);
+    const { data: insertedPost, error: insertError } = await supabase
+      .from("posts")
+      .insert([
+        {
+          content: profilePostContent.trim(),
+          user_id: viewerId,
+          image_url: uploadedImages[0]?.image_url || null,
+        },
+      ])
+      .select("id, content, image_url, created_at, user_id")
+      .single();
 
-    if (insertError) {
-      alert(`Post error: ${insertError.message}`);
+    if (insertError || !insertedPost) {
+      alert(`Post error: ${insertError?.message || "Post could not be created."}`);
       setProfilePostLoading(false);
       return;
+    }
+
+    if (uploadedImages.length > 0) {
+      const { error: imageRowsError } = await supabase.from("post_images").insert(
+        uploadedImages.map((uploadedImage) => ({
+          post_id: insertedPost.id,
+          user_id: viewerId,
+          image_url: uploadedImage.image_url,
+          storage_path: uploadedImage.storage_path,
+          display_order: uploadedImage.display_order,
+        }))
+      );
+
+      if (imageRowsError) {
+        alert(`Post image save error: ${imageRowsError.message}`);
+        setProfilePostLoading(false);
+        return;
+      }
     }
 
     setProfilePostContent("");
@@ -3192,7 +3381,7 @@ useEffect(() => {
   const profileSmoothLoadClass = profileIsReady
     ? "profile-data-ready"
     : "profile-data-waiting";
-  const profilePhotoCount = posts.filter((post) => Boolean(post.image_url)).length;
+  const profilePhotoCount = posts.filter((post) => getPostImageUrls(post).length > 0).length;
   const profileTabItems = [
     {
       value: "Posts",
@@ -10885,7 +11074,7 @@ return (
                         justifyContent: "space-between",
                         gap: "12px",
                         flexWrap: "wrap",
-                        marginBottom: profilePostImagePreviewUrl ? "14px" : "0px",
+                        marginBottom: profilePostImagePreviewUrls.length > 0 ? "14px" : "0px",
                       }}
                     >
                       <div>
@@ -10903,13 +11092,13 @@ return (
                           onClick={() => profilePostFileInputRef.current?.click()}
                           style={profileCompactSecondaryButtonStyle}
                         >
-                          {profilePostImage ? "Change image" : "Upload image"}
+                          {profilePostImages.length > 0 ? "Add more photos" : "Upload photos"}
                         </button>
 
-                        {profilePostImage ? (
+                        {profilePostImages.length > 0 ? (
                           <button
                             type="button"
-                            onClick={handleRemoveProfilePostImage}
+                            onClick={() => handleRemoveProfilePostImage()}
                             style={profilePostDangerButtonStyle}
                           >
                             Remove
@@ -10922,24 +11111,30 @@ return (
                       ref={profilePostFileInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleProfilePostImageChange}
                       style={{ display: "none" }}
                     />
 
-                    {profilePostImagePreviewUrl ? (
-                      <img
-                        src={profilePostImagePreviewUrl}
-                        alt="Selected preview"
-                        style={{
-                          width: "100%",
-                          maxHeight: "360px",
-                          objectFit: "cover",
-                          borderRadius: "22px",
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          display: "block",
-                          boxShadow: "0 16px 36px rgba(0,0,0,0.30)",
-                        }}
-                      />
+                    {profilePostImagePreviewUrls.length > 0 ? (
+                      <div style={{ display: "grid", gap: "10px" }}>
+                        <ProfileComposerImagePreviewGrid
+                          imageUrls={profilePostImagePreviewUrls}
+                          alt="Selected preview"
+                        />
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ color: "#cbd5e1", fontSize: "12px", fontWeight: 850 }}>
+                            {profilePostImages.length} photo{profilePostImages.length === 1 ? "" : "s"} selected · up to {MAX_POST_IMAGES}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProfilePostImage()}
+                            style={profilePostDangerButtonStyle}
+                          >
+                            Remove photos
+                          </button>
+                        </div>
+                      </div>
                     ) : null}
                   </div>
 
@@ -10955,13 +11150,13 @@ return (
 
                     <button
                       onClick={handleCreateProfilePost}
-                      disabled={profilePostLoading || (!profilePostContent.trim() && !profilePostImage)}
+                      disabled={profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)}
                       style={{
                         ...profileCompactPrimaryButtonStyle,
                         background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))",
                         boxShadow: "0 12px 28px var(--parapost-accent-active-border)",
-                        opacity: profilePostLoading || (!profilePostContent.trim() && !profilePostImage) ? 0.62 : 1,
-                        cursor: profilePostLoading || (!profilePostContent.trim() && !profilePostImage) ? "not-allowed" : "pointer",
+                        opacity: profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0) ? 0.62 : 1,
+                        cursor: profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0) ? "not-allowed" : "pointer",
                       }}
                     >
                       {profilePostLoading ? "Posting..." : "Publish post"}
@@ -11247,9 +11442,7 @@ return (
                                   </>
                                 ) : null}
 
-                                {originalPost.image_url ? (
-                                  <img src={originalPost.image_url} alt="Shared post" className="profile-post-image" style={postImageStyle} />
-                                ) : null}
+                                <ProfilePostImageGrid imageUrls={getPostImageUrls(originalPost)} alt="Shared post image" />
 
                               </div>
                             </article>
@@ -11369,9 +11562,7 @@ return (
                               </>
                             ) : null}
 
-                            {post.image_url ? (
-                              <img src={post.image_url} alt="Post" className="profile-post-image" style={postImageStyle} />
-                            ) : null}
+                            <ProfilePostImageGrid imageUrls={getPostImageUrls(post)} alt="Post image" />
 
                             <div style={postActionsRowStyle}>
                               <button
@@ -12629,6 +12820,61 @@ const postContentStyle: CSSProperties = {
   letterSpacing: "-0.006em",
 };
 
+const profileComposerPreviewGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "6px",
+  width: "min(100%, 430px)",
+  maxHeight: "292px",
+  margin: "12px auto 0",
+  padding: "8px",
+  borderRadius: "20px",
+  overflow: "hidden",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(0,0,0,0.22)",
+  boxShadow: "0 12px 26px rgba(0,0,0,0.24)",
+};
+
+const profileComposerPreviewSingleGridStyle: CSSProperties = {
+  gridTemplateColumns: "1fr",
+  maxHeight: "260px",
+};
+
+const profileComposerPreviewTileStyle: CSSProperties = {
+  position: "relative",
+  minHeight: "132px",
+  height: "132px",
+  overflow: "hidden",
+  borderRadius: "16px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.04)",
+};
+
+const profileComposerPreviewSingleTileStyle: CSSProperties = {
+  minHeight: "246px",
+  height: "246px",
+};
+
+const profileComposerPreviewImageStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  minHeight: "100%",
+  objectFit: "cover",
+  display: "block",
+};
+
+const profileComposerPreviewOverlayStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(0,0,0,0.58)",
+  color: "#ffffff",
+  fontSize: "32px",
+  fontWeight: 950,
+  letterSpacing: "-0.04em",
+};
+
 const postImageStyle: CSSProperties = {
   width: "100%",
   maxHeight: "720px",
@@ -12639,6 +12885,50 @@ const postImageStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.10)",
   boxShadow: "0 12px 26px rgba(0,0,0,0.28)",
 };
+
+const profilePostImageGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "8px",
+  marginTop: "14px",
+  borderRadius: "18px",
+  overflow: "hidden",
+  border: "1px solid rgba(255,255,255,0.10)",
+  boxShadow: "0 12px 26px rgba(0,0,0,0.28)",
+};
+
+const profilePostImageGridTileStyle: CSSProperties = {
+  position: "relative",
+  minHeight: "220px",
+  overflow: "hidden",
+  background: "rgba(255,255,255,0.04)",
+};
+
+const profilePostImageGridLargeTileStyle: CSSProperties = {
+  gridRow: "span 2",
+  minHeight: "448px",
+};
+
+const profilePostImageGridImageStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  minHeight: "inherit",
+  objectFit: "cover",
+  display: "block",
+};
+
+const profilePostImageGridOverlayStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(0,0,0,0.58)",
+  color: "#ffffff",
+  fontSize: "40px",
+  fontWeight: 950,
+  letterSpacing: "-0.04em",
+};
+
 
 const postActionsRowStyle: CSSProperties = {
   display: "flex",

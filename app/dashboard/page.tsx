@@ -83,12 +83,23 @@ const SHOWCASE_FONT_OPTIONS: Array<{ value: ShowcaseFontValue; label: string; fa
   { value: "merriweather", label: "Merriweather", family: "Merriweather, Georgia, serif" },
 ];
 
+type PostImage = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  image_url: string;
+  storage_path: string | null;
+  display_order: number;
+  created_at?: string | null;
+};
+
 type Post = {
   id: string;
   content: string;
   image_url?: string | null;
   created_at: string;
   user_id: string;
+  images?: PostImage[];
 };
 
 type SharedReelItem = {
@@ -133,6 +144,7 @@ type FollowMap = Record<string, boolean>;
 
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
 const POST_CHARACTER_LIMIT = 63206;
+const MAX_POST_IMAGES = 10;
 
 const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
   { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood" },
@@ -341,6 +353,85 @@ function LinkPreviewCard({ text }: { text: string }) {
         <div style={linkPreviewDomainStyle}>{preview.hostname}</div>
       </div>
     </a>
+  );
+}
+
+async function fetchPostImagesMap(postIds: string[]) {
+  const uniquePostIds = [...new Set(postIds.filter(Boolean))];
+
+  if (uniquePostIds.length === 0) {
+    return {} as Record<string, PostImage[]>;
+  }
+
+  const { data, error } = await supabase
+    .from("post_images")
+    .select("id, post_id, user_id, image_url, storage_path, display_order, created_at")
+    .in("post_id", uniquePostIds)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.warn("Could not load post images:", error.message);
+    return {} as Record<string, PostImage[]>;
+  }
+
+  return ((data || []) as PostImage[]).reduce<Record<string, PostImage[]>>((map, image) => {
+    if (!image.post_id || !image.image_url) return map;
+    if (!map[image.post_id]) map[image.post_id] = [];
+    map[image.post_id].push(image);
+    return map;
+  }, {});
+}
+
+function attachImagesToPosts<T extends Post>(posts: T[], imageMap: Record<string, PostImage[]>) {
+  return posts.map((post) => ({
+    ...post,
+    images: imageMap[post.id] || [],
+  }));
+}
+
+function getPostImageUrls(post?: Pick<Post, "image_url" | "images"> | null) {
+  if (!post) return [];
+
+  const galleryUrls = (post.images || [])
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+    .map((image) => image.image_url)
+    .filter(Boolean);
+
+  if (galleryUrls.length > 0) return galleryUrls;
+  return post.image_url ? [post.image_url] : [];
+}
+
+function PostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string }) {
+  const safeUrls = imageUrls.filter(Boolean).slice(0, MAX_POST_IMAGES);
+  if (safeUrls.length === 0) return null;
+
+  if (safeUrls.length === 1) {
+    return <img src={safeUrls[0]} alt={alt} style={postImageStyle} />;
+  }
+
+  const visibleUrls = safeUrls.slice(0, 4);
+  const extraCount = safeUrls.length - visibleUrls.length;
+
+  return (
+    <div style={postImageGridStyle}>
+      {visibleUrls.map((url, index) => {
+        const isFirstInThreeGrid = safeUrls.length === 3 && index === 0;
+        const showOverlay = index === 3 && extraCount > 0;
+
+        return (
+          <div
+            key={`${url}-${index}`}
+            style={{
+              ...postImageGridTileStyle,
+              ...(isFirstInThreeGrid ? postImageGridLargeTileStyle : {}),
+            }}
+          >
+            <img src={url} alt={`${alt} ${index + 1}`} style={postImageGridImageStyle} />
+            {showOverlay ? <div style={postImageGridOverlayStyle}>+{extraCount}</div> : null}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -862,8 +953,8 @@ function splitPostFeelingActivityContent(content: string) {
 
 export default function DashboardPage() {
   const [content, setContent] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [postImages, setPostImages] = useState<File[]>([]);
+  const [postImagePreviewUrls, setPostImagePreviewUrls] = useState<string[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [sharedPostItems, setSharedPostItems] = useState<SharedPostItem[]>([]);
   const [sharedReelItems, setSharedReelItems] = useState<SharedReelItem[]>([]);
@@ -1338,10 +1429,14 @@ export default function DashboardPage() {
       return [] as SharedPostItem[];
     }
 
+    const sharedPostImagesMap = await fetchPostImagesMap(((postRows || []) as Post[]).map((post) => post.id));
     const postMap = new Map<string, Post>();
     for (const post of (postRows || []) as Post[]) {
       if (!post?.id || blockedIds.includes(post.user_id)) continue;
-      postMap.set(post.id, post);
+      postMap.set(post.id, {
+        ...post,
+        images: sharedPostImagesMap[post.id] || [],
+      });
     }
 
     const nextSharedPosts = visibleShareRows
@@ -1491,7 +1586,9 @@ export default function DashboardPage() {
       return;
     }
 
-    const visiblePosts = ((postsData || []) as Post[]).filter((post) => !blockedIds.includes(post.user_id));
+    const visiblePostsBase = ((postsData || []) as Post[]).filter((post) => !blockedIds.includes(post.user_id));
+    const postImagesMap = await fetchPostImagesMap(visiblePostsBase.map((post) => post.id));
+    const visiblePosts = attachImagesToPosts(visiblePostsBase, postImagesMap);
     const visibleSharedPosts = await fetchSharedPosts(blockedIds);
     const visibleShared = await fetchSharedReels(blockedIds);
 
@@ -1587,16 +1684,18 @@ export default function DashboardPage() {
   }, [currentUserId, fetchDashboardData]);
 
   useEffect(() => {
-    if (!image) {
-      setImagePreviewUrl("");
+    if (postImages.length === 0) {
+      setPostImagePreviewUrls([]);
       return;
     }
 
-    const objectUrl = URL.createObjectURL(image);
-    setImagePreviewUrl(objectUrl);
+    const objectUrls = postImages.map((file) => URL.createObjectURL(file));
+    setPostImagePreviewUrls(objectUrls);
 
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [image]);
+    return () => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [postImages]);
 
   useEffect(() => {
     if (!dashboardShowcaseMediaFile) {
@@ -1820,19 +1919,48 @@ export default function DashboardPage() {
   };
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    setImage(file);
+    const selectedFiles = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (selectedFiles.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setPostImages((prev) => {
+      const remainingSlots = Math.max(MAX_POST_IMAGES - prev.length, 0);
+      const acceptedFiles = selectedFiles.slice(0, remainingSlots);
+
+      if (selectedFiles.length > remainingSlots) {
+        alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
+      }
+
+      return [...prev, ...acceptedFiles];
+    });
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleRemoveImage = () => {
-    setImage(null);
-    setImagePreviewUrl("");
+  const handleRemoveImage = (index?: number) => {
+    if (typeof index === "number") {
+      setPostImages((prev) => prev.filter((_, imageIndex) => imageIndex !== index));
+    } else {
+      setPostImages([]);
+      setPostImagePreviewUrls([]);
+    }
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handlePost = async () => {
-    if (!content.trim() && !image && !selectedFeelingActivity) {
-      alert("Please add text, choose an image, or select a Feeling / Activity.");
+    if (!content.trim() && postImages.length === 0 && !selectedFeelingActivity) {
+      alert("Please add text, choose photos, or select a Feeling / Activity.");
+      return;
+    }
+
+    if (postImages.length > MAX_POST_IMAGES) {
+      alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
       return;
     }
 
@@ -1849,13 +1977,14 @@ export default function DashboardPage() {
       return;
     }
 
-    let imageUrl: string | null = null;
+    const uploadedImages: Array<{ image_url: string; storage_path: string; display_order: number }> = [];
 
-    if (image) {
-      const fileExt = image.name.split(".").pop() || "jpg";
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    for (const [index, imageFile] of postImages.entries()) {
+      const fileExt = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+      const safeExt = fileExt.replace(/[^a-z0-9]/g, "") || "jpg";
+      const fileName = `${user.id}/${Date.now()}-${index}-${Math.random().toString(36).slice(2)}.${safeExt}`;
 
-      const { error: uploadError } = await supabase.storage.from("post-images").upload(fileName, image, {
+      const { error: uploadError } = await supabase.storage.from("post-images").upload(fileName, imageFile, {
         cacheControl: "604800",
         upsert: false,
       });
@@ -1868,23 +1997,50 @@ export default function DashboardPage() {
       }
 
       const { data: publicUrlData } = supabase.storage.from("post-images").getPublicUrl(fileName);
-      imageUrl = publicUrlData.publicUrl;
+      uploadedImages.push({
+        image_url: publicUrlData.publicUrl,
+        storage_path: fileName,
+        display_order: index,
+      });
     }
 
     const finalContent = buildPostContentWithFeelingActivity(content, selectedFeelingActivity);
+    const primaryImageUrl = uploadedImages[0]?.image_url || null;
 
-    const { error: insertError } = await supabase.from("posts").insert([
-      {
-        content: finalContent,
-        user_id: user.id,
-        image_url: imageUrl,
-      },
-    ]);
+    const { data: insertedPost, error: insertError } = await supabase
+      .from("posts")
+      .insert([
+        {
+          content: finalContent,
+          user_id: user.id,
+          image_url: primaryImageUrl,
+        },
+      ])
+      .select("id, content, image_url, created_at, user_id")
+      .single();
 
-    if (insertError) {
-      alert(`Post error: ${insertError.message}`);
+    if (insertError || !insertedPost) {
+      alert(`Post error: ${insertError?.message || "Post could not be created."}`);
       setLoading(false);
       return;
+    }
+
+    if (uploadedImages.length > 0) {
+      const { error: imageRowsError } = await supabase.from("post_images").insert(
+        uploadedImages.map((uploadedImage) => ({
+          post_id: insertedPost.id,
+          user_id: user.id,
+          image_url: uploadedImage.image_url,
+          storage_path: uploadedImage.storage_path,
+          display_order: uploadedImage.display_order,
+        }))
+      );
+
+      if (imageRowsError) {
+        alert(`Post image save error: ${imageRowsError.message}`);
+        setLoading(false);
+        return;
+      }
     }
 
     setContent("");
@@ -2220,8 +2376,8 @@ export default function DashboardPage() {
               firstName={firstName}
               content={content}
               setContent={setContent}
-              image={image}
-              imagePreviewUrl={imagePreviewUrl}
+              images={postImages}
+              imagePreviewUrls={postImagePreviewUrls}
               loading={loading}
               selectedFeelingActivity={selectedFeelingActivity}
               fileInputRef={fileInputRef}
@@ -3937,8 +4093,8 @@ function ComposerCard({
   firstName,
   content,
   setContent,
-  image,
-  imagePreviewUrl,
+  images,
+  imagePreviewUrls,
   loading,
   selectedFeelingActivity,
   fileInputRef,
@@ -3953,18 +4109,18 @@ function ComposerCard({
   firstName: string;
   content: string;
   setContent: (value: string) => void;
-  image: File | null;
-  imagePreviewUrl: string;
+  images: File[];
+  imagePreviewUrls: string[];
   loading: boolean;
   selectedFeelingActivity: FeelingActivityOption | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  onRemoveImage: () => void;
+  onRemoveImage: (index?: number) => void;
   onOpenFeelingActivity: () => void;
   onClearFeelingActivity: () => void;
   onPost: () => void;
 }) {
-  const canPublish = content.trim().length > 0 || !!image || !!selectedFeelingActivity;
+  const canPublish = content.trim().length > 0 || images.length > 0 || !!selectedFeelingActivity;
 
   return (
     <section id="dashboard-create-post" ref={composerRef} className="dashboard-card dashboard-composer-card" style={composerCardStyle}>
@@ -3987,14 +4143,42 @@ function ComposerCard({
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={onImageChange} style={{ display: "none" }} />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onImageChange} style={{ display: "none" }} />
 
-      {imagePreviewUrl ? (
+      {imagePreviewUrls.length > 0 ? (
         <div style={imagePreviewWrapStyle}>
-          <img src={imagePreviewUrl} alt="Selected preview" style={imagePreviewStyle} />
+          <div
+            style={{
+              ...composerPreviewGridStyle,
+              ...(imagePreviewUrls.length === 1 ? composerPreviewSingleGridStyle : null),
+            }}
+          >
+            {imagePreviewUrls.slice(0, 4).map((previewUrl, index) => {
+              const extraCount = imagePreviewUrls.length - 4;
+              const showOverlay = index === 3 && extraCount > 0;
+
+              return (
+                <button
+                  key={`${previewUrl}-${index}`}
+                  type="button"
+                  onClick={() => onRemoveImage(index)}
+                  style={{
+                    ...composerPreviewTileStyle,
+                    ...(imagePreviewUrls.length === 1 ? composerPreviewSingleTileStyle : null),
+                  }}
+                  aria-label={`Remove selected image ${index + 1}`}
+                >
+                  <img src={previewUrl} alt={`Selected preview ${index + 1}`} style={composerPreviewImageStyle} />
+                  {showOverlay ? <span style={composerPreviewOverlayStyle}>+{extraCount}</span> : null}
+                </button>
+              );
+            })}
+          </div>
           <div style={imagePreviewMetaRowStyle}>
-            {image ? <span style={selectedImageNameStyle}>{image.name}</span> : null}
-            <button type="button" onClick={onRemoveImage} style={removeImageButtonStyle}>Remove image</button>
+            <span style={selectedImageNameStyle}>
+              {images.length} photo{images.length === 1 ? "" : "s"} selected · up to {MAX_POST_IMAGES}
+            </span>
+            <button type="button" onClick={() => onRemoveImage()} style={removeImageButtonStyle}>Remove photos</button>
           </div>
         </div>
       ) : null}
@@ -4265,7 +4449,7 @@ function PostCard({
         </>
       ) : null}
 
-      {post.image_url ? <img src={post.image_url} alt="Post" style={postImageStyle} /> : null}
+      <PostImageGrid imageUrls={getPostImageUrls(post)} alt="Post image" />
 
       {commentCount > 0 || shareCount > 0 ? (
         <div style={postStatsSummaryStyle}>
@@ -4338,9 +4522,7 @@ function SharedPostCard({
           </>
         ) : null}
 
-        {originalPost.image_url ? (
-          <img src={originalPost.image_url} alt="Shared post image" style={postImageStyle} />
-        ) : null}
+        <PostImageGrid imageUrls={getPostImageUrls(originalPost)} alt="Shared post image" />
 
       </div>
     </article>
@@ -6711,8 +6893,45 @@ const composerFooterStyle: CSSProperties = { display: "flex", alignItems: "cente
 const composerHelperTextStyle: CSSProperties = { color: "#6b7280", fontSize: 11.5, lineHeight: 1.35 };
 const publishButtonStyle: CSSProperties = { marginLeft: "auto", minHeight: 35, borderRadius: 14, border: 0, background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))", color: "#111827", fontWeight: 900, padding: "0 15px", cursor: "pointer", boxShadow: "0 10px 20px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)", whiteSpace: "nowrap", fontSize: 12.5 };
 
-const imagePreviewWrapStyle: CSSProperties = { marginTop: 14, borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(0,0,0,0.22)", position: "relative" };
+const imagePreviewWrapStyle: CSSProperties = {
+  width: "min(100%, 430px)",
+  margin: "12px auto 0",
+  borderRadius: 20,
+  border: "1px solid rgba(255,255,255,0.10)",
+  overflow: "hidden",
+  background: "rgba(0,0,0,0.22)",
+  position: "relative",
+};
 const imagePreviewStyle: CSSProperties = { width: "100%", maxHeight: 360, objectFit: "cover", display: "block" };
+const composerPreviewGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 6,
+  padding: 8,
+  maxHeight: 292,
+  overflow: "hidden",
+};
+const composerPreviewSingleGridStyle: CSSProperties = {
+  gridTemplateColumns: "1fr",
+  maxHeight: 260,
+};
+const composerPreviewTileStyle: CSSProperties = {
+  position: "relative",
+  minHeight: 132,
+  height: 132,
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 16,
+  overflow: "hidden",
+  padding: 0,
+  background: "rgba(255,255,255,0.04)",
+  cursor: "pointer",
+};
+const composerPreviewSingleTileStyle: CSSProperties = {
+  minHeight: 246,
+  height: 246,
+};
+const composerPreviewImageStyle: CSSProperties = { width: "100%", height: "100%", minHeight: "100%", objectFit: "cover", display: "block" };
+const composerPreviewOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.55)", color: "#ffffff", fontWeight: 950, fontSize: 30 };
 const imagePreviewMetaRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: 12, flexWrap: "wrap" };
 const removeImageButtonStyle: CSSProperties = { border: "1px solid rgba(248,113,113,0.3)", background: "rgba(127,29,29,0.82)", color: "#fff", borderRadius: 999, padding: "8px 12px", fontWeight: 900, cursor: "pointer" };
 const selectedImageNameStyle: CSSProperties = { maxWidth: "70%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", borderRadius: 999, padding: "7px 10px", background: "rgba(0,0,0,0.62)", color: "#e5e7eb", fontSize: 12 };
@@ -6771,6 +6990,11 @@ const postAuthorActivityTextStyle: CSSProperties = { color: "var(--parapost-acce
 const postMetaStyle: CSSProperties = { color: "#a1a1aa", fontSize: 13, marginTop: 3 };
 const postContentStyle: CSSProperties = { color: "#f9fafb", lineHeight: 1.58, fontSize: 16, whiteSpace: "pre-wrap", margin: "10px 0 0" };
 const postImageStyle: CSSProperties = { width: "100%", maxHeight: 680, objectFit: "cover", display: "block", borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", marginTop: 14, boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
+const postImageGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 14, borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
+const postImageGridTileStyle: CSSProperties = { position: "relative", minHeight: 230, overflow: "hidden", background: "rgba(255,255,255,0.04)" };
+const postImageGridLargeTileStyle: CSSProperties = { gridRow: "span 2", minHeight: 468 };
+const postImageGridImageStyle: CSSProperties = { width: "100%", height: "100%", minHeight: "inherit", objectFit: "cover", display: "block" };
+const postImageGridOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.58)", color: "#ffffff", fontSize: 42, fontWeight: 950, letterSpacing: "-0.04em" };
 const dotsButtonStyle: CSSProperties = { width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" };
 const postMenuStyle: CSSProperties = { position: "absolute", right: 0, top: 45, minWidth: 170, borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.96)", zIndex: 30, boxShadow: "0 20px 50px rgba(0,0,0,0.5)" };
 const menuItemStyle: CSSProperties = { width: "100%", textAlign: "left", border: 0, background: "transparent", color: "#fff", padding: "12px 14px", cursor: "pointer", fontWeight: 850 };

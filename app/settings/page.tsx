@@ -71,11 +71,12 @@ const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string
 
 const SETTINGS_CARDS = [
   {
-    eyebrow: "Phase 1",
-    title: "Account",
-    description: "Profile access, sign-in details, account status, and deletion requests.",
-    items: ["Edit profile", "Email & password", "Account status", "Delete account request"],
-    href: "/settings/profile",
+    eyebrow: "Phase 4",
+    title: "Account & Security",
+    description:
+      "Manage account email, password reset, sign out, account status, support, data, and deletion request flow.",
+    items: ["Account email", "Password reset", "Sign out", "Data & deletion"],
+    href: "/settings/account",
     active: true,
   },
   {
@@ -84,6 +85,30 @@ const SETTINGS_CARDS = [
     description: "Safety tools for blocking, reporting, moderation, and community protection.",
     items: ["Blocked users", "Report content", "Report a user", "Safety center"],
     href: "/settings/privacy-safety",
+    active: true,
+  },
+  {
+    eyebrow: "Phase 6",
+    title: "Blocked Users",
+    description: "Review accounts you have blocked and safely unblock them later.",
+    items: ["Blocked accounts", "Search list", "Unblock users", "Safety control"],
+    href: "/settings/blocked-users",
+    active: true,
+  },
+  {
+    eyebrow: "Phase 7",
+    title: "Help & Support",
+    description: "A dedicated support center for account help, privacy, safety, bugs, data, and policy questions.",
+    items: ["Contact support", "Report a problem", "Account help", "Safety help"],
+    href: "/settings/help-support",
+    active: true,
+  },
+  {
+    eyebrow: "Phase 8",
+    title: "Content & Feed",
+    description: "Future controls for feed preferences, hidden posts, muted words, content filters, and Reels preferences.",
+    items: ["Feed preferences", "Muted words", "Hidden posts", "Reels filters"],
+    href: "/settings/content-feed",
     active: true,
   },
   {
@@ -119,11 +144,12 @@ const SETTINGS_CARDS = [
     active: true,
   },
   {
-    eyebrow: "Phase 4",
+    eyebrow: "Phase 5",
     title: "Payments",
-    description: "Future payment area for promoted posts, sponsored content, billing, and business tools.",
+    description: "Coming-soon payment area for promoted posts, sponsored content, billing, and business tools.",
     items: ["Payment methods", "Promote a post", "Sponsored posts", "Billing history"],
-    active: false,
+    href: "/settings/payments",
+    active: true,
   },
   {
     eyebrow: "Launch",
@@ -329,7 +355,7 @@ export default function SettingsPage() {
           </Link>
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
-            Settings Phase 1
+            Settings Center
           </span>
         </div>
 

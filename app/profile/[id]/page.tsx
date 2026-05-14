@@ -96,8 +96,19 @@ type ReelShareProfilePost = {
   originalCreator: ProfileRow | null;
 };
 
+type SharedProfilePost = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  caption: string | null;
+  created_at: string;
+  originalPost: Post;
+  originalCreator: ProfileRow | null;
+};
+
 type ProfileFeedItem =
   | (Post & { feedKind: "post" })
+  | (SharedProfilePost & { feedKind: "shared_post" })
   | (ReelShareProfilePost & { feedKind: "reel_share" });
 
 type CountMap = Record<string, number>;
@@ -1016,6 +1027,7 @@ export default function ProfilePage() {
   const [profilePostImagePreviewUrl, setProfilePostImagePreviewUrl] = useState("");
   const [profilePostLoading, setProfilePostLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [sharedPostPosts, setSharedPostPosts] = useState<SharedProfilePost[]>([]);
   const [sharedReelPosts, setSharedReelPosts] = useState<ReelShareProfilePost[]>([]);
   const [reels, setReels] = useState<Reel[]>([]);
   const [likeCounts, setLikeCounts] = useState<CountMap>({});
@@ -1244,6 +1256,10 @@ const handleProfileLogout = async () => {
 const profileFeedItems = useMemo<ProfileFeedItem[]>(() => {
   return [
     ...posts.map((post) => ({ ...post, feedKind: "post" as const })),
+    ...sharedPostPosts.map((share) => ({
+      ...share,
+      feedKind: "shared_post" as const,
+    })),
     ...sharedReelPosts.map((share) => ({
       ...share,
       feedKind: "reel_share" as const,
@@ -1253,7 +1269,7 @@ const profileFeedItems = useMemo<ProfileFeedItem[]>(() => {
       new Date(b.created_at).getTime() -
       new Date(a.created_at).getTime()
   );
-}, [posts, sharedReelPosts]);
+}, [posts, sharedPostPosts, sharedReelPosts]);
 
 const showFriendStatus = useCallback((message: string) => {
   setFriendStatusMessage(message);
@@ -1476,6 +1492,7 @@ const closeProfileMobileSearch = useCallback(() => {
     const [
       profileResult,
       postsResult,
+      sharesResult,
       likesResult,
       reelsResult,
       reelSharesResult,
@@ -1523,6 +1540,13 @@ const closeProfileMobileSearch = useCallback(() => {
         .from("posts")
         .select("id, content, image_url, created_at, user_id")
         .eq("user_id", profileId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("shares")
+        .select("id, post_id, user_id, caption, created_at, share_destination, deleted_at")
+        .eq("user_id", profileId)
+        .eq("share_destination", "feed")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase.from("likes").select("post_id, user_id"),
       supabase
@@ -1574,6 +1598,7 @@ const closeProfileMobileSearch = useCallback(() => {
       setErrorMessage(profileResult.error.message || "Unable to load profile.");
       setProfile(null);
       setPosts([]);
+      setSharedPostPosts([]);
       setSharedReelPosts([]);
       setReels([]);
       setProfileBadges([]);
@@ -1589,6 +1614,72 @@ const closeProfileMobileSearch = useCallback(() => {
       setPosts([]);
     } else {
       setPosts((postsResult.data as Post[]) || []);
+    }
+
+    if (sharesResult.error) {
+      console.error("Could not load shared posts:", sharesResult.error.message);
+      setSharedPostPosts([]);
+    } else {
+      const shareRows = ((sharesResult.data as Array<{
+        id: string;
+        post_id: string | null;
+        user_id: string | null;
+        caption: string | null;
+        created_at: string | null;
+      }>) || []).filter((share) => Boolean(share.post_id && share.user_id && share.created_at));
+
+      const sharedPostIds = [...new Set(shareRows.map((share) => String(share.post_id)).filter(Boolean))];
+
+      let sharedOriginalPosts: Post[] = [];
+      let sharedOriginalCreators: ProfileRow[] = [];
+
+      if (sharedPostIds.length > 0) {
+        const { data: sharedPostsData, error: sharedPostsError } = await supabase
+          .from("posts")
+          .select("id, content, image_url, created_at, user_id")
+          .in("id", sharedPostIds);
+
+        if (!sharedPostsError) {
+          sharedOriginalPosts = (sharedPostsData as Post[]) || [];
+        }
+      }
+
+      const sharedOriginalCreatorIds = [
+        ...new Set(sharedOriginalPosts.map((post) => post.user_id).filter(Boolean)),
+      ] as string[];
+
+      if (sharedOriginalCreatorIds.length > 0) {
+        const { data: sharedCreatorData, error: sharedCreatorError } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, bio, avatar_url, is_online")
+          .in("id", sharedOriginalCreatorIds);
+
+        if (!sharedCreatorError) {
+          sharedOriginalCreators = (sharedCreatorData as ProfileRow[]) || [];
+        }
+      }
+
+      const postMap = new Map(sharedOriginalPosts.map((post) => [post.id, post]));
+      const creatorMap = new Map(sharedOriginalCreators.map((creator) => [creator.id, creator]));
+
+      const mappedSharedPosts: SharedProfilePost[] = shareRows
+        .map((share) => {
+          const originalPost = postMap.get(String(share.post_id)) || null;
+          if (!originalPost) return null;
+
+          return {
+            id: share.id,
+            post_id: String(share.post_id),
+            user_id: String(share.user_id),
+            caption: share.caption || null,
+            created_at: String(share.created_at),
+            originalPost,
+            originalCreator: creatorMap.get(originalPost.user_id) || null,
+          } satisfies SharedProfilePost;
+        })
+        .filter(Boolean) as SharedProfilePost[];
+
+      setSharedPostPosts(mappedSharedPosts);
     }
 
     if (reelsResult.error) {
@@ -1915,6 +2006,27 @@ useEffect(() => {
     }
 
     setSharedReelPosts((prev) => prev.filter((share) => share.id !== shareId));
+  };
+
+  const handleRemoveSharedPost = async (shareId: string) => {
+    if (!viewerId || !isOwnProfile) return;
+
+    const confirmed = window.confirm("Remove this shared post from your profile and the dashboard timeline?");
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("shares")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", shareId)
+      .eq("user_id", viewerId);
+
+    if (error) {
+      alert(`Remove shared post error: ${error.message}`);
+      return;
+    }
+
+    setSharedPostPosts((prev) => prev.filter((share) => share.id !== shareId));
+    showFriendStatus("Shared post removed.");
   };
 
   const handleProfilePostImageChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -10873,6 +10985,7 @@ return (
 
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                       <span style={feedCountPillStyle}>{posts.length} Posts</span>
+                      <span style={feedCountPillStyle}>{sharedPostPosts.length} Post Shares</span>
                       <span style={feedCountPillStyle}>{sharedReelPosts.length} Reel Shares</span>
                       <Link
                         href="/dashboard"
@@ -11046,6 +11159,98 @@ return (
                                     View Reel
                                   </Link>
                                 </div>
+                              </div>
+                            </article>
+                          );
+                        }
+
+                        if (item.feedKind === "shared_post") {
+                          const originalPost = item.originalPost;
+                          const originalCreator = item.originalCreator;
+                          const originalName =
+                            originalCreator?.full_name ||
+                            originalCreator?.username ||
+                            "Original creator";
+                          const originalHandle = originalCreator?.username || "member";
+
+                          return (
+                            <article
+                              key={item.id}
+                              style={{ ...postCardStyle, position: "relative" }}
+                              onMouseEnter={(event) => {
+                                event.currentTarget.style.transform = "translateY(-1px)";
+                                event.currentTarget.style.borderColor = "var(--parapost-accent-active-border)";
+                                event.currentTarget.style.boxShadow = "0 22px 52px rgba(0,0,0,0.34)";
+                              }}
+                              onMouseLeave={(event) => {
+                                event.currentTarget.style.transform = "translateY(0)";
+                                event.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+                                event.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.26)";
+                              }}
+                            >
+                              <header style={postHeaderStyle}>
+                                <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
+                                  {profile?.avatar_url ? (
+                                    <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  ) : (
+                                    <span style={postAuthorFallbackStyle}>{profileDisplayInitial || "P"}</span>
+                                  )}
+                                </div>
+
+                                <div style={postAuthorTextStyle}>
+                                  <strong style={postAuthorNameStyle}>
+                                    {profileDisplayName || "Parapost Member"}
+                                  </strong>
+                                  <span style={postMetaStyle}>
+                                    @{profileDisplayUsername || "new-member"} shared a post · {formatTimeAgo(item.created_at)}
+                                  </span>
+                                </div>
+
+                                {isOwnProfile ? (
+                                  <button
+                                    onClick={() => handleRemoveSharedPost(item.id)}
+                                    style={sharedReelRemoveButtonStyle}
+                                  >
+                                    Remove
+                                  </button>
+                                ) : null}
+                              </header>
+
+                              {item.caption ? (
+                                <p style={postContentStyle}>{renderLinkedText(item.caption)}</p>
+                              ) : null}
+
+                              <div className="profile-shared-post-card" style={sharedPostProfileCardStyle}>
+                                <div style={sharedPostProfileHeaderStyle}>
+                                  <Link href={`/profile/${originalPost.user_id}`} style={sharedPostAvatarMiniStyle}>
+                                    {originalCreator?.avatar_url ? (
+                                      <img src={originalCreator.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                    ) : (
+                                      <span>{getInitial(originalCreator?.full_name, originalCreator?.username)}</span>
+                                    )}
+                                  </Link>
+
+                                  <div style={{ minWidth: 0 }}>
+                                    <Link href={`/profile/${originalPost.user_id}`} style={postAuthorNameStyle}>
+                                      {originalName}
+                                    </Link>
+                                    <div style={postMetaStyle}>
+                                      @{originalHandle} · {formatTimeAgo(originalPost.created_at)}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {originalPost.content ? (
+                                  <>
+                                    <p style={postContentStyle}>{renderLinkedText(originalPost.content)}</p>
+                                    <LinkPreviewCard text={originalPost.content} />
+                                  </>
+                                ) : null}
+
+                                {originalPost.image_url ? (
+                                  <img src={originalPost.image_url} alt="Shared post" className="profile-post-image" style={postImageStyle} />
+                                ) : null}
+
                               </div>
                             </article>
                           );
@@ -12625,6 +12830,39 @@ const pillMutedStyle: CSSProperties = {
   color: "#d1d5db",
   padding: "8px 12px",
   fontSize: "12px",
+};
+
+
+const sharedPostProfileCardStyle: CSSProperties = {
+  marginTop: "14px",
+  padding: "14px",
+  borderRadius: "24px",
+  border: "1px solid var(--parapost-accent-border)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.50))",
+};
+
+const sharedPostProfileHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "12px",
+};
+
+const sharedPostAvatarMiniStyle: CSSProperties = {
+  width: "42px",
+  height: "42px",
+  borderRadius: "999px",
+  overflow: "hidden",
+  display: "grid",
+  placeItems: "center",
+  textDecoration: "none",
+  color: "#ffffff",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), #111827)",
+  border: "2px solid #07090d",
+  boxShadow: "0 0 0 1px var(--parapost-accent-border)",
+  flexShrink: 0,
+  fontWeight: 950,
 };
 
 const sharedReelCardStyle: CSSProperties = {

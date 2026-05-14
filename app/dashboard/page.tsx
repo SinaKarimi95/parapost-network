@@ -105,8 +105,18 @@ type SharedReelItem = {
   creator_profile_id: string | null;
 };
 
+type SharedPostItem = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  caption: string | null;
+  created_at: string;
+  original_post: Post;
+};
+
 type MixedFeedItem =
   | { type: "post"; id: string; created_at: string; post: Post }
+  | { type: "shared_post"; id: string; created_at: string; sharedPost: SharedPostItem }
   | { type: "reel_share"; id: string; created_at: string; share: SharedReelItem };
 
 type FeedMode = "for_you" | "friends" | "following";
@@ -475,7 +485,9 @@ function buildDashboardTrendingTopics(items: MixedFeedItem[]) {
     const text =
       item.type === "post"
         ? item.post.content || ""
-        : [item.share.caption, item.share.reel_title, item.share.reel_caption].filter(Boolean).join(" ");
+        : item.type === "shared_post"
+          ? [item.sharedPost.caption, item.sharedPost.original_post.content].filter(Boolean).join(" ")
+          : [item.share.caption, item.share.reel_title, item.share.reel_caption].filter(Boolean).join(" ");
 
     const hashtags = text.match(/#[a-zA-Z0-9_]{3,}/g) || [];
     hashtags.forEach((tag) => addTrendCandidate(trendMap, tag, latestTime, "hashtag"));
@@ -853,6 +865,7 @@ export default function DashboardPage() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [sharedPostItems, setSharedPostItems] = useState<SharedPostItem[]>([]);
   const [sharedReelItems, setSharedReelItems] = useState<SharedReelItem[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, ProfilePreview>>({});
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
@@ -918,6 +931,13 @@ export default function DashboardPage() {
       post,
     }));
 
+    const sharedPostFeedItems = sharedPostItems.map((sharedPost) => ({
+      type: "shared_post" as const,
+      id: sharedPost.id,
+      created_at: sharedPost.created_at,
+      sharedPost,
+    }));
+
     const reelShareItems = sharedReelItems.map((share) => ({
       type: "reel_share" as const,
       id: share.id,
@@ -925,22 +945,22 @@ export default function DashboardPage() {
       share,
     }));
 
-    return [...postItems, ...reelShareItems].sort(
+    return [...postItems, ...sharedPostFeedItems, ...reelShareItems].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [posts, sharedReelItems]);
+  }, [posts, sharedPostItems, sharedReelItems]);
 
   const filteredFeedItems = useMemo(() => {
     if (feedMode === "friends" && currentUserId) {
       return mixedFeedItems.filter((item) => {
-        const authorId = item.type === "post" ? item.post.user_id : item.share.user_id;
+        const authorId = item.type === "post" ? item.post.user_id : item.type === "shared_post" ? item.sharedPost.user_id : item.share.user_id;
         return acceptedFriendUserIds.includes(authorId);
       });
     }
 
     if (feedMode === "following" && currentUserId) {
       return mixedFeedItems.filter((item) => {
-        const authorId = item.type === "post" ? item.post.user_id : item.share.user_id;
+        const authorId = item.type === "post" ? item.post.user_id : item.type === "shared_post" ? item.sharedPost.user_id : item.share.user_id;
         return followedUserIds.includes(authorId);
       });
     }
@@ -1275,6 +1295,75 @@ export default function DashboardPage() {
     setRecentlyViewed(profiles);
   }, []);
 
+  const fetchSharedPosts = useCallback(async (blockedIds: string[] = []) => {
+    const { data: shareRows, error: shareError } = await supabase
+      .from("shares")
+      .select("id, post_id, user_id, caption, created_at, share_destination, deleted_at")
+      .eq("share_destination", "feed")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(60);
+
+    if (shareError) {
+      console.error("Error fetching shared posts:", shareError.message);
+      setSharedPostItems([]);
+      return [] as SharedPostItem[];
+    }
+
+    const visibleShareRows = ((shareRows || []) as Array<{
+      id: string;
+      post_id: string | null;
+      user_id: string | null;
+      caption: string | null;
+      created_at: string | null;
+    }>)
+      .filter((share) => Boolean(share.post_id && share.user_id && share.created_at))
+      .filter((share) => !blockedIds.includes(String(share.user_id)));
+
+    const postIds = [...new Set(visibleShareRows.map((share) => String(share.post_id)).filter(Boolean))];
+
+    if (postIds.length === 0) {
+      setSharedPostItems([]);
+      return [] as SharedPostItem[];
+    }
+
+    const { data: postRows, error: postsError } = await supabase
+      .from("posts")
+      .select("id, content, image_url, created_at, user_id")
+      .in("id", postIds);
+
+    if (postsError) {
+      console.error("Error fetching shared post originals:", postsError.message);
+      setSharedPostItems([]);
+      return [] as SharedPostItem[];
+    }
+
+    const postMap = new Map<string, Post>();
+    for (const post of (postRows || []) as Post[]) {
+      if (!post?.id || blockedIds.includes(post.user_id)) continue;
+      postMap.set(post.id, post);
+    }
+
+    const nextSharedPosts = visibleShareRows
+      .map((share) => {
+        const originalPost = postMap.get(String(share.post_id));
+        if (!originalPost) return null;
+
+        return {
+          id: share.id,
+          post_id: String(share.post_id),
+          user_id: String(share.user_id),
+          caption: share.caption || null,
+          created_at: String(share.created_at),
+          original_post: originalPost,
+        } satisfies SharedPostItem;
+      })
+      .filter(Boolean) as SharedPostItem[];
+
+    setSharedPostItems(nextSharedPosts);
+    return nextSharedPosts;
+  }, []);
+
   const fetchSharedReels = useCallback(async (blockedIds: string[] = []) => {
     const { data: shareRows, error: shareError } = await supabase
       .from("reel_shares")
@@ -1403,6 +1492,7 @@ export default function DashboardPage() {
     }
 
     const visiblePosts = ((postsData || []) as Post[]).filter((post) => !blockedIds.includes(post.user_id));
+    const visibleSharedPosts = await fetchSharedPosts(blockedIds);
     const visibleShared = await fetchSharedReels(blockedIds);
 
     setPosts(visiblePosts);
@@ -1410,12 +1500,21 @@ export default function DashboardPage() {
     const profileIds = [
       userId,
       ...visiblePosts.map((post) => post.user_id),
+      ...visibleSharedPosts.map((share) => share.user_id),
+      ...visibleSharedPosts.map((share) => share.original_post.user_id),
       ...visibleShared.map((share) => share.user_id),
       ...visibleShared.map((share) => share.reel_user_id),
       ...visibleShared.map((share) => share.creator_profile_id || ""),
     ];
 
-    await Promise.all([fetchProfileMap(profileIds), fetchCounts(userId || undefined, visiblePosts.map((post) => post.id))]);
+    const countPostIds = [
+      ...new Set([
+        ...visiblePosts.map((post) => post.id),
+        ...visibleSharedPosts.map((share) => share.post_id),
+      ]),
+    ];
+
+    await Promise.all([fetchProfileMap(profileIds), fetchCounts(userId || undefined, countPostIds)]);
     } catch (error) {
       // Important: Supabase/network hiccups can throw TypeError: Failed to fetch.
       // Keep the current timeline on screen instead of letting the dashboard crash or blink.
@@ -1425,7 +1524,7 @@ export default function DashboardPage() {
       dashboardRefreshInFlightRef.current = false;
       setFetchingPosts(false);
     }
-  }, [fetchCounts, fetchFollowData, fetchFriendShowcases, fetchNotifications, fetchPeopleToDiscover, fetchProfileMap, fetchRecentlyViewed, fetchSharedReels]);
+  }, [fetchCounts, fetchFollowData, fetchFriendShowcases, fetchNotifications, fetchPeopleToDiscover, fetchProfileMap, fetchRecentlyViewed, fetchSharedPosts, fetchSharedReels]);
 
   useEffect(() => {
     void fetchDashboardData(true);
@@ -1449,6 +1548,7 @@ export default function DashboardPage() {
     const channel = supabase
       .channel(`dashboard-network-pulse-${currentUserId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shares" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "shares" }, schedulePulseRefresh)
@@ -1829,24 +1929,55 @@ export default function DashboardPage() {
   const handleShare = async (postId: string) => {
     const shareUrl = `${window.location.origin}/dashboard#post-${postId}`;
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Please log in to share posts.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Share this post to your Parapost feed? It will appear on the dashboard timeline and on your profile."
+    );
+
+    if (!confirmed) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Post link copied.");
+      } catch {
+        window.prompt("Copy this post link:", shareUrl);
+      }
+      return;
+    }
+
+    const caption = window.prompt("Add a caption for your share, or leave blank:", "") || "";
+    const trimmedCaption = caption.trim();
+
+    const { error } = await supabase.from("shares").insert([
+      {
+        post_id: postId,
+        user_id: user.id,
+        caption: trimmedCaption || null,
+        share_destination: "feed",
+      },
+    ]);
+
+    if (error) {
+      alert(`Share error: ${error.message}`);
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(shareUrl);
     } catch (error) {
       console.error("Clipboard error:", error);
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { error } = await supabase.from("shares").insert([{ post_id: postId, user_id: user?.id || null }]);
-    if (error) {
-      alert(`Share error: ${error.message}`);
-      return;
-    }
-
     setShareCounts((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
-    alert("Post link copied.");
+    await fetchDashboardData(false);
+    alert("Shared to your feed and profile. Post link copied too.");
   };
 
   const handleStartEditPost = (post: Post) => {
@@ -2152,7 +2283,6 @@ export default function DashboardPage() {
                       key={`post-${item.post.id}`}
                       post={item.post}
                       profile={profilesMap[item.post.user_id]}
-                      currentUserId={currentUserId}
                       isLiked={!!userLikes[item.post.id]}
                       likeCount={likeCounts[item.post.id] || 0}
                       commentCount={commentCounts[item.post.id] || 0}
@@ -2174,13 +2304,19 @@ export default function DashboardPage() {
                       }}
                       onDelete={() => handleDeletePost(item.post.id)}
                     />
+                  ) : item.type === "shared_post" ? (
+                    <SharedPostCard
+                      key={`shared-post-${item.sharedPost.id}`}
+                      sharedPost={item.sharedPost}
+                      sharerProfile={profilesMap[item.sharedPost.user_id]}
+                      originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
+                    />
                   ) : (
                     <SharedReelCard
                       key={`shared-${item.share.id}`}
                       shared={item.share}
                       sharerProfile={profilesMap[item.share.user_id]}
                       creatorProfile={profilesMap[item.share.creator_profile_id || ""] || profilesMap[item.share.reel_user_id]}
-                      currentUserId={currentUserId}
                       onDelete={() => handleDeleteReelShare(item.share.id)}
                     />
                   )
@@ -4146,6 +4282,69 @@ function PostCard({
     </article>
   );
 }
+
+function SharedPostCard({
+  sharedPost,
+  sharerProfile,
+  originalProfile,
+}: {
+  sharedPost: SharedPostItem;
+  sharerProfile?: ProfilePreview | null;
+  originalProfile?: ProfilePreview | null;
+}) {
+  const originalPost = sharedPost.original_post;
+  const sharerName = sharerProfile?.full_name || sharerProfile?.username || "Parapost user";
+  const originalName = originalProfile?.full_name || originalProfile?.username || "Parapost member";
+  const originalHref = `/profile/${originalPost.user_id}`;
+  const sharerHref = `/profile/${sharedPost.user_id}`;
+
+  return (
+    <article id={`share-${sharedPost.id}`} className="dashboard-card dashboard-feed-card" style={postCardStyle}>
+      <div style={postHeaderStyle}>
+        <div style={postAuthorStyle}>
+          <Avatar profile={sharerProfile} size={54} href={sharerHref} />
+          <div style={{ minWidth: 0 }}>
+            <Link href={sharerHref} style={postAuthorNameStyle}>
+              {sharerName}
+            </Link>
+            <div style={postMetaStyle}>
+              shared {originalName}&apos;s post · {formatRelativeTime(sharedPost.created_at)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {sharedPost.caption ? <p style={postContentStyle}>{renderLinkedText(sharedPost.caption)}</p> : null}
+
+      <div style={sharedPostFrameStyle}>
+        <div style={sharedPostOriginalHeaderStyle}>
+          <Avatar profile={originalProfile} size={42} href={originalHref} />
+          <div style={{ minWidth: 0 }}>
+            <Link href={originalHref} style={postAuthorNameStyle}>
+              {originalName}
+            </Link>
+            <div style={postMetaStyle}>
+              @{originalProfile?.username || "member"} · {formatRelativeTime(originalPost.created_at)}
+            </div>
+          </div>
+        </div>
+
+        {originalPost.content ? (
+          <>
+            <p style={sharedPostOriginalContentStyle}>{renderLinkedText(originalPost.content)}</p>
+            <LinkPreviewCard text={originalPost.content} />
+          </>
+        ) : null}
+
+        {originalPost.image_url ? (
+          <img src={originalPost.image_url} alt="Shared post image" style={postImageStyle} />
+        ) : null}
+
+      </div>
+    </article>
+  );
+}
+
 
 function SharedReelCard({
   shared,
@@ -6583,6 +6782,28 @@ const postStatusLinkStyle: CSSProperties = { color: "var(--parapost-accent-reada
 const postActionsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 10 };
 const actionButtonStyle: CSSProperties = { minHeight: 42, borderRadius: 14, border: "1px solid transparent", background: "transparent", color: "#e5e7eb", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 850, cursor: "pointer" };
 const activeActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: "var(--parapost-accent-text)", background: "var(--parapost-accent-muted-bg)", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)" };
+
+
+const sharedPostFrameStyle: CSSProperties = {
+  marginTop: "14px",
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "24px",
+  padding: "14px",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.50))",
+};
+
+const sharedPostOriginalHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "12px",
+};
+
+const sharedPostOriginalContentStyle: CSSProperties = {
+  ...postContentStyle,
+  marginTop: "10px",
+};
 
 const sharedReelFrameStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(150px, 220px) 1fr", gap: 14, alignItems: "center", marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", borderRadius: 22, padding: 12, background: "rgba(0,0,0,0.24)" };
 const sharedReelVideoStyle: CSSProperties = { position: "relative", display: "block", aspectRatio: "9 / 16", maxHeight: 360, borderRadius: 18, overflow: "hidden", background: "#000", textDecoration: "none" };

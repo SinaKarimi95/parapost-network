@@ -83,13 +83,15 @@ const SETTINGS_CARDS = [
     title: "Privacy & Safety",
     description: "Safety tools for blocking, reporting, moderation, and community protection.",
     items: ["Blocked users", "Report content", "Report a user", "Safety center"],
+    href: "/settings/privacy-safety",
     active: true,
   },
   {
     eyebrow: "Phase 1",
     title: "Data & Privacy",
-    description: "Data deletion requests, privacy choices, and account data controls.",
-    items: ["Request data deletion", "Privacy choices", "Data policy", "Account deletion"],
+    description: "Data access, data deletion, privacy choices, and account controls.",
+    items: ["Request my data", "Correct data", "Data deletion", "Account deletion"],
+    href: "/settings/data",
     active: true,
   },
   {
@@ -97,21 +99,24 @@ const SETTINGS_CARDS = [
     title: "Notifications",
     description: "Prepared controls for friend requests, Parachat, comments, likes, Reels, and badges.",
     items: ["Friend requests", "Parachat", "Comments & likes", "Reels activity"],
+    href: "/settings/notifications",
     active: true,
   },
   {
     eyebrow: "Phase 2",
     title: "Profile Visibility",
-    description: "Public/private profile controls will hide timeline content while keeping the profile shell visible.",
-    items: ["Public profile", "Private profile", "Message privacy", "Showcase privacy"],
-    active: false,
+    description: "Public/private profile controls hide protected content while keeping the profile shell visible.",
+    items: ["Public profile", "Private profile", "Protected routes", "Friend-only content"],
+    href: "/settings/profile-visibility",
+    active: true,
   },
   {
     eyebrow: "Phase 3",
     title: "Personalization",
-    description: "Accent colors, visual preferences, and future profile customization.",
-    items: ["Accent color", "Theme preference", "Font choices", "Reduce motion"],
-    active: false,
+    description: "Accent colors, font style, and account-backed profile customization.",
+    items: ["Accent color", "Font style", "Account saved", "Global theme"],
+    href: "/settings/personalization",
+    active: true,
   },
   {
     eyebrow: "Phase 4",
@@ -125,6 +130,7 @@ const SETTINGS_CARDS = [
     title: "Legal",
     description: "Parapost Network policies for app-store readiness and user trust.",
     items: ["Terms of Service", "Privacy Policy", "Community Guidelines", "Data Deletion Policy"],
+    href: "/settings/legal",
     active: true,
   },
 ];
@@ -312,8 +318,9 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-80 w-80 rounded-full bg-purple-600/20 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/25 blur-3xl" />
+      <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
+      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-indigo-500/12 blur-3xl" />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -321,13 +328,13 @@ export default function SettingsPage() {
             ← Back to Dashboard
           </Link>
 
-          <span className="rounded-full border border-purple-400/30 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100">
+          <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
             Settings Phase 1
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.075] to-purple-900/20 p-5 shadow-2xl sm:p-7">
+          <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/14 via-white/[0.065] to-slate-950/70 p-5 shadow-2xl shadow-purple-950/20 ring-1 ring-white/[0.035] sm:p-7">
             <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
               Parapost Network Settings
             </p>
@@ -335,24 +342,24 @@ export default function SettingsPage() {
               Control your account, privacy, safety, and support.
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Settings is being built as a serious launch-ready area for Parapost Network, with account
-              controls, safety tools, data requests, legal policies, support, and future payments prepared
-              carefully for mobile apps and web.
+              Settings is being built as a serious launch-ready area for Parapost Network, using the same purple,
+              black, and glass-style platform identity across account controls, safety tools, data requests,
+              legal policies, support, and future payments.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#support"
-                className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/30"
+                className="rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110"
               >
                 Contact Support
               </a>
-              <a
-                href="#privacy-safety"
-                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+              <Link
+                href="/settings/privacy-safety"
+                className="rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15"
               >
                 Privacy & Safety
-              </a>
+              </Link>
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
@@ -364,7 +371,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[28px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl">
+          <aside className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035]">
             <div className="flex items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
                 {currentProfile?.avatar_url ? (
@@ -402,7 +409,7 @@ export default function SettingsPage() {
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
-            <section id="support" className="rounded-[28px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+            <section id="support" className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">Support</p>
@@ -457,7 +464,7 @@ export default function SettingsPage() {
                   <button
                     type="submit"
                     disabled={supportSubmitting}
-                    className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-black text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {supportSubmitting ? "Sending..." : "Send Message"}
                   </button>
@@ -477,7 +484,7 @@ export default function SettingsPage() {
               </form>
             </section>
 
-            <section id="delete-account" className="rounded-[28px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+            <section id="delete-account" className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
@@ -491,8 +498,11 @@ export default function SettingsPage() {
               </div>
 
               <p className="mb-5 text-sm leading-7 text-slate-300">
-                This starts the account or data deletion request flow. Later, this can become a fully
-                automated deletion process, but for Phase 1 it creates a private support request.
+                This starts the account or data deletion request flow. The full Data & Privacy request area now lives at{" "}
+                <Link href="/settings/data" className="font-black text-purple-200 no-underline hover:text-white">
+                  /settings/data
+                </Link>
+                . Later, this can become a fully automated deletion process, but for Phase 1 it creates a private support request.
               </p>
 
               <form onSubmit={handleDeleteRequestSubmit} className="space-y-4">
@@ -533,7 +543,7 @@ export default function SettingsPage() {
               </form>
             </section>
 
-            <section className="rounded-[28px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+            <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 About Parapost Network
               </p>
@@ -582,7 +592,6 @@ export default function SettingsPage() {
             {SETTINGS_CARDS.map((card) => {
               const content = (
                 <section
-                  id={card.title === "Privacy & Safety" ? "privacy-safety" : undefined}
                   className={`rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-xl ${
                     card.active ? "" : "opacity-65"
                   }`}
@@ -592,7 +601,7 @@ export default function SettingsPage() {
                       {card.eyebrow}
                     </span>
                     {!card.active ? (
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-black text-slate-300">
+                      <span className="rounded-full border border-purple-200/15 bg-purple-400/10 px-2.5 py-1 text-[11px] font-black text-slate-300">
                         Coming soon
                       </span>
                     ) : null}
@@ -605,7 +614,7 @@ export default function SettingsPage() {
                     {card.items.map((item) => (
                       <span
                         key={item}
-                        className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-bold text-slate-300"
+                        className="rounded-full border border-purple-200/15 bg-black/30 px-3 py-1.5 text-xs font-bold text-slate-300"
                       >
                         {item}
                       </span>

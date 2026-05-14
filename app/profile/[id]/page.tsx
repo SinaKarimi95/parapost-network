@@ -298,9 +298,9 @@ function getBadgeDifficultyColor(difficulty?: string | null) {
   if (value.includes("elite")) return "#111827";
   if (value.includes("hard")) return "#f97316";
   if (value.includes("medium")) return "#38bdf8";
-  if (value.includes("easy")) return "#a855f7";
+  if (value.includes("easy")) return "var(--parapost-accent-2)";
 
-  return "#d8b4fe";
+  return "var(--parapost-accent-text)";
 }
 
 function getBadgeGhostColor(iconKey?: string | null, colorName?: string | null, slug?: string | null) {
@@ -968,7 +968,7 @@ function ParaGhostBadgeIcon({
   const isBubble = size === "bubble";
   const isModal = size === "modal";
   const iconSize = isModal ? 108 : isBubble ? 34 : 48;
-  const glowColor = badge.accentColor || "#a855f7";
+  const glowColor = badge.accentColor || "var(--parapost-accent-2)";
 
   return (
     <span
@@ -3057,7 +3057,7 @@ useEffect(() => {
         : profileStrengthPercent >= 70
           ? "#67e8f9"
           : profileStrengthPercent >= 50
-            ? "#c084fc"
+            ? "var(--parapost-accent-text)"
             : "#fbbf24";
   const profileStrengthHelpText =
     profileStrengthPercent >= 100
@@ -3067,7 +3067,7 @@ useEffect(() => {
         : "Keep posts, reels, badges, and Showcases active to help people discover this profile.";
   const profileStrengthRingDynamicStyle: CSSProperties = {
     ...profileStrengthRingStyle,
-    background: `linear-gradient(145deg, rgba(124,58,237,0.20), rgba(8,10,16,0.96)), conic-gradient(from 0deg, ${profileStrengthAccent} 0deg, #a855f7 ${profileStrengthDegrees}deg, rgba(255,255,255,0.10) ${profileStrengthDegrees}deg, rgba(255,255,255,0.10) 360deg)`,
+    background: `linear-gradient(145deg, var(--parapost-accent-active-bg), rgba(8,10,16,0.96)), conic-gradient(from 0deg, ${profileStrengthAccent} 0deg, var(--parapost-accent-2) ${profileStrengthDegrees}deg, rgba(255,255,255,0.10) ${profileStrengthDegrees}deg, rgba(255,255,255,0.10) 360deg)`,
     boxShadow: `0 10px 22px rgba(0,0,0,0.22), 0 0 22px ${profileStrengthAccent}24`,
   };
   const shouldShowProfileStarter =
@@ -3301,7 +3301,7 @@ useEffect(() => {
           style={{
             ...profileStrengthProgressFillStyle,
             width: `${profileStrengthPercent}%`,
-            background: `linear-gradient(90deg, ${profileStrengthAccent}, #a855f7)`,
+            background: `linear-gradient(90deg, ${profileStrengthAccent}, var(--parapost-accent-2))`,
           }}
         />
       </div>
@@ -3348,9 +3348,9 @@ useEffect(() => {
         minHeight: "320px",
         padding: "36px 20px",
         textAlign: "center",
-        border: "1px solid rgba(168,85,247,0.22)",
+        border: "1px solid var(--parapost-accent-active-border)",
         background:
-          "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.024))",
+          "radial-gradient(circle at 50% 0%, var(--parapost-accent-active-bg), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.024))",
       }}
       aria-label="Private profile notice"
     >
@@ -3366,8 +3366,8 @@ useEffect(() => {
             color: "#f8fafc",
             fontSize: "30px",
             fontWeight: 950,
-            border: "1px solid rgba(216,180,254,0.24)",
-            background: "linear-gradient(135deg, rgba(168,85,247,0.34), rgba(15,23,42,0.92))",
+            border: "1px solid var(--parapost-accent-active-border)",
+            background: "linear-gradient(135deg, var(--parapost-accent-strong-glow), rgba(15,23,42,0.92))",
             boxShadow: "0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)",
           }}
         >
@@ -3377,7 +3377,7 @@ useEffect(() => {
         <p
           style={{
             margin: 0,
-            color: "#d8b4fe",
+            color: "var(--parapost-accent-text)",
             fontSize: "11px",
             fontWeight: 950,
             textTransform: "uppercase",
@@ -3562,7 +3562,7 @@ return (
       }
 
       .profile-badges-viewer-shell::-webkit-scrollbar-thumb {
-        background: rgba(168,85,247,0.38);
+        background: var(--parapost-accent-strong-glow);
         border-radius: 999px;
       }
 
@@ -4108,8 +4108,8 @@ return (
       }
 
       .profile-showcase-modal-overlay button[style*="dashed"]:hover {
-        border-color: rgba(216,180,254,0.72) !important;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 22px 54px rgba(0,0,0,0.28), 0 0 24px rgba(168,85,247,0.12) !important;
+        border-color: var(--parapost-accent-2) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 22px 54px rgba(0,0,0,0.28), 0 0 24px var(--parapost-accent-soft) !important;
       }
 
 
@@ -4118,8 +4118,8 @@ return (
         transform: translateY(0) scale(1);
         filter: brightness(1.08) saturate(1.08);
         box-shadow:
-          0 18px 38px rgba(124,58,237,0.44),
-          0 0 38px rgba(168,85,247,0.34),
+          0 18px 38px var(--parapost-accent-strong-glow),
+          0 0 38px var(--parapost-accent-strong-glow),
           inset 0 1px 0 rgba(255,255,255,0.18) !important;
       }
 
@@ -4309,7 +4309,7 @@ return (
           display: block !important;
           padding: 0 !important;
           background:
-            radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 40%),
+            radial-gradient(circle at 50% 0%, var(--parapost-accent-active-bg), transparent 40%),
             rgba(0,0,0,0.92) !important;
           overflow: hidden !important;
         }
@@ -4491,7 +4491,7 @@ return (
           display: block !important;
           padding: 0 !important;
           background:
-            radial-gradient(circle at 50% 0%, rgba(168,85,247,0.24), transparent 42%),
+            radial-gradient(circle at 50% 0%, var(--parapost-accent-active-border), transparent 42%),
             rgba(0,0,0,0.94) !important;
           overflow: hidden !important;
         }
@@ -4590,9 +4590,9 @@ return (
       }
 
       .profile-showcase-modal-header div[style*="margin-top: 10px"] span {
-        border: 1px solid rgba(216,180,254,0.18);
-        background: rgba(168,85,247,0.08);
-        color: #d8b4fe;
+        border: 1px solid var(--parapost-accent-active-bg);
+        background: var(--parapost-accent-soft);
+        color: var(--parapost-accent-text);
         border-radius: 999px;
         padding: 5px 8px;
         font-size: 10px;
@@ -4791,7 +4791,7 @@ return (
         width: 20px;
         height: 20px;
         display: block;
-        color: #e9d5ff;
+        color: var(--parapost-accent-readable-text);
       }
 
       .profile-showcase-visibility-symbol-public {
@@ -4834,7 +4834,7 @@ return (
         border-radius: 999px;
         left: 2px;
         top: 2px;
-        box-shadow: 8px 0 0 -1.8px #e9d5ff, 8px 0 0 0 currentColor;
+        box-shadow: 8px 0 0 -1.8px var(--parapost-accent-readable-text), 8px 0 0 0 currentColor;
       }
 
       .profile-showcase-visibility-symbol-friends::after {
@@ -4879,7 +4879,7 @@ return (
 
       .profile-showcase-modal-overlay [aria-pressed="true"] .profile-showcase-visibility-symbol {
         color: #ffffff;
-        filter: drop-shadow(0 0 8px rgba(216,180,254,0.34));
+        filter: drop-shadow(0 0 8px var(--parapost-accent-strong-glow));
       }
 
 
@@ -4894,7 +4894,7 @@ return (
         --pp-line-strong: rgba(255,255,255,0.14);
         --pp-surface: rgba(18,20,25,0.92);
         --pp-surface-soft: rgba(255,255,255,0.045);
-        --pp-purple: #a855f7;
+        --pp-purple: var(--parapost-accent-2);
       }
 
 
@@ -4932,8 +4932,8 @@ return (
 
       .profile-batch2-flow-polish .profile-stories-row button:hover .profile-story-circle {
         transform: translateY(-1px);
-        border-color: rgba(216,180,254,0.72) !important;
-        box-shadow: 0 0 24px rgba(168,85,247,0.22) !important;
+        border-color: var(--parapost-accent-2) !important;
+        box-shadow: 0 0 24px var(--parapost-accent-active-border) !important;
       }
 
       .profile-batch2-flow-polish .profile-story-circle {
@@ -4966,7 +4966,7 @@ return (
         bottom: 4px;
         height: 2px;
         border-radius: 999px;
-        background: linear-gradient(90deg, rgba(168,85,247,0), rgba(168,85,247,0.95), rgba(34,211,238,0.70), rgba(168,85,247,0));
+        background: linear-gradient(90deg, rgba(168,85,247,0), var(--parapost-accent-2), rgba(34,211,238,0.70), rgba(168,85,247,0));
         pointer-events: none;
       }
 
@@ -5113,7 +5113,7 @@ return (
         position: absolute;
         inset: 10px;
         border-radius: 999px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(168,85,247,0.10));
+        background: linear-gradient(135deg, rgba(255,255,255,0.06), var(--parapost-accent-soft));
         border: 1px solid rgba(255,255,255,0.08);
         z-index: 1;
       }
@@ -5158,10 +5158,10 @@ return (
       }
 
       .profile-avatar-online-ring {
-        background: linear-gradient(135deg, rgba(168,85,247,1), rgba(34,211,238,0.96), rgba(124,58,237,0.92)) !important;
+        background: linear-gradient(135deg, var(--parapost-accent-2), rgba(34,211,238,0.96), var(--parapost-accent-2)) !important;
         box-shadow:
-          0 0 0 1px rgba(216,180,254,0.22),
-          0 0 24px rgba(168,85,247,0.38),
+          0 0 0 1px var(--parapost-accent-active-border),
+          0 0 24px var(--parapost-accent-strong-glow),
           0 0 44px rgba(34,211,238,0.18) !important;
       }
 
@@ -5172,7 +5172,7 @@ return (
         border-radius: 999px;
         border: 2px solid rgba(34,211,238,0.42);
         box-shadow:
-          0 0 18px rgba(168,85,247,0.38),
+          0 0 18px var(--parapost-accent-strong-glow),
           0 0 34px rgba(34,211,238,0.20);
         pointer-events: none;
         z-index: 0;
@@ -5180,10 +5180,10 @@ return (
       }
 
       .profile-avatar-offline-ring {
-        background: linear-gradient(135deg, rgba(168,85,247,0.72), rgba(59,130,246,0.52), rgba(236,72,153,0.42)) !important;
+        background: linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-strong-glow), var(--parapost-accent-strong-glow)) !important;
         box-shadow:
           0 0 0 1px rgba(255,255,255,0.08),
-          0 0 18px rgba(168,85,247,0.18) !important;
+          0 0 18px var(--parapost-accent-active-bg) !important;
       }
 
       .profile-avatar-online-ring button,
@@ -5493,7 +5493,7 @@ return (
         box-shadow:
           0 30px 90px rgba(0,0,0,0.82),
           0 0 0 1px rgba(255,255,255,0.08),
-          0 0 34px rgba(168,85,247,0.20) !important;
+          0 0 34px var(--parapost-accent-active-bg) !important;
       }
 
       .profile-desktop-action-menu::before {
@@ -5521,7 +5521,7 @@ return (
       }
 
       .profile-desktop-action-menu::-webkit-scrollbar-thumb {
-        background: rgba(168,85,247,0.45);
+        background: var(--parapost-accent-strong-glow);
         border-radius: 999px;
       }
 
@@ -5553,7 +5553,7 @@ return (
       }
 
       .profile-desktop-action-menu-fixed::-webkit-scrollbar-thumb {
-        background: rgba(168,85,247,0.5);
+        background: var(--parapost-accent-strong-glow);
         border-radius: 999px;
       }
 
@@ -5617,7 +5617,7 @@ return (
         inset: 0;
         pointer-events: none;
         background:
-          radial-gradient(circle at 18% 0%, rgba(168,85,247,0.10), transparent 34%),
+          radial-gradient(circle at 18% 0%, var(--parapost-accent-soft), transparent 34%),
           radial-gradient(circle at 100% 12%, rgba(34,211,238,0.055), transparent 30%);
       }
 
@@ -5774,7 +5774,7 @@ return (
           height: 112px !important;
           padding: 4px !important;
           margin: 0 0 14px 0 !important;
-          box-shadow: 0 0 22px rgba(168,85,247,0.28) !important;
+          box-shadow: 0 0 22px var(--parapost-accent-active-border) !important;
         }
 
         .profile-avatar-wrap img,
@@ -6002,8 +6002,8 @@ return (
 
         .profile-tabs-desktop button[aria-pressed="true"] {
           color: #ffffff !important;
-          border-bottom-color: #a855f7 !important;
-          background: rgba(168,85,247,0.08) !important;
+          border-bottom-color: var(--parapost-accent-2) !important;
+          background: var(--parapost-accent-soft) !important;
           padding-left: 10px !important;
           padding-right: 10px !important;
         }
@@ -6141,8 +6141,8 @@ return (
           height: 112px !important;
           border-radius: 50% !important;
           padding: 4px !important;
-          background: linear-gradient(135deg, rgba(168,85,247,0.96), rgba(59,130,246,0.86)) !important;
-          box-shadow: 0 0 20px rgba(168,85,247,0.22) !important;
+          background: linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-3)) !important;
+          box-shadow: 0 0 20px var(--parapost-accent-active-border) !important;
           margin: 0 0 14px !important;
         }
 
@@ -6177,12 +6177,12 @@ return (
           display: grid !important;
           place-items: center !important;
           border-radius: 14px !important;
-          border: 1px solid rgba(216,180,254,0.38) !important;
-          background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(168,85,247,0.26)) !important;
+          border: 1px solid var(--parapost-accent-strong-glow) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,0.16), var(--parapost-accent-active-border)) !important;
           color: #ffffff !important;
           font-size: 16px !important;
           font-weight: 950 !important;
-          box-shadow: 0 10px 24px rgba(0,0,0,0.32), 0 0 18px rgba(168,85,247,0.24) !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.32), 0 0 18px var(--parapost-accent-active-border) !important;
           backdrop-filter: blur(14px) !important;
           -webkit-backdrop-filter: blur(14px) !important;
         }
@@ -6211,7 +6211,7 @@ return (
           display: grid !important;
           place-items: center !important;
           border-radius: 999px !important;
-          background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+          background: linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2)) !important;
           color: #ffffff !important;
           font-size: 17px !important;
           line-height: 1 !important;
@@ -6255,7 +6255,7 @@ return (
 
         .profile-mobile-primary-real {
           border: 1px solid rgba(255,255,255,0.10) !important;
-          background: linear-gradient(135deg, #9333ea, #7c3aed) !important;
+          background: linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-1)) !important;
           color: #ffffff !important;
         }
 
@@ -6275,8 +6275,8 @@ return (
 
         .profile-mobile-status-real {
           margin-top: 12px !important;
-          border: 1px solid rgba(168,85,247,0.22) !important;
-          background: rgba(168,85,247,0.12) !important;
+          border: 1px solid var(--parapost-accent-active-border) !important;
+          background: var(--parapost-accent-soft) !important;
           color: #ede9fe !important;
           border-radius: 12px !important;
           padding: 10px 12px !important;
@@ -6303,7 +6303,7 @@ return (
         }
 
         .profile-mobile-meta-real a {
-          color: #c084fc !important;
+          color: var(--parapost-accent-text) !important;
           text-decoration: none !important;
           font-weight: 800 !important;
           overflow-wrap: anywhere !important;
@@ -6373,7 +6373,7 @@ return (
           min-width: 102px !important;
           padding: 4px !important;
           margin: 0 0 12px 0 !important;
-          box-shadow: 0 0 16px rgba(168,85,247,0.18) !important;
+          box-shadow: 0 0 16px var(--parapost-accent-active-bg) !important;
         }
 
         .profile-mobile-first-polish .profile-avatar-wrap img,
@@ -6659,14 +6659,14 @@ return (
           width: 50px !important;
           height: 46px !important;
           border-radius: 14px !important;
-          border: 1px solid rgba(216,180,254,0.26) !important;
-          background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(168,85,247,0.20)) !important;
+          border: 1px solid var(--parapost-accent-active-border) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,0.09), var(--parapost-accent-active-bg)) !important;
           color: #ffffff !important;
           font-size: 16px !important;
           font-weight: 950 !important;
           letter-spacing: 0.12em !important;
           cursor: pointer !important;
-          box-shadow: 0 14px 30px rgba(0,0,0,0.34), 0 0 20px rgba(168,85,247,0.16) !important;
+          box-shadow: 0 14px 30px rgba(0,0,0,0.34), 0 0 20px var(--parapost-accent-active-bg) !important;
           backdrop-filter: blur(16px) !important;
           -webkit-backdrop-filter: blur(16px) !important;
         }
@@ -6754,7 +6754,7 @@ return (
         .profile-mobile-first-polish .profile-tabs-desktop button[data-active="true"] {
           background: transparent !important;
           box-shadow: none !important;
-          border-bottom-color: #a855f7 !important;
+          border-bottom-color: var(--parapost-accent-2) !important;
           color: #ffffff !important;
         }
 
@@ -6825,15 +6825,15 @@ return (
       .profile-feed-post-card {
         border-radius: 20px !important;
         background:
-          radial-gradient(circle at 0% 0%, rgba(168,85,247,0.070), transparent 34%),
+          radial-gradient(circle at 0% 0%, var(--parapost-accent-muted-bg), transparent 34%),
           linear-gradient(180deg, rgba(255,255,255,0.044), rgba(255,255,255,0.020)) !important;
         border-color: rgba(255,255,255,0.095) !important;
         box-shadow: 0 12px 28px rgba(0,0,0,0.22) !important;
       }
 
       .profile-feed-post-card:hover {
-        border-color: rgba(168,85,247,0.24) !important;
-        box-shadow: 0 18px 42px rgba(0,0,0,0.28), 0 0 26px rgba(168,85,247,0.055) !important;
+        border-color: var(--parapost-accent-active-border) !important;
+        box-shadow: 0 18px 42px rgba(0,0,0,0.28), 0 0 26px var(--parapost-accent-muted-bg) !important;
       }
 
       .profile-post-menu-wrap {
@@ -6852,9 +6852,9 @@ return (
 
       .profile-post-menu-trigger:hover,
       .profile-post-menu-trigger:focus-visible {
-        background: rgba(168,85,247,0.14) !important;
-        border-color: rgba(216,180,254,0.26) !important;
-        box-shadow: 0 10px 24px rgba(0,0,0,0.24), 0 0 18px rgba(168,85,247,0.12) !important;
+        background: var(--parapost-accent-soft) !important;
+        border-color: var(--parapost-accent-active-border) !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.24), 0 0 18px var(--parapost-accent-soft) !important;
         outline: none !important;
       }
 
@@ -6905,8 +6905,8 @@ return (
 
       .profile-post-menu-item:hover,
       .profile-post-menu-item:focus-visible {
-        background: rgba(168,85,247,0.14) !important;
-        border-color: rgba(216,180,254,0.22) !important;
+        background: var(--parapost-accent-soft) !important;
+        border-color: var(--parapost-accent-active-border) !important;
         outline: none !important;
       }
 
@@ -6922,7 +6922,7 @@ return (
       }
 
       .profile-post-editor-shell {
-        border: 1px solid rgba(216,180,254,0.12) !important;
+        border: 1px solid var(--parapost-accent-soft) !important;
         border-radius: 18px !important;
         padding: 12px !important;
         background: rgba(0,0,0,0.16) !important;
@@ -6935,7 +6935,7 @@ return (
       }
 
       .profile-post-like-button-active {
-        box-shadow: 0 10px 24px rgba(236,72,153,0.12), 0 0 18px rgba(168,85,247,0.10) !important;
+        box-shadow: 0 10px 24px var(--parapost-accent-soft), 0 0 18px var(--parapost-accent-soft) !important;
       }
 
       @media (max-width: 720px) {
@@ -7044,8 +7044,8 @@ return (
           border-radius: 22px !important;
           margin-left: 0 !important;
           margin-right: 0 !important;
-          border-left: 1px solid rgba(168,85,247,0.22) !important;
-          border-right: 1px solid rgba(168,85,247,0.22) !important;
+          border-left: 1px solid var(--parapost-accent-active-border) !important;
+          border-right: 1px solid var(--parapost-accent-active-border) !important;
         }
       }
 
@@ -7153,10 +7153,10 @@ return (
       }
 
       .profile-polish-surface .profile-avatar-online-ring {
-        background: linear-gradient(135deg, rgba(168,85,247,0.95), rgba(34,211,238,0.82), rgba(124,58,237,0.90)) !important;
+        background: linear-gradient(135deg, var(--parapost-accent-2), rgba(34,211,238,0.82), var(--parapost-accent-2)) !important;
         box-shadow:
-          0 0 0 1px rgba(216,180,254,0.20),
-          0 0 18px rgba(168,85,247,0.30),
+          0 0 0 1px var(--parapost-accent-active-bg),
+          0 0 18px var(--parapost-accent-active-border),
           0 0 32px rgba(34,211,238,0.14) !important;
       }
 
@@ -7167,17 +7167,17 @@ return (
         border-radius: 999px !important;
         border: 1px solid rgba(34,211,238,0.36) !important;
         box-shadow:
-          0 0 18px rgba(168,85,247,0.30),
+          0 0 18px var(--parapost-accent-active-border),
           0 0 30px rgba(34,211,238,0.14) !important;
         pointer-events: none !important;
         z-index: 0 !important;
       }
 
       .profile-polish-surface .profile-avatar-offline-ring {
-        background: linear-gradient(135deg, rgba(168,85,247,0.62), rgba(59,130,246,0.42), rgba(15,23,42,0.72)) !important;
+        background: linear-gradient(135deg, var(--parapost-accent-strong-glow), var(--parapost-accent-strong-glow), rgba(15,23,42,0.72)) !important;
         box-shadow:
           0 0 0 1px rgba(255,255,255,0.08),
-          0 0 16px rgba(168,85,247,0.14) !important;
+          0 0 16px var(--parapost-accent-soft) !important;
       }
 
       .profile-polish-surface [class*="online-dot"],
@@ -7240,7 +7240,7 @@ return (
           min-width: 100px !important;
           padding: 4px !important;
           margin: 0 0 12px 0 !important;
-          box-shadow: 0 0 17px rgba(168,85,247,0.18) !important;
+          box-shadow: 0 0 17px var(--parapost-accent-active-bg) !important;
         }
 
         .profile-polish-surface .profile-avatar-online-ring::after {
@@ -7375,8 +7375,8 @@ return (
         .profile-mobile-first-polish .profile-tabs-desktop button[aria-selected="true"],
         .profile-mobile-first-polish .profile-tabs-desktop button[data-active="true"] {
           color: #ffffff !important;
-          border-color: rgba(168,85,247,0.30) !important;
-          background: linear-gradient(135deg, rgba(168,85,247,0.20), rgba(59,130,246,0.10)) !important;
+          border-color: var(--parapost-accent-active-border) !important;
+          background: linear-gradient(135deg, var(--parapost-accent-active-bg), var(--parapost-accent-soft)) !important;
           box-shadow: inset 0 0 0 1px rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.16) !important;
         }
 
@@ -7405,7 +7405,7 @@ return (
           padding: 0 !important;
           margin: 0 !important;
           background:
-            radial-gradient(circle at 50% -8%, rgba(168,85,247,0.28), transparent 44%),
+            radial-gradient(circle at 50% -8%, var(--parapost-accent-active-border), transparent 44%),
             rgba(0,0,0,0.97) !important;
           overflow: hidden !important;
           isolation: isolate !important;
@@ -7429,7 +7429,7 @@ return (
           padding: max(12px, env(safe-area-inset-top)) 14px max(34px, env(safe-area-inset-bottom)) !important;
           box-shadow: none !important;
           background:
-            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.18), transparent 34%),
+            radial-gradient(circle at 0% 0%, var(--parapost-accent-active-bg), transparent 34%),
             radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 30%),
             linear-gradient(180deg, rgba(14,16,23,0.99), rgba(4,6,10,1)) !important;
         }
@@ -7536,7 +7536,7 @@ return (
           padding: 0 !important;
           margin: 0 !important;
           background:
-            radial-gradient(circle at 50% -6%, rgba(168,85,247,0.30), transparent 44%),
+            radial-gradient(circle at 50% -6%, var(--parapost-accent-active-border), transparent 44%),
             #05060a !important;
           overflow: hidden !important;
           isolation: isolate !important;
@@ -7548,7 +7548,7 @@ return (
           inset: 0;
           z-index: -1;
           background:
-            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.16), transparent 36%),
+            radial-gradient(circle at 0% 0%, var(--parapost-accent-active-bg), transparent 36%),
             radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 32%),
             linear-gradient(180deg, #0e1017, #030408 72%);
           pointer-events: none;
@@ -7573,7 +7573,7 @@ return (
           padding: max(12px, env(safe-area-inset-top)) 14px max(38px, env(safe-area-inset-bottom)) !important;
           box-shadow: none !important;
           background:
-            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.18), transparent 34%),
+            radial-gradient(circle at 0% 0%, var(--parapost-accent-active-bg), transparent 34%),
             radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 30%),
             linear-gradient(180deg, rgba(14,16,23,0.99), rgba(4,6,10,1)) !important;
         }
@@ -7708,7 +7708,7 @@ return (
           padding: 0 !important;
           margin: 0 !important;
           background:
-            radial-gradient(circle at 50% -6%, rgba(168,85,247,0.30), transparent 44%),
+            radial-gradient(circle at 50% -6%, var(--parapost-accent-active-border), transparent 44%),
             #05060a !important;
           overflow: hidden !important;
         }
@@ -7731,7 +7731,7 @@ return (
           padding: max(12px, env(safe-area-inset-top)) 14px max(38px, env(safe-area-inset-bottom)) !important;
           box-shadow: none !important;
           background:
-            radial-gradient(circle at 0% 0%, rgba(168,85,247,0.18), transparent 34%),
+            radial-gradient(circle at 0% 0%, var(--parapost-accent-active-bg), transparent 34%),
             radial-gradient(circle at 100% 10%, rgba(34,211,238,0.10), transparent 30%),
             linear-gradient(180deg, rgba(14,16,23,0.99), rgba(4,6,10,1)) !important;
         }
@@ -7812,7 +7812,7 @@ return (
         height: 19px;
         border-radius: 999px;
         background: #ffffff;
-        border: 2px solid rgba(168,85,247,0.55);
+        border: 2px solid var(--parapost-accent-strong-glow);
         margin-top: -7.5px;
         box-shadow: 0 0 0 5px rgba(255,255,255,0.12), 0 8px 18px rgba(0,0,0,0.30);
       }
@@ -7828,7 +7828,7 @@ return (
         height: 19px;
         border-radius: 999px;
         background: #ffffff;
-        border: 2px solid rgba(168,85,247,0.55);
+        border: 2px solid var(--parapost-accent-strong-glow);
         box-shadow: 0 0 0 5px rgba(255,255,255,0.12), 0 8px 18px rgba(0,0,0,0.30);
       }
 
@@ -7892,7 +7892,7 @@ return (
         height: 18px !important;
         border-radius: 999px !important;
         background: #ffffff !important;
-        border: 2px solid rgba(168,85,247,0.62) !important;
+        border: 2px solid var(--parapost-accent-strong-glow) !important;
         margin-top: -7.5px !important;
         box-shadow: 0 0 0 5px rgba(255,255,255,0.10), 0 8px 18px rgba(0,0,0,0.30) !important;
       }
@@ -7908,7 +7908,7 @@ return (
         height: 18px !important;
         border-radius: 999px !important;
         background: #ffffff !important;
-        border: 2px solid rgba(168,85,247,0.62) !important;
+        border: 2px solid var(--parapost-accent-strong-glow) !important;
       }
 
       .profile-showcase-modal-overlay * {
@@ -7968,7 +7968,7 @@ return (
           justify-content: stretch !important;
           padding: 0 !important;
           background:
-            radial-gradient(circle at 50% 0%, rgba(168,85,247,0.22), transparent 42%),
+            radial-gradient(circle at 50% 0%, var(--parapost-accent-active-border), transparent 42%),
             rgba(0,0,0,0.88) !important;
           backdrop-filter: blur(14px) !important;
           -webkit-backdrop-filter: blur(14px) !important;
@@ -7987,7 +7987,7 @@ return (
           display: flex !important;
           flex-direction: column !important;
           background:
-            radial-gradient(circle at 15% 0%, rgba(168,85,247,0.28), transparent 34%),
+            radial-gradient(circle at 15% 0%, var(--parapost-accent-active-border), transparent 34%),
             radial-gradient(circle at 94% 8%, rgba(34,211,238,0.12), transparent 28%),
             linear-gradient(180deg, rgba(18,20,29,0.99), rgba(6,8,13,0.995)) !important;
         }
@@ -8090,7 +8090,7 @@ return (
           padding: 13px !important;
           grid-template-columns: 42px minmax(0, 1fr) !important;
           background:
-            linear-gradient(135deg, rgba(168,85,247,0.18), rgba(59,130,246,0.08)),
+            linear-gradient(135deg, var(--parapost-accent-active-bg), var(--parapost-accent-soft)),
             rgba(255,255,255,0.045) !important;
         }
 
@@ -8385,7 +8385,7 @@ return (
 
       .profile-polish-surface .profile-avatar-wrap {
         padding: 4px !important;
-        box-shadow: 0 0 0 1px rgba(216,180,254,0.18), 0 18px 34px rgba(0,0,0,0.36), 0 0 22px rgba(168,85,247,0.18) !important;
+        box-shadow: 0 0 0 1px var(--parapost-accent-active-bg), 0 18px 34px rgba(0,0,0,0.36), 0 0 22px var(--parapost-accent-active-bg) !important;
       }
 
       .profile-polish-surface .profile-avatar-wrap img,
@@ -8394,7 +8394,7 @@ return (
       }
 
       .profile-polish-surface .profile-avatar-online-ring::after {
-        box-shadow: 0 0 14px rgba(168,85,247,0.24), 0 0 22px rgba(34,211,238,0.10) !important;
+        box-shadow: 0 0 14px var(--parapost-accent-active-border), 0 0 22px rgba(34,211,238,0.10) !important;
       }
 
       .profile-polish-surface .profile-avatar-edit-button {
@@ -8403,9 +8403,9 @@ return (
         right: -8px !important;
         bottom: 8px !important;
         border-radius: 12px !important;
-        background: linear-gradient(135deg, rgba(12,14,22,0.86), rgba(124,58,237,0.38)) !important;
-        border: 1px solid rgba(216,180,254,0.34) !important;
-        box-shadow: 0 9px 20px rgba(0,0,0,0.28), 0 0 14px rgba(168,85,247,0.18) !important;
+        background: linear-gradient(135deg, rgba(12,14,22,0.86), var(--parapost-accent-strong-glow)) !important;
+        border: 1px solid var(--parapost-accent-strong-glow) !important;
+        box-shadow: 0 9px 20px rgba(0,0,0,0.28), 0 0 14px var(--parapost-accent-active-bg) !important;
       }
 
       .profile-polish-surface .profile-hero-topline {
@@ -8575,7 +8575,7 @@ return (
           min-width: 112px !important;
           margin: 0 0 14px 0 !important;
           padding: 4px !important;
-          box-shadow: 0 0 0 1px rgba(216,180,254,0.18), 0 16px 32px rgba(0,0,0,0.34), 0 0 24px rgba(34,211,238,0.18) !important;
+          box-shadow: 0 0 0 1px var(--parapost-accent-active-bg), 0 16px 32px rgba(0,0,0,0.34), 0 0 24px rgba(34,211,238,0.18) !important;
         }
 
         .profile-polish-surface.profile-mobile-first-polish .profile-hero-info {
@@ -8861,12 +8861,12 @@ return (
 
         .profile-top-search form:focus-within {
           background: rgba(255,255,255,0.16) !important;
-          border-color: rgba(216,180,254,0.30) !important;
-          box-shadow: 0 0 0 3px rgba(168,85,247,0.14), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+          border-color: var(--parapost-accent-active-border) !important;
+          box-shadow: 0 0 0 3px var(--parapost-accent-soft), inset 0 1px 0 rgba(255,255,255,0.10) !important;
         }
 
         .profile-top-search button:hover {
-          background: rgba(168,85,247,0.12) !important;
+          background: var(--parapost-accent-soft) !important;
         }
 
         @media (max-width: 420px) {
@@ -8895,8 +8895,8 @@ return (
         .profile-top-search form:focus-within,
         .profile-mobile-search-field form:focus-within {
           background: rgba(255,255,255,0.16) !important;
-          border-color: rgba(216,180,254,0.30) !important;
-          box-shadow: 0 0 0 3px rgba(168,85,247,0.14), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+          border-color: var(--parapost-accent-active-border) !important;
+          box-shadow: 0 0 0 3px var(--parapost-accent-soft), inset 0 1px 0 rgba(255,255,255,0.10) !important;
         }
 
         .profile-mobile-search-field {
@@ -8935,7 +8935,34 @@ return (
           }
         }
 
-`}</style>
+        /* Avatar crop safety fix: keeps uploaded photos inside the circle while preserving glow/status rings */
+        .profile-polish-surface .profile-avatar-wrap img,
+        .profile-polish-surface .profile-mobile-avatar-image-real,
+        .profile-avatar-wrap img,
+        .profile-mobile-avatar-image-real,
+        .parapost-search-avatar img {
+          display: block !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 100% !important;
+          min-height: 100% !important;
+          max-width: none !important;
+          max-height: none !important;
+          object-fit: cover !important;
+          object-position: center !important;
+          border-radius: 999px !important;
+          clip-path: inset(0 round 999px) !important;
+        }
+
+        .profile-polish-surface .profile-avatar-wrap,
+        .profile-polish-surface .profile-mobile-avatar-shell-real,
+        .profile-avatar-wrap,
+        .profile-mobile-avatar-shell-real {
+          overflow: visible !important;
+        }
+
+`}
+</style>
 
     {/* Mobile Top Bar */}
     <div className="xl:hidden" style={mobileTopBarStyle}>
@@ -8980,7 +9007,7 @@ return (
           </div>
           <div
             style={{
-              color: "#a855f7",
+              color: "var(--parapost-accent-2)",
               fontSize: "11px",
               letterSpacing: "0.32em",
               fontWeight: 900,
@@ -9036,7 +9063,7 @@ return (
         <div className="profile-layout-grid grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-[240px_minmax(0,1fr)_340px]">
           <aside className="hidden xl:block" style={sideCardStyle}>
             <h2 style={{ marginTop: 0, fontSize: "24px", letterSpacing: "-0.03em" }}>PARAPOST</h2>
-            <p style={{ color: "#a855f7", fontSize: "13px", marginTop: 0, letterSpacing: "0.28em", fontWeight: 800 }}>NETWORK</p>
+            <p style={{ color: "var(--parapost-accent-2)", fontSize: "13px", marginTop: 0, letterSpacing: "0.28em", fontWeight: 800 }}>NETWORK</p>
 
             <div
               style={{
@@ -9525,7 +9552,7 @@ return (
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ textDecoration: "none", color: "#c084fc", fontWeight: 600 }}
+                            style={{ textDecoration: "none", color: "var(--parapost-accent-text)", fontWeight: 600 }}
                           >
                             🔗{" "}
                             {(profile?.website || "")
@@ -10819,8 +10846,8 @@ return (
                       disabled={profilePostLoading || (!profilePostContent.trim() && !profilePostImage)}
                       style={{
                         ...profileCompactPrimaryButtonStyle,
-                        background: "linear-gradient(135deg, #ffffff, #e9d5ff)",
-                        boxShadow: "0 12px 28px rgba(168,85,247,0.24)",
+                        background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))",
+                        boxShadow: "0 12px 28px var(--parapost-accent-active-border)",
                         opacity: profilePostLoading || (!profilePostContent.trim() && !profilePostImage) ? 0.62 : 1,
                         cursor: profilePostLoading || (!profilePostContent.trim() && !profilePostImage) ? "not-allowed" : "pointer",
                       }}
@@ -10906,7 +10933,7 @@ return (
                               style={{ ...postCardStyle, position: "relative" }}
                               onMouseEnter={(event) => {
                                 event.currentTarget.style.transform = "translateY(-1px)";
-                                event.currentTarget.style.borderColor = "rgba(168,85,247,0.30)";
+                                event.currentTarget.style.borderColor = "var(--parapost-accent-active-border)";
                                 event.currentTarget.style.boxShadow = "0 22px 52px rgba(0,0,0,0.34)";
                               }}
                               onMouseLeave={(event) => {
@@ -11037,7 +11064,7 @@ return (
                             style={{ ...profileNormalPostCardStyle, position: "relative" }}
                             onMouseEnter={(event) => {
                               event.currentTarget.style.transform = "translateY(-1px)";
-                              event.currentTarget.style.borderColor = "rgba(168,85,247,0.24)";
+                              event.currentTarget.style.borderColor = "var(--parapost-accent-active-border)";
                               event.currentTarget.style.boxShadow = "0 16px 34px rgba(0,0,0,0.24)";
                             }}
                             onMouseLeave={(event) => {
@@ -11183,7 +11210,7 @@ return (
                     <div
                       style={{
                         ...achievementIconStyle,
-                        color: "#c4b5fd",
+                        color: "var(--parapost-accent-text)",
                         fontSize: "11px",
                         fontWeight: 950,
                         letterSpacing: "0.08em",
@@ -11739,9 +11766,9 @@ const profileMobileBadgesPanelStyle: CSSProperties = {
   margin: "0 14px 14px",
   padding: "15px",
   borderRadius: "18px",
-  border: "1px solid rgba(216,180,254,0.14)",
+  border: "1px solid var(--parapost-accent-soft)",
   background:
-    "radial-gradient(circle at 8% 0%, rgba(168,85,247,0.16), transparent 34%), linear-gradient(180deg, rgba(20,22,31,0.92), rgba(13,15,22,0.96))",
+    "radial-gradient(circle at 8% 0%, var(--parapost-accent-active-bg), transparent 34%), linear-gradient(180deg, rgba(20,22,31,0.92), rgba(13,15,22,0.96))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 12px 30px rgba(0,0,0,0.18)",
   gap: "12px",
 };
@@ -11757,7 +11784,7 @@ const profileMobileBadgesHeaderStyle: CSSProperties = {
 
 const profileMobileBadgesEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "10px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -11784,10 +11811,10 @@ const profileMobileBadgesSubtitleStyle: CSSProperties = {
 const profileMobileBadgesCountButtonStyle: CSSProperties = {
   flex: "0 0 auto",
   minHeight: "32px",
-  border: "1px solid rgba(216,180,254,0.24)",
+  border: "1px solid var(--parapost-accent-active-border)",
   borderRadius: "999px",
-  background: "rgba(168,85,247,0.11)",
-  color: "#e9d5ff",
+  background: "var(--parapost-accent-soft)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "7px 10px",
   fontSize: "10px",
   fontWeight: 950,
@@ -11852,7 +11879,7 @@ const profileMobileBadgesFeaturedMetaStyle: CSSProperties = {
 };
 
 const profileMobileBadgesChevronStyle: CSSProperties = {
-  color: "#c4b5fd",
+  color: "var(--parapost-accent-text)",
   fontSize: "28px",
   fontWeight: 700,
   lineHeight: 1,
@@ -11890,7 +11917,7 @@ const profileMobileBadgeMoreButtonStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.12)",
   borderRadius: "16px",
   background: "rgba(255,255,255,0.055)",
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
   cursor: "pointer",
   fontFamily: "inherit",
   fontSize: "14px",
@@ -11909,9 +11936,9 @@ const profileMobileBadgesDetailsButtonStyle: CSSProperties = {
   width: "100%",
   minHeight: "38px",
   borderRadius: "13px",
-  border: "1px solid rgba(216,180,254,0.20)",
-  background: "rgba(168,85,247,0.10)",
-  color: "#e9d5ff",
+  border: "1px solid var(--parapost-accent-active-bg)",
+  background: "var(--parapost-accent-soft)",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: "12px",
   fontWeight: 950,
   cursor: "pointer",
@@ -11937,9 +11964,9 @@ const profileStarterCardStyle: CSSProperties = {
   margin: "14px 14px 16px",
   padding: "16px",
   borderRadius: "24px",
-  border: "1px solid rgba(216,180,254,0.22)",
+  border: "1px solid var(--parapost-accent-active-border)",
   background:
-    "linear-gradient(135deg, rgba(88,28,135,0.34), rgba(17,24,39,0.86) 54%, rgba(6,8,14,0.92))",
+    "linear-gradient(135deg, var(--parapost-accent-strong-glow), rgba(17,24,39,0.86) 54%, rgba(6,8,14,0.92))",
   boxShadow: "0 22px 54px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.06)",
   position: "relative",
   overflow: "hidden",
@@ -11964,13 +11991,13 @@ const profileStarterIconStyle: CSSProperties = {
   color: "#ffffff",
   fontSize: "22px",
   fontWeight: 950,
-  background: "linear-gradient(135deg, #7c3aed, #ec4899)",
-  boxShadow: "0 16px 36px rgba(168,85,247,0.34), inset 0 1px 0 rgba(255,255,255,0.22)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), #ec4899)",
+  boxShadow: "0 16px 36px var(--parapost-accent-strong-glow), inset 0 1px 0 rgba(255,255,255,0.22)",
 };
 
 const profileStarterEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -12016,8 +12043,8 @@ const profileStarterProgressFillStyle: CSSProperties = {
   display: "block",
   height: "100%",
   borderRadius: "999px",
-  background: "linear-gradient(90deg, #7c3aed, #a855f7, #ec4899)",
-  boxShadow: "0 0 22px rgba(168,85,247,0.45)",
+  background: "linear-gradient(90deg, var(--parapost-accent-1), var(--parapost-accent-2), #ec4899)",
+  boxShadow: "0 0 22px var(--parapost-accent-strong-glow)",
   transition: "width 180ms ease",
 };
 
@@ -12051,11 +12078,11 @@ const profileStarterStepTodoStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   flexShrink: 0,
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 950,
-  border: "1px solid rgba(216,180,254,0.30)",
-  background: "rgba(88,28,135,0.30)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "var(--parapost-accent-active-border)",
 };
 
 const profileStarterStepDoneStyle: CSSProperties = {
@@ -12082,8 +12109,8 @@ const profileStarterPrimaryButtonStyle: CSSProperties = {
   color: "#1f1235",
   fontSize: "13px",
   fontWeight: 950,
-  background: "linear-gradient(135deg, #ffffff, #e9d5ff)",
-  boxShadow: "0 14px 30px rgba(168,85,247,0.22)",
+  background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))",
+  boxShadow: "0 14px 30px var(--parapost-accent-active-border)",
 };
 
 const profileStarterSecondaryButtonStyle: CSSProperties = {
@@ -12136,9 +12163,9 @@ function getFriendStatusPillStyle(friendStatus: FriendRequestStatus): CSSPropert
       minHeight: "34px",
       padding: "0 12px",
       borderRadius: "999px",
-      color: "#c4b5fd",
-      background: "rgba(139,92,246,0.10)",
-      border: "1px solid rgba(139,92,246,0.24)",
+      color: "var(--parapost-accent-text)",
+      background: "var(--parapost-accent-soft)",
+      border: "1px solid var(--parapost-accent-active-border)",
       fontWeight: 700,
       fontSize: "12px",
     };
@@ -12181,7 +12208,7 @@ const sideCardStyle: CSSProperties = {
 
 const postCardStyle: CSSProperties = {
   background:
-    "linear-gradient(180deg, rgba(255,255,255,0.064) 0%, rgba(255,255,255,0.034) 58%, rgba(168,85,247,0.035) 100%)",
+    "linear-gradient(180deg, rgba(255,255,255,0.064) 0%, rgba(255,255,255,0.034) 58%, var(--parapost-accent-muted-bg) 100%)",
   border: "1px solid rgba(255,255,255,0.115)",
   borderRadius: "24px",
   padding: "18px",
@@ -12222,11 +12249,11 @@ const profileComposerIconStyle: CSSProperties = {
   placeItems: "center",
   flexShrink: 0,
   background:
-    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.24), transparent 34%), linear-gradient(135deg, #a855f7, #7c3aed 58%, #2563eb)",
+    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.24), transparent 34%), linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 58%, var(--parapost-accent-3))",
   color: "#ffffff",
   fontSize: "24px",
   fontWeight: 950,
-  boxShadow: "0 16px 36px rgba(168,85,247,0.30), inset 0 1px 0 rgba(255,255,255,0.16)",
+  boxShadow: "0 16px 36px var(--parapost-accent-active-border), inset 0 1px 0 rgba(255,255,255,0.16)",
 };
 
 const profileComposerBadgeStyle: CSSProperties = {
@@ -12235,9 +12262,9 @@ const profileComposerBadgeStyle: CSSProperties = {
   justifyContent: "center",
   minHeight: "34px",
   borderRadius: "999px",
-  border: "1px solid rgba(168,85,247,0.24)",
-  background: "rgba(168,85,247,0.12)",
-  color: "#e9d5ff",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "var(--parapost-accent-soft)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "7px 12px",
   fontSize: "12px",
   fontWeight: 950,
@@ -12275,7 +12302,7 @@ const feedEyebrowStyle: CSSProperties = {
   display: "inline-flex",
   width: "fit-content",
   marginBottom: "6px",
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 950,
   letterSpacing: "0.18em",
@@ -12289,9 +12316,9 @@ const feedCountPillStyle: CSSProperties = {
   minHeight: "30px",
   height: "30px",
   borderRadius: "999px",
-  border: "1px solid rgba(168,85,247,0.22)",
-  background: "rgba(168,85,247,0.10)",
-  color: "#e9d5ff",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "var(--parapost-accent-soft)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "0 10px",
   fontSize: "11px",
   lineHeight: 1,
@@ -12333,7 +12360,7 @@ const postAuthorAvatarStyle: CSSProperties = {
   borderRadius: "14px",
   overflow: "hidden",
   flexShrink: 0,
-  border: "1px solid rgba(168,85,247,0.34)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   background: "#05070a",
   boxShadow: "0 8px 18px rgba(0,0,0,0.22)",
 };
@@ -12341,11 +12368,11 @@ const postAuthorAvatarStyle: CSSProperties = {
 const postAuthorAvatarOnlineStyle: CSSProperties = {
   border: "1px solid rgba(34,211,238,0.72)",
   boxShadow:
-    "0 0 0 1px rgba(168,85,247,0.22), 0 0 16px rgba(34,211,238,0.14)",
+    "0 0 0 1px var(--parapost-accent-active-border), 0 0 16px rgba(34,211,238,0.14)",
 };
 
 const postAuthorAvatarOfflineStyle: CSSProperties = {
-  border: "1px solid rgba(168,85,247,0.34)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   boxShadow: "0 0 0 1px rgba(255,255,255,0.055), 0 8px 18px rgba(0,0,0,0.22)",
 };
 
@@ -12354,7 +12381,7 @@ const postAuthorFallbackStyle: CSSProperties = {
   height: "100%",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, #7c3aed, #111827)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), #111827)",
   color: "#ffffff",
   fontWeight: 950,
 };
@@ -12425,14 +12452,14 @@ const postLikeButtonActiveStyle: CSSProperties = {
   justifyContent: "center",
   gap: "7px",
   borderRadius: "12px",
-  border: "1px solid rgba(236,72,153,0.32)",
-  background: "linear-gradient(135deg, rgba(236,72,153,0.14), rgba(168,85,247,0.10))",
+  border: "1px solid var(--parapost-accent-active-bg)",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), var(--parapost-accent-soft))",
   color: "#fbcfe8",
   padding: "8px 12px",
   cursor: "pointer",
   minHeight: "36px",
   fontWeight: 850,
-  boxShadow: "0 8px 18px rgba(236,72,153,0.10)",
+  boxShadow: "0 8px 18px var(--parapost-accent-soft)",
   transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease",
 };
 
@@ -12465,9 +12492,9 @@ const navItemLinkStyle: CSSProperties = {
 };
 
 const primaryButtonStyle: CSSProperties = {
-  background: "white",
-  color: "black",
-  border: "none",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+  color: "var(--parapost-accent-button-text)",
+  border: "1px solid var(--parapost-accent-active-border)",
   borderRadius: "999px",
   padding: "10px 16px",
   fontWeight: 700,
@@ -12607,9 +12634,9 @@ const sharedReelCardStyle: CSSProperties = {
   alignItems: "center",
   flexWrap: "wrap",
   borderRadius: "28px",
-  border: "1px solid rgba(168,85,247,0.24)",
+  border: "1px solid var(--parapost-accent-active-border)",
   background:
-    "linear-gradient(135deg, rgba(168,85,247,0.16), rgba(0,0,0,0.38) 48%, rgba(34,211,238,0.10))",
+    "linear-gradient(135deg, var(--parapost-accent-active-bg), rgba(0,0,0,0.38) 48%, rgba(34,211,238,0.10))",
   padding: "15px",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 16px 40px rgba(0,0,0,0.24)",
 };
@@ -12646,10 +12673,10 @@ const profilePostTextAreaStyle: CSSProperties = {
 
 const profilePostMediaBoxStyle: CSSProperties = {
   marginTop: "12px",
-  border: "1px solid rgba(168,85,247,0.16)",
+  border: "1px solid var(--parapost-accent-active-bg)",
   borderRadius: "24px",
   background:
-    "radial-gradient(circle at 0% 0%, rgba(168,85,247,0.10), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.022))",
+    "radial-gradient(circle at 0% 0%, var(--parapost-accent-soft), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.022))",
   padding: "15px",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
 };
@@ -12898,7 +12925,7 @@ const profileDesktopActionMenuStyle: CSSProperties = {
   background: "#11131a",
   backgroundColor: "#11131a",
   boxShadow:
-    "0 30px 90px rgba(0,0,0,0.82), 0 0 0 1px rgba(255,255,255,0.08), 0 0 34px rgba(168,85,247,0.20)",
+    "0 30px 90px rgba(0,0,0,0.82), 0 0 0 1px rgba(255,255,255,0.08), 0 0 34px var(--parapost-accent-active-bg)",
   padding: "8px",
   paddingBottom: "12px",
   backdropFilter: "none",
@@ -13064,15 +13091,15 @@ const profileActionIconStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(168,85,247,0.14)",
-  color: "#d8b4fe",
+  background: "var(--parapost-accent-soft)",
+  color: "var(--parapost-accent-text)",
   fontSize: "18px",
   fontWeight: 950,
 };
 
 const profilePageBackgroundStyle: CSSProperties = {
   background:
-    "radial-gradient(circle at 50% 0%, rgba(126,34,206,0.20) 0%, rgba(7,9,13,0.82) 34%, #05070b 72%), linear-gradient(180deg, #080a10 0%, #05070b 100%)",
+    "radial-gradient(circle at 50% 0%, var(--parapost-accent-soft) 0%, rgba(7,9,13,0.82) 34%, #05070b 72%), linear-gradient(180deg, #080a10 0%, #05070b 100%)",
 };
 
 const profileHeroShellStyle: CSSProperties = {
@@ -13090,7 +13117,7 @@ const profileCoverStyle: CSSProperties = {
   position: "relative",
   height: "clamp(190px, 24vw, 300px)",
   background:
-    "radial-gradient(circle at 50% 30%, rgba(168,85,247,0.62) 0%, rgba(88,28,135,0.35) 28%, rgba(3,7,18,0.78) 58%), linear-gradient(135deg, #0f1020 0%, #16162a 44%, #05070b 100%)",
+    "radial-gradient(circle at 50% 30%, var(--parapost-accent-strong-glow) 0%, var(--parapost-accent-soft) 28%, rgba(3,7,18,0.78) 58%), linear-gradient(135deg, #0f1020 0%, #16162a 44%, #05070b 100%)",
   overflow: "hidden",
 };
 
@@ -13137,8 +13164,8 @@ const profileAvatarWrapStyle: CSSProperties = {
   borderRadius: "50%",
   padding: "5px",
   background:
-    "linear-gradient(135deg, rgba(168,85,247,1) 0%, rgba(59,130,246,0.95) 50%, rgba(236,72,153,0.9) 100%)",
-  boxShadow: "0 0 34px rgba(168,85,247,0.42)",
+    "linear-gradient(135deg, var(--parapost-accent-1) 0%, var(--parapost-accent-2) 52%, var(--parapost-accent-3) 100%)",
+  boxShadow: "0 0 34px var(--parapost-accent-strong-glow)",
   flexShrink: 0,
 };
 
@@ -13172,8 +13199,8 @@ const avatarCameraButtonStyle: CSSProperties = {
   width: "36px",
   height: "36px",
   borderRadius: "13px",
-  border: "1px solid rgba(216,180,254,0.42)",
-  background: "linear-gradient(135deg, rgba(255,255,255,0.18), rgba(168,85,247,0.30))",
+  border: "1px solid var(--parapost-accent-strong-glow)",
+  background: "linear-gradient(135deg, rgba(255,255,255,0.18), var(--parapost-accent-active-border))",
   color: "white",
   cursor: "pointer",
   display: "grid",
@@ -13181,7 +13208,7 @@ const avatarCameraButtonStyle: CSSProperties = {
   fontSize: "15px",
   fontWeight: 950,
   lineHeight: 1,
-  boxShadow: "0 10px 24px rgba(0,0,0,0.34), 0 0 18px rgba(168,85,247,0.26)",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.34), 0 0 18px var(--parapost-accent-active-border)",
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
 };
@@ -13208,7 +13235,7 @@ const profileHeroNameStyle: CSSProperties = {
   fontSize: "clamp(30px, 3.8vw, 46px)",
   lineHeight: 1.03,
   letterSpacing: "-0.052em",
-  color: "#fff",
+  color: "var(--parapost-accent-button-text)",
 };
 
 const verifiedBadgeStyle: CSSProperties = {
@@ -13218,7 +13245,7 @@ const verifiedBadgeStyle: CSSProperties = {
   height: "23px",
   marginLeft: "10px",
   borderRadius: "999px",
-  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2))",
   color: "white",
   fontSize: "14px",
   verticalAlign: "middle",
@@ -13256,15 +13283,15 @@ const profilePrimaryButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "linear-gradient(135deg,#9333ea,#7c3aed)",
-  color: "#fff",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+  color: "var(--parapost-accent-button-text)",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: "14px",
   padding: "11px 18px",
   fontWeight: 850,
   fontSize: "13px",
   cursor: "pointer",
-  boxShadow: "0 8px 18px rgba(124,58,237,0.26)",
+  boxShadow: "0 8px 18px var(--parapost-accent-glow)",
   transition: "all 0.18s ease",
   whiteSpace: "nowrap",
 };
@@ -13386,9 +13413,9 @@ const profileStoryCircleStyle: CSSProperties = {
   borderRadius: "50%",
   display: "grid",
   placeItems: "center",
-  border: "2px solid rgba(168,85,247,0.75)",
+  border: "2px solid var(--parapost-accent-2)",
   background: "rgba(255,255,255,0.04)",
-  boxShadow: "0 0 22px rgba(168,85,247,0.18)",
+  boxShadow: "0 0 22px var(--parapost-accent-active-bg)",
   fontSize: "23px",
 };
 
@@ -13458,14 +13485,14 @@ const profileShowcasePlusCircleStyle: CSSProperties = {
   placeItems: "center",
   border: "1px solid rgba(255,255,255,0.18)",
   background:
-    "radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), transparent 23%), linear-gradient(135deg, #a855f7, #7c3aed 58%, #4f46e5)",
+    "radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), transparent 23%), linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 58%, var(--parapost-accent-3))",
   color: "#ffffff",
   fontSize: "40px",
   fontWeight: 950,
   lineHeight: 0.86,
   paddingBottom: "4px",
   boxShadow:
-    "0 16px 34px rgba(124,58,237,0.38), 0 0 34px rgba(168,85,247,0.28), inset 0 1px 0 rgba(255,255,255,0.16)",
+    "0 16px 34px var(--parapost-accent-strong-glow), 0 0 34px var(--parapost-accent-active-border), inset 0 1px 0 rgba(255,255,255,0.16)",
 };
 
 const profileShowcaseNewLabelStyle: CSSProperties = {
@@ -13473,7 +13500,7 @@ const profileShowcaseNewLabelStyle: CSSProperties = {
   zIndex: 6,
   display: "block",
   maxWidth: "78px",
-  color: "#f3e8ff",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: "11px",
   fontWeight: 900,
   lineHeight: 1.1,
@@ -13507,10 +13534,10 @@ const profileShowcaseCoverCircleStyle: CSSProperties = {
   placeItems: "center",
   overflow: "hidden",
   borderRadius: "999px",
-  border: "1px solid rgba(216,180,254,0.30)",
+  border: "1px solid var(--parapost-accent-active-border)",
   background:
-    "radial-gradient(circle at 36% 18%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, rgba(88,28,135,0.96), rgba(59,130,246,0.58))",
-  boxShadow: "0 0 22px rgba(168,85,247,0.20), 0 12px 24px rgba(0,0,0,0.24)",
+    "radial-gradient(circle at 36% 18%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-strong-glow))",
+  boxShadow: "0 0 22px var(--parapost-accent-active-bg), 0 12px 24px rgba(0,0,0,0.24)",
 };
 
 const profileShowcaseCoverMediaStyle: CSSProperties = {
@@ -13593,10 +13620,10 @@ const profileShowcaseSimpleControlsStyle: CSSProperties = {
 const profileShowcaseSimpleUploadCardStyle: CSSProperties = {
   width: "100%",
   minHeight: "144px",
-  border: "1px dashed rgba(216,180,254,0.52)",
+  border: "1px dashed var(--parapost-accent-strong-glow)",
   borderRadius: "24px",
   background:
-    "radial-gradient(circle at 20% 0%, rgba(168,85,247,0.20), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.11), rgba(255,255,255,0.035))",
+    "radial-gradient(circle at 20% 0%, var(--parapost-accent-active-bg), transparent 36%), linear-gradient(180deg, var(--parapost-accent-soft), rgba(255,255,255,0.035))",
   color: "#ffffff",
   display: "grid",
   gridTemplateColumns: "58px minmax(0, 1fr)",
@@ -13613,7 +13640,7 @@ const profileShowcaseSimpleUploadCardActiveStyle: CSSProperties = {
   ...profileShowcaseSimpleUploadCardStyle,
   border: "1px dashed rgba(34,211,238,0.70)",
   background:
-    "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.18), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.14), rgba(34,211,238,0.055))",
+    "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.18), transparent 36%), linear-gradient(180deg, var(--parapost-accent-soft), rgba(34,211,238,0.055))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(34,211,238,0.18), 0 22px 52px rgba(0,0,0,0.26)",
 };
 
@@ -13621,7 +13648,7 @@ const profileShowcaseSimpleUploadCardSelectedStyle: CSSProperties = {
   ...profileShowcaseSimpleUploadCardStyle,
   border: "1px solid rgba(74,222,128,0.32)",
   background:
-    "radial-gradient(circle at 22% 0%, rgba(74,222,128,0.12), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.10), rgba(74,222,128,0.040))",
+    "radial-gradient(circle at 22% 0%, rgba(74,222,128,0.12), transparent 36%), linear-gradient(180deg, var(--parapost-accent-soft), rgba(74,222,128,0.040))",
 };
 
 const profileShowcaseSimpleUploadIconStyle: CSSProperties = {
@@ -13630,11 +13657,11 @@ const profileShowcaseSimpleUploadIconStyle: CSSProperties = {
   borderRadius: "20px",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.95), rgba(124,58,237,0.90))",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-2))",
   color: "#ffffff",
   fontSize: "28px",
   fontWeight: 950,
-  boxShadow: "0 14px 28px rgba(124,58,237,0.30)",
+  boxShadow: "0 14px 28px var(--parapost-accent-active-border)",
 };
 
 const profileShowcaseUploadTitleTextStyle: CSSProperties = {
@@ -13687,10 +13714,10 @@ const profileShowcaseAdvancedDividerStyle: CSSProperties = {
 const profileShowcaseCustomizeButtonStyle: CSSProperties = {
   width: "100%",
   minHeight: "42px",
-  border: "1px solid rgba(216,180,254,0.26)",
+  border: "1px solid var(--parapost-accent-active-border)",
   borderRadius: "14px",
   background: "rgba(255,255,255,0.035)",
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
   fontSize: "14px",
   fontWeight: 950,
   cursor: "pointer",
@@ -13699,8 +13726,8 @@ const profileShowcaseCustomizeButtonStyle: CSSProperties = {
 
 const profileShowcaseCustomizeButtonActiveStyle: CSSProperties = {
   ...profileShowcaseCustomizeButtonStyle,
-  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
-  border: "1px solid rgba(216,180,254,0.42)",
+  background: "linear-gradient(135deg, var(--parapost-accent-active-border), var(--parapost-accent-soft))",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   color: "#ffffff",
 };
 
@@ -13708,10 +13735,10 @@ const profileShowcaseCustomizePanelStyle: CSSProperties = {
   display: "grid",
   gap: "12px",
   marginTop: "12px",
-  border: "1px solid rgba(216,180,254,0.13)",
+  border: "1px solid var(--parapost-accent-soft)",
   borderRadius: "20px",
   background:
-    "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.10), transparent 38%), rgba(0,0,0,0.18)",
+    "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 38%), rgba(0,0,0,0.18)",
   padding: "13px",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
 };
@@ -13719,10 +13746,10 @@ const profileShowcaseCustomizePanelStyle: CSSProperties = {
 const profileShowcaseCustomizeIntroStyle: CSSProperties = {
   display: "grid",
   gap: "4px",
-  border: "1px solid rgba(216,180,254,0.15)",
+  border: "1px solid var(--parapost-accent-soft)",
   borderRadius: "15px",
   background:
-    "linear-gradient(135deg, rgba(168,85,247,0.13), rgba(37,99,235,0.055))",
+    "linear-gradient(135deg, var(--parapost-accent-soft), rgba(37,99,235,0.055))",
   padding: "11px",
   color: "#ffffff",
   fontSize: "13px",
@@ -13774,9 +13801,9 @@ const profileShowcaseStartOptionStyle: CSSProperties = {
 
 const profileShowcaseStartOptionActiveStyle: CSSProperties = {
   ...profileShowcaseStartOptionStyle,
-  border: "1px solid rgba(216,180,254,0.46)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
-  boxShadow: "0 0 24px rgba(168,85,247,0.16)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
+  background: "linear-gradient(135deg, var(--parapost-accent-active-border), var(--parapost-accent-soft))",
+  boxShadow: "0 0 24px var(--parapost-accent-active-bg)",
 };
 
 const profileShowcaseStartIconStyle: CSSProperties = {
@@ -13785,7 +13812,7 @@ const profileShowcaseStartIconStyle: CSSProperties = {
   borderRadius: "13px",
   display: "grid",
   placeItems: "center",
-  background: "rgba(168,85,247,0.22)",
+  background: "var(--parapost-accent-active-border)",
   color: "#ffffff",
   fontSize: "16px",
   fontWeight: 950,
@@ -13813,7 +13840,7 @@ const profileShowcasePreviewPhoneStyle: CSSProperties = {
   overflow: "hidden",
   border: "1px solid rgba(255,255,255,0.14)",
   background:
-    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.90) 52%, rgba(168,85,247,0.84))",
+    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), var(--parapost-accent-2) 52%, var(--parapost-accent-2))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 34px 86px rgba(0,0,0,0.50)",
 };
 
@@ -13821,7 +13848,7 @@ const profileShowcasePreviewCanvasStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   background:
-    "linear-gradient(135deg, rgba(20,184,166,0.80), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.86))",
+    "linear-gradient(135deg, rgba(20,184,166,0.80), var(--parapost-accent-strong-glow) 45%, var(--parapost-accent-2))",
 };
 
 const profileShowcasePreviewMediaStyle: CSSProperties = {
@@ -13858,7 +13885,7 @@ const profileShowcaseCenterGuideVerticalStyle: CSSProperties = {
   transform: "translateX(-50%)",
   background:
     "repeating-linear-gradient(to bottom, rgba(255,255,255,0.42) 0 5px, transparent 5px 10px)",
-  boxShadow: "0 0 12px rgba(168,85,247,0.22)",
+  boxShadow: "0 0 12px var(--parapost-accent-active-border)",
   pointerEvents: "none",
 };
 
@@ -13871,7 +13898,7 @@ const profileShowcaseCenterGuideHorizontalStyle: CSSProperties = {
   transform: "translateY(-50%)",
   background:
     "repeating-linear-gradient(to right, rgba(255,255,255,0.42) 0 5px, transparent 5px 10px)",
-  boxShadow: "0 0 12px rgba(168,85,247,0.22)",
+  boxShadow: "0 0 12px var(--parapost-accent-active-border)",
   pointerEvents: "none",
 };
 
@@ -13963,11 +13990,11 @@ const profileShowcaseVisibilityOptionStyle: CSSProperties = {
 
 const profileShowcaseVisibilityOptionActiveStyle: CSSProperties = {
   ...profileShowcaseVisibilityOptionStyle,
-  border: "1px solid rgba(216,180,254,0.58)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   background:
-    "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(37,99,235,0.11))",
+    "linear-gradient(135deg, var(--parapost-accent-active-border), rgba(37,99,235,0.11))",
   boxShadow:
-    "0 0 0 1px rgba(168,85,247,0.12), 0 14px 30px rgba(124,58,237,0.18)",
+    "0 0 0 1px var(--parapost-accent-soft), 0 14px 30px var(--parapost-accent-active-bg)",
 };
 
 const profileShowcaseVisibilityIconStyle: CSSProperties = {
@@ -13977,8 +14004,8 @@ const profileShowcaseVisibilityIconStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   background:
-    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.16), transparent 28%), rgba(168,85,247,0.16)",
-  border: "1px solid rgba(216,180,254,0.20)",
+    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.16), transparent 28%), var(--parapost-accent-active-bg)",
+  border: "1px solid var(--parapost-accent-active-bg)",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
   position: "relative",
 };
@@ -14005,7 +14032,7 @@ const profileShowcaseFontGridStyle: CSSProperties = {
 const profileShowcaseFontSelectStyle: CSSProperties = {
   width: "100%",
   minHeight: "44px",
-  border: "1px solid rgba(216,180,254,0.30)",
+  border: "1px solid var(--parapost-accent-active-border)",
   borderRadius: "14px",
   background: "#11131a",
   color: "#ffffff",
@@ -14022,7 +14049,7 @@ const profileShowcaseFontPreviewStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.085)",
   borderRadius: "14px",
   background:
-    "radial-gradient(circle at 20% 0%, rgba(168,85,247,0.12), transparent 35%), rgba(255,255,255,0.035)",
+    "radial-gradient(circle at 20% 0%, var(--parapost-accent-soft), transparent 35%), rgba(255,255,255,0.035)",
   color: "#ffffff",
   padding: "12px",
   fontSize: "16px",
@@ -14066,9 +14093,9 @@ const profileShowcaseTextSizeRowStyle: CSSProperties = {
 const profileShowcaseTextSizeButtonStyle: CSSProperties = {
   width: "38px",
   height: "38px",
-  border: "1px solid rgba(216,180,254,0.22)",
+  border: "1px solid var(--parapost-accent-active-border)",
   borderRadius: "13px",
-  background: "rgba(168,85,247,0.12)",
+  background: "var(--parapost-accent-soft)",
   color: "#ffffff",
   fontSize: "20px",
   fontWeight: 950,
@@ -14078,7 +14105,7 @@ const profileShowcaseTextSizeButtonStyle: CSSProperties = {
 
 const profileShowcaseTextSizeSliderStyle: CSSProperties = {
   width: "100%",
-  accentColor: "#a855f7",
+  accentColor: "var(--parapost-accent-2)",
   cursor: "pointer",
 };
 
@@ -14138,9 +14165,9 @@ const profileShowcaseFontOptionStyle: CSSProperties = {
 
 const profileShowcaseFontOptionActiveStyle: CSSProperties = {
   ...profileShowcaseFontOptionStyle,
-  border: "1px solid rgba(216,180,254,0.42)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.23), rgba(59,130,246,0.10))",
-  boxShadow: "0 0 20px rgba(168,85,247,0.14)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
+  background: "linear-gradient(135deg, var(--parapost-accent-active-border), var(--parapost-accent-soft))",
+  boxShadow: "0 0 20px var(--parapost-accent-soft)",
 };
 
 
@@ -14153,7 +14180,7 @@ const profileShowcaseViewerOverlayStyle: CSSProperties = {
   justifyContent: "center",
   padding: "18px",
   background:
-    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.22), transparent 42%), rgba(0,0,0,0.90)",
+    "radial-gradient(circle at 50% 0%, var(--parapost-accent-active-border), transparent 42%), rgba(0,0,0,0.90)",
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
 };
@@ -14168,7 +14195,7 @@ const profileShowcaseViewerShellStyle: CSSProperties = {
   borderRadius: "30px",
   border: "1px solid rgba(255,255,255,0.14)",
   background:
-    "radial-gradient(circle at 16% 0%, rgba(168,85,247,0.24), transparent 34%), radial-gradient(circle at 96% 10%, rgba(34,211,238,0.11), transparent 30%), linear-gradient(180deg, rgba(17,19,28,0.996), rgba(5,7,12,0.998))",
+    "radial-gradient(circle at 16% 0%, var(--parapost-accent-active-border), transparent 34%), radial-gradient(circle at 96% 10%, rgba(34,211,238,0.11), transparent 30%), linear-gradient(180deg, rgba(17,19,28,0.996), rgba(5,7,12,0.998))",
   boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
   padding: "16px",
   overflow: "hidden",
@@ -14198,14 +14225,14 @@ const profileShowcaseViewerLogoStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   borderRadius: "15px",
-  background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
-  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 60%, var(--parapost-accent-3))",
+  boxShadow: "0 16px 34px var(--parapost-accent-strong-glow)",
   overflow: "hidden",
 };
 
 const profileShowcaseViewerEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -14251,7 +14278,7 @@ const profileShowcaseViewerStageStyle: CSSProperties = {
   overflow: "hidden",
   border: "1px solid rgba(255,255,255,0.14)",
   background:
-    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.90) 52%, rgba(168,85,247,0.84))",
+    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), var(--parapost-accent-2) 52%, var(--parapost-accent-2))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 30px 80px rgba(0,0,0,0.46)",
 };
 
@@ -14259,7 +14286,7 @@ const profileShowcaseViewerCanvasStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   background:
-    "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.82), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.88))",
+    "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.82), var(--parapost-accent-strong-glow) 45%, var(--parapost-accent-2))",
 };
 
 const profileShowcaseViewerMediaStyle: CSSProperties = {
@@ -14349,7 +14376,7 @@ const profileShowcaseModalOverlayStyle: CSSProperties = {
   justifyContent: "center",
   padding: "18px",
   background:
-    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.88)",
+    "radial-gradient(circle at 50% 0%, var(--parapost-accent-active-bg), transparent 38%), rgba(0,0,0,0.88)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
 };
@@ -14362,7 +14389,7 @@ const profileShowcaseModalStyle: CSSProperties = {
   borderRadius: "32px",
   border: "1px solid rgba(255,255,255,0.14)",
   background:
-    "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
+    "radial-gradient(circle at 12% 0%, var(--parapost-accent-active-border), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
   boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
   padding: "22px",
 };
@@ -14392,9 +14419,9 @@ const profileShowcaseModalLogoStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   borderRadius: "15px",
-  background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 60%, var(--parapost-accent-3))",
   color: "#ffffff",
-  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  boxShadow: "0 16px 34px var(--parapost-accent-strong-glow)",
   overflow: "hidden",
 };
 
@@ -14418,7 +14445,7 @@ const profileShowcaseModalFlowPillsStyle: CSSProperties = {
 
 const profileShowcaseModalEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -14546,9 +14573,9 @@ const profileShowcaseDurationOptionHelpTextStyle: CSSProperties = {
 
 const profileShowcaseDurationOptionActiveStyle: CSSProperties = {
   ...profileShowcaseDurationOptionStyle,
-  border: "1px solid rgba(216,180,254,0.42)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
-  boxShadow: "0 0 22px rgba(168,85,247,0.16)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
+  background: "linear-gradient(135deg, var(--parapost-accent-active-border), var(--parapost-accent-soft))",
+  boxShadow: "0 0 22px var(--parapost-accent-active-bg)",
 };
 
 const profileShowcaseErrorStyle: CSSProperties = {
@@ -14581,14 +14608,14 @@ const profileShowcaseCancelButtonStyle: CSSProperties = {
 };
 
 const profileShowcaseCreateButtonStyle: CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.13)",
-  background: "linear-gradient(135deg, #a855f7, #7c3aed 58%, #2563eb)",
-  color: "#ffffff",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2) 58%, var(--parapost-accent-3))",
+  color: "var(--parapost-accent-button-text)",
   borderRadius: "15px",
   padding: "12px 18px",
   fontWeight: 950,
   cursor: "pointer",
-  boxShadow: "0 20px 38px rgba(124,58,237,0.34)",
+  boxShadow: "0 20px 38px var(--parapost-accent-strong-glow)",
 };
 
 const profileTabsShellStyle: CSSProperties = {
@@ -14640,19 +14667,19 @@ const profileTabStyle: CSSProperties = {
 const profileActiveTabStyle: CSSProperties = {
   ...profileTabStyle,
   background:
-    "linear-gradient(135deg, rgba(168,85,247,0.22), rgba(59,130,246,0.10))",
+    "linear-gradient(135deg, var(--parapost-accent-active-border), var(--parapost-accent-soft))",
   color: "#ffffff",
   borderTopWidth: "1px",
   borderRightWidth: "1px",
   borderBottomWidth: "2px",
   borderLeftWidth: "1px",
   borderStyle: "solid",
-  borderTopColor: "rgba(216,180,254,0.24)",
-  borderRightColor: "rgba(216,180,254,0.22)",
-  borderBottomColor: "#a855f7",
-  borderLeftColor: "rgba(216,180,254,0.22)",
+  borderTopColor: "var(--parapost-accent-active-border)",
+  borderRightColor: "var(--parapost-accent-active-border)",
+  borderBottomColor: "var(--parapost-accent-2)",
+  borderLeftColor: "var(--parapost-accent-active-border)",
   borderRadius: "15px",
-  boxShadow: "0 12px 26px rgba(124,58,237,0.20), inset 0 1px 0 rgba(255,255,255,0.07)",
+  boxShadow: "0 12px 26px var(--parapost-accent-active-bg), inset 0 1px 0 rgba(255,255,255,0.07)",
 };
 
 const profileTabLabelStyle: CSSProperties = {
@@ -14677,7 +14704,7 @@ const profileTabDetailStyle: CSSProperties = {
 
 const profileActiveTabDetailStyle: CSSProperties = {
   ...profileTabDetailStyle,
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
 };
 
 const profileTabSummaryStyle: CSSProperties = {
@@ -14688,7 +14715,7 @@ const profileTabSummaryStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "18px",
   background:
-    "radial-gradient(circle at 4% 0%, rgba(168,85,247,0.15), transparent 32%), rgba(255,255,255,0.030)",
+    "radial-gradient(circle at 4% 0%, var(--parapost-accent-soft), transparent 32%), rgba(255,255,255,0.030)",
   padding: "12px",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
 };
@@ -14699,16 +14726,16 @@ const profileTabSummaryIconStyle: CSSProperties = {
   borderRadius: "15px",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.92), rgba(59,130,246,0.70))",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-3))",
   color: "#ffffff",
   fontSize: "17px",
   fontWeight: 950,
-  boxShadow: "0 12px 26px rgba(124,58,237,0.26)",
+  boxShadow: "0 12px 26px var(--parapost-accent-active-border)",
 };
 
 const profileTabSummaryEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "10px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -14737,7 +14764,7 @@ const profileMobileTabSelectStyle: CSSProperties = {
   minHeight: "48px",
   marginTop: "0",
   borderRadius: "18px",
-  border: "1px solid rgba(168,85,247,0.28)",
+  border: "1px solid var(--parapost-accent-active-border)",
   background: "rgba(8,10,16,0.96)",
   color: "#f9fafb",
   padding: "0 14px",
@@ -14788,8 +14815,8 @@ const aboutSectionTabStyle: CSSProperties = {
 const aboutSectionTabActiveStyle: CSSProperties = {
   ...aboutSectionTabStyle,
   color: "#ffffff",
-  border: "1px solid rgba(168,85,247,0.42)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.28), rgba(34,211,238,0.10))",
+  border: "1px solid var(--parapost-accent-strong-glow)",
+  background: "linear-gradient(135deg, var(--parapost-accent-active-border), rgba(34,211,238,0.10))",
 };
 
 const introGridStyle: CSSProperties = {
@@ -14814,8 +14841,8 @@ const introIconStyle: CSSProperties = {
   borderRadius: "14px",
   display: "grid",
   placeItems: "center",
-  background: "rgba(168,85,247,0.12)",
-  border: "1px solid rgba(168,85,247,0.24)",
+  background: "var(--parapost-accent-soft)",
+  border: "1px solid var(--parapost-accent-active-border)",
   flexShrink: 0,
 };
 
@@ -14867,9 +14894,9 @@ const profilePolishedEmptyStateStyle: CSSProperties = {
   ...aboutComingSoonStyle,
   minHeight: "220px",
   gap: "10px",
-  border: "1px dashed rgba(216,180,254,0.18)",
+  border: "1px dashed var(--parapost-accent-active-bg)",
   background:
-    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.14), transparent 36%), rgba(255,255,255,0.030)",
+    "radial-gradient(circle at 50% 0%, var(--parapost-accent-soft), transparent 36%), rgba(255,255,255,0.030)",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
 };
 
@@ -14879,11 +14906,11 @@ const profileEmptyStateIconStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   borderRadius: "18px",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.78), rgba(59,130,246,0.52))",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-strong-glow))",
   color: "#ffffff",
   fontSize: "24px",
   fontWeight: 950,
-  boxShadow: "0 16px 34px rgba(124,58,237,0.24)",
+  boxShadow: "0 16px 34px var(--parapost-accent-active-border)",
 };
 
 const profileEmptyStateTitleStyle: CSSProperties = {
@@ -14917,7 +14944,7 @@ const profileEmptyStateMiniGridStyle: CSSProperties = {
   gap: "8px",
   flexWrap: "wrap",
   marginTop: "6px",
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
   fontSize: "12px",
   fontWeight: 900,
 };
@@ -15000,7 +15027,7 @@ const rightPanelTextStyle: CSSProperties = {
 };
 
 const miniPurpleLinkStyle: CSSProperties = {
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 850,
   whiteSpace: "nowrap",
@@ -15016,8 +15043,8 @@ const profileStrengthRingStyle: CSSProperties = {
   flexShrink: 0,
   color: "#ffffff",
   background:
-    "linear-gradient(145deg, rgba(124,58,237,0.20), rgba(8,10,16,0.96)), conic-gradient(from 0deg, #7c3aed 0deg, #a855f7 306deg, rgba(255,255,255,0.10) 306deg)",
-  boxShadow: "0 10px 22px rgba(0,0,0,0.22), 0 0 20px rgba(168,85,247,0.18)",
+    "linear-gradient(145deg, var(--parapost-accent-active-bg), rgba(8,10,16,0.96)), conic-gradient(from 0deg, var(--parapost-accent-1) 0deg, var(--parapost-accent-2) 306deg, rgba(255,255,255,0.10) 306deg)",
+  boxShadow: "0 10px 22px rgba(0,0,0,0.22), 0 0 20px var(--parapost-accent-active-bg)",
   border: "1px solid rgba(255,255,255,0.105)",
 };
 
@@ -15071,9 +15098,9 @@ const profileStrengthStepChipStyle: CSSProperties = {
   minHeight: "24px",
   padding: "0 9px",
   borderRadius: "999px",
-  background: "rgba(168,85,247,0.105)",
-  border: "1px solid rgba(216,180,254,0.18)",
-  color: "#e9d5ff",
+  background: "var(--parapost-accent-soft)",
+  border: "1px solid var(--parapost-accent-active-bg)",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: "11px",
   fontWeight: 900,
 };
@@ -15151,7 +15178,7 @@ const profileBadgeFeaturedIconShellStyle: CSSProperties = {
 const profileBadgeFeaturedEyebrowStyle: CSSProperties = {
   display: "block",
   marginBottom: "3px",
-  color: "#c4b5fd",
+  color: "var(--parapost-accent-text)",
   fontSize: "9px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -15171,7 +15198,7 @@ const profileBadgeOpenViewerButtonStyle: CSSProperties = {
   borderRadius: "12px",
   border: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(255,255,255,0.040)",
-  color: "#e9d5ff",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: "11px",
   fontWeight: 950,
   cursor: "pointer",
@@ -15269,8 +15296,8 @@ const badgeBubbleStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   fontSize: "17px",
-  background: "linear-gradient(145deg, rgba(168,85,247,0.14), rgba(255,255,255,0.035))",
-  border: "1px solid rgba(168,85,247,0.34)",
+  background: "linear-gradient(145deg, var(--parapost-accent-soft), rgba(255,255,255,0.035))",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   boxShadow: "0 8px 18px rgba(0,0,0,0.16)",
   padding: 0,
   cursor: "pointer",
@@ -15281,7 +15308,7 @@ const badgeBubbleStyle: CSSProperties = {
 const profileBadgeViewAllButtonStyle: CSSProperties = {
   border: 0,
   background: "transparent",
-  color: "#c4b5fd",
+  color: "var(--parapost-accent-text)",
   fontSize: "10px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -15311,8 +15338,8 @@ const profileBadgesViewerShellStyle: CSSProperties = {
   borderRadius: "26px",
   border: "1px solid rgba(255,255,255,0.13)",
   background:
-    "radial-gradient(circle at 18% 0%, rgba(168,85,247,0.26), transparent 34%), linear-gradient(180deg, rgba(18,13,31,0.98), rgba(6,8,14,0.985))",
-  boxShadow: "0 30px 90px rgba(0,0,0,0.58), 0 0 60px rgba(168,85,247,0.20)",
+    "radial-gradient(circle at 18% 0%, var(--parapost-accent-active-border), transparent 34%), linear-gradient(180deg, rgba(18,13,31,0.98), rgba(6,8,14,0.985))",
+  boxShadow: "0 30px 90px rgba(0,0,0,0.58), 0 0 60px var(--parapost-accent-active-bg)",
   padding: "18px",
 };
 
@@ -15326,7 +15353,7 @@ const profileBadgesViewerHeaderStyle: CSSProperties = {
 
 const profileBadgesViewerEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c4b5fd",
+  color: "var(--parapost-accent-text)",
   fontSize: "10px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -15502,7 +15529,7 @@ const visitorAvatarStyle: CSSProperties = {
   placeItems: "center",
   color: "#f9fafb",
   background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(168,85,247,0.42)",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   overflow: "hidden",
   fontWeight: 900,
 };
@@ -15533,8 +15560,8 @@ const recentlyViewedAvatarStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   color: "#f9fafb",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.42), rgba(37,99,235,0.28))",
-  border: "1px solid rgba(168,85,247,0.38)",
+  background: "linear-gradient(135deg, var(--parapost-accent-strong-glow), rgba(37,99,235,0.28))",
+  border: "1px solid var(--parapost-accent-strong-glow)",
   overflow: "hidden",
   fontWeight: 950,
   flexShrink: 0,
@@ -15547,7 +15574,7 @@ const recentlyViewedTextStyle: CSSProperties = {
 };
 
 const recentlyViewedEmptyStyle: CSSProperties = {
-  border: "1px dashed rgba(216,180,254,0.16)",
+  border: "1px dashed var(--parapost-accent-active-bg)",
   borderRadius: "14px",
   background: "rgba(255,255,255,0.030)",
   color: "#9ca3af",
@@ -15573,7 +15600,7 @@ const recentlyViewedViewerRowStyle: CSSProperties = {
   padding: "12px",
   borderRadius: "18px",
   border: "1px solid rgba(255,255,255,0.085)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.10), rgba(255,255,255,0.035))",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.035))",
 };
 
 const recentlyViewedViewerAvatarStyle: CSSProperties = {
@@ -15588,7 +15615,7 @@ const recentlyViewedViewerEmptyStyle: CSSProperties = {
   placeItems: "center",
   textAlign: "center",
   gap: "6px",
-  border: "1px dashed rgba(216,180,254,0.18)",
+  border: "1px dashed var(--parapost-accent-active-bg)",
   borderRadius: "20px",
   background: "rgba(255,255,255,0.030)",
   color: "#9ca3af",
@@ -15601,9 +15628,9 @@ const recentlyViewedOpenPillStyle: CSSProperties = {
   justifyContent: "center",
   minHeight: "32px",
   borderRadius: "999px",
-  border: "1px solid rgba(216,180,254,0.26)",
-  background: "rgba(168,85,247,0.12)",
-  color: "#e9d5ff",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "var(--parapost-accent-soft)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "0 12px",
   fontSize: "12px",
   fontWeight: 950,
@@ -15723,17 +15750,17 @@ const parapostSearchDropdownStyle: CSSProperties = {
   maxHeight: "390px",
   overflowY: "auto",
   borderRadius: "20px",
-  border: "1px solid rgba(216,180,254,0.20)",
+  border: "1px solid var(--parapost-accent-active-bg)",
   background: "rgba(9,10,18,0.97)",
   backdropFilter: "blur(22px)",
-  boxShadow: "0 24px 70px rgba(0,0,0,0.54), 0 0 28px rgba(168,85,247,0.12)",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.54), 0 0 28px var(--parapost-accent-soft)",
   padding: "8px",
   zIndex: 120,
 };
 
 const parapostSearchStatusStyle: CSSProperties = {
   padding: "14px 12px",
-  color: "#c4b5fd",
+  color: "var(--parapost-accent-text)",
   fontSize: "12px",
   fontWeight: 800,
   textAlign: "center",
@@ -15761,8 +15788,8 @@ const parapostSearchAvatarStyle: CSSProperties = {
   placeItems: "center",
   flex: "0 0 auto",
   overflow: "hidden",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.95), rgba(34,211,238,0.78))",
-  color: "#fff",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), rgba(34,211,238,0.78))",
+  color: "var(--parapost-accent-button-text)",
   fontSize: "13px",
   fontWeight: 950,
   boxShadow: "0 0 0 1px rgba(255,255,255,0.12)",
@@ -15789,7 +15816,7 @@ const parapostSearchResultHandleStyle: CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
-  color: "#c4b5fd",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 850,
 };
@@ -15820,9 +15847,9 @@ const profileMobileSearchOverlayStyle: CSSProperties = {
 const profileMobileSearchSheetStyle: CSSProperties = {
   width: "min(420px, 100%)",
   borderRadius: "24px",
-  border: "1px solid rgba(216,180,254,0.20)",
+  border: "1px solid var(--parapost-accent-active-bg)",
   background: "linear-gradient(180deg, rgba(30,18,48,0.98), rgba(8,10,18,0.98))",
-  boxShadow: "0 24px 80px rgba(0,0,0,0.58), 0 0 32px rgba(168,85,247,0.14)",
+  boxShadow: "0 24px 80px rgba(0,0,0,0.58), 0 0 32px var(--parapost-accent-soft)",
   padding: "16px",
 };
 
@@ -15836,7 +15863,7 @@ const profileMobileSearchHeaderStyle: CSSProperties = {
 
 const profileMobileSearchEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "10px",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -15905,7 +15932,7 @@ const mobileBottomNavStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.12)",
   background:
     "linear-gradient(180deg, rgba(12,14,24,0.96) 0%, rgba(5,7,12,0.98) 100%)",
-  boxShadow: "0 -12px 34px rgba(0,0,0,0.40), 0 0 28px rgba(124,58,237,0.14)",
+  boxShadow: "0 -12px 34px rgba(0,0,0,0.40), 0 0 28px var(--parapost-accent-soft)",
   backdropFilter: "blur(20px)",
   display: "grid",
   gridTemplateColumns: "1fr 1fr 74px 1fr 1fr",
@@ -15927,8 +15954,8 @@ const mobileBottomNavItemStyle: CSSProperties = {
 
 const mobileBottomNavItemActiveStyle: CSSProperties = {
   ...mobileBottomNavItemStyle,
-  color: "#c084fc",
-  textShadow: "0 0 16px rgba(168,85,247,0.5)",
+  color: "var(--parapost-accent-text)",
+  textShadow: "0 0 16px var(--parapost-accent-strong-glow)",
 };
 
 const mobileBottomNavIconStyle: CSSProperties = {
@@ -15942,13 +15969,13 @@ const mobileCreateButtonStyle: CSSProperties = {
   borderRadius: "50%",
   border: "3px solid rgba(255,255,255,0.88)",
   background:
-    "linear-gradient(135deg, #ffffff 0%, #ffffff 42%, #a855f7 43%, #ec4899 100%)",
+    "linear-gradient(135deg, #ffffff 0%, #ffffff 42%, var(--parapost-accent-2) 43%, #ec4899 100%)",
   color: "#05070a",
   fontSize: "38px",
   fontWeight: 900,
   display: "grid",
   placeItems: "center",
-  boxShadow: "0 0 26px rgba(168,85,247,0.50)",
+  boxShadow: "0 0 26px var(--parapost-accent-strong-glow)",
   cursor: "pointer",
 };
 
@@ -15959,9 +15986,9 @@ const premiumSectionLabelStyle: CSSProperties = {
   alignItems: "center",
   gap: "8px",
   borderRadius: "999px",
-  background: "rgba(168,85,247,0.10)",
-  border: "1px solid rgba(168,85,247,0.24)",
-  color: "#d8b4fe",
+  background: "var(--parapost-accent-soft)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  color: "var(--parapost-accent-text)",
   padding: "7px 11px",
   fontSize: "12px",
   fontWeight: 900,
@@ -15980,8 +16007,8 @@ const profileGlowLineStyle: CSSProperties = {
   width: "100%",
   borderRadius: "999px",
   background:
-    "linear-gradient(90deg, rgba(168,85,247,0.00) 0%, rgba(168,85,247,0.72) 45%, rgba(34,211,238,0.58) 72%, rgba(34,211,238,0.00) 100%)",
-  boxShadow: "0 0 22px rgba(168,85,247,0.28)",
+    "linear-gradient(90deg, rgba(168,85,247,0) 0%, var(--parapost-accent-2) 45%, rgba(34,211,238,0.58) 72%, rgba(34,211,238,0.00) 100%)",
+  boxShadow: "0 0 22px var(--parapost-accent-active-border)",
 };
 
 

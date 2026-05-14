@@ -341,6 +341,36 @@ export default function AdminSupportInboxPage() {
     await handleUpdateMessage({ admin_notes: adminNotesDraft.trim() || null });
   };
 
+  const handleDeleteMessage = async () => {
+    if (!selectedMessage) return;
+
+    const confirmDelete = window.confirm(
+      "Delete this support message? This removes it from the admin inbox and cannot be undone."
+    );
+
+    if (!confirmDelete) return;
+
+    setSaving(true);
+    setNotice("");
+    setErrorMessage("");
+
+    const { error } = await supabase
+      .from("support_messages")
+      .delete()
+      .eq("id", selectedMessage.id);
+
+    setSaving(false);
+
+    if (error) {
+      setErrorMessage(`Could not delete support message: ${error.message}`);
+      return;
+    }
+
+    setNotice("Support message deleted.");
+    setSelectedId("");
+    await fetchMessages();
+  };
+
   if (checkingAccess) {
     return (
       <main className="min-h-screen bg-[#05050b] px-4 py-8 text-white">
@@ -623,14 +653,25 @@ export default function AdminSupportInboxPage() {
                     {selectedMessage.resolved_at ? ` · Resolved ${formatDateTime(selectedMessage.resolved_at)}` : ""}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSaveNotes}
-                    disabled={saving}
-                    className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-black text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                  >
-                    {saving ? "Saving..." : "Save Notes"}
-                  </button>
+                  <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleDeleteMessage}
+                      disabled={saving}
+                      className="w-full rounded-2xl border border-red-300/25 bg-red-400/10 px-5 py-3 text-sm font-black text-red-100 transition hover:bg-red-400/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    >
+                      Delete Message
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveNotes}
+                      disabled={saving}
+                      className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-black text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    >
+                      {saving ? "Saving..." : "Save Notes"}
+                    </button>
+                  </div>
                 </div>
 
                 {selectedMessage.page_url ? (

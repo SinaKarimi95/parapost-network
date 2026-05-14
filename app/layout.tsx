@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import ParapostPreferencesProvider from "@/components/ParapostPreferencesProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,9 +28,13 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-parapost-accent="parapost-purple"
+      data-parapost-font="parapost-default"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased parapost-font-default`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ParapostPreferencesProvider>{children}</ParapostPreferencesProvider>
+      </body>
     </html>
   );
 }

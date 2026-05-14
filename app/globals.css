@@ -3,6 +3,14 @@
 :root {
   --background: #07090d;
   --foreground: #ededed;
+
+  --parapost-accent-1: #8b5cf6;
+  --parapost-accent-2: #a855f7;
+  --parapost-accent-3: #d946ef;
+  --parapost-accent-soft: rgba(168, 85, 247, 0.14);
+  --parapost-accent-border: rgba(196, 181, 253, 0.22);
+  --parapost-accent-text: #ddd6fe;
+  --parapost-accent-glow: rgba(124, 58, 237, 0.32);
 }
 
 @theme inline {
@@ -43,7 +51,7 @@ body {
   margin: 0;
   background: #07090d;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -151,4 +159,295 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* === PARAPOST NETWORK PERSONALIZATION FOUNDATION === */
+
+html[data-parapost-accent="parapost-purple"] {
+  --parapost-accent-1: #8b5cf6;
+  --parapost-accent-2: #a855f7;
+  --parapost-accent-3: #d946ef;
+  --parapost-accent-soft: rgba(168, 85, 247, 0.14);
+  --parapost-accent-border: rgba(196, 181, 253, 0.22);
+  --parapost-accent-text: #ddd6fe;
+  --parapost-accent-glow: rgba(124, 58, 237, 0.32);
+}
+
+html[data-parapost-accent="mystic-blue"] {
+  --parapost-accent-1: #3b82f6;
+  --parapost-accent-2: #6366f1;
+  --parapost-accent-3: #22d3ee;
+  --parapost-accent-soft: rgba(59, 130, 246, 0.14);
+  --parapost-accent-border: rgba(147, 197, 253, 0.24);
+  --parapost-accent-text: #bfdbfe;
+  --parapost-accent-glow: rgba(37, 99, 235, 0.3);
+}
+
+html[data-parapost-accent="creator-pink"] {
+  --parapost-accent-1: #ec4899;
+  --parapost-accent-2: #d946ef;
+  --parapost-accent-3: #a855f7;
+  --parapost-accent-soft: rgba(236, 72, 153, 0.14);
+  --parapost-accent-border: rgba(249, 168, 212, 0.24);
+  --parapost-accent-text: #fbcfe8;
+  --parapost-accent-glow: rgba(219, 39, 119, 0.3);
+}
+
+html[data-parapost-accent="night-green"] {
+  --parapost-accent-1: #10b981;
+  --parapost-accent-2: #14b8a6;
+  --parapost-accent-3: #a3e635;
+  --parapost-accent-soft: rgba(16, 185, 129, 0.14);
+  --parapost-accent-border: rgba(110, 231, 183, 0.24);
+  --parapost-accent-text: #bbf7d0;
+  --parapost-accent-glow: rgba(5, 150, 105, 0.3);
+}
+
+html[data-parapost-accent="ember-gold"] {
+  --parapost-accent-1: #f59e0b;
+  --parapost-accent-2: #f97316;
+  --parapost-accent-3: #f43f5e;
+  --parapost-accent-soft: rgba(245, 158, 11, 0.14);
+  --parapost-accent-border: rgba(252, 211, 77, 0.24);
+  --parapost-accent-text: #fde68a;
+  --parapost-accent-glow: rgba(217, 119, 6, 0.3);
+}
+
+html[data-parapost-accent="ghost-white"] {
+  --parapost-accent-1: #e2e8f0;
+  --parapost-accent-2: #ffffff;
+  --parapost-accent-3: #c4b5fd;
+  --parapost-accent-soft: rgba(226, 232, 240, 0.12);
+  --parapost-accent-border: rgba(255, 255, 255, 0.22);
+  --parapost-accent-text: #f8fafc;
+  --parapost-accent-glow: rgba(255, 255, 255, 0.18);
+}
+
+/* Reusable app-wide personalization helpers */
+.parapost-accent-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--parapost-accent-1),
+    var(--parapost-accent-2),
+    var(--parapost-accent-3)
+  );
+}
+
+.parapost-accent-text {
+  color: var(--parapost-accent-text);
+}
+
+.parapost-accent-border {
+  border-color: var(--parapost-accent-border);
+}
+
+.parapost-accent-card {
+  border-color: var(--parapost-accent-border);
+  background:
+    linear-gradient(
+      135deg,
+      var(--parapost-accent-soft),
+      rgba(255, 255, 255, 0.045),
+      rgba(15, 23, 42, 0.58)
+    );
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.34),
+    0 0 34px var(--parapost-accent-glow);
+}
+
+.parapost-accent-button {
+  background-image: linear-gradient(
+    135deg,
+    var(--parapost-accent-1),
+    var(--parapost-accent-2),
+    var(--parapost-accent-3)
+  );
+  color: #ffffff;
+  box-shadow: 0 12px 26px var(--parapost-accent-glow);
+}
+
+.parapost-accent-ring {
+  box-shadow:
+    0 0 0 2px var(--parapost-accent-border),
+    0 0 28px var(--parapost-accent-glow);
+}
+
+.parapost-accent-soft-bg {
+  background: var(--parapost-accent-soft);
+}
+
+.parapost-accent-glow {
+  box-shadow: 0 0 32px var(--parapost-accent-glow);
+}
+
+/* Account-backed font choices */
+html.parapost-font-default body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-clean-modern body {
+  font-family: var(--font-geist-sans), Inter, Arial, Helvetica, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+html.parapost-font-rounded body {
+  font-family: var(--font-geist-sans), "Nunito", "Avenir Next", Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-bold-creator body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  letter-spacing: -0.018em;
+}
+
+html.parapost-font-bold-creator h1,
+html.parapost-font-bold-creator h2,
+html.parapost-font-bold-creator h3 {
+  letter-spacing: -0.055em;
+}
+
+html.parapost-font-classic-serif body {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+html.parapost-font-minimal body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  letter-spacing: 0.01em;
+}
+/* === PARAPOST SAFE THEME EXPANSION === */
+/*
+  This expands personalization safely:
+  - Main Parapost base stays dark/glass.
+  - User color becomes the accent layer only.
+  - Main text stays white/slate for readability.
+  - Ghost White gets dark button text so white-on-white does not happen.
+*/
+
+:root,
+html[data-parapost-accent="parapost-purple"] {
+  --parapost-accent-muted-bg: rgba(168, 85, 247, 0.08);
+  --parapost-accent-active-bg: rgba(168, 85, 247, 0.18);
+  --parapost-accent-active-border: rgba(196, 181, 253, 0.36);
+  --parapost-accent-readable-text: #f5f3ff;
+  --parapost-accent-button-text: #ffffff;
+  --parapost-accent-strong-glow: rgba(124, 58, 237, 0.46);
+}
+
+html[data-parapost-accent="mystic-blue"] {
+  --parapost-accent-muted-bg: rgba(59, 130, 246, 0.08);
+  --parapost-accent-active-bg: rgba(59, 130, 246, 0.18);
+  --parapost-accent-active-border: rgba(147, 197, 253, 0.38);
+  --parapost-accent-readable-text: #eff6ff;
+  --parapost-accent-button-text: #ffffff;
+  --parapost-accent-strong-glow: rgba(37, 99, 235, 0.46);
+}
+
+html[data-parapost-accent="creator-pink"] {
+  --parapost-accent-muted-bg: rgba(236, 72, 153, 0.08);
+  --parapost-accent-active-bg: rgba(236, 72, 153, 0.18);
+  --parapost-accent-active-border: rgba(249, 168, 212, 0.38);
+  --parapost-accent-readable-text: #fdf2f8;
+  --parapost-accent-button-text: #ffffff;
+  --parapost-accent-strong-glow: rgba(219, 39, 119, 0.46);
+}
+
+html[data-parapost-accent="night-green"] {
+  --parapost-accent-muted-bg: rgba(16, 185, 129, 0.08);
+  --parapost-accent-active-bg: rgba(16, 185, 129, 0.18);
+  --parapost-accent-active-border: rgba(110, 231, 183, 0.38);
+  --parapost-accent-readable-text: #ecfdf5;
+  --parapost-accent-button-text: #ffffff;
+  --parapost-accent-strong-glow: rgba(5, 150, 105, 0.46);
+}
+
+html[data-parapost-accent="ember-gold"] {
+  --parapost-accent-muted-bg: rgba(245, 158, 11, 0.08);
+  --parapost-accent-active-bg: rgba(245, 158, 11, 0.18);
+  --parapost-accent-active-border: rgba(252, 211, 77, 0.38);
+  --parapost-accent-readable-text: #fffbeb;
+  --parapost-accent-button-text: #ffffff;
+  --parapost-accent-strong-glow: rgba(217, 119, 6, 0.46);
+}
+
+html[data-parapost-accent="ghost-white"] {
+  --parapost-accent-muted-bg: rgba(226, 232, 240, 0.07);
+  --parapost-accent-active-bg: rgba(226, 232, 240, 0.17);
+  --parapost-accent-active-border: rgba(255, 255, 255, 0.42);
+  --parapost-accent-readable-text: #ffffff;
+  --parapost-accent-button-text: #05050b;
+  --parapost-accent-strong-glow: rgba(255, 255, 255, 0.3);
+}
+
+/* Expanded reusable app-wide personalization helpers */
+.parapost-accent-readable-text {
+  color: var(--parapost-accent-readable-text);
+}
+
+.parapost-accent-button-text {
+  color: var(--parapost-accent-button-text);
+}
+
+.parapost-accent-active-border {
+  border-color: var(--parapost-accent-active-border);
+}
+
+.parapost-accent-muted-bg {
+  background: var(--parapost-accent-muted-bg);
+}
+
+.parapost-accent-active-bg {
+  background: var(--parapost-accent-active-bg);
+}
+
+.parapost-accent-panel {
+  border-color: var(--parapost-accent-border);
+  background:
+    radial-gradient(circle at 15% 0%, var(--parapost-accent-soft), transparent 38%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(15, 23, 42, 0.62));
+}
+
+.parapost-accent-button {
+  background-image: linear-gradient(
+    135deg,
+    var(--parapost-accent-1),
+    var(--parapost-accent-2),
+    var(--parapost-accent-3)
+  );
+  color: var(--parapost-accent-button-text);
+  box-shadow: 0 12px 26px var(--parapost-accent-glow);
+}
+
+.parapost-accent-button:hover {
+  filter: brightness(1.08);
+}
+
+.parapost-accent-tab {
+  border-color: var(--parapost-accent-active-border);
+  background: var(--parapost-accent-active-bg);
+  color: var(--parapost-accent-readable-text);
+  box-shadow: 0 10px 24px var(--parapost-accent-glow);
+}
+
+.parapost-accent-pill {
+  border-color: var(--parapost-accent-border);
+  background: var(--parapost-accent-muted-bg);
+  color: var(--parapost-accent-readable-text);
+}
+
+.parapost-accent-strong-ring {
+  box-shadow:
+    0 0 0 2px var(--parapost-accent-active-border),
+    0 0 34px var(--parapost-accent-strong-glow);
+}
+
+/* Safety helpers: keep important text readable regardless of accent color */
+.parapost-theme-title {
+  color: #ffffff;
+}
+
+.parapost-theme-body {
+  color: #d1d5db;
+}
+
+.parapost-theme-muted {
+  color: #9ca3af;
 }

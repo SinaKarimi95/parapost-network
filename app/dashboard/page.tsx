@@ -17,6 +17,8 @@ import Link from "next/link";
 import DashboardReelsSection from "./DashboardReelsSection";
 import { supabase } from "@/lib/supabase";
 
+// Dashboard personalization phase 3.2: key dashboard accent colors now use global Parapost CSS variables.
+
 type ProfilePreview = {
   id: string;
   username: string | null;
@@ -229,7 +231,7 @@ function renderLinkedText(text: string): ReactNode {
         <a
           href={href}
           onClick={(event) => handleSafeExternalLinkClick(event, href)}
-          style={{ color: "#a78bfa", fontWeight: 850, textDecoration: "none" }}
+          style={{ color: "var(--parapost-accent-text)", fontWeight: 850, textDecoration: "none" }}
         >
           {cleanLabel}
         </a>
@@ -525,10 +527,10 @@ function getAvatarShellStyle(size: number, isOnline?: boolean | null): CSSProper
     overflow: "visible",
     textDecoration: "none",
     background: isOnline
-      ? "linear-gradient(135deg, rgba(168,85,247,0.98), rgba(59,130,246,0.9), rgba(236,72,153,0.75))"
-      : "linear-gradient(135deg, rgba(168,85,247,0.55), rgba(15,23,42,0.98))",
+      ? "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))"
+      : "linear-gradient(135deg, var(--parapost-accent-soft), rgba(15,23,42,0.98))",
     boxShadow: isOnline
-      ? "0 0 0 1px rgba(255,255,255,0.10), 0 0 22px rgba(168,85,247,0.45)"
+      ? "0 0 0 1px rgba(255,255,255,0.10), 0 0 22px var(--parapost-accent-glow)"
       : "0 0 0 1px rgba(255,255,255,0.08), 0 12px 24px rgba(0,0,0,0.28)",
   };
 }
@@ -542,39 +544,59 @@ function Avatar({
   size?: number;
   href?: string;
 }) {
+  const innerSize = Math.max(1, size - 6);
+
+  const cropStyle: CSSProperties = {
+    width: `${innerSize}px`,
+    height: `${innerSize}px`,
+    borderRadius: "999px",
+    overflow: "hidden",
+    display: "grid",
+    placeItems: "center",
+    position: "relative",
+    zIndex: 1,
+    border: "2px solid #07090d",
+    background: "rgba(7,9,13,0.96)",
+    flexShrink: 0,
+  };
+
   const avatar = (
     <div style={getAvatarShellStyle(size, profile?.is_online)}>
-      {profile?.avatar_url ? (
-        <img
-          src={profile.avatar_url}
-          alt={profile.full_name || profile.username || "Profile"}
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: "999px",
-            objectFit: "cover",
-            display: "block",
-            border: "2px solid #07090d",
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: "999px",
-            display: "grid",
-            placeItems: "center",
-            border: "2px solid #07090d",
-            background: "linear-gradient(135deg, #4c1d95, #111827)",
-            color: "white",
-            fontWeight: 950,
-            fontSize: `${Math.max(12, Math.round(size * 0.34))}px`,
-          }}
-        >
-          {getInitial(profile?.full_name, profile?.username)}
-        </div>
-      )}
+      <div style={cropStyle}>
+        {profile?.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt={profile.full_name || profile.username || "Profile"}
+            style={{
+              width: "100%",
+              height: "100%",
+              minWidth: "100%",
+              minHeight: "100%",
+              borderRadius: "999px",
+              objectFit: "cover",
+              objectPosition: "center",
+              display: "block",
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "999px",
+              display: "grid",
+              placeItems: "center",
+              background: "linear-gradient(135deg, var(--parapost-accent-1), #111827)",
+              color: "white",
+              fontWeight: 950,
+              fontSize: `${Math.max(12, Math.round(size * 0.34))}px`,
+            }}
+          >
+            {getInitial(profile?.full_name, profile?.username)}
+          </div>
+        )}
+      </div>
       {profile?.is_online ? <span style={onlineDotStyle} /> : null}
     </div>
   );
@@ -598,7 +620,7 @@ function ParaGhostLogoIcon({ size = 34 }: { size?: number }) {
         height: size,
         display: "block",
         objectFit: "contain",
-        filter: "drop-shadow(0 0 10px rgba(168,85,247,0.42))",
+        filter: "drop-shadow(0 0 10px color-mix(in srgb, var(--parapost-accent-2) 42%, transparent))",
       }}
     />
   );
@@ -2005,7 +2027,7 @@ export default function DashboardPage() {
 
             <div style={sidebarDividerStyle} />
             <div style={sidebarSectionHeaderRowStyle}>
-              <div style={{ ...sidebarSectionLabelStyle, marginBottom: 0 }}>Paranormal Hub</div>
+              <div style={{ ...sidebarSectionLabelStyle, marginBottom: 0 }}>Parapost Hub</div>
               <span style={sidebarSectionSoonBadgeStyle}>Soon</span>
             </div>
             <div style={paranormalHubIntroStyle}>
@@ -2022,7 +2044,7 @@ export default function DashboardPage() {
               <span style={goLiveIconStyle}>+</span>
               <span style={{ minWidth: 0 }}>
                 <strong style={{ display: "block", color: "#fff" }}>Go Live</strong>
-                <span style={{ color: "#c4b5fd", fontSize: 12 }}>Coming soon</span>
+                <span style={{ color: "var(--parapost-accent-readable-text)", fontSize: 12 }}>Coming soon</span>
               </span>
               <span style={goLiveSoonBadgeStyle}>Soon</span>
             </div>
@@ -2509,9 +2531,9 @@ export default function DashboardPage() {
         }
 
         .dashboard-search-parapost:focus-within {
-          border-color: rgba(192, 132, 252, 0.62) !important;
+          border-color: color-mix(in srgb, var(--parapost-accent-text) 62%, transparent) !important;
           background: rgba(255,255,255,0.075) !important;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 4px rgba(168,85,247,0.11), 0 18px 42px rgba(0,0,0,0.26) !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 4px color-mix(in srgb, var(--parapost-accent-2) 11%, transparent), 0 18px 42px rgba(0,0,0,0.26) !important;
         }
 
         .dashboard-search-parapost input::placeholder {
@@ -2597,7 +2619,7 @@ export default function DashboardPage() {
 
         .dashboard-showcase-scroll {
           scrollbar-width: thin;
-          scrollbar-color: rgba(168,85,247,0.45) rgba(255,255,255,0.04);
+          scrollbar-color: color-mix(in srgb, var(--parapost-accent-2) 45%, transparent) rgba(255,255,255,0.04);
         }
 
         .dashboard-showcase-scroll::-webkit-scrollbar {
@@ -2605,7 +2627,7 @@ export default function DashboardPage() {
         }
 
         .dashboard-showcase-scroll::-webkit-scrollbar-thumb {
-          background: rgba(168,85,247,0.44);
+          background: color-mix(in srgb, var(--parapost-accent-2) 44%, transparent);
           border-radius: 999px;
         }
 
@@ -3122,7 +3144,7 @@ export default function DashboardPage() {
         }
 
         .dashboard-showcase-scroller::-webkit-scrollbar-thumb {
-          background: rgba(168,85,247,0.42);
+          background: color-mix(in srgb, var(--parapost-accent-2) 42%, transparent);
           border-radius: 999px;
         }
 
@@ -3679,7 +3701,7 @@ function MobileDashboardHeader({
         <div style={mobileLogoCircleStyle}><ParaGhostLogoIcon size={32} /></div>
         <div>
           <div style={{ fontSize: 26, fontWeight: 950, lineHeight: 1 }}>PARAPOST</div>
-          <div style={{ color: "#c084fc", letterSpacing: "0.42em", fontSize: 13, fontWeight: 900 }}>NETWORK</div>
+          <div style={{ color: "var(--parapost-accent-text)", letterSpacing: "0.42em", fontSize: 13, fontWeight: 900 }}>NETWORK</div>
         </div>
       </Link>
 
@@ -4978,14 +5000,14 @@ const selectedFeelingActivityStyle: CSSProperties = {
   gap: 8,
   maxWidth: "100%",
   borderRadius: 14,
-  border: "1px solid rgba(245,158,11,0.22)",
-  background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(168,85,247,0.08))",
+  border: "1px solid var(--parapost-accent-border)",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), color-mix(in srgb, var(--parapost-accent-2) 8%, transparent))",
   color: "#fff",
   padding: "8px 10px",
 };
 
 const selectedFeelingCategoryStyle: CSSProperties = {
-  color: "#fde68a",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: 11,
   fontWeight: 950,
   letterSpacing: "0.08em",
@@ -5069,9 +5091,9 @@ const feelingActivityOptionStyle: CSSProperties = {
 };
 
 const feelingActivityOptionActiveStyle: CSSProperties = {
-  border: "1px solid rgba(245,158,11,0.38)",
-  background: "linear-gradient(135deg, rgba(245,158,11,0.14), rgba(126,34,206,0.16))",
-  boxShadow: "0 0 22px rgba(168,85,247,0.18)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), var(--parapost-accent-muted-bg))",
+  boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
 };
 
 const feelingActivityOptionDotStyle: CSSProperties = {
@@ -5079,8 +5101,8 @@ const feelingActivityOptionDotStyle: CSSProperties = {
   height: 30,
   borderRadius: 12,
   flexShrink: 0,
-  background: "linear-gradient(135deg, rgba(245,158,11,0.92), rgba(168,85,247,0.72))",
-  boxShadow: "0 0 18px rgba(245,158,11,0.24)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), color-mix(in srgb, var(--parapost-accent-2) 72%, transparent))",
+  boxShadow: "0 0 18px var(--parapost-accent-glow)",
 };
 
 const feelingActivityOptionLabelStyle: CSSProperties = {
@@ -5107,9 +5129,9 @@ const mobileInsightsShellStyle: CSSProperties = {
   display: "none",
   gap: 14,
   borderRadius: 24,
-  border: "1px solid rgba(255,255,255,0.11)",
-  background: "linear-gradient(180deg, rgba(18,24,38,0.94), rgba(8,10,18,0.92))",
-  boxShadow: "0 18px 48px rgba(0,0,0,0.30)",
+  border: "1px solid var(--parapost-accent-border)",
+  background: "radial-gradient(circle at 14% 0%, var(--parapost-accent-soft), transparent 40%), linear-gradient(180deg, rgba(18,24,38,0.94), rgba(8,10,18,0.92))",
+  boxShadow: "0 18px 48px rgba(0,0,0,0.30), 0 0 28px var(--parapost-accent-glow)",
   padding: 16,
 };
 
@@ -5121,7 +5143,7 @@ const mobileInsightsHeaderStyle: CSSProperties = {
 };
 
 const miniEyebrowStyle: CSSProperties = {
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: 10,
   fontWeight: 950,
   letterSpacing: "0.14em",
@@ -5130,9 +5152,9 @@ const miniEyebrowStyle: CSSProperties = {
 
 const privatePillStyle: CSSProperties = {
   borderRadius: 999,
-  border: "1px solid rgba(192,132,252,0.24)",
-  background: "rgba(168,85,247,0.12)",
-  color: "#e9d5ff",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-text) 24%, transparent)",
+  background: "color-mix(in srgb, var(--parapost-accent-2) 12%, transparent)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "6px 10px",
   fontSize: 11,
   fontWeight: 900,
@@ -5235,8 +5257,8 @@ const mobileSponsorPreviewStyle: CSSProperties = {
   alignItems: "center",
   gap: 12,
   borderRadius: 20,
-  border: "1px solid rgba(168,85,247,0.20)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(6,182,212,0.05))",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 20%, transparent)",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), rgba(6,182,212,0.05))",
   padding: 12,
 };
 
@@ -5246,7 +5268,7 @@ const railHeroProfileStyle: CSSProperties = {
   gap: 12,
   borderRadius: 20,
   border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(255,255,255,0.035))",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), rgba(255,255,255,0.035))",
   padding: 12,
 };
 
@@ -5316,9 +5338,9 @@ const miniArrowStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#c4b5fd",
-  background: "rgba(168,85,247,0.10)",
-  border: "1px solid rgba(168,85,247,0.18)",
+  color: "var(--parapost-accent-readable-text)",
+  background: "color-mix(in srgb, var(--parapost-accent-2) 10%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
   fontSize: 18,
   lineHeight: 1,
   fontWeight: 900,
@@ -5327,9 +5349,9 @@ const miniArrowStyle: CSSProperties = {
 
 const privacyNoticeStyle: CSSProperties = {
   borderRadius: 14,
-  border: "1px solid rgba(192,132,252,0.18)",
-  background: "rgba(168,85,247,0.08)",
-  color: "#e9d5ff",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-text) 18%, transparent)",
+  background: "color-mix(in srgb, var(--parapost-accent-2) 8%, transparent)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "9px 10px",
   fontSize: 12,
   fontWeight: 800,
@@ -5342,7 +5364,7 @@ const reelsRailFeatureStyle: CSSProperties = {
   gap: 12,
   borderRadius: 18,
   border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(135deg, rgba(236,72,153,0.12), rgba(168,85,247,0.10))",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-3) 12%, transparent), color-mix(in srgb, var(--parapost-accent-2) 10%, transparent))",
   padding: 12,
 };
 
@@ -5376,7 +5398,7 @@ const sponsorCardStyle: CSSProperties = {
   alignItems: "center",
   borderRadius: 18,
   border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(6,182,212,0.06))",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), var(--parapost-accent-muted-bg))",
   padding: 12,
 };
 
@@ -5388,11 +5410,12 @@ const sponsorIconStyle: CSSProperties = {
   placeItems: "center",
   color: "#fff",
   fontWeight: 950,
-  background: "linear-gradient(135deg, #7c3aed, #06b6d4)",
-  boxShadow: "0 0 22px rgba(168,85,247,0.24)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-3))",
+  boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 24%, transparent)",
   flexShrink: 0,
 };
 
+// Phase 3.2B: dashboard now uses the global Parapost accent layer while keeping text readable.
 const dashboardRootStyle: CSSProperties = {
   minHeight: "100vh",
   height: "auto",
@@ -5402,7 +5425,7 @@ const dashboardRootStyle: CSSProperties = {
   overflowX: "hidden",
   overflowY: "visible",
   background:
-    "radial-gradient(circle at 55% 0%, rgba(56,189,248,0.11), transparent 34%), radial-gradient(circle at 10% 10%, rgba(147,51,234,0.18), transparent 30%), #05070d",
+    "radial-gradient(circle at 55% 0%, var(--parapost-accent-muted-bg), transparent 34%), radial-gradient(circle at 10% 10%, var(--parapost-accent-active-bg), transparent 30%), #05070d",
   color: "#f9fafb",
 };
 
@@ -5411,7 +5434,7 @@ const backgroundGlowStyle: CSSProperties = {
   inset: 0,
   pointerEvents: "none",
   background:
-    "linear-gradient(90deg, rgba(0,0,0,0.7), rgba(0,0,0,0.1), rgba(0,0,0,0.64)), radial-gradient(circle at 75% 30%, rgba(168,85,247,0.12), transparent 28%)",
+    "linear-gradient(90deg, rgba(0,0,0,0.7), rgba(0,0,0,0.1), rgba(0,0,0,0.64)), radial-gradient(circle at 75% 30%, color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), transparent 28%)",
   zIndex: 0,
 };
 
@@ -5467,16 +5490,16 @@ const logoGhostCircleStyle: CSSProperties = {
   borderRadius: "999px",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.18), rgba(255,255,255,0.04))",
-  border: "2px solid rgba(236,72,153,0.72)",
-  boxShadow: "0 0 28px rgba(168,85,247,0.55)",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 18%, transparent), rgba(255,255,255,0.04))",
+  border: "2px solid color-mix(in srgb, var(--parapost-accent-3) 72%, transparent)",
+  boxShadow: "0 0 28px color-mix(in srgb, var(--parapost-accent-2) 55%, transparent)",
   color: "#fff",
   fontWeight: 950,
   fontSize: 24,
 };
 
 const logoWordStyle: CSSProperties = { fontSize: 32, fontWeight: 950, lineHeight: 0.95, letterSpacing: "0.02em" };
-const logoNetworkStyle: CSSProperties = { color: "#c084fc", letterSpacing: "0.42em", fontWeight: 900, fontSize: 14, marginTop: 5 };
+const logoNetworkStyle: CSSProperties = { color: "var(--parapost-accent-text)", letterSpacing: "0.42em", fontWeight: 900, fontSize: 14, marginTop: 5 };
 
 const sidebarNavStyle: CSSProperties = { display: "grid", gap: 8 };
 
@@ -5496,9 +5519,9 @@ const sidebarItemStyle: CSSProperties = {
 const activeSidebarItemStyle: CSSProperties = {
   ...sidebarItemStyle,
   color: "#fff",
-  background: "linear-gradient(90deg, rgba(126,34,206,0.92), rgba(76,29,149,0.28))",
-  border: "1px solid rgba(168,85,247,0.45)",
-  boxShadow: "0 0 24px rgba(126,34,206,0.24)",
+  background: "linear-gradient(90deg, var(--parapost-accent-active-bg), color-mix(in srgb, var(--parapost-accent-1) 22%, transparent))",
+  border: "1px solid var(--parapost-accent-active-border)",
+  boxShadow: "0 0 24px var(--parapost-accent-glow)",
 };
 
 const mutedSidebarItemStyle: CSSProperties = {
@@ -5516,8 +5539,8 @@ const sidebarComposerReelIconStyle: CSSProperties = {
   borderRadius: 8,
   display: "grid",
   placeItems: "center",
-  background: "rgba(236,72,153,0.18)",
-  color: "#f9a8d4",
+  background: "color-mix(in srgb, var(--parapost-accent-3) 18%, transparent)",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: 12,
   fontWeight: 950,
   lineHeight: 1,
@@ -5526,13 +5549,13 @@ const sidebarComposerReelIconStyle: CSSProperties = {
 const sidebarIconWrapStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center" };
 const dotIconStyle: CSSProperties = { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.55)" };
 const mutedDotIconStyle: CSSProperties = { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.26)" };
-const sidebarBadgeStyle: CSSProperties = { minWidth: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "#7c3aed", color: "#fff", fontSize: 12, fontWeight: 900, padding: "0 7px" };
-const mutedSidebarBadgeStyle: CSSProperties = { ...sidebarBadgeStyle, background: "rgba(168,85,247,0.22)", color: "rgba(255,255,255,0.68)", border: "1px solid rgba(255,255,255,0.08)" };
+const sidebarBadgeStyle: CSSProperties = { minWidth: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--parapost-accent-1)", color: "#fff", fontSize: 12, fontWeight: 900, padding: "0 7px" };
+const mutedSidebarBadgeStyle: CSSProperties = { ...sidebarBadgeStyle, background: "color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", color: "rgba(255,255,255,0.68)", border: "1px solid rgba(255,255,255,0.08)" };
 const sidebarDividerStyle: CSSProperties = { height: 1, background: "rgba(255,255,255,0.12)", margin: "20px 0" };
-const sidebarSectionLabelStyle: CSSProperties = { color: "#c084fc", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 };
+const sidebarSectionLabelStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 };
 const sidebarSectionHeaderRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 };
-const sidebarSectionSoonBadgeStyle: CSSProperties = { borderRadius: 999, background: "rgba(168,85,247,0.18)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.76)", padding: "4px 8px", fontSize: 10, fontWeight: 950, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" };
-const paranormalHubIntroStyle: CSSProperties = { margin: "0 0 10px", borderRadius: 14, border: "1px solid rgba(168,85,247,0.16)", background: "linear-gradient(135deg, rgba(126,34,206,0.10), rgba(255,255,255,0.025))", color: "rgba(221,214,254,0.76)", fontSize: 12, lineHeight: 1.45, padding: "10px 12px" };
+const sidebarSectionSoonBadgeStyle: CSSProperties = { borderRadius: 999, background: "color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.76)", padding: "4px 8px", fontSize: 10, fontWeight: 950, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" };
+const paranormalHubIntroStyle: CSSProperties = { margin: "0 0 10px", borderRadius: 14, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 16%, transparent)", background: "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.025))", color: "color-mix(in srgb, var(--parapost-accent-readable-text) 76%, transparent)", fontSize: 12, lineHeight: 1.45, padding: "10px 12px" };
 
 const goLiveCardStyle: CSSProperties = {
   marginTop: 22,
@@ -5542,15 +5565,15 @@ const goLiveCardStyle: CSSProperties = {
   borderRadius: 18,
   padding: 16,
   textDecoration: "none",
-  background: "rgba(126,34,206,0.16)",
-  border: "1px solid rgba(168,85,247,0.24)",
-  boxShadow: "0 0 20px rgba(126,34,206,0.10)",
+  background: "var(--parapost-accent-muted-bg)",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 24%, transparent)",
+  boxShadow: "0 0 20px var(--parapost-accent-muted-bg)",
   opacity: 0.66,
   cursor: "default",
 };
 
 const goLiveIconStyle: CSSProperties = { width: 48, height: 48, borderRadius: 14, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 26 };
-const goLiveSoonBadgeStyle: CSSProperties = { marginLeft: "auto", borderRadius: 999, background: "rgba(168,85,247,0.22)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.78)", padding: "5px 8px", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap" };
+const goLiveSoonBadgeStyle: CSSProperties = { marginLeft: "auto", borderRadius: 999, background: "color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.78)", padding: "5px 8px", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap" };
 const sidebarProfileStyle: CSSProperties = { marginTop: 22, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, padding: 10, background: "rgba(255,255,255,0.04)" };
 
 const desktopTopBarStyle: CSSProperties = {
@@ -5582,10 +5605,10 @@ const searchFilterButtonStyle: CSSProperties = { width: 36, height: 36, borderRa
 const searchDropdownStyle: CSSProperties = { position: "absolute", left: 0, right: 0, top: "calc(100% + 10px)", borderRadius: 20, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.96)", backdropFilter: "blur(18px)", padding: 12, zIndex: 80, boxShadow: "0 22px 60px rgba(0,0,0,0.5)" };
 
 const topActionRowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 14 };
-const squarePurpleButtonStyle: CSSProperties = { width: 54, height: 54, borderRadius: 16, display: "grid", placeItems: "center", border: "1px solid rgba(168,85,247,0.55)", background: "linear-gradient(135deg, #7c3aed, #3b0764)", color: "#fff", boxShadow: "0 0 26px rgba(126,34,206,0.35)", cursor: "pointer" };
-const topIconButtonStyle: CSSProperties = { position: "relative", width: 44, height: 44, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" };
+const squarePurpleButtonStyle: CSSProperties = { width: 54, height: 54, borderRadius: 16, display: "grid", placeItems: "center", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 55%, transparent)", background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-3))", color: "#fff", boxShadow: "0 0 26px var(--parapost-accent-strong-glow)", cursor: "pointer" };
+const topIconButtonStyle: CSSProperties = { position: "relative", width: 44, height: 44, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", textDecoration: "none", border: "1px solid var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" };
 const topProfileButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 16, display: "grid", placeItems: "center", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", overflow: "visible" };
-const topBadgeStyle: CSSProperties = { position: "absolute", top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 999, background: "#7c3aed", color: "#fff", fontSize: 12, fontWeight: 950, display: "grid", placeItems: "center", padding: "0 6px" };
+const topBadgeStyle: CSSProperties = { position: "absolute", top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 999, background: "var(--parapost-accent-1)", color: "#fff", fontSize: 12, fontWeight: 950, display: "grid", placeItems: "center", padding: "0 6px" };
 
 const showcaseCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 14, marginBottom: 18, overflow: "hidden" };
 const showcaseQuickGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1.34fr) minmax(260px, 0.66fr)", gap: 16, alignItems: "stretch" };
@@ -5593,29 +5616,29 @@ const showcaseColumnStyle: CSSProperties = { minWidth: 0, display: "flex", flexD
 const showcaseSectionHeaderStyle: CSSProperties = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" };
 const showcaseSectionTitleStyle: CSSProperties = { margin: 0, color: "#fff", fontSize: 18, fontWeight: 950, letterSpacing: "-0.02em" };
 const showcaseSectionSubtitleStyle: CSSProperties = { margin: "4px 0 0", color: "#9ca3af", fontSize: 12.5, lineHeight: 1.35 };
-const showcaseSmallLinkStyle: CSSProperties = { minHeight: 32, borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.055)", color: "#e9d5ff", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 11px", fontSize: 12, fontWeight: 900, whiteSpace: "nowrap" };
+const showcaseSmallLinkStyle: CSSProperties = { minHeight: 32, borderRadius: 999, border: "1px solid var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 11px", fontSize: 12, fontWeight: 900, whiteSpace: "nowrap" };
 const showcaseScrollerStyle: CSSProperties = { display: "flex", gap: 16, alignItems: "stretch", overflowX: "auto", overflowY: "hidden", padding: "2px 2px 4px", scrollSnapType: "x proximity" };
-const createShowcaseTileStyle: CSSProperties = { position: "relative", width: 104, minWidth: 104, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 6, borderRadius: 18, border: "1px solid rgba(168,85,247,0.22)", color: "#fff", textDecoration: "none", background: "linear-gradient(180deg, rgba(168,85,247,0.14), rgba(0,0,0,0.18))", padding: 10, scrollSnapAlign: "start" };
-const showcasePlusStyle: CSSProperties = { position: "absolute", right: 20, top: 62, width: 27, height: 27, borderRadius: 999, background: "#7c3aed", color: "#fff", display: "grid", placeItems: "center", border: "2px solid #0a0d14", fontWeight: 950 };
-const createShowcaseHintStyle: CSSProperties = { color: "#c4b5fd", fontSize: 11, fontWeight: 850, textAlign: "center", lineHeight: 1.15 };
+const createShowcaseTileStyle: CSSProperties = { position: "relative", width: 104, minWidth: 104, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 6, borderRadius: 18, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", color: "#fff", textDecoration: "none", background: "linear-gradient(180deg, color-mix(in srgb, var(--parapost-accent-2) 14%, transparent), rgba(0,0,0,0.18))", padding: 10, scrollSnapAlign: "start" };
+const showcasePlusStyle: CSSProperties = { position: "absolute", right: 20, top: 62, width: 27, height: 27, borderRadius: 999, background: "var(--parapost-accent-1)", color: "#fff", display: "grid", placeItems: "center", border: "2px solid #0a0d14", fontWeight: 950 };
+const createShowcaseHintStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontSize: 11, fontWeight: 850, textAlign: "center", lineHeight: 1.15 };
 const showcaseTileStyle: CSSProperties = { width: 104, minWidth: 104, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 8, color: "#fff", textDecoration: "none", scrollSnapAlign: "start" };
-const demoAvatarStyle: CSSProperties = { width: 78, height: 78, borderRadius: 999, border: "3px solid #7c3aed", display: "grid", placeItems: "center", background: "linear-gradient(135deg, rgba(168,85,247,0.28), rgba(0,0,0,0.8))", fontWeight: 950, fontSize: 26, boxShadow: "0 0 22px rgba(126,34,206,0.32)" };
+const demoAvatarStyle: CSSProperties = { width: 78, height: 78, borderRadius: 999, border: "3px solid var(--parapost-accent-1)", display: "grid", placeItems: "center", background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 28%, transparent), rgba(0,0,0,0.8))", fontWeight: 950, fontSize: 26, boxShadow: "0 0 22px var(--parapost-accent-active-bg)" };
 const showcaseNameStyle: CSSProperties = { width: "100%", fontSize: 12.5, textAlign: "center", color: "#e5e7eb", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const showcaseNameStrongStyle: CSSProperties = { color: "#fff", fontSize: 13, fontWeight: 950, textAlign: "center", lineHeight: 1.05 };
-const newShowcaseIconStyle: CSSProperties = { width: 70, height: 70, borderRadius: 999, display: "grid", placeItems: "center", background: "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.24), rgba(168,85,247,0.18) 42%, rgba(7,9,13,0.98) 76%)", border: "3px solid rgba(168,85,247,0.86)", boxShadow: "0 0 22px rgba(168,85,247,0.36), inset 0 1px 0 rgba(255,255,255,0.13)" };
-const newShowcasePlusInnerStyle: CSSProperties = { width: 34, height: 34, borderRadius: 999, display: "grid", placeItems: "center", background: "linear-gradient(135deg, #a855f7, #7c3aed)", color: "#fff", fontSize: 24, fontWeight: 950, boxShadow: "0 10px 22px rgba(126,34,206,0.34)" };
-const friendShowcaseBubbleStyle: CSSProperties = { width: 76, height: 76, borderRadius: 999, display: "grid", placeItems: "center", overflow: "hidden", padding: 3, background: "linear-gradient(135deg, rgba(168,85,247,0.9), rgba(6,182,212,0.72))", boxShadow: "0 0 22px rgba(168,85,247,0.32)", border: "1px solid rgba(255,255,255,0.12)" };
+const newShowcaseIconStyle: CSSProperties = { width: 70, height: 70, borderRadius: 999, display: "grid", placeItems: "center", background: "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.24), color-mix(in srgb, var(--parapost-accent-2) 18%, transparent) 42%, rgba(7,9,13,0.98) 76%)", border: "3px solid color-mix(in srgb, var(--parapost-accent-2) 86%, transparent)", boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 36%, transparent), inset 0 1px 0 rgba(255,255,255,0.13)" };
+const newShowcasePlusInnerStyle: CSSProperties = { width: 34, height: 34, borderRadius: 999, display: "grid", placeItems: "center", background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1))", color: "#fff", fontSize: 24, fontWeight: 950, boxShadow: "0 10px 22px var(--parapost-accent-strong-glow)" };
+const friendShowcaseBubbleStyle: CSSProperties = { width: 76, height: 76, borderRadius: 999, display: "grid", placeItems: "center", overflow: "hidden", padding: 3, background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 90%, transparent), var(--parapost-accent-3))", boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 32%, transparent)", border: "1px solid rgba(255,255,255,0.12)" };
 const friendShowcaseMediaStyle: CSSProperties = { width: "100%", height: "100%", borderRadius: 999, objectFit: "cover", display: "block", border: "2px solid #07090d" };
 const emptyFriendShowcaseTileStyle: CSSProperties = { width: 146, minWidth: 146, height: 116, display: "grid", justifyItems: "center", alignContent: "center", gap: 8, borderRadius: 18, border: "1px dashed rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.025)", color: "#d1d5db", scrollSnapAlign: "start" };
-const emptyFriendShowcaseIconStyle: CSSProperties = { width: 54, height: 54, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid rgba(168,85,247,0.42)", color: "#c084fc", background: "rgba(168,85,247,0.10)", fontWeight: 950 };
+const emptyFriendShowcaseIconStyle: CSSProperties = { width: 54, height: 54, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid color-mix(in srgb, var(--parapost-accent-2) 42%, transparent)", color: "var(--parapost-accent-text)", background: "color-mix(in srgb, var(--parapost-accent-2) 10%, transparent)", fontWeight: 950 };
 const showcaseArrowStyle: CSSProperties = { alignSelf: "center", minWidth: 38, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 30, cursor: "pointer" };
 const quickActionsColumnStyle: CSSProperties = { borderRadius: 22, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.18)", padding: 12, display: "flex", flexDirection: "column", gap: 12, minWidth: 0 };
 const quickActionsHeaderStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 2 };
-const quickActionsEyebrowStyle: CSSProperties = { color: "#c084fc", fontSize: 11, fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase" };
+const quickActionsEyebrowStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 11, fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase" };
 const quickActionsTitleStyle: CSSProperties = { color: "#fff", fontSize: 15, fontWeight: 950 };
 const quickActionsGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr", gap: 9 };
 const quickActionTileStyle: CSSProperties = { minHeight: 54, borderRadius: 18, border: "1px solid rgba(255,255,255,0.095)", background: "rgba(255,255,255,0.045)", color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", cursor: "pointer", textAlign: "left", width: "100%" };
-const quickActionIconStyle: CSSProperties = { width: 32, height: 32, borderRadius: 12, display: "grid", placeItems: "center", background: "rgba(168,85,247,0.18)", color: "#e9d5ff", fontWeight: 950, flexShrink: 0, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" };
+const quickActionIconStyle: CSSProperties = { width: 32, height: 32, borderRadius: 12, display: "grid", placeItems: "center", background: "color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)", color: "var(--parapost-accent-readable-text)", fontWeight: 950, flexShrink: 0, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" };
 const quickActionLabelStyle: CSSProperties = { display: "block", color: "#fff", fontSize: 13, fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const quickActionTextStyle: CSSProperties = { display: "block", color: "#9ca3af", fontSize: 11.5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
@@ -5667,7 +5690,7 @@ const dashboardProfileShowcasesRowStyle: CSSProperties = {
   overflowY: "visible",
   padding: "0 14px 12px",
   scrollbarWidth: "thin",
-  scrollbarColor: "rgba(168,85,247,0.42) rgba(255,255,255,0.04)",
+  scrollbarColor: "color-mix(in srgb, var(--parapost-accent-2) 42%, transparent) rgba(255,255,255,0.04)",
 };
 
 const dashboardProfileShowcaseNewItemStyle: CSSProperties = {
@@ -5693,14 +5716,14 @@ const dashboardProfileShowcasePlusCircleStyle: CSSProperties = {
   placeItems: "center",
   border: "1px solid rgba(255,255,255,0.18)",
   background:
-    "radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), transparent 23%), linear-gradient(135deg, #a855f7, #7c3aed 58%, #4f46e5)",
+    "radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), transparent 23%), linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 58%, #4f46e5)",
   color: "#ffffff",
   fontSize: 40,
   fontWeight: 950,
   lineHeight: 0.86,
   paddingBottom: 4,
   boxShadow:
-    "0 16px 34px rgba(124,58,237,0.38), 0 0 34px rgba(168,85,247,0.28), inset 0 1px 0 rgba(255,255,255,0.16)",
+    "0 16px 34px color-mix(in srgb, var(--parapost-accent-1) 38%, transparent), 0 0 34px color-mix(in srgb, var(--parapost-accent-2) 28%, transparent), inset 0 1px 0 rgba(255,255,255,0.16)",
 };
 
 const dashboardProfileShowcaseLabelStyle: CSSProperties = {
@@ -5743,10 +5766,10 @@ const dashboardProfileShowcaseCoverCircleStyle: CSSProperties = {
   placeItems: "center",
   overflow: "hidden",
   borderRadius: 999,
-  border: "1px solid rgba(216,180,254,0.30)",
+  border: "1px solid var(--parapost-accent-border)",
   background:
-    "radial-gradient(circle at 36% 18%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, rgba(88,28,135,0.96), rgba(59,130,246,0.58))",
-  boxShadow: "0 0 22px rgba(168,85,247,0.20), 0 12px 24px rgba(0,0,0,0.24)",
+    "radial-gradient(circle at 36% 18%, rgba(255,255,255,0.16), transparent 24%), linear-gradient(135deg, rgba(88,28,135,0.96), color-mix(in srgb, var(--parapost-accent-3) 58%, transparent))",
+  boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 20%, transparent), 0 12px 24px rgba(0,0,0,0.24)",
 };
 
 const dashboardProfileShowcaseCoverMediaStyle: CSSProperties = {
@@ -5801,9 +5824,9 @@ const dashboardShowcaseEmptyIconStyle: CSSProperties = {
   borderRadius: 999,
   display: "grid",
   placeItems: "center",
-  border: "1px dashed rgba(216,180,254,0.24)",
-  background: "rgba(168,85,247,0.08)",
-  color: "#c084fc",
+  border: "1px dashed var(--parapost-accent-border)",
+  background: "color-mix(in srgb, var(--parapost-accent-2) 8%, transparent)",
+  color: "var(--parapost-accent-text)",
   fontWeight: 950,
 };
 
@@ -5821,7 +5844,7 @@ const profileShowcaseModalOverlayStyle: CSSProperties = {
   alignItems: "stretch",
   justifyContent: "center",
   padding: "18px",
-  background: "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.20), transparent 38%), rgba(0,0,0,0.88)",
+  background: "radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--parapost-accent-2) 20%, transparent), transparent 38%), rgba(0,0,0,0.88)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
 };
@@ -5833,7 +5856,7 @@ const profileShowcaseModalStyle: CSSProperties = {
   overflowY: "auto",
   borderRadius: "32px",
   border: "1px solid rgba(255,255,255,0.14)",
-  background: "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
+  background: "radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--parapost-accent-2) 28%, transparent), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
   boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
   padding: "22px",
 };
@@ -5863,9 +5886,9 @@ const profileShowcaseModalLogoStyle: CSSProperties = {
   display: "grid",
   placeItems: "center",
   borderRadius: "15px",
-  background: "linear-gradient(135deg, #a855f7, #7c3aed 60%, #2563eb)",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 60%, #2563eb)",
   color: "#ffffff",
-  boxShadow: "0 16px 34px rgba(124,58,237,0.34)",
+  boxShadow: "0 16px 34px color-mix(in srgb, var(--parapost-accent-1) 34%, transparent)",
   overflow: "hidden",
 };
 
@@ -5879,7 +5902,7 @@ const profileShowcaseModalLogoImageStyle: CSSProperties = {
 
 const profileShowcaseModalEyebrowStyle: CSSProperties = {
   margin: 0,
-  color: "#c084fc",
+  color: "var(--parapost-accent-text)",
   fontSize: "11px",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -5910,10 +5933,10 @@ const profileShowcaseModalFlowPillsStyle: CSSProperties = {
 };
 
 const profileShowcaseModalFlowPillStyle: CSSProperties = {
-  border: "1px solid rgba(216,180,254,0.18)",
+  border: "1px solid var(--parapost-accent-border)",
   borderRadius: "999px",
-  background: "rgba(168,85,247,0.10)",
-  color: "#d8b4fe",
+  background: "color-mix(in srgb, var(--parapost-accent-2) 10%, transparent)",
+  color: "var(--parapost-accent-readable-text)",
   padding: "5px 8px",
   fontSize: "10px",
   fontWeight: 900,
@@ -5949,9 +5972,9 @@ const profileShowcaseSimpleControlsStyle: CSSProperties = {
 const profileShowcaseSimpleUploadCardStyle: CSSProperties = {
   width: "100%",
   minHeight: "144px",
-  border: "1px dashed rgba(216,180,254,0.52)",
+  border: "1px dashed var(--parapost-accent-active-border)",
   borderRadius: "24px",
-  background: "radial-gradient(circle at 20% 0%, rgba(168,85,247,0.20), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.11), rgba(255,255,255,0.035))",
+  background: "radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--parapost-accent-2) 20%, transparent), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--parapost-accent-2) 11%, transparent), rgba(255,255,255,0.035))",
   color: "#ffffff",
   display: "grid",
   gridTemplateColumns: "58px minmax(0, 1fr)",
@@ -5967,14 +5990,14 @@ const profileShowcaseSimpleUploadCardStyle: CSSProperties = {
 const profileShowcaseSimpleUploadCardActiveStyle: CSSProperties = {
   ...profileShowcaseSimpleUploadCardStyle,
   border: "1px dashed rgba(34,211,238,0.70)",
-  background: "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.18), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.14), rgba(34,211,238,0.055))",
+  background: "radial-gradient(circle at 22% 0%, rgba(34,211,238,0.18), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--parapost-accent-2) 14%, transparent), rgba(34,211,238,0.055))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(34,211,238,0.18), 0 22px 52px rgba(0,0,0,0.26)",
 };
 
 const profileShowcaseSimpleUploadCardSelectedStyle: CSSProperties = {
   ...profileShowcaseSimpleUploadCardStyle,
   border: "1px solid rgba(74,222,128,0.32)",
-  background: "radial-gradient(circle at 22% 0%, rgba(74,222,128,0.12), transparent 36%), linear-gradient(180deg, rgba(168,85,247,0.10), rgba(74,222,128,0.040))",
+  background: "radial-gradient(circle at 22% 0%, rgba(74,222,128,0.12), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--parapost-accent-2) 10%, transparent), rgba(74,222,128,0.040))",
 };
 
 const profileShowcaseSimpleUploadIconStyle: CSSProperties = {
@@ -5983,11 +6006,11 @@ const profileShowcaseSimpleUploadIconStyle: CSSProperties = {
   borderRadius: "20px",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.95), rgba(124,58,237,0.90))",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 95%, transparent), color-mix(in srgb, var(--parapost-accent-1) 90%, transparent))",
   color: "#ffffff",
   fontSize: "28px",
   fontWeight: 950,
-  boxShadow: "0 14px 28px rgba(124,58,237,0.30)",
+  boxShadow: "0 14px 28px color-mix(in srgb, var(--parapost-accent-1) 30%, transparent)",
 };
 
 const profileShowcaseUploadTitleTextStyle: CSSProperties = {
@@ -6108,9 +6131,9 @@ const profileShowcaseDurationOptionStyle: CSSProperties = {
 
 const profileShowcaseDurationOptionActiveStyle: CSSProperties = {
   ...profileShowcaseDurationOptionStyle,
-  border: "1px solid rgba(216,180,254,0.42)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
-  boxShadow: "0 0 22px rgba(168,85,247,0.16)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 24%, transparent), color-mix(in srgb, var(--parapost-accent-3) 10%, transparent))",
+  boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 16%, transparent)",
 };
 
 const profileShowcaseDurationOptionLabelTextStyle: CSSProperties = {
@@ -6146,10 +6169,10 @@ const profileShowcaseAdvancedDividerStyle: CSSProperties = {
 const profileShowcaseCustomizeButtonStyle: CSSProperties = {
   width: "100%",
   minHeight: "42px",
-  border: "1px solid rgba(216,180,254,0.26)",
+  border: "1px solid var(--parapost-accent-border)",
   borderRadius: "14px",
   background: "rgba(255,255,255,0.035)",
-  color: "#d8b4fe",
+  color: "var(--parapost-accent-readable-text)",
   fontSize: "14px",
   fontWeight: 950,
   cursor: "pointer",
@@ -6158,8 +6181,8 @@ const profileShowcaseCustomizeButtonStyle: CSSProperties = {
 
 const profileShowcaseCustomizeButtonActiveStyle: CSSProperties = {
   ...profileShowcaseCustomizeButtonStyle,
-  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(59,130,246,0.10))",
-  border: "1px solid rgba(216,180,254,0.42)",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 24%, transparent), color-mix(in srgb, var(--parapost-accent-3) 10%, transparent))",
+  border: "1px solid var(--parapost-accent-active-border)",
   color: "#ffffff",
 };
 
@@ -6167,9 +6190,9 @@ const profileShowcaseCustomizePanelStyle: CSSProperties = {
   display: "grid",
   gap: "12px",
   marginTop: "12px",
-  border: "1px solid rgba(216,180,254,0.13)",
+  border: "1px solid var(--parapost-accent-border)",
   borderRadius: "20px",
-  background: "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.10), transparent 38%), rgba(0,0,0,0.18)",
+  background: "radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--parapost-accent-2) 10%, transparent), transparent 38%), rgba(0,0,0,0.18)",
   padding: "13px",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
 };
@@ -6177,9 +6200,9 @@ const profileShowcaseCustomizePanelStyle: CSSProperties = {
 const profileShowcaseCustomizeIntroStyle: CSSProperties = {
   display: "grid",
   gap: "4px",
-  border: "1px solid rgba(216,180,254,0.15)",
+  border: "1px solid var(--parapost-accent-border)",
   borderRadius: "15px",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.13), rgba(37,99,235,0.055))",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 13%, transparent), rgba(37,99,235,0.055))",
   padding: "11px",
   color: "#ffffff",
   fontSize: "13px",
@@ -6230,9 +6253,9 @@ const profileShowcaseVisibilityOptionStyle: CSSProperties = {
 
 const profileShowcaseVisibilityOptionActiveStyle: CSSProperties = {
   ...profileShowcaseVisibilityOptionStyle,
-  border: "1px solid rgba(216,180,254,0.58)",
-  background: "linear-gradient(135deg, rgba(168,85,247,0.24), rgba(37,99,235,0.11))",
-  boxShadow: "0 0 0 1px rgba(168,85,247,0.12), 0 14px 30px rgba(124,58,237,0.18)",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 24%, transparent), rgba(37,99,235,0.11))",
+  boxShadow: "0 0 0 1px color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), 0 14px 30px color-mix(in srgb, var(--parapost-accent-1) 18%, transparent)",
 };
 
 const profileShowcaseVisibilityIconStyle: CSSProperties = {
@@ -6241,8 +6264,8 @@ const profileShowcaseVisibilityIconStyle: CSSProperties = {
   borderRadius: "13px",
   display: "grid",
   placeItems: "center",
-  background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.16), transparent 28%), rgba(168,85,247,0.16)",
-  border: "1px solid rgba(216,180,254,0.20)",
+  background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.16), transparent 28%), color-mix(in srgb, var(--parapost-accent-2) 16%, transparent)",
+  border: "1px solid var(--parapost-accent-border)",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
   position: "relative",
 };
@@ -6284,14 +6307,14 @@ const profileShowcasePreviewPhoneStyle: CSSProperties = {
   borderRadius: "32px",
   overflow: "hidden",
   border: "1px solid rgba(255,255,255,0.14)",
-  background: "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), rgba(124,58,237,0.90) 52%, rgba(168,85,247,0.84))",
+  background: "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), color-mix(in srgb, var(--parapost-accent-1) 90%, transparent) 52%, color-mix(in srgb, var(--parapost-accent-2) 84%, transparent))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 34px 86px rgba(0,0,0,0.50)",
 };
 
 const profileShowcasePreviewCanvasStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
-  background: "linear-gradient(135deg, rgba(20,184,166,0.80), rgba(59,130,246,0.66) 45%, rgba(168,85,247,0.86))",
+  background: "linear-gradient(135deg, rgba(20,184,166,0.80), color-mix(in srgb, var(--parapost-accent-3) 66%, transparent) 45%, color-mix(in srgb, var(--parapost-accent-2) 86%, transparent))",
 };
 
 const profileShowcasePreviewMediaStyle: CSSProperties = {
@@ -6358,7 +6381,7 @@ const profileShowcaseVerticalSizeRailStyle: CSSProperties = {
 const profileShowcaseVerticalSizeSliderStyle: CSSProperties = {
   width: "180px",
   transform: "rotate(-90deg)",
-  accentColor: "#a855f7",
+  accentColor: "var(--parapost-accent-2)",
 };
 
 const profileShowcaseCenterGuideVerticalStyle: CSSProperties = {
@@ -6369,7 +6392,7 @@ const profileShowcaseCenterGuideVerticalStyle: CSSProperties = {
   width: "1px",
   transform: "translateX(-50%)",
   background: "repeating-linear-gradient(to bottom, rgba(255,255,255,0.42) 0 5px, transparent 5px 10px)",
-  boxShadow: "0 0 12px rgba(168,85,247,0.22)",
+  boxShadow: "0 0 12px color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)",
   pointerEvents: "none",
 };
 
@@ -6381,7 +6404,7 @@ const profileShowcaseCenterGuideHorizontalStyle: CSSProperties = {
   height: "1px",
   transform: "translateY(-50%)",
   background: "repeating-linear-gradient(to right, rgba(255,255,255,0.42) 0 5px, transparent 5px 10px)",
-  boxShadow: "0 0 12px rgba(168,85,247,0.22)",
+  boxShadow: "0 0 12px color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)",
   pointerEvents: "none",
 };
 
@@ -6453,39 +6476,39 @@ const profileShowcaseCancelButtonStyle: CSSProperties = {
 
 const profileShowcaseCreateButtonStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.13)",
-  background: "linear-gradient(135deg, #a855f7, #7c3aed 58%, #2563eb)",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 58%, #2563eb)",
   color: "#ffffff",
   borderRadius: "15px",
   padding: "12px 18px",
   fontWeight: 950,
   cursor: "pointer",
-  boxShadow: "0 20px 38px rgba(124,58,237,0.34)",
+  boxShadow: "0 20px 38px color-mix(in srgb, var(--parapost-accent-1) 34%, transparent)",
 };
 
-const composerCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(20,26,43,0.90), rgba(9,12,21,0.92))", padding: 16, marginBottom: 16, boxShadow: "0 18px 46px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.045)", overflow: "hidden", scrollMarginTop: 96 };
+const composerCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid var(--parapost-accent-border)", background: "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 36%), linear-gradient(180deg, rgba(20,26,43,0.90), rgba(9,12,21,0.92))", padding: 16, marginBottom: 16, boxShadow: "0 18px 46px rgba(0,0,0,0.30), 0 0 28px var(--parapost-accent-glow), inset 0 1px 0 rgba(255,255,255,0.045)", overflow: "hidden", scrollMarginTop: 96 };
 const composerHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 14 };
 const composerIdentityStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
 const composerTitleStyle: CSSProperties = { margin: 0, color: "#fff", fontSize: 17, fontWeight: 950, letterSpacing: "-0.02em" };
 const composerSubtitleStyle: CSSProperties = { margin: "3px 0 0", color: "#9ca3af", fontSize: 12.5, lineHeight: 1.35 };
-const composerDestinationBadgeStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 30, borderRadius: 999, padding: "0 11px", color: "#f5f3ff", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap", background: "rgba(126,34,206,0.32)", border: "1px solid rgba(168,85,247,0.35)", boxShadow: "0 10px 24px rgba(126,34,206,0.18)" };
+const composerDestinationBadgeStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 30, borderRadius: 999, padding: "0 11px", color: "var(--parapost-accent-readable-text)", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap", background: "var(--parapost-accent-active-bg)", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 35%, transparent)", boxShadow: "0 10px 24px var(--parapost-accent-active-bg)" };
 const composerTopRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", gap: 12, alignItems: "center" };
 const composerInputStyle: CSSProperties = { width: "100%", minHeight: 58, maxHeight: 190, resize: "none", overflowY: "auto", border: "1px solid rgba(255,255,255,0.11)", borderRadius: 18, background: "rgba(255,255,255,0.04)", color: "#fff", outline: 0, padding: "16px 18px", fontSize: 15.5, lineHeight: 1.45, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" };
 const composerImageButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 15, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 };
 const composerActionGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 9, alignItems: "center", marginTop: 13 };
 const composerActionPillStyle: CSSProperties = { minHeight: 39, borderRadius: 14, border: "1px solid rgba(255,255,255,0.085)", background: "rgba(255,255,255,0.038)", color: "#fff", padding: "0 12px", fontWeight: 850, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", whiteSpace: "nowrap", fontSize: 12.5, transition: "border-color 160ms ease, background 160ms ease, transform 160ms ease" };
-const composerActionPillActiveStyle: CSSProperties = { border: "1px solid rgba(245,158,11,0.34)", background: "linear-gradient(135deg, rgba(245,158,11,0.14), rgba(168,85,247,0.12))", boxShadow: "0 0 18px rgba(245,158,11,0.16)" };
+const composerActionPillActiveStyle: CSSProperties = { border: "1px solid var(--parapost-accent-active-border)", background: "linear-gradient(135deg, var(--parapost-accent-soft), color-mix(in srgb, var(--parapost-accent-2) 12%, transparent))", boxShadow: "0 0 18px var(--parapost-accent-glow)" };
 const composerActionDisabledStyle: CSSProperties = { opacity: 0.46, background: "rgba(255,255,255,0.018)", border: "1px dashed rgba(255,255,255,0.11)", cursor: "not-allowed", color: "#9ca3af" };
 const composerActionNoteStyle: CSSProperties = { borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", color: "#a1a1aa", padding: "2px 6px", fontSize: 10, fontWeight: 900, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 };
 const composerActionIconStyle: CSSProperties = { width: 24, height: 24, borderRadius: 8, display: "grid", placeItems: "center", color: "#fff", fontSize: 13, fontWeight: 950, lineHeight: 1 };
 const composerActionToneStyles: Record<"green" | "pink" | "red" | "gold", CSSProperties> = {
-  green: { background: "rgba(34,197,94,0.18)", color: "#86efac" },
-  pink: { background: "rgba(236,72,153,0.18)", color: "#f9a8d4" },
+  green: { background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)" },
+  pink: { background: "color-mix(in srgb, var(--parapost-accent-3) 18%, transparent)", color: "var(--parapost-accent-readable-text)" },
   red: { background: "rgba(239,68,68,0.18)", color: "#fca5a5" },
-  gold: { background: "rgba(245,158,11,0.18)", color: "#fde68a" },
+  gold: { background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)" },
 };
 const composerFooterStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 13, flexWrap: "wrap" };
 const composerHelperTextStyle: CSSProperties = { color: "#6b7280", fontSize: 11.5, lineHeight: 1.35 };
-const publishButtonStyle: CSSProperties = { marginLeft: "auto", minHeight: 35, borderRadius: 14, border: 0, background: "linear-gradient(135deg, #ffffff, #d8b4fe)", color: "#111827", fontWeight: 900, padding: "0 15px", cursor: "pointer", boxShadow: "0 10px 20px rgba(168,85,247,0.18)", whiteSpace: "nowrap", fontSize: 12.5 };
+const publishButtonStyle: CSSProperties = { marginLeft: "auto", minHeight: 35, borderRadius: 14, border: 0, background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))", color: "#111827", fontWeight: 900, padding: "0 15px", cursor: "pointer", boxShadow: "0 10px 20px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)", whiteSpace: "nowrap", fontSize: 12.5 };
 
 const imagePreviewWrapStyle: CSSProperties = { marginTop: 14, borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(0,0,0,0.22)", position: "relative" };
 const imagePreviewStyle: CSSProperties = { width: "100%", maxHeight: 360, objectFit: "cover", display: "block" };
@@ -6495,7 +6518,7 @@ const selectedImageNameStyle: CSSProperties = { maxWidth: "70%", overflow: "hidd
 
 const feedTabsStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 8, margin: "16px 0", overflowX: "auto" };
 const feedTabStyle: CSSProperties = { border: 0, background: "transparent", color: "#d1d5db", padding: "12px 18px", borderRadius: 18, cursor: "pointer", fontSize: 16, whiteSpace: "nowrap" };
-const activeFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "#c084fc", background: "rgba(126,34,206,0.18)", boxShadow: "inset 0 -3px 0 #a855f7", fontWeight: 900 };
+const activeFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "var(--parapost-accent-text)", background: "var(--parapost-accent-active-bg)", boxShadow: "inset 0 -3px 0 var(--parapost-accent-2)", fontWeight: 900 };
 const disabledFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "rgba(229,231,235,0.42)", background: "transparent", border: "1px solid transparent", cursor: "default", opacity: 0.55 };
 
 const feedStackStyle: CSSProperties = { display: "grid", gap: 16 };
@@ -6506,12 +6529,12 @@ const feedPulseStyle: CSSProperties = {
   gap: 16,
   alignItems: "center",
   borderRadius: 22,
-  border: "1px solid rgba(168,85,247,0.18)",
-  background: "linear-gradient(135deg, rgba(126,34,206,0.18), rgba(15,23,42,0.72))",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
+  background: "linear-gradient(135deg, var(--parapost-accent-active-bg), rgba(15,23,42,0.72))",
   padding: 16,
   boxShadow: "0 18px 42px rgba(0,0,0,0.22)",
 };
-const feedPulseEyebrowStyle: CSSProperties = { color: "#c084fc", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 };
+const feedPulseEyebrowStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 };
 const feedPulseTitleStyle: CSSProperties = { margin: 0, color: "#fff", fontSize: 18, lineHeight: 1.25 };
 const feedPulseStatsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(72px, 1fr))", gap: 8 };
 const miniFeedStatStyle: CSSProperties = { borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", padding: "10px 12px", textAlign: "center" };
@@ -6543,41 +6566,41 @@ const postHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", 
 const postAuthorStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
 const postAuthorNameLineStyle: CSSProperties = { display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap", minWidth: 0 };
 const postAuthorNameStyle: CSSProperties = { display: "block", color: "#fff", textDecoration: "none", fontWeight: 950, fontSize: 16, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-const postAuthorActivityTextStyle: CSSProperties = { color: "#e9d5ff", fontWeight: 900, fontSize: 16, lineHeight: 1.25 };
+const postAuthorActivityTextStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontWeight: 900, fontSize: 16, lineHeight: 1.25 };
 const postMetaStyle: CSSProperties = { color: "#a1a1aa", fontSize: 13, marginTop: 3 };
 const postContentStyle: CSSProperties = { color: "#f9fafb", lineHeight: 1.58, fontSize: 16, whiteSpace: "pre-wrap", margin: "10px 0 0" };
 const postImageStyle: CSSProperties = { width: "100%", maxHeight: 680, objectFit: "cover", display: "block", borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", marginTop: 14, boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
 const dotsButtonStyle: CSSProperties = { width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" };
 const postMenuStyle: CSSProperties = { position: "absolute", right: 0, top: 45, minWidth: 170, borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.96)", zIndex: 30, boxShadow: "0 20px 50px rgba(0,0,0,0.5)" };
 const menuItemStyle: CSSProperties = { width: "100%", textAlign: "left", border: 0, background: "transparent", color: "#fff", padding: "12px 14px", cursor: "pointer", fontWeight: 850 };
-const followButtonStyle: CSSProperties = { border: 0, borderRadius: 999, background: "linear-gradient(135deg, #7c3aed, #ec4899)", color: "#fff", minHeight: 36, padding: "0 14px", fontWeight: 950, cursor: "pointer" };
+const followButtonStyle: CSSProperties = { border: 0, borderRadius: 999, background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-3))", color: "#fff", minHeight: 36, padding: "0 14px", fontWeight: 950, cursor: "pointer" };
 const followingButtonStyle: CSSProperties = { ...followButtonStyle, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e5e7eb" };
 const editTextareaStyle: CSSProperties = { width: "100%", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, background: "rgba(255,255,255,0.04)", color: "#fff", outline: 0, padding: 14, resize: "vertical" };
 const softButtonStyle: CSSProperties = { border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#fff", minHeight: 38, padding: "0 16px", fontWeight: 850, cursor: "pointer" };
 const softDangerButtonStyle: CSSProperties = { ...softButtonStyle, color: "#fecaca", border: "1px solid rgba(248,113,113,0.24)" };
 const postStatsSummaryStyle: CSSProperties = { display: "flex", justifyContent: "flex-end", gap: 9, alignItems: "center", color: "#d1d5db", fontSize: 13, borderBottom: "1px solid rgba(255,255,255,0.10)", paddingBottom: 12, marginTop: 14 };
-const postStatusLinkStyle: CSSProperties = { color: "#c4b5fd", fontWeight: 900, textDecoration: "none" };
+const postStatusLinkStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontWeight: 900, textDecoration: "none" };
 const postActionsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 10 };
 const actionButtonStyle: CSSProperties = { minHeight: 42, borderRadius: 14, border: "1px solid transparent", background: "transparent", color: "#e5e7eb", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 850, cursor: "pointer" };
-const activeActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: "#c084fc", background: "rgba(126,34,206,0.12)", border: "1px solid rgba(168,85,247,0.22)" };
+const activeActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: "var(--parapost-accent-text)", background: "var(--parapost-accent-muted-bg)", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)" };
 
 const sharedReelFrameStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(150px, 220px) 1fr", gap: 14, alignItems: "center", marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", borderRadius: 22, padding: 12, background: "rgba(0,0,0,0.24)" };
 const sharedReelVideoStyle: CSSProperties = { position: "relative", display: "block", aspectRatio: "9 / 16", maxHeight: 360, borderRadius: 18, overflow: "hidden", background: "#000", textDecoration: "none" };
 const sharedReelOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff", fontSize: 34, background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.38))" };
-const sharedReelBadgeStyle: CSSProperties = { display: "inline-flex", borderRadius: 999, border: "1px solid rgba(168,85,247,0.26)", background: "rgba(126,34,206,0.16)", color: "#d8b4fe", padding: "7px 10px", fontSize: 12, fontWeight: 950 };
+const sharedReelBadgeStyle: CSSProperties = { display: "inline-flex", borderRadius: 999, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 26%, transparent)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)", padding: "7px 10px", fontSize: 12, fontWeight: 950 };
 const sharedCaptionStyle: CSSProperties = { color: "#d1d5db", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" };
 const watchReelButtonStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, minHeight: 38, padding: "0 14px", background: "#fff", color: "#0b1020", textDecoration: "none", fontWeight: 950 };
 
-const railCardStyle: CSSProperties = { borderRadius: 22, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.045)", padding: 18, boxShadow: "0 18px 42px rgba(0,0,0,0.22)" };
+const railCardStyle: CSSProperties = { borderRadius: 22, border: "1px solid var(--parapost-accent-border)", background: "radial-gradient(circle at 18% 0%, var(--parapost-accent-muted-bg), transparent 40%), rgba(255,255,255,0.045)", padding: 18, boxShadow: "0 18px 42px rgba(0,0,0,0.22), 0 0 20px var(--parapost-accent-glow)" };
 const railCardHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 };
-const railActionStyle: CSSProperties = { color: "#c084fc", fontSize: 13, fontWeight: 900 };
+const railActionStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 13, fontWeight: 900 };
 const liveRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, alignItems: "center" };
 const liveThumbStyle: CSSProperties = { position: "relative", height: 70, borderRadius: 14, overflow: "hidden", border: "1px solid rgba(248,113,113,0.45)", background: "linear-gradient(135deg, rgba(14,165,233,0.18), rgba(0,0,0,0.82)), radial-gradient(circle at 70% 30%, rgba(255,255,255,0.16), transparent 28%)" };
 const liveBadgeStyle: CSSProperties = { position: "absolute", left: 8, top: 8, borderRadius: 7, background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 950, padding: "4px 6px" };
 const railNameStyle: CSSProperties = { display: "block", color: "#fff", fontSize: 14, lineHeight: 1.35 };
 const railMetaStyle: CSSProperties = { display: "block", color: "#9ca3af", fontSize: 12, marginTop: 2 };
 const trendingRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "26px 1fr", gap: 10, alignItems: "start" };
-const trendingRankStyle: CSSProperties = { color: "#c084fc", fontSize: 18, fontWeight: 950 };
+const trendingRankStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 18, fontWeight: 950 };
 const mutedTextStyle: CSSProperties = { color: "#9ca3af", lineHeight: 1.55, margin: 0, fontSize: 13 };
 const recentProfileRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center", textDecoration: "none", borderRadius: 14, padding: 8, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" };
 const statRowStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 14, color: "#d1d5db", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8 };
@@ -6587,17 +6610,17 @@ const onlineDotStyle: CSSProperties = { position: "absolute", right: 3, bottom: 
 const modalOverlayStyle: CSSProperties = { position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(12px)", display: "grid", placeItems: "start center", padding: "82px 18px 24px" };
 const searchModalStyle: CSSProperties = { width: "min(620px, 100%)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(8,10,18,0.98))", boxShadow: "0 28px 80px rgba(0,0,0,0.58)", padding: 18 };
 const modalHeaderStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 14 };
-const modalEyebrowStyle: CSSProperties = { color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.14em", fontSize: 11, fontWeight: 950, marginBottom: 4 };
+const modalEyebrowStyle: CSSProperties = { color: "var(--parapost-accent-text)", textTransform: "uppercase", letterSpacing: "0.14em", fontSize: 11, fontWeight: 950, marginBottom: 4 };
 const modalCloseButtonStyle: CSSProperties = { width: 40, height: 40, borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 26, cursor: "pointer" };
 
 const mobileHeaderStyle: CSSProperties = { display: "none", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "18px 16px 12px", position: "sticky", top: 0, zIndex: 60, background: "linear-gradient(180deg, rgba(5,7,13,0.985), rgba(5,7,13,0.86))", backdropFilter: "blur(18px)", borderBottom: "1px solid rgba(255,255,255,0.055)" };
 const mobileLogoStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 10, color: "#fff", textDecoration: "none", minWidth: 0, flex: "1 1 auto" };
-const mobileLogoCircleStyle: CSSProperties = { width: 54, height: 54, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid rgba(236,72,153,0.72)", background: "rgba(126,34,206,0.18)", boxShadow: "0 0 22px rgba(126,34,206,0.42)", fontWeight: 950 };
+const mobileLogoCircleStyle: CSSProperties = { width: 54, height: 54, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid color-mix(in srgb, var(--parapost-accent-3) 72%, transparent)", background: "var(--parapost-accent-active-bg)", boxShadow: "0 0 22px var(--parapost-accent-strong-glow)", fontWeight: 950 };
 const mobileHeaderActionsStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexShrink: 0 };
 const mobileTopIconButtonStyle: CSSProperties = { position: "relative", width: 42, height: 42, borderRadius: 14, color: "#fff", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.10)", display: "grid", placeItems: "center", textDecoration: "none", cursor: "pointer" };
 
 const mobileBottomNavStyle: CSSProperties = { position: "fixed", left: 12, right: 12, bottom: 10, zIndex: 120, gridTemplateColumns: "repeat(5, 1fr)", alignItems: "center", gap: 4, minHeight: 76, padding: "8px 10px", borderRadius: 26, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.94)", backdropFilter: "blur(18px)", boxShadow: "0 22px 60px rgba(0,0,0,0.56)" };
 const mobileNavItemStyle: CSSProperties = { color: "#e5e7eb", textDecoration: "none", display: "grid", placeItems: "center", gap: 4, fontSize: 11, fontWeight: 800 };
-const mobileNavItemActiveStyle: CSSProperties = { ...mobileNavItemStyle, color: "#c084fc", textShadow: "0 0 16px rgba(168,85,247,0.52)" };
-const mobileCenterPlusStyle: CSSProperties = { width: 58, height: 58, margin: "-24px auto 0", borderRadius: 999, display: "grid", placeItems: "center", color: "#0b1020", background: "#fff", border: "4px solid #7c3aed", boxShadow: "0 0 0 4px rgba(236,72,153,0.32), 0 16px 38px rgba(126,34,206,0.38)", cursor: "pointer", textDecoration: "none", padding: 0, font: "inherit" };
-const mobileNavBadgeStyle: CSSProperties = { position: "absolute", right: -10, top: -9, minWidth: 21, height: 21, borderRadius: 999, display: "grid", placeItems: "center", background: "#7c3aed", color: "#fff", fontSize: 11, fontWeight: 950, padding: "0 5px" };
+const mobileNavItemActiveStyle: CSSProperties = { ...mobileNavItemStyle, color: "var(--parapost-accent-text)", textShadow: "0 0 16px color-mix(in srgb, var(--parapost-accent-2) 52%, transparent)" };
+const mobileCenterPlusStyle: CSSProperties = { width: 58, height: 58, margin: "-24px auto 0", borderRadius: 999, display: "grid", placeItems: "center", color: "#0b1020", background: "#fff", border: "4px solid var(--parapost-accent-1)", boxShadow: "0 0 0 4px color-mix(in srgb, var(--parapost-accent-3) 32%, transparent), 0 16px 38px var(--parapost-accent-strong-glow)", cursor: "pointer", textDecoration: "none", padding: 0, font: "inherit" };
+const mobileNavBadgeStyle: CSSProperties = { position: "absolute", right: -10, top: -9, minWidth: 21, height: 21, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--parapost-accent-1)", color: "#fff", fontSize: 11, fontWeight: 950, padding: "0 5px" };

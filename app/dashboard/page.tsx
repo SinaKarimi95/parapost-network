@@ -2283,6 +2283,7 @@ export default function DashboardPage() {
                       key={`post-${item.post.id}`}
                       post={item.post}
                       profile={profilesMap[item.post.user_id]}
+                      currentUserId={currentUserId}
                       isLiked={!!userLikes[item.post.id]}
                       likeCount={likeCounts[item.post.id] || 0}
                       commentCount={commentCounts[item.post.id] || 0}
@@ -2317,6 +2318,7 @@ export default function DashboardPage() {
                       shared={item.share}
                       sharerProfile={profilesMap[item.share.user_id]}
                       creatorProfile={profilesMap[item.share.creator_profile_id || ""] || profilesMap[item.share.reel_user_id]}
+                      currentUserId={currentUserId}
                       onDelete={() => handleDeleteReelShare(item.share.id)}
                     />
                   )

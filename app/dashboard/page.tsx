@@ -145,6 +145,8 @@ type FollowMap = Record<string, boolean>;
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
 const POST_CHARACTER_LIMIT = 63206;
 const MAX_POST_IMAGES = 10;
+const FEED_INITIAL_BATCH_SIZE = 14;
+const FEED_BATCH_INCREMENT = 10;
 
 const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
   { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood" },
@@ -999,6 +1001,7 @@ export default function DashboardPage() {
   const [dashboardShowcaseSaving, setDashboardShowcaseSaving] = useState(false);
   const [feelingActivityOpen, setFeelingActivityOpen] = useState(false);
   const [selectedFeelingActivity, setSelectedFeelingActivity] = useState<FeelingActivityOption | null>(null);
+  const [visibleFeedLimit, setVisibleFeedLimit] = useState(FEED_INITIAL_BATCH_SIZE);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1008,6 +1011,7 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dashboardShowcaseInputRef = useRef<HTMLInputElement | null>(null);
   const mainComposerRef = useRef<HTMLElement | null>(null);
+  const feedLoadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedDashboardOnceRef = useRef(false);
   const dashboardRefreshInFlightRef = useRef(false);
 
@@ -1058,6 +1062,12 @@ export default function DashboardPage() {
 
     return mixedFeedItems;
   }, [acceptedFriendUserIds, currentUserId, feedMode, followedUserIds, mixedFeedItems]);
+
+  const visibleFeedItems = useMemo(() => {
+    return filteredFeedItems.slice(0, visibleFeedLimit);
+  }, [filteredFeedItems, visibleFeedLimit]);
+
+  const hasMoreFeedItems = visibleFeedLimit < filteredFeedItems.length;
 
   const totalLikes = useMemo(() => {
     return Object.values(likeCounts).reduce((sum, count) => sum + count, 0);
@@ -1117,7 +1127,7 @@ export default function DashboardPage() {
     const { data, error } = await supabase
       .from("profiles")
       .select(selectWithDates)
-      .limit(80);
+      .limit(160);
 
     if (error) {
       const { data: fallbackData, error: fallbackError } = await supabase
@@ -1393,7 +1403,7 @@ export default function DashboardPage() {
       .eq("share_destination", "feed")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(60);
+      .limit(120);
 
     if (shareError) {
       console.error("Error fetching shared posts:", shareError.message);
@@ -1464,7 +1474,7 @@ export default function DashboardPage() {
       .from("reel_shares")
       .select("id, reel_id, user_id, caption, created_at")
       .order("created_at", { ascending: false })
-      .limit(25);
+      .limit(60);
 
     if (shareError) {
       console.error("Error fetching reel shares:", shareError.message);
@@ -1626,6 +1636,40 @@ export default function DashboardPage() {
   useEffect(() => {
     void fetchDashboardData(true);
   }, [fetchDashboardData]);
+
+
+  useEffect(() => {
+    setVisibleFeedLimit(FEED_INITIAL_BATCH_SIZE);
+  }, [feedMode]);
+
+  useEffect(() => {
+    if (!hasMoreFeedItems) return;
+
+    const target = feedLoadMoreSentinelRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+        if (!firstEntry?.isIntersecting) return;
+
+        setVisibleFeedLimit((currentLimit) =>
+          Math.min(currentLimit + FEED_BATCH_INCREMENT, filteredFeedItems.length)
+        );
+      },
+      {
+        root: null,
+        rootMargin: "900px 0px 900px 0px",
+        threshold: 0,
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredFeedItems.length, hasMoreFeedItems]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -2433,52 +2477,56 @@ export default function DashboardPage() {
                   }
                 />
               ) : (
-                filteredFeedItems.map((item) =>
-                  item.type === "post" ? (
-                    <PostCard
-                      key={`post-${item.post.id}`}
-                      post={item.post}
-                      profile={profilesMap[item.post.user_id]}
-                      currentUserId={currentUserId}
-                      isLiked={!!userLikes[item.post.id]}
-                      likeCount={likeCounts[item.post.id] || 0}
-                      commentCount={commentCounts[item.post.id] || 0}
-                      shareCount={shareCounts[item.post.id] || 0}
-                      isFollowing={!!followingMap[item.post.user_id]}
-                      isFriend={acceptedFriendUserIds.includes(item.post.user_id)}
-                      openPostMenuId={openPostMenuId}
-                      editingPostId={editingPostId}
-                      editingPostContent={editingPostContent}
-                      setEditingPostContent={setEditingPostContent}
-                      setOpenPostMenuId={setOpenPostMenuId}
-                      onLike={() => handleLikeToggle(item.post.id)}
-                      onShare={() => handleShare(item.post.id)}
-                      onStartEdit={() => handleStartEditPost(item.post)}
-                      onSaveEdit={() => handleSavePostEdit(item.post.id)}
-                      onCancelEdit={() => {
-                        setEditingPostId(null);
-                        setEditingPostContent("");
-                      }}
-                      onDelete={() => handleDeletePost(item.post.id)}
-                    />
-                  ) : item.type === "shared_post" ? (
-                    <SharedPostCard
-                      key={`shared-post-${item.sharedPost.id}`}
-                      sharedPost={item.sharedPost}
-                      sharerProfile={profilesMap[item.sharedPost.user_id]}
-                      originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
-                    />
-                  ) : (
-                    <SharedReelCard
-                      key={`shared-${item.share.id}`}
-                      shared={item.share}
-                      sharerProfile={profilesMap[item.share.user_id]}
-                      creatorProfile={profilesMap[item.share.creator_profile_id || ""] || profilesMap[item.share.reel_user_id]}
-                      currentUserId={currentUserId}
-                      onDelete={() => handleDeleteReelShare(item.share.id)}
-                    />
-                  )
-                )
+                <>
+                  {visibleFeedItems.map((item) =>
+                    item.type === "post" ? (
+                      <PostCard
+                        key={`post-${item.post.id}`}
+                        post={item.post}
+                        profile={profilesMap[item.post.user_id]}
+                        currentUserId={currentUserId}
+                        isLiked={!!userLikes[item.post.id]}
+                        likeCount={likeCounts[item.post.id] || 0}
+                        commentCount={commentCounts[item.post.id] || 0}
+                        shareCount={shareCounts[item.post.id] || 0}
+                        isFollowing={!!followingMap[item.post.user_id]}
+                        isFriend={acceptedFriendUserIds.includes(item.post.user_id)}
+                        openPostMenuId={openPostMenuId}
+                        editingPostId={editingPostId}
+                        editingPostContent={editingPostContent}
+                        setEditingPostContent={setEditingPostContent}
+                        setOpenPostMenuId={setOpenPostMenuId}
+                        onLike={() => handleLikeToggle(item.post.id)}
+                        onShare={() => handleShare(item.post.id)}
+                        onStartEdit={() => handleStartEditPost(item.post)}
+                        onSaveEdit={() => handleSavePostEdit(item.post.id)}
+                        onCancelEdit={() => {
+                          setEditingPostId(null);
+                          setEditingPostContent("");
+                        }}
+                        onDelete={() => handleDeletePost(item.post.id)}
+                      />
+                    ) : item.type === "shared_post" ? (
+                      <SharedPostCard
+                        key={`shared-post-${item.sharedPost.id}`}
+                        sharedPost={item.sharedPost}
+                        sharerProfile={profilesMap[item.sharedPost.user_id]}
+                        originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
+                      />
+                    ) : (
+                      <SharedReelCard
+                        key={`shared-${item.share.id}`}
+                        shared={item.share}
+                        sharerProfile={profilesMap[item.share.user_id]}
+                        creatorProfile={profilesMap[item.share.creator_profile_id || ""] || profilesMap[item.share.reel_user_id]}
+                        currentUserId={currentUserId}
+                        onDelete={() => handleDeleteReelShare(item.share.id)}
+                      />
+                    )
+                  )}
+
+                  {hasMoreFeedItems ? <div ref={feedLoadMoreSentinelRef} style={feedLoadMoreSentinelStyle} /> : null}
+                </>
               )}
             </section>
           </main>
@@ -5839,7 +5887,10 @@ const dashboardGridStyle: CSSProperties = {
 const leftSidebarStyle: CSSProperties = {
   position: "sticky",
   top: "18px",
-  minHeight: "calc(100vh - 36px)",
+  alignSelf: "start",
+  height: "auto",
+  maxHeight: "none",
+  overflow: "visible",
   borderRight: "1px solid rgba(255,255,255,0.09)",
   padding: "0 24px 18px 4px",
 };
@@ -5854,8 +5905,19 @@ const mainColumnStyle: CSSProperties = {
 const rightRailStyle: CSSProperties = {
   position: "sticky",
   top: "18px",
+  alignSelf: "start",
+  maxHeight: "none",
+  overflow: "visible",
   display: "grid",
   gap: "18px",
+  paddingBottom: "18px",
+};
+
+const feedLoadMoreSentinelStyle: CSSProperties = {
+  width: "100%",
+  height: "72px",
+  display: "block",
+  pointerEvents: "none",
 };
 
 const sidebarLogoStyle: CSSProperties = {

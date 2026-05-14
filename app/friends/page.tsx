@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -119,7 +119,7 @@ export default function FriendsListPage() {
       await fetchFriends(user.id);
     };
 
-    initialize();
+    void initialize();
   }, [fetchFriends]);
 
   useEffect(() => {
@@ -220,36 +220,19 @@ export default function FriendsListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
-        <div
-          style={{
-            background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.04) 100%)",
-            borderRadius: "28px",
-            padding: "20px",
-            border: "1px solid rgba(255,255,255,0.10)",
-            backdropFilter: "blur(10px)",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-              flexWrap: "wrap",
-              marginBottom: "18px",
-            }}
-          >
+    <main style={pageStyle}>
+      <div style={backgroundGlowOneStyle} />
+      <div style={backgroundGlowTwoStyle} />
+      <div style={pageInnerStyle}>
+        <section style={heroShellStyle}>
+          <div style={heroTopStyle}>
             <div>
-              <h1 style={{ margin: 0, fontSize: "28px", fontWeight: 800 }}>Friends</h1>
-              <p style={{ margin: "6px 0 0", color: "#9ca3af", fontSize: "14px" }}>
-                Your accepted connections across Parapost.
-              </p>
+              <div style={eyebrowStyle}>Parapost Network</div>
+              <h1 style={titleStyle}>Friends</h1>
+              <p style={subtitleStyle}>Your accepted connections across Parapost.</p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <div style={topActionsStyle}>
               <Link href="/friends/requests" style={secondaryLinkStyle}>
                 View Friend Requests
               </Link>
@@ -258,35 +241,18 @@ export default function FriendsListPage() {
             </div>
           </div>
 
-          {statusMessage && (
-            <div
-              style={{
-                marginBottom: "16px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                color: "#f9fafb",
-                borderRadius: "18px",
-                padding: "12px 14px",
-              }}
-            >
+          {statusMessage ? (
+            <div style={statusMessageStyle}>
+              <span style={statusAccentDotStyle} />
               {statusMessage}
             </div>
-          )}
+          ) : null}
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-              flexWrap: "wrap",
-              marginBottom: "16px",
-            }}
-          >
+          <div style={controlRowStyle}>
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search friends by name or username..."
               style={searchInputStyle}
             />
@@ -296,35 +262,41 @@ export default function FriendsListPage() {
             </Link>
           </div>
 
+          <div style={statsGridStyle}>
+            <div style={statCardStyle}>
+              <span style={statLabelStyle}>Accepted Friends</span>
+              <strong style={statValueStyle}>{friends.length}</strong>
+            </div>
+            <div style={statCardStyle}>
+              <span style={statLabelStyle}>Online Now</span>
+              <strong style={statValueStyle}>{onlineCount}</strong>
+            </div>
+            <div style={statCardStyle}>
+              <span style={statLabelStyle}>Search Results</span>
+              <strong style={statValueStyle}>{filteredFriends.length}</strong>
+            </div>
+          </div>
+
           {loading ? (
-            <p style={{ color: "#9ca3af", margin: 0 }}>Loading friends...</p>
+            <div style={emptyStateStyle}>
+              <div style={emptyIconStyle}>⌛</div>
+              <h2 style={emptyTitleStyle}>Loading friends...</h2>
+              <p style={emptyTextStyle}>Getting your Parapost connections ready.</p>
+            </div>
           ) : filteredFriends.length === 0 ? (
-            <div
-              style={{
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: "24px",
-                padding: "24px",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              <h2 style={{ marginTop: 0, marginBottom: "8px", fontSize: "20px" }}>
+            <div style={emptyStateStyle}>
+              <div style={emptyIconStyle}>👥</div>
+              <h2 style={emptyTitleStyle}>
                 {friends.length === 0 ? "No friends yet" : "No matching friends"}
               </h2>
-              <p style={{ margin: 0, color: "#9ca3af", lineHeight: 1.6 }}>
+              <p style={emptyTextStyle}>
                 {friends.length === 0
                   ? "Once requests are accepted, your friends will appear here."
                   : "Try a different search term."}
               </p>
             </div>
           ) : (
-            <div
-              className="grid grid-cols-1 md:grid-cols-2"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                gap: "14px",
-              }}
-            >
+            <div style={friendsGridStyle}>
               {filteredFriends.map((friend) => {
                 const profile = friend.profile;
                 const label = profile?.full_name || profile?.username || "Unnamed User";
@@ -332,117 +304,36 @@ export default function FriendsListPage() {
                 const isBusy = processingFriendId === friend.friendId;
 
                 return (
-                  <div
-                    key={friend.requestId}
-                    style={{
-                      background: "linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.035) 100%)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: "24px",
-                      padding: "16px",
-                      boxShadow: "0 10px 26px rgba(0,0,0,0.24)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "12px",
-                        marginBottom: "14px",
-                      }}
-                    >
-                      <Link
-                        href={`/profile/${friend.friendId}`}
-                        style={{
-                          position: "relative",
-                          width: "60px",
-                          height: "60px",
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          textDecoration: "none",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {profile?.avatar_url ? (
-                          <img
-                            src={profile.avatar_url}
-                            alt={label}
-                            style={{
-                              width: "60px",
-                              height: "60px",
-                              borderRadius: "50%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: "60px",
-                              height: "60px",
-                              borderRadius: "50%",
-                              background: "#374151",
-                              color: "#f9fafb",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontWeight: 700,
-                              fontSize: "20px",
-                            }}
-                          >
-                            {getInitial(profile?.full_name, profile?.username)}
-                          </div>
-                        )}
+                  <article key={friend.requestId} style={friendCardStyle}>
+                    <div style={friendTopStyle}>
+                      <Link href={`/profile/${friend.friendId}`} style={avatarShellStyle}>
+                        <span style={avatarCropStyle}>
+                          {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt={label} style={avatarImageStyle} />
+                          ) : (
+                            <span style={avatarFallbackStyle}>
+                              {getInitial(profile?.full_name, profile?.username)}
+                            </span>
+                          )}
+                        </span>
 
-                        {profile?.is_online && (
-                          <span
-                            style={{
-                              position: "absolute",
-                              bottom: "2px",
-                              right: "2px",
-                              width: "13px",
-                              height: "13px",
-                              borderRadius: "50%",
-                              background: "#22c55e",
-                              border: "2px solid #07090d",
-                              boxShadow: "0 0 6px rgba(34,197,94,0.6)",
-                            }}
-                          />
-                        )}
+                        {profile?.is_online ? <span style={onlineDotStyle} /> : null}
                       </Link>
 
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <Link
-                          href={`/profile/${friend.friendId}`}
-                          style={{
-                            color: "#f9fafb",
-                            textDecoration: "none",
-                            fontWeight: 700,
-                            fontSize: "17px",
-                            display: "inline-block",
-                            marginBottom: "4px",
-                          }}
-                        >
+                      <div style={friendInfoStyle}>
+                        <Link href={`/profile/${friend.friendId}`} style={friendNameStyle}>
                           {label}
                         </Link>
 
-                        <div style={{ color: "#9ca3af", fontSize: "13px", marginBottom: "6px" }}>
-                          @{username}
-                        </div>
+                        <div style={friendUsernameStyle}>@{username}</div>
 
-                        <div style={{ color: "#d1d5db", fontSize: "14px" }}>
+                        <div style={friendSinceStyle}>
                           Friends since {formatRelativeTime(friend.createdAt)}
                         </div>
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        flexWrap: "wrap",
-                      }}
-                    >
+                    <div style={friendActionsStyle}>
                       <Link href={`/profile/${friend.friendId}`} style={primaryLinkStyle}>
                         View Profile
                       </Link>
@@ -451,23 +342,300 @@ export default function FriendsListPage() {
                         type="button"
                         onClick={() => handleRemoveFriend(friend)}
                         disabled={isBusy}
-                        style={dangerButtonStyle}
+                        style={{
+                          ...dangerButtonStyle,
+                          opacity: isBusy ? 0.65 : 1,
+                          cursor: isBusy ? "not-allowed" : "pointer",
+                        }}
                       >
                         {isBusy ? "Working..." : "Remove Friend"}
                       </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
           )}
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
-const secondaryLinkStyle: React.CSSProperties = {
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  overflow: "hidden",
+  position: "relative",
+  background:
+    "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 35%), radial-gradient(circle at 88% 18%, var(--parapost-accent-muted-bg), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 45%, #05050b 100%)",
+  color: "#ffffff",
+};
+
+const backgroundGlowOneStyle: CSSProperties = {
+  position: "fixed",
+  top: "-180px",
+  left: "-140px",
+  width: "420px",
+  height: "420px",
+  borderRadius: "999px",
+  background: "var(--parapost-accent-soft)",
+  filter: "blur(70px)",
+  pointerEvents: "none",
+};
+
+const backgroundGlowTwoStyle: CSSProperties = {
+  position: "fixed",
+  right: "-180px",
+  bottom: "-220px",
+  width: "520px",
+  height: "520px",
+  borderRadius: "999px",
+  background: "var(--parapost-accent-muted-bg)",
+  filter: "blur(84px)",
+  pointerEvents: "none",
+};
+
+const pageInnerStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 1,
+  width: "100%",
+  maxWidth: "1180px",
+  margin: "0 auto",
+  padding: "26px 16px 40px",
+};
+
+const heroShellStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "32px",
+  padding: "22px",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.56))",
+  boxShadow: "0 26px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+};
+
+const heroTopStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "16px",
+  flexWrap: "wrap",
+  marginBottom: "18px",
+};
+
+const eyebrowStyle: CSSProperties = {
+  color: "var(--parapost-accent-text)",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  marginBottom: "8px",
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(32px, 5vw, 58px)",
+  lineHeight: 0.95,
+  letterSpacing: "-0.06em",
+  fontWeight: 950,
+  color: "#ffffff",
+};
+
+const subtitleStyle: CSSProperties = {
+  margin: "12px 0 0",
+  color: "#cbd5e1",
+  fontSize: "15px",
+  lineHeight: 1.6,
+};
+
+const topActionsStyle: CSSProperties = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const statusMessageStyle: CSSProperties = {
+  marginBottom: "16px",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  background: "var(--parapost-accent-muted-bg)",
+  border: "1px solid var(--parapost-accent-border)",
+  color: "#f9fafb",
+  borderRadius: "18px",
+  padding: "12px 14px",
+  fontWeight: 850,
+};
+
+const statusAccentDotStyle: CSSProperties = {
+  width: "9px",
+  height: "9px",
+  borderRadius: "999px",
+  background: "var(--parapost-accent-2)",
+  boxShadow: "0 0 16px var(--parapost-accent-glow)",
+  flexShrink: 0,
+};
+
+const controlRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  flexWrap: "wrap",
+  marginBottom: "16px",
+};
+
+const statsGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: "12px",
+  marginBottom: "16px",
+};
+
+const statCardStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "22px",
+  padding: "14px",
+  background: "rgba(255,255,255,0.045)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+};
+
+const statLabelStyle: CSSProperties = {
+  display: "block",
+  color: "#94a3b8",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+  marginBottom: "8px",
+};
+
+const statValueStyle: CSSProperties = {
+  display: "block",
+  color: "#ffffff",
+  fontSize: "28px",
+  fontWeight: 950,
+  lineHeight: 1,
+};
+
+const friendsGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "14px",
+};
+
+const friendCardStyle: CSSProperties = {
+  background:
+    "linear-gradient(135deg, rgba(255,255,255,0.065), var(--parapost-accent-muted-bg), rgba(255,255,255,0.035))",
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "26px",
+  padding: "16px",
+  boxShadow: "0 16px 36px rgba(0,0,0,0.28)",
+};
+
+const friendTopStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "12px",
+  marginBottom: "14px",
+};
+
+const avatarShellStyle: CSSProperties = {
+  position: "relative",
+  width: "62px",
+  height: "62px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  textDecoration: "none",
+  flexShrink: 0,
+  overflow: "visible",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+  boxShadow: "0 0 0 1px var(--parapost-accent-active-border), 0 0 22px var(--parapost-accent-glow)",
+};
+
+const avatarCropStyle: CSSProperties = {
+  width: "56px",
+  height: "56px",
+  borderRadius: "999px",
+  overflow: "hidden",
+  display: "grid",
+  placeItems: "center",
+  border: "2px solid #07090d",
+  background: "#0b0f17",
+};
+
+const avatarImageStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  height: "100%",
+  minWidth: "100%",
+  minHeight: "100%",
+  objectFit: "cover",
+  objectPosition: "center",
+  borderRadius: "999px",
+};
+
+const avatarFallbackStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: "999px",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), #111827)",
+  color: "#f9fafb",
+  display: "grid",
+  placeItems: "center",
+  fontWeight: 950,
+  fontSize: "20px",
+};
+
+const onlineDotStyle: CSSProperties = {
+  position: "absolute",
+  bottom: "3px",
+  right: "3px",
+  width: "13px",
+  height: "13px",
+  borderRadius: "999px",
+  background: "#22c55e",
+  border: "2px solid #07090d",
+  boxShadow: "0 0 10px rgba(34,197,94,0.75)",
+  zIndex: 3,
+};
+
+const friendInfoStyle: CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+};
+
+const friendNameStyle: CSSProperties = {
+  color: "#f9fafb",
+  textDecoration: "none",
+  fontWeight: 950,
+  fontSize: "17px",
+  display: "inline-block",
+  marginBottom: "4px",
+};
+
+const friendUsernameStyle: CSSProperties = {
+  color: "var(--parapost-accent-text)",
+  fontSize: "13px",
+  marginBottom: "6px",
+  fontWeight: 750,
+};
+
+const friendSinceStyle: CSSProperties = {
+  color: "#d1d5db",
+  fontSize: "14px",
+};
+
+const friendActionsStyle: CSSProperties = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+};
+
+const secondaryLinkStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -476,12 +644,12 @@ const secondaryLinkStyle: React.CSSProperties = {
   borderRadius: "999px",
   textDecoration: "none",
   color: "#f9fafb",
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  fontWeight: 600,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid var(--parapost-accent-border)",
+  fontWeight: 850,
 };
 
-const primaryLinkStyle: React.CSSProperties = {
+const primaryLinkStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -489,13 +657,15 @@ const primaryLinkStyle: React.CSSProperties = {
   padding: "0 18px",
   borderRadius: "999px",
   textDecoration: "none",
-  color: "#000000",
-  background: "#ffffff",
-  border: "1px solid rgba(255,255,255,0.12)",
-  fontWeight: 700,
+  color: "var(--parapost-accent-button-text)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+  border: "1px solid var(--parapost-accent-active-border)",
+  fontWeight: 950,
+  boxShadow: "0 12px 26px var(--parapost-accent-glow)",
 };
 
-const countPillStyle: React.CSSProperties = {
+const countPillStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -503,13 +673,13 @@ const countPillStyle: React.CSSProperties = {
   padding: "0 14px",
   borderRadius: "999px",
   color: "#f9fafb",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  fontWeight: 700,
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid var(--parapost-accent-border)",
+  fontWeight: 850,
   fontSize: "14px",
 };
 
-const onlinePillStyle: React.CSSProperties = {
+const onlinePillStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -519,30 +689,64 @@ const onlinePillStyle: React.CSSProperties = {
   color: "#86efac",
   background: "rgba(34,197,94,0.10)",
   border: "1px solid rgba(34,197,94,0.24)",
-  fontWeight: 700,
+  fontWeight: 850,
   fontSize: "14px",
 };
 
-const searchInputStyle: React.CSSProperties = {
+const searchInputStyle: CSSProperties = {
   width: "100%",
-  maxWidth: "420px",
+  maxWidth: "460px",
   minHeight: "46px",
-  borderRadius: "16px",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "18px",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid var(--parapost-accent-border)",
   color: "#f9fafb",
   padding: "0 14px",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
   outline: "none",
 };
 
-const dangerButtonStyle: React.CSSProperties = {
+const dangerButtonStyle: CSSProperties = {
   minHeight: "44px",
   borderRadius: "999px",
   padding: "0 18px",
   border: "1px solid rgba(248,113,113,0.25)",
   background: "rgba(248,113,113,0.10)",
   color: "#fecaca",
-  fontWeight: 700,
-  cursor: "pointer",
+  fontWeight: 850,
+};
+
+const emptyStateStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-border)",
+  borderRadius: "26px",
+  padding: "26px",
+  background: "rgba(255,255,255,0.035)",
+  textAlign: "center",
+};
+
+const emptyIconStyle: CSSProperties = {
+  width: "60px",
+  height: "60px",
+  borderRadius: "22px",
+  display: "grid",
+  placeItems: "center",
+  margin: "0 auto 12px",
+  background: "var(--parapost-accent-muted-bg)",
+  border: "1px solid var(--parapost-accent-border)",
+  boxShadow: "0 0 22px var(--parapost-accent-glow)",
+  fontSize: "24px",
+};
+
+const emptyTitleStyle: CSSProperties = {
+  margin: "0 0 8px",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 950,
+  letterSpacing: "-0.03em",
+};
+
+const emptyTextStyle: CSSProperties = {
+  margin: 0,
+  color: "#9ca3af",
+  lineHeight: 1.6,
 };

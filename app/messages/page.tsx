@@ -31,6 +31,12 @@ type ConversationRow = {
   updated_at?: string | null;
 };
 
+type ConversationHideRow = {
+  conversation_id: string;
+  user_id: string;
+  hidden_at: string | null;
+};
+
 type MessageRow = {
   id: string;
   conversation_id: string;
@@ -108,6 +114,32 @@ function getProfileName(profile?: ProfileRow | null) {
   return profile?.full_name || profile?.username || "Parapost Member";
 }
 
+
+function updateConversationUrl(conversationId: string) {
+  if (typeof window === "undefined" || !conversationId) return;
+  const nextUrl = `/messages?conversation=${conversationId}`;
+  window.history.replaceState(null, "", nextUrl);
+}
+
+function clearConversationUrl() {
+  if (typeof window === "undefined") return;
+  window.history.replaceState(null, "", "/messages");
+}
+
+function getParachatErrorMessage(message?: string | null) {
+  const cleanMessage = message || "";
+
+  if (
+    cleanMessage.includes("friends_only_parachat") ||
+    cleanMessage.toLowerCase().includes("row-level security") ||
+    cleanMessage.toLowerCase().includes("violates row-level security")
+  ) {
+    return "Parachat is only available between accepted friends.";
+  }
+
+  return cleanMessage || "Parachat needs attention. Please try again.";
+}
+
 export default function MessagesPageWrapper() {
   return (
     <Suspense
@@ -147,10 +179,23 @@ function MessagesPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(!!selectedConversationFromUrl);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const activeConversationIdRef = useRef(selectedConversationFromUrl);
+  const conversationsRef = useRef<ConversationItem[]>([]);
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   const activeConversation = useMemo(() => {
     return conversations.find((conversation) => conversation.id === activeConversationId) || null;
@@ -248,12 +293,52 @@ function MessagesPage() {
       .order("updated_at", { ascending: false });
 
     if (conversationError) {
-      setErrorMessage(conversationError.message || "Could not load conversations.");
+      setErrorMessage(getParachatErrorMessage(conversationError.message || "Could not load conversations."));
       setLoadingInbox(false);
       return;
     }
 
-    const rawConversations = ((conversationData as ConversationRow[]) || []).filter(Boolean);
+    const allRawConversations = ((conversationData as ConversationRow[]) || []).filter(Boolean);
+
+    if (allRawConversations.length === 0) {
+      setConversations([]);
+      setActiveConversationId("");
+      setMessages([]);
+      setMobileChatOpen(false);
+      setLoadingInbox(false);
+      return;
+    }
+
+    const { data: hiddenConversationRows, error: hiddenConversationError } = await supabase
+      .from("direct_conversation_hides")
+      .select("conversation_id, user_id, hidden_at")
+      .eq("user_id", user.id);
+
+    if (hiddenConversationError) {
+      console.warn("Hidden conversation warning:", hiddenConversationError.message);
+    }
+
+    const hiddenMap = new Map(
+      ((hiddenConversationRows as ConversationHideRow[]) || [])
+        .filter((row) => row.conversation_id)
+        .map((row) => [row.conversation_id, row.hidden_at || ""])
+    );
+
+    const rawConversations = allRawConversations.filter((conversation) => {
+      const hiddenAt = hiddenMap.get(conversation.id);
+      if (!hiddenAt) return true;
+
+      const conversationTime = new Date(
+        conversation.updated_at || conversation.created_at || 0
+      ).getTime();
+      const hiddenTime = new Date(hiddenAt).getTime();
+
+      if (Number.isNaN(conversationTime) || Number.isNaN(hiddenTime)) return false;
+
+      // If someone sends a newer message after the user hid the chat,
+      // the conversation can appear again naturally.
+      return conversationTime > hiddenTime;
+    });
 
     if (rawConversations.length === 0) {
       setConversations([]);
@@ -294,7 +379,7 @@ function MessagesPage() {
       ]);
 
     if (messagesError) {
-      setErrorMessage(messagesError.message || "Could not load messages.");
+      setErrorMessage(getParachatErrorMessage(messagesError.message || "Could not load messages."));
       setLoadingInbox(false);
       return;
     }
@@ -353,9 +438,9 @@ function MessagesPage() {
     const nextActiveId =
       urlConversationValid
         ? selectedConversationFromUrl
-        : activeConversationId &&
-            nextItems.some((conversation) => conversation.id === activeConversationId)
-          ? activeConversationId
+        : activeConversationIdRef.current &&
+            nextItems.some((conversation) => conversation.id === activeConversationIdRef.current)
+          ? activeConversationIdRef.current
           : nextItems[0]?.id || "";
 
     setActiveConversationId(nextActiveId);
@@ -365,11 +450,11 @@ function MessagesPage() {
     }
 
     if (!selectedConversationFromUrl && nextActiveId) {
-      router.replace(`/messages?conversation=${nextActiveId}`);
+      updateConversationUrl(nextActiveId);
     }
 
     setLoadingInbox(false);
-  }, [activeConversationId, router, selectedConversationFromUrl]);
+  }, [router, selectedConversationFromUrl]);
 
   const loadMessages = useCallback(
     async (conversationId: string, currentViewerId: string) => {
@@ -378,7 +463,7 @@ function MessagesPage() {
         return;
       }
 
-      setLoadingMessages(true);
+      setLoadingMessages(false);
       setErrorMessage("");
 
       const { data, error } = await supabase
@@ -388,7 +473,7 @@ function MessagesPage() {
         .order("created_at", { ascending: true });
 
       if (error) {
-        setErrorMessage(error.message || "Could not load this conversation.");
+        setErrorMessage(getParachatErrorMessage(error.message || "Could not load this conversation."));
         setMessages([]);
         setLoadingMessages(false);
         return;
@@ -413,6 +498,15 @@ function MessagesPage() {
   }, [activeConversationId, viewerId, loadMessages]);
 
   useEffect(() => {
+    const closeConversationMenu = () => setOpenConversationMenuId(null);
+    window.addEventListener("click", closeConversationMenu);
+
+    return () => {
+      window.removeEventListener("click", closeConversationMenu);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!viewerId) return;
 
     const channel = supabase
@@ -427,7 +521,7 @@ function MessagesPage() {
         async (payload) => {
           const nextMessage = payload.new as MessageRow;
 
-          const belongsToUser = conversations.some(
+          const belongsToUser = conversationsRef.current.some(
             (conversation) => conversation.id === nextMessage.conversation_id
           );
 
@@ -486,24 +580,87 @@ function MessagesPage() {
     };
   }, [
     activeConversationId,
-    conversations,
     loadInbox,
     markConversationRead,
     scrollToBottom,
     viewerId,
   ]);
 
-  const handleSelectConversation = async (conversationId: string) => {
+  const handleDeleteConversation = async (conversation: ConversationItem) => {
+    if (!viewerId || !conversation.id) return;
+
+    const otherName = getProfileName(conversation.otherProfile);
+    const confirmed = window.confirm(
+      `Delete this Parachat with ${otherName} from your inbox? This hides the conversation for you.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingConversationId(conversation.id);
+    setOpenConversationMenuId(null);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase
+      .from("direct_conversation_hides")
+      .upsert(
+        {
+          conversation_id: conversation.id,
+          user_id: viewerId,
+          hidden_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "conversation_id,user_id",
+        }
+      );
+
+    if (error) {
+      setErrorMessage(`Could not delete this Parachat from your inbox: ${getParachatErrorMessage(error.message)}`);
+      setDeletingConversationId(null);
+      return;
+    }
+
+    const remainingConversations = conversations.filter((item) => item.id !== conversation.id);
+    setConversations(remainingConversations);
+
+    if (activeConversationId === conversation.id) {
+      const nextConversation = remainingConversations[0] || null;
+      setMessages([]);
+      setActiveConversationId(nextConversation?.id || "");
+      setMobileChatOpen(Boolean(nextConversation?.id));
+
+      if (nextConversation?.id) {
+        activeConversationIdRef.current = nextConversation.id;
+        updateConversationUrl(nextConversation.id);
+      } else {
+        activeConversationIdRef.current = "";
+        clearConversationUrl();
+      }
+    }
+
+    setDeletingConversationId(null);
+    setStatusMessage(`Parachat with ${otherName} was removed from your inbox.`);
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    if (conversationId === activeConversationId) {
+      setOpenConversationMenuId(null);
+      return;
+    }
+
+    setOpenConversationMenuId(null);
     setActiveConversationId(conversationId);
+    activeConversationIdRef.current = conversationId;
     setMobileChatOpen(true);
-    router.replace(`/messages?conversation=${conversationId}`);
+    updateConversationUrl(conversationId);
 
     if (viewerId) {
-      await markConversationRead(conversationId, viewerId);
+      void markConversationRead(conversationId, viewerId);
     }
   };
 
   const handleMobileBackToInbox = () => {
+    setOpenConversationMenuId(null);
     setMobileChatOpen(false);
   };
 
@@ -537,7 +694,7 @@ function MessagesPage() {
       .single();
 
     if (error) {
-      setErrorMessage(error.message || "Message could not be sent.");
+      setErrorMessage(getParachatErrorMessage(error.message || "Message could not be sent."));
       setSending(false);
       return;
     }
@@ -605,7 +762,7 @@ function MessagesPage() {
   const activeName = getProfileName(activeProfile);
   const activeHandle = activeProfile?.username ? `@${activeProfile.username}` : "Parapost Network member";
   const inputDisabled =
-    loadingInbox || loadingMessages || sending || !activeConversationId || !!errorMessage;
+    loadingInbox || sending || !activeConversationId || !!errorMessage;
 
   return (
     <div style={pageStyle}>
@@ -649,7 +806,8 @@ function MessagesPage() {
           }
 
           .parachat-conversation-list {
-            max-height: calc(100vh - 230px) !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
         }
 
@@ -658,6 +816,18 @@ function MessagesPage() {
             display: none !important;
           }
         }
+
+
+          .parachat-conversation-list {
+            max-height: none !important;
+            overflow: visible !important;
+            scrollbar-width: none !important;
+          }
+
+          .parachat-conversation-list::-webkit-scrollbar {
+            display: none !important;
+          }
+
 
         @media (max-width: 640px) {
           .parachat-title {
@@ -699,7 +869,7 @@ function MessagesPage() {
             <div style={{ minWidth: 0 }}>
               <h1 className="parachat-title" style={inboxTitleStyle}>Parachat</h1>
               <p style={inboxSubtitleStyle}>
-                Premium direct messaging for Parapost Network.
+                Private and secure direct messages for Parapost Network. Your chats are designed to stay between you and the people you message.
               </p>
             </div>
 
@@ -717,6 +887,13 @@ function MessagesPage() {
             </span>
           </div>
 
+          {statusMessage ? (
+            <div style={statusMessageStyle}>
+              <span style={successDotStyle} />
+              {statusMessage}
+            </div>
+          ) : null}
+
           <input
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
@@ -729,7 +906,7 @@ function MessagesPage() {
               <div style={conversationEmptyStyle}>Loading Parachat...</div>
             ) : filteredConversations.length === 0 ? (
               <div style={conversationEmptyStyle}>
-                No conversations yet. Visit a profile and click Message to start a Parachat.
+                No conversations yet. Visit an accepted friend’s profile and click Parachat to start messaging.
               </div>
             ) : (
               filteredConversations.map((conversation) => {
@@ -737,56 +914,94 @@ function MessagesPage() {
                 const isActive = conversation.id === activeConversationId;
 
                 return (
-                  <button
+                  <div
                     key={conversation.id}
-                    type="button"
-                    onClick={() => handleSelectConversation(conversation.id)}
                     style={isActive ? conversationItemActiveStyle : conversationItemStyle}
                   >
-                    <div style={conversationAvatarWrapStyle}>
-                      {profile?.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt=""
-                          style={conversationAvatarImageStyle}
-                        />
-                      ) : (
-                        <div style={conversationAvatarFallbackStyle}>
-                          {getInitial(profile)}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectConversation(conversation.id)}
+                      style={conversationSelectButtonStyle}
+                    >
+                      <div style={conversationAvatarWrapStyle}>
+                        {profile?.avatar_url ? (
+                          <img
+                            src={profile.avatar_url}
+                            alt=""
+                            style={conversationAvatarImageStyle}
+                          />
+                        ) : (
+                          <div style={conversationAvatarFallbackStyle}>
+                            {getInitial(profile)}
+                          </div>
+                        )}
+
+                        {profile?.is_online ? <span style={onlineDotStyle} /> : null}
+                      </div>
+
+                      <div style={conversationTextStyle}>
+                        <div style={conversationTopLineStyle}>
+                          <strong style={conversationNameStyle}>
+                            {getProfileName(profile)}
+                          </strong>
+
+                          <span style={conversationTimeStyle}>
+                            {formatMessageTime(conversation.lastMessage?.created_at)}
+                          </span>
                         </div>
-                      )}
 
-                      {profile?.is_online ? <span style={onlineDotStyle} /> : null}
-                    </div>
+                        <div style={conversationBottomLineStyle}>
+                          <span
+                            style={{
+                              ...conversationPreviewStyle,
+                              color: conversation.unreadCount > 0 ? "#f9fafb" : "#9ca3af",
+                              fontWeight: conversation.unreadCount > 0 ? 850 : 500,
+                            }}
+                          >
+                            {conversation.lastMessage?.body || "No messages yet"}
+                          </span>
 
-                    <div style={conversationTextStyle}>
-                      <div style={conversationTopLineStyle}>
-                        <strong style={conversationNameStyle}>
-                          {getProfileName(profile)}
-                        </strong>
-
-                        <span style={conversationTimeStyle}>
-                          {formatMessageTime(conversation.lastMessage?.created_at)}
-                        </span>
+                          {conversation.unreadCount > 0 ? (
+                            <span style={unreadBadgeStyle}>{conversation.unreadCount}</span>
+                          ) : null}
+                        </div>
                       </div>
+                    </button>
 
-                      <div style={conversationBottomLineStyle}>
-                        <span
-                          style={{
-                            ...conversationPreviewStyle,
-                            color: conversation.unreadCount > 0 ? "#f9fafb" : "#9ca3af",
-                            fontWeight: conversation.unreadCount > 0 ? 850 : 500,
-                          }}
+                    <div style={conversationMenuWrapStyle}>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenConversationMenuId((currentId) =>
+                            currentId === conversation.id ? null : conversation.id
+                          );
+                        }}
+                        style={conversationMenuButtonStyle}
+                        aria-label={`More options for Parachat with ${getProfileName(profile)}`}
+                      >
+                        ⋯
+                      </button>
+
+                      {openConversationMenuId === conversation.id ? (
+                        <div
+                          style={conversationMenuStyle}
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          {conversation.lastMessage?.body || "No messages yet"}
-                        </span>
-
-                        {conversation.unreadCount > 0 ? (
-                          <span style={unreadBadgeStyle}>{conversation.unreadCount}</span>
-                        ) : null}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteConversation(conversation)}
+                            disabled={deletingConversationId === conversation.id}
+                            style={conversationDeleteButtonStyle}
+                          >
+                            {deletingConversationId === conversation.id
+                              ? "Deleting..."
+                              : "Delete conversation"}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -833,8 +1048,6 @@ function MessagesPage() {
                 </div>
 
                 <div style={headerActionsStyle}>
-                  <span className="parachat-desktop-only" style={securePillStyle}>Private</span>
-
                   {activeConversation?.otherUserId ? (
                     <Link
                       href={`/profile/${activeConversation.otherUserId}`}
@@ -847,13 +1060,7 @@ function MessagesPage() {
               </header>
 
               <section className="parachat-messages" style={messagesAreaStyle}>
-                {loadingMessages ? (
-                  <div style={emptyStateStyle}>
-                    <div style={emptyIconStyle}>⌛</div>
-                    <strong>Loading Parachat...</strong>
-                    <span>Getting this conversation ready.</span>
-                  </div>
-                ) : errorMessage ? (
+                {errorMessage ? (
                   <div style={errorBoxStyle}>
                     <strong>Parachat needs attention</strong>
                     <span>{errorMessage}</span>
@@ -1093,6 +1300,29 @@ const statusDotStyle: React.CSSProperties = {
   boxShadow: "0 0 18px rgba(34,197,94,0.60)",
 };
 
+const statusMessageStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  color: "#d1fae5",
+  fontSize: "12px",
+  fontWeight: 850,
+  padding: "9px 11px",
+  borderRadius: "16px",
+  border: "1px solid rgba(34,197,94,0.22)",
+  background: "rgba(34,197,94,0.09)",
+  marginBottom: "12px",
+};
+
+const successDotStyle: React.CSSProperties = {
+  width: "8px",
+  height: "8px",
+  borderRadius: "999px",
+  background: "#22c55e",
+  boxShadow: "0 0 14px rgba(34,197,94,0.60)",
+  flexShrink: 0,
+};
+
 const searchInputStyle: React.CSSProperties = {
   width: "100%",
   minHeight: "46px",
@@ -1109,9 +1339,9 @@ const conversationListStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: "8px",
-  maxHeight: "calc(100vh - 250px)",
-  overflowY: "auto",
-  paddingRight: "2px",
+  maxHeight: "none",
+  overflow: "visible",
+  paddingRight: 0,
 };
 
 const conversationEmptyStyle: React.CSSProperties = {
@@ -1146,6 +1376,68 @@ const conversationItemActiveStyle: React.CSSProperties = {
   boxShadow: "0 14px 38px rgba(0,0,0,0.30)",
 };
 
+const conversationSelectButtonStyle: React.CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+  border: 0,
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  display: "flex",
+  alignItems: "center",
+  gap: "11px",
+  textAlign: "left",
+  cursor: "pointer",
+};
+
+const conversationMenuWrapStyle: React.CSSProperties = {
+  position: "relative",
+  flexShrink: 0,
+  alignSelf: "center",
+};
+
+const conversationMenuButtonStyle: React.CSSProperties = {
+  width: "26px",
+  height: "26px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  color: "#d1d5db",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  fontSize: "15px",
+  lineHeight: 1,
+  fontWeight: 950,
+};
+
+const conversationMenuStyle: React.CSSProperties = {
+  position: "absolute",
+  right: 0,
+  top: "30px",
+  zIndex: 40,
+  minWidth: "150px",
+  borderRadius: "13px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(7,10,16,0.98)",
+  boxShadow: "0 14px 34px rgba(0,0,0,0.44)",
+  padding: "6px",
+  backdropFilter: "blur(16px)",
+};
+
+const conversationDeleteButtonStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(248,113,113,0.20)",
+  background: "rgba(248,113,113,0.10)",
+  color: "#fecaca",
+  borderRadius: "10px",
+  padding: "7px 9px",
+  textAlign: "left",
+  fontWeight: 900,
+  fontSize: "11px",
+  cursor: "pointer",
+};
+
 const conversationAvatarWrapStyle: React.CSSProperties = {
   width: "52px",
   height: "52px",
@@ -1155,6 +1447,8 @@ const conversationAvatarWrapStyle: React.CSSProperties = {
   border: "2px solid rgba(168,85,247,0.72)",
   padding: "2px",
   background: "#05070a",
+  overflow: "visible",
+  isolation: "isolate",
 };
 
 const conversationAvatarImageStyle: React.CSSProperties = {
@@ -1176,13 +1470,16 @@ const conversationAvatarFallbackStyle: React.CSSProperties = {
 
 const onlineDotStyle: React.CSSProperties = {
   position: "absolute",
-  right: "1px",
-  bottom: "1px",
+  right: "-1px",
+  bottom: "-1px",
   width: "12px",
   height: "12px",
   borderRadius: "999px",
   background: "#22c55e",
   border: "2px solid #05070a",
+  boxShadow: "0 0 10px rgba(34,197,94,0.65)",
+  zIndex: 5,
+  pointerEvents: "none",
 };
 
 const conversationTextStyle: React.CSSProperties = {
@@ -1323,6 +1620,8 @@ const avatarWrapStyle: React.CSSProperties = {
   padding: "2px",
   background: "#090b12",
   flexShrink: 0,
+  overflow: "visible",
+  isolation: "isolate",
 };
 
 const avatarImageStyle: React.CSSProperties = {
@@ -1355,16 +1654,6 @@ const headerSubtitleStyle: React.CSSProperties = {
   color: "#9ca3af",
   fontSize: "13px",
   marginTop: "3px",
-};
-
-const securePillStyle: React.CSSProperties = {
-  color: "#86efac",
-  border: "1px solid rgba(34,197,94,0.24)",
-  background: "rgba(34,197,94,0.10)",
-  borderRadius: "999px",
-  padding: "8px 10px",
-  fontWeight: 900,
-  fontSize: "12px",
 };
 
 const profileButtonStyle: React.CSSProperties = {

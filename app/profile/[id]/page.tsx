@@ -1343,6 +1343,11 @@ export default function ProfilePage() {
  const handleMessageUser = async () => {
   if (!profileId || !viewerId || profileId === viewerId) return;
 
+  if (friendStatus !== "friends") {
+    alert("Parachat is only available between accepted friends.");
+    return;
+  }
+
   try {
     const { data, error } = await supabase.rpc(
       "get_or_create_direct_conversation",
@@ -1353,13 +1358,27 @@ export default function ProfilePage() {
 
     if (error || !data) {
       console.error("Message error:", error);
-      alert("Could not start conversation");
+      alert("Could not start conversation. Parachat is only available between accepted friends.");
       return;
     }
 
-    // ✅ Open Parachat hub with selected conversation
-    router.push(`/messages?conversation=${data}`);
+    const conversationId = String(data);
 
+    // If this Parachat was removed from your inbox earlier,
+    // bring it back before sending the user to /messages.
+    const { error: unhideError } = await supabase
+      .from("direct_conversation_hides")
+      .delete()
+      .eq("conversation_id", conversationId)
+      .eq("user_id", viewerId);
+
+    if (unhideError) {
+      console.warn("Could not unhide Parachat conversation:", unhideError.message);
+      alert("Could not reopen this Parachat. Please try again.");
+      return;
+    }
+
+    router.push(`/messages?conversation=${conversationId}`);
   } catch (err) {
     console.error("Unexpected message error:", err);
     alert("Something went wrong starting the chat");
@@ -9522,13 +9541,15 @@ return (
                           </button>
                         ) : null}
 
-                        <button
-                          type="button"
-                          onClick={handleMessageUser}
-                          className="profile-mobile-primary-real"
-                        >
-                          Parachat
-                        </button>
+                        {friendStatus === "friends" ? (
+                          <button
+                            type="button"
+                            onClick={handleMessageUser}
+                            className="profile-mobile-primary-real"
+                          >
+                            Parachat
+                          </button>
+                        ) : null}
                       </>
                     ) : null}
                   </div>
@@ -9667,13 +9688,15 @@ return (
                               </button>
                             ) : null}
 
-                            <button
-                              type="button"
-                              onClick={handleMessageUser}
-                              style={profilePrimaryButtonStyle}
-                            >
-                              Parachat
-                            </button>
+                            {friendStatus === "friends" ? (
+                              <button
+                                type="button"
+                                onClick={handleMessageUser}
+                                style={profilePrimaryButtonStyle}
+                              >
+                                Parachat
+                              </button>
+                            ) : null}
                           </>
                         ) : null}
                         {profileIsReady ? (

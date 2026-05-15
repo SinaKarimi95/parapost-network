@@ -7,6 +7,7 @@ import {
   RefObject,
   DragEvent as ReactDragEvent,
   MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -72,15 +73,15 @@ const SHOWCASE_OVERLAY_DEFAULT_FONT_SIZE = 30;
 
 const SHOWCASE_FONT_OPTIONS: Array<{ value: ShowcaseFontValue; label: string; family: string }> = [
   { value: "inter", label: "Parapost Default", family: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
-  { value: "roboto", label: "Clean Modern", family: "Arial, Helvetica, sans-serif" },
-  { value: "openSans", label: "Open Sans", family: "Verdana, Geneva, sans-serif" },
-  { value: "montserrat", label: "Montserrat", family: "Trebuchet MS, Arial, sans-serif" },
-  { value: "poppins", label: "Poppins", family: "Poppins, Arial, sans-serif" },
-  { value: "lato", label: "Lato", family: "Lato, Arial, sans-serif" },
-  { value: "nunito", label: "Nunito", family: "Nunito, Arial, sans-serif" },
-  { value: "raleway", label: "Raleway", family: "Raleway, Arial, sans-serif" },
-  { value: "playfair", label: "Playfair", family: "Georgia, 'Times New Roman', serif" },
-  { value: "merriweather", label: "Merriweather", family: "Merriweather, Georgia, serif" },
+  { value: "roboto", label: "Clean Sans", family: "Arial, Helvetica, sans-serif" },
+  { value: "openSans", label: "Soft Modern", family: "Verdana, Geneva, sans-serif" },
+  { value: "montserrat", label: "Classic Serif", family: "Georgia, 'Times New Roman', serif" },
+  { value: "poppins", label: "Rounded Casual", family: "'Trebuchet MS', 'Arial Rounded MT Bold', Arial, sans-serif" },
+  { value: "lato", label: "Simple Label", family: "Lato, Arial, Helvetica, sans-serif" },
+  { value: "nunito", label: "Typewriter", family: "'Courier New', Courier, monospace" },
+  { value: "raleway", label: "Bold Impact", family: "Impact, 'Arial Black', Arial, sans-serif" },
+  { value: "playfair", label: "Editorial", family: "Georgia, 'Times New Roman', serif" },
+  { value: "merriweather", label: "Clean Creator", family: "'Helvetica Neue', Arial, Helvetica, sans-serif" },
 ];
 
 type PostImage = {
@@ -630,6 +631,7 @@ function getAvatarShellStyle(size: number, isOnline?: boolean | null): CSSProper
     placeItems: "center",
     position: "relative",
     overflow: "visible",
+    isolation: "isolate",
     textDecoration: "none",
     background: isOnline
       ? "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))"
@@ -708,7 +710,15 @@ function Avatar({
 
   if (!href) return avatar;
   return (
-    <Link href={href} style={{ textDecoration: "none", display: "inline-flex" }}>
+    <Link
+      href={href}
+      style={{
+        textDecoration: "none",
+        display: "inline-flex",
+        overflow: "visible",
+        flexShrink: 0,
+      }}
+    >
       {avatar}
     </Link>
   );
@@ -2367,8 +2377,8 @@ export default function DashboardPage() {
             <nav style={sidebarNavStyle}>
               <SidebarButton label="Investigations" badge="Soon" muted />
               <SidebarButton label="Evidence Vault" badge="Soon" muted />
-              <SidebarButton label="Podcasts" badge="Soon" muted />
-              <SidebarButton label="Events" badge="Soon" muted />
+              <SidebarButton label="Case Files" badge="Soon" muted />
+              <SidebarButton label="Field Reports" badge="Soon" muted />
             </nav>
 
             <div style={goLiveCardStyle} aria-disabled="true" title="Live streaming is coming soon.">
@@ -2692,6 +2702,166 @@ export default function DashboardPage() {
           scroll-behavior: smooth;
         }
 
+        .profile-showcase-modal-header,
+        .profile-showcase-studio-layout,
+        .profile-showcase-modal-actions {
+          direction: ltr;
+        }
+
+        /* Dashboard Showcase modal scrollbar: visible right-side scroll, matching profile behavior. */
+        .profile-showcase-modal-shell {
+          direction: ltr !important;
+          scrollbar-width: auto !important;
+          scrollbar-color: rgba(255,255,255,0.82) rgba(255,255,255,0.12) !important;
+          -ms-overflow-style: auto !important;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar {
+          display: block !important;
+          width: 12px !important;
+          height: 12px !important;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar-track {
+          background: rgba(255,255,255,0.10) !important;
+          border-radius: 999px !important;
+          margin: 16px 0 !important;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.78) !important;
+          border-radius: 999px !important;
+          border: 2px solid rgba(8,10,16,0.95) !important;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar-thumb:hover {
+          background: rgba(255,255,255,0.92) !important;
+        }
+
+        .profile-showcase-font-select {
+          color-scheme: dark !important;
+          background: rgba(7,10,16,0.98) !important;
+          color: #ffffff !important;
+          border: 1px solid rgba(255,255,255,0.16) !important;
+          border-radius: 12px !important;
+          outline: none !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.04) !important;
+        }
+
+        .profile-showcase-font-select:focus {
+          border-color: color-mix(in srgb, var(--parapost-accent-2) 62%, rgba(255,255,255,0.16)) !important;
+          box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--parapost-accent-2) 22%, transparent),
+            0 0 20px color-mix(in srgb, var(--parapost-accent-2) 16%, transparent) !important;
+        }
+
+        .profile-showcase-font-select option {
+          background: #080b12 !important;
+          color: #ffffff !important;
+        }
+
+        .profile-showcase-modal-shell {
+          direction: ltr;
+          scrollbar-width: auto;
+          -ms-overflow-style: auto;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar {
+          width: auto;
+          height: auto;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar-track {
+          background: initial;
+          border-radius: initial;
+          margin: initial;
+        }
+
+        .profile-showcase-modal-shell::-webkit-scrollbar-thumb {
+          background: initial;
+          border-radius: initial;
+          border: initial;
+        }
+
+
+
+        .profile-showcase-visibility-symbol {
+          position: relative;
+          width: 19px;
+          height: 19px;
+          display: block;
+        }
+
+        .profile-showcase-visibility-symbol-public::before {
+          content: "";
+          position: absolute;
+          inset: 2px;
+          border: 2px solid rgba(255,255,255,0.90);
+          border-radius: 999px;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+        }
+
+        .profile-showcase-visibility-symbol-public::after {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: 2px;
+          bottom: 2px;
+          width: 2px;
+          transform: translateX(-50%);
+          background: rgba(255,255,255,0.86);
+          box-shadow: -5px 0 0 -1px rgba(255,255,255,0.72), 5px 0 0 -1px rgba(255,255,255,0.72);
+          border-radius: 999px;
+        }
+
+        .profile-showcase-visibility-symbol-friends::before,
+        .profile-showcase-visibility-symbol-friends::after {
+          content: "";
+          position: absolute;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.92);
+        }
+
+        .profile-showcase-visibility-symbol-friends::before {
+          width: 8px;
+          height: 8px;
+          left: 2px;
+          top: 3px;
+          box-shadow: 7px 0 0 rgba(255,255,255,0.78);
+        }
+
+        .profile-showcase-visibility-symbol-friends::after {
+          left: 0;
+          right: 0;
+          bottom: 2px;
+          height: 8px;
+          border-radius: 9px 9px 6px 6px;
+        }
+
+        .profile-showcase-visibility-symbol-private::before {
+          content: "";
+          position: absolute;
+          left: 3px;
+          right: 3px;
+          bottom: 2px;
+          height: 10px;
+          border-radius: 4px;
+          background: rgba(255,255,255,0.92);
+        }
+
+        .profile-showcase-visibility-symbol-private::after {
+          content: "";
+          position: absolute;
+          left: 5px;
+          top: 1px;
+          width: 9px;
+          height: 9px;
+          border: 2px solid rgba(255,255,255,0.92);
+          border-bottom: 0;
+          border-radius: 9px 9px 0 0;
+        }
+
+
         @media (max-width: 1180px) {
           .dashboard-desktop-left,
           .dashboard-right-rail {
@@ -2993,50 +3163,6 @@ export default function DashboardPage() {
           }
         }
 
-
-
-
-        /* Desktop rails correction: keep side columns in the normal grid, sticky only.
-           This removes the failed fixed-rail behavior and keeps the browser scrollbar as the only page scroll. */
-        @media (min-width: 1181px) {
-          .dashboard-grid-desktop-safe {
-            display: grid !important;
-            grid-template-columns: 300px minmax(0, 1fr) 360px !important;
-            gap: 28px !important;
-            align-items: start !important;
-          }
-
-          .dashboard-desktop-left {
-            position: sticky !important;
-            top: 18px !important;
-            left: auto !important;
-            right: auto !important;
-            width: auto !important;
-            min-height: calc(100vh - 36px) !important;
-            height: auto !important;
-            max-height: none !important;
-            overflow: visible !important;
-            overflow-y: visible !important;
-            overscroll-behavior: auto !important;
-          }
-
-          .dashboard-right-rail {
-            position: sticky !important;
-            top: 18px !important;
-            left: auto !important;
-            right: auto !important;
-            width: auto !important;
-            height: auto !important;
-            max-height: none !important;
-            overflow: visible !important;
-            overflow-y: visible !important;
-            overscroll-behavior: auto !important;
-          }
-
-          .dashboard-main-column {
-            grid-column: auto !important;
-          }
-        }
 
 
         /* === Phase 10 dashboard mobile/tablet template alignment === */
@@ -5100,10 +5226,63 @@ function DashboardShowcaseComposerModal({
   onCreate: () => void;
 }) {
   const cleanCoverText = coverText.trim();
-  const previewCopy = cleanCoverText || title.trim() || "Showcase";
+  const previewCopy = cleanCoverText;
+  const hasOverlayText = previewCopy.length > 0;
   const fontOption = getShowcaseFontOption(fontKey);
-  const displayFontSize = getShowcaseOverlayDisplayFontSize(previewCopy, overlayFontSize);
-  const overlayWidth = getShowcaseOverlayTextWidth(previewCopy);
+  const displayFontSize = getShowcaseOverlayDisplayFontSize(previewCopy || "Preview", overlayFontSize);
+  const overlayWidth = getShowcaseOverlayTextWidth(previewCopy || "Preview");
+  const previewDragRef = useRef<HTMLDivElement | null>(null);
+  const [overlayDragging, setOverlayDragging] = useState(false);
+  const isHorizontallyCentered = Math.abs(textPosition.x - 50) <= 1.35;
+  const isVerticallyCentered = Math.abs(textPosition.y - 50) <= 1.35;
+
+  const updateOverlayPositionFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      const previewElement = previewDragRef.current;
+      if (!previewElement) return;
+
+      const rect = previewElement.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const nextX = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100));
+      const nextY = Math.max(8, Math.min(92, ((clientY - rect.top) / rect.height) * 100));
+
+      setTextPosition({
+        x: Number(nextX.toFixed(1)),
+        y: Number(nextY.toFixed(1)),
+      });
+    },
+    [setTextPosition]
+  );
+
+  const handleOverlayPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!customizeOpen || !hasOverlayText) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest("input, button, select, textarea")) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setOverlayDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    updateOverlayPositionFromPointer(event.clientX, event.clientY);
+  };
+
+  const handleOverlayPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!overlayDragging || !customizeOpen || !hasOverlayText) return;
+
+    event.preventDefault();
+    updateOverlayPositionFromPointer(event.clientX, event.clientY);
+  };
+
+  const handleOverlayPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!overlayDragging) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setOverlayDragging(false);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
 
   return (
     <div
@@ -5266,7 +5445,13 @@ function DashboardShowcaseComposerModal({
                     aria-label="Choose Showcase font"
                   >
                     {SHOWCASE_FONT_OPTIONS.map((font) => (
-                      <option key={font.value} value={font.value}>{font.label}</option>
+                      <option
+                        key={font.value}
+                        value={font.value}
+                        style={{ background: "#080b12", color: "#ffffff" }}
+                      >
+                        {font.label}
+                      </option>
                     ))}
                   </select>
                   <div style={{ ...profileShowcaseFontPreviewStyle, fontFamily: fontOption.family }}>
@@ -5281,9 +5466,9 @@ function DashboardShowcaseComposerModal({
                   </div>
                   <div style={profileShowcaseVisibilityOptionsStyle}>
                     {[
-                      { value: "public" as const, label: "Public", help: "Everyone" },
-                      { value: "friends" as const, label: "Friends", help: "Friends only" },
-                      { value: "private" as const, label: "Only me", help: "Private" },
+                      { value: "public" as const, label: "Public", icon: "public", help: "Everyone" },
+                      { value: "friends" as const, label: "Friends", icon: "friends", help: "Friends only" },
+                      { value: "private" as const, label: "Only me", icon: "private", help: "Private" },
                     ].map((option) => {
                       const selected = visibility === option.value;
                       return (
@@ -5294,7 +5479,12 @@ function DashboardShowcaseComposerModal({
                           style={selected ? profileShowcaseVisibilityOptionActiveStyle : profileShowcaseVisibilityOptionStyle}
                           aria-pressed={selected}
                         >
-                          <span style={profileShowcaseVisibilityIconStyle} />
+                          <span style={profileShowcaseVisibilityIconStyle}>
+                            <span
+                              className={`profile-showcase-visibility-symbol profile-showcase-visibility-symbol-${option.icon}`}
+                              aria-hidden="true"
+                            />
+                          </span>
                           <span style={profileShowcaseVisibilityTextStyle}>
                             <strong>{option.label}</strong>
                             <small>{option.help}</small>
@@ -5315,11 +5505,27 @@ function DashboardShowcaseComposerModal({
             </div>
 
             <div
+              ref={previewDragRef}
               className="profile-showcase-preview-phone"
-              style={profileShowcasePreviewPhoneStyle}
+              style={{
+                ...profileShowcasePreviewPhoneStyle,
+                cursor: customizeOpen && hasOverlayText ? (overlayDragging ? "grabbing" : "grab") : profileShowcasePreviewPhoneStyle.cursor,
+                touchAction: customizeOpen && hasOverlayText ? "none" : profileShowcasePreviewPhoneStyle.touchAction,
+                userSelect: customizeOpen && hasOverlayText ? "none" : profileShowcasePreviewPhoneStyle.userSelect,
+              }}
               role="button"
               tabIndex={0}
-              aria-label={previewExpanded ? "Return Showcase preview to normal size" : "Stretch Showcase preview"}
+              aria-label={
+                customizeOpen && hasOverlayText
+                  ? "Drag Showcase text around the preview"
+                  : previewExpanded
+                    ? "Return Showcase preview to normal size"
+                    : "Stretch Showcase preview"
+              }
+              onPointerDown={handleOverlayPointerDown}
+              onPointerMove={handleOverlayPointerMove}
+              onPointerUp={handleOverlayPointerEnd}
+              onPointerCancel={handleOverlayPointerEnd}
               onClick={() => {
                 if (!customizeOpen) setPreviewExpanded((value) => !value);
               }}
@@ -5356,14 +5562,15 @@ function DashboardShowcaseComposerModal({
                   </div>
                 ) : null}
 
-                {customizeOpen && cleanCoverText ? (
-                  <>
-                    <span style={profileShowcaseCenterGuideVerticalStyle} />
-                    <span style={profileShowcaseCenterGuideHorizontalStyle} />
-                  </>
+                {customizeOpen && cleanCoverText && isHorizontallyCentered ? (
+                  <span style={profileShowcaseCenterGuideVerticalStyle} />
                 ) : null}
 
-                {previewCopy ? (
+                {customizeOpen && cleanCoverText && isVerticallyCentered ? (
+                  <span style={profileShowcaseCenterGuideHorizontalStyle} />
+                ) : null}
+
+                {hasOverlayText ? (
                   <span
                     style={{
                       ...profileShowcasePreviewTextStyle,
@@ -5373,6 +5580,9 @@ function DashboardShowcaseComposerModal({
                       fontSize: `${displayFontSize}px`,
                       width: overlayWidth,
                       maxWidth: overlayWidth,
+                      cursor: overlayDragging ? "grabbing" : "grab",
+                      userSelect: "none",
+                      touchAction: "none",
                     }}
                   >
                     {previewCopy}
@@ -5380,35 +5590,10 @@ function DashboardShowcaseComposerModal({
                 ) : null}
 
                 {customizeOpen && cleanCoverText ? (
-                  <small style={profileShowcaseDragHintStyle}>Centered</small>
+                  <small style={profileShowcaseDragHintStyle}>{overlayDragging ? "Move text" : "Drag text"}</small>
                 ) : null}
               </div>
             </div>
-
-            {customizeOpen && cleanCoverText ? (
-              <div style={profileShowcasePositionControlsStyle}>
-                <label>
-                  Horizontal position
-                  <input
-                    type="range"
-                    min={10}
-                    max={90}
-                    value={textPosition.x}
-                    onChange={(event) => setTextPosition({ ...textPosition, x: Number(event.target.value) })}
-                  />
-                </label>
-                <label>
-                  Vertical position
-                  <input
-                    type="range"
-                    min={10}
-                    max={90}
-                    value={textPosition.y}
-                    onChange={(event) => setTextPosition({ ...textPosition, y: Number(event.target.value) })}
-                  />
-                </label>
-              </div>
-            ) : null}
 
             <div style={profileShowcasePreviewMetaStyle}>
               <span>
@@ -5932,7 +6117,6 @@ const leftSidebarStyle: CSSProperties = {
   position: "sticky",
   top: "18px",
   alignSelf: "start",
-  minHeight: "calc(100vh - 36px)",
   height: "auto",
   maxHeight: "none",
   overflow: "visible",
@@ -6344,11 +6528,14 @@ const profileShowcaseModalStyle: CSSProperties = {
   height: "min(840px, calc(100vh - 32px))",
   maxHeight: "calc(100vh - 32px)",
   overflowY: "auto",
+  scrollbarWidth: "auto",
+  scrollbarColor: "rgba(255,255,255,0.82) rgba(255,255,255,0.12)",
   borderRadius: "32px",
   border: "1px solid rgba(255,255,255,0.14)",
   background: "radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--parapost-accent-2) 28%, transparent), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
   boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
   padding: "22px",
+  direction: "ltr",
 };
 
 const profileShowcaseModalHeaderStyle: CSSProperties = {
@@ -6707,6 +6894,11 @@ const profileShowcaseFontGroupStyle: CSSProperties = {
 const profileShowcaseFontSelectStyle: CSSProperties = {
   ...profileShowcaseInputStyle,
   minHeight: "42px",
+  background: "rgba(7,10,16,0.98)",
+  color: "#ffffff",
+  border: "1px solid rgba(255,255,255,0.16)",
+  borderRadius: "12px",
+  colorScheme: "dark",
 };
 
 const profileShowcaseFontPreviewStyle: CSSProperties = {
@@ -6846,8 +7038,8 @@ const profileShowcasePreviewTextStyle: CSSProperties = {
   overflowWrap: "anywhere",
   maxHeight: "72%",
   overflow: "hidden",
-  padding: "0 8px",
-  minWidth: "120px",
+  padding: "0 4px",
+  minWidth: "80px",
   boxSizing: "border-box",
   userSelect: "none",
   WebkitUserSelect: "none",
@@ -6859,7 +7051,7 @@ const profileShowcasePreviewTextStyle: CSSProperties = {
 
 const profileShowcaseVerticalSizeRailStyle: CSSProperties = {
   position: "absolute",
-  right: "10px",
+  left: "10px",
   top: "50%",
   transform: "translateY(-50%)",
   zIndex: 4,
@@ -7159,7 +7351,19 @@ const mutedTextStyle: CSSProperties = { color: "#9ca3af", lineHeight: 1.55, marg
 const recentProfileRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center", textDecoration: "none", borderRadius: 14, padding: 8, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" };
 const statRowStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 14, color: "#d1d5db", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8 };
 const searchResultRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center", textDecoration: "none", borderRadius: 14, padding: 10, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" };
-const onlineDotStyle: CSSProperties = { position: "absolute", right: -1, bottom: -1, width: 12, height: 12, borderRadius: 999, background: "#22c55e", border: "2px solid #07090d", boxShadow: "0 0 10px rgba(34,197,94,0.65)", zIndex: 4, pointerEvents: "none", };
+const onlineDotStyle: CSSProperties = {
+  position: "absolute",
+  right: -1,
+  bottom: -1,
+  width: 12,
+  height: 12,
+  borderRadius: 999,
+  background: "#22c55e",
+  border: "2px solid #07090d",
+  boxShadow: "0 0 10px rgba(34,197,94,0.65)",
+  zIndex: 5,
+  pointerEvents: "none",
+};
 
 const modalOverlayStyle: CSSProperties = { position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(12px)", display: "grid", placeItems: "start center", padding: "82px 18px 24px" };
 const searchModalStyle: CSSProperties = { width: "min(620px, 100%)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(8,10,18,0.98))", boxShadow: "0 28px 80px rgba(0,0,0,0.58)", padding: 18 };

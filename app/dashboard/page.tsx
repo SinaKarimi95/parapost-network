@@ -2377,8 +2377,8 @@ export default function DashboardPage() {
             <nav style={sidebarNavStyle}>
               <SidebarButton label="Investigations" badge="Soon" muted />
               <SidebarButton label="Evidence Vault" badge="Soon" muted />
-              <SidebarButton label="Case Files" badge="Soon" muted />
-              <SidebarButton label="Field Reports" badge="Soon" muted />
+              <SidebarButton label="Podcasts" badge="Soon" muted />
+              <SidebarButton label="Events" badge="Soon" muted />
             </nav>
 
             <div style={goLiveCardStyle} aria-disabled="true" title="Live streaming is coming soon.">

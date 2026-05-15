@@ -10914,7 +10914,7 @@ return (
 
                                   <small style={profileRealBadgeDifficultyStyle}>
                                     {highlightedProfileAchievement.isUnlocked
-                                      ? `Unlocked ${formatTimeAgo(highlightedProfileAchievement.unlockedAt)}`
+                                      ? `Unlocked ${formatTimeAgo(highlightedProfileAchievement.unlockedAt || new Date().toISOString())}`
                                       : `${formatAchievementCount(highlightedProfileAchievement.progressCount)} / ${formatAchievementCount(highlightedProfileAchievement.threshold)}`}
                                   </small>
                                 </div>
@@ -11503,7 +11503,7 @@ return (
                               <strong>{achievement.name}</strong>
                               <small>
                                 {achievement.isUnlocked
-                                  ? `Unlocked ${formatTimeAgo(achievement.unlockedAt)}`
+                                  ? `Unlocked ${formatTimeAgo(achievement.unlockedAt || new Date().toISOString())}`
                                   : `${formatAchievementCount(achievement.progressCount)} / ${formatAchievementCount(achievement.threshold)}`}
                               </small>
                               <span style={profileAchievementProgressTrackStyle}>
@@ -12194,7 +12194,7 @@ return (
                       <strong style={profileRealBadgeNameStyle}>{featuredProfileAchievement.name}</strong>
                       <span style={profileRealBadgeDifficultyStyle}>
                         {featuredProfileAchievement.isUnlocked
-                          ? `Unlocked ${formatTimeAgo(featuredProfileAchievement.unlockedAt)}`
+                          ? `Unlocked ${formatTimeAgo(featuredProfileAchievement.unlockedAt || new Date().toISOString())}`
                           : `${formatAchievementCount(featuredProfileAchievement.progressCount)} / ${formatAchievementCount(featuredProfileAchievement.threshold)}`}
                       </span>
                     </span>

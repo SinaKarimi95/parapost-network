@@ -120,7 +120,8 @@ type SharedProfilePost = {
 type ProfileFeedItem =
   | (Post & { feedKind: "post" })
   | (SharedProfilePost & { feedKind: "shared_post" })
-  | (ReelShareProfilePost & { feedKind: "reel_share" });
+  | (ReelShareProfilePost & { feedKind: "reel_share" })
+  | (ProfileAchievementActivity & { feedKind: "achievement" });
 
 type CountMap = Record<string, number>;
 type ToggleMap = Record<string, boolean>;
@@ -200,6 +201,44 @@ type ProfileBadge = {
   colorName: string;
   accentColor: string;
   awardedAt: string | null;
+};
+
+type ProfileAchievement = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  metricKey: string;
+  threshold: number;
+  iconPath: string | null;
+  iconUrl: string;
+  displayOrder: number;
+  isUnlocked: boolean;
+  progressCount: number;
+  unlockedAt: string | null;
+  userAchievementId: string | null;
+};
+
+type RawAchievementActivity = {
+  id: string;
+  user_id: string;
+  achievement_id: string;
+  user_achievement_id: string | null;
+  activity_type: string;
+  message: string | null;
+  created_at: string;
+};
+
+type ProfileAchievementActivity = {
+  id: string;
+  userId: string;
+  achievementId: string;
+  userAchievementId: string | null;
+  activityType: string;
+  message: string | null;
+  created_at: string;
+  achievement: ProfileAchievement | null;
 };
 
 type RecentlyViewedProfile = {
@@ -539,6 +578,147 @@ async function loadEarnedProfileBadges(targetProfileId: string) {
     .filter(Boolean) as ProfileBadge[];
 
   return sortProfileBadges(mapped);
+}
+
+function getAchievementPublicIconUrl(iconPath?: string | null) {
+  if (!iconPath) return "";
+
+  const { data } = supabase.storage
+    .from("achievement-icons")
+    .getPublicUrl(iconPath);
+
+  return data?.publicUrl || "";
+}
+
+function normalizeProfileAchievement(
+  achievementRow: Record<string, any>,
+  unlockedMap: Map<string, Record<string, any>>,
+  fallbackProgressCount: number
+): ProfileAchievement {
+  const achievementId = String(achievementRow.id || "");
+  const userAchievement = unlockedMap.get(achievementId) || null;
+  const threshold = Number(achievementRow.threshold || 0);
+  const progressCount = Number(
+    userAchievement?.progress_count ?? fallbackProgressCount ?? 0
+  );
+
+  return {
+    id: achievementId,
+    slug: String(achievementRow.slug || achievementId),
+    name: String(achievementRow.name || "Achievement"),
+    description: String(achievementRow.description || ""),
+    category: String(achievementRow.category || "community_reach"),
+    metricKey: String(achievementRow.metric_key || "followers_friends_total"),
+    threshold,
+    iconPath: achievementRow.icon_path ? String(achievementRow.icon_path) : null,
+    iconUrl: getAchievementPublicIconUrl(achievementRow.icon_path ? String(achievementRow.icon_path) : null),
+    displayOrder: Number(achievementRow.display_order || threshold || 0),
+    isUnlocked: Boolean(userAchievement),
+    progressCount,
+    unlockedAt: userAchievement?.unlocked_at ? String(userAchievement.unlocked_at) : null,
+    userAchievementId: userAchievement?.id ? String(userAchievement.id) : null,
+  };
+}
+
+async function loadProfileAchievements(targetProfileId: string, shouldSync: boolean) {
+  if (!targetProfileId) return [];
+
+  let reachCount = 0;
+
+  if (shouldSync) {
+    const { error: syncError } = await supabase.rpc(
+      "sync_user_community_reach_achievements",
+      { target_user_id: targetProfileId }
+    );
+
+    if (syncError) {
+      console.warn("Could not sync community reach achievements:", syncError.message);
+    }
+
+    const { data: reachData, error: reachError } = await supabase.rpc(
+      "get_user_community_reach",
+      { target_user_id: targetProfileId }
+    );
+
+    if (!reachError && typeof reachData === "number") {
+      reachCount = reachData;
+    } else if (reachError) {
+      console.warn("Could not load community reach count:", reachError.message);
+    }
+  }
+
+  const [{ data: achievementRows, error: achievementError }, { data: unlockedRows, error: unlockedError }] =
+    await Promise.all([
+      supabase
+        .from("achievements")
+        .select("id, slug, name, description, category, metric_key, threshold, icon_path, display_order, is_active")
+        .eq("category", "community_reach")
+        .eq("metric_key", "followers_friends_total")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true }),
+      supabase
+        .from("user_achievements")
+        .select("id, user_id, achievement_id, progress_count, unlocked_at")
+        .eq("user_id", targetProfileId),
+    ]);
+
+  if (achievementError) {
+    console.warn("Could not load achievement catalog:", achievementError.message);
+    return [];
+  }
+
+  if (unlockedError) {
+    console.warn("Could not load unlocked achievements:", unlockedError.message);
+  }
+
+  const unlockedMap = new Map(
+    ((unlockedRows as Record<string, any>[]) || [])
+      .filter((row) => row.achievement_id)
+      .map((row) => [String(row.achievement_id), row])
+  );
+
+  const unlockedProgress = Math.max(
+    reachCount,
+    ...Array.from(unlockedMap.values()).map((row) => Number(row.progress_count || 0))
+  );
+
+  return ((achievementRows as Record<string, any>[]) || [])
+    .map((achievementRow) => normalizeProfileAchievement(achievementRow, unlockedMap, unlockedProgress))
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+async function loadProfileAchievementActivityRows(targetProfileId: string) {
+  if (!targetProfileId) return [];
+
+  const { data, error } = await supabase
+    .from("achievement_activity")
+    .select("id, user_id, achievement_id, user_achievement_id, activity_type, message, created_at")
+    .eq("user_id", targetProfileId)
+    .eq("activity_type", "achievement_unlocked")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.warn("Could not load achievement activity:", error.message);
+    return [];
+  }
+
+  return ((data as RawAchievementActivity[]) || []).filter(Boolean);
+}
+
+function getAchievementProgressPercent(achievement: ProfileAchievement | null | undefined) {
+  if (!achievement || achievement.threshold <= 0) return 0;
+
+  return Math.max(
+    0,
+    Math.min(100, Math.round((achievement.progressCount / achievement.threshold) * 100))
+  );
+}
+
+function formatAchievementCount(value: number) {
+  if (value >= 1000000) return `${Number((value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1))}M`;
+  if (value >= 1000) return `${Number((value / 1000).toFixed(value % 1000 === 0 ? 0 : 1))}K`;
+  return `${value}`;
 }
 
 function mapProfileShowcaseRow(row: ProfileShowcaseRow): ProfileShowcase {
@@ -1199,6 +1379,11 @@ export default function ProfilePage() {
   const [profileBadgesLoading, setProfileBadgesLoading] = useState(false);
   const [profileBadgesViewerOpen, setProfileBadgesViewerOpen] = useState(false);
   const [profileStrengthViewerOpen, setProfileStrengthViewerOpen] = useState(false);
+  const [profileAchievements, setProfileAchievements] = useState<ProfileAchievement[]>([]);
+  const [profileAchievementsLoading, setProfileAchievementsLoading] = useState(false);
+  const [profileAchievementsViewerOpen, setProfileAchievementsViewerOpen] = useState(false);
+  const [activeProfileAchievement, setActiveProfileAchievement] = useState<ProfileAchievement | null>(null);
+  const [profileAchievementActivity, setProfileAchievementActivity] = useState<ProfileAchievementActivity[]>([]);
   const [recentlyViewedProfiles, setRecentlyViewedProfiles] = useState<RecentlyViewedProfile[]>([]);
   const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(false);
   const [recentlyViewedViewerOpen, setRecentlyViewedViewerOpen] = useState(false);
@@ -1402,6 +1587,10 @@ const handleProfileLogout = async () => {
 
 const profileFeedItems = useMemo<ProfileFeedItem[]>(() => {
   return [
+    ...profileAchievementActivity.map((activity) => ({
+      ...activity,
+      feedKind: "achievement" as const,
+    })),
     ...posts.map((post) => ({ ...post, feedKind: "post" as const })),
     ...sharedPostPosts.map((share) => ({
       ...share,
@@ -1416,7 +1605,7 @@ const profileFeedItems = useMemo<ProfileFeedItem[]>(() => {
       new Date(b.created_at).getTime() -
       new Date(a.created_at).getTime()
   );
-}, [posts, sharedPostPosts, sharedReelPosts]);
+}, [posts, sharedPostPosts, sharedReelPosts, profileAchievementActivity]);
 
 const showFriendStatus = useCallback((message: string) => {
   setFriendStatusMessage(message);
@@ -1595,6 +1784,9 @@ const closeProfileMobileSearch = useCallback(() => {
       setErrorMessage("Profile not found.");
       setProfileBadges([]);
       setProfileBadgesLoading(false);
+      setProfileAchievements([]);
+      setProfileAchievementsLoading(false);
+      setProfileAchievementActivity([]);
       setLoading(false);
       return;
     }
@@ -1602,6 +1794,7 @@ const closeProfileMobileSearch = useCallback(() => {
     setLoading(true);
     setErrorMessage("");
     setProfileBadgesLoading(true);
+    setProfileAchievementsLoading(true);
     const profileBadgesPromise = loadEarnedProfileBadges(profileId);
 
     const {
@@ -1611,6 +1804,9 @@ const closeProfileMobileSearch = useCallback(() => {
     const nextViewerId = user?.id || "";
     setViewerId(nextViewerId);
     setViewerEmail(user?.email || "");
+
+    const profileAchievementsPromise = loadProfileAchievements(profileId, Boolean(nextViewerId));
+    const profileAchievementActivityPromise = loadProfileAchievementActivityRows(profileId);
 
     if (nextViewerId) {
       if (profileId && nextViewerId !== profileId) {
@@ -1737,9 +1933,34 @@ const closeProfileMobileSearch = useCallback(() => {
         : Promise.resolve({ data: null, error: null }),
     ]);
 
-    const nextProfileBadges = await profileBadgesPromise;
+    const [nextProfileBadges, nextProfileAchievements, nextAchievementActivityRows] = await Promise.all([
+      profileBadgesPromise,
+      profileAchievementsPromise,
+      profileAchievementActivityPromise,
+    ]);
+
+    const achievementMap = new Map(
+      nextProfileAchievements.map((achievement) => [achievement.id, achievement])
+    );
+
+    const nextAchievementActivity = nextAchievementActivityRows
+      .map((activityRow) => ({
+        id: String(activityRow.id),
+        userId: String(activityRow.user_id),
+        achievementId: String(activityRow.achievement_id),
+        userAchievementId: activityRow.user_achievement_id ? String(activityRow.user_achievement_id) : null,
+        activityType: String(activityRow.activity_type || "achievement_unlocked"),
+        message: activityRow.message ? String(activityRow.message) : null,
+        created_at: String(activityRow.created_at),
+        achievement: achievementMap.get(String(activityRow.achievement_id)) || null,
+      }))
+      .filter((activity) => Boolean(activity.achievement));
+
     setProfileBadges(nextProfileBadges);
     setProfileBadgesLoading(false);
+    setProfileAchievements(nextProfileAchievements);
+    setProfileAchievementsLoading(false);
+    setProfileAchievementActivity(nextAchievementActivity);
 
     if (profileResult.error) {
       setErrorMessage(profileResult.error.message || "Unable to load profile.");
@@ -1750,6 +1971,9 @@ const closeProfileMobileSearch = useCallback(() => {
       setReels([]);
       setProfileBadges([]);
       setProfileBadgesLoading(false);
+      setProfileAchievements([]);
+      setProfileAchievementsLoading(false);
+      setProfileAchievementActivity([]);
       setLoading(false);
       return;
     }
@@ -1968,7 +2192,7 @@ useEffect(() => {
 }, [profileActionsOpen]);
 
 useEffect(() => {
-  if ((!profileBadgesViewerOpen && !profileStrengthViewerOpen && !recentlyViewedViewerOpen) || typeof window === "undefined") return;
+  if ((!profileBadgesViewerOpen && !profileAchievementsViewerOpen && !profileStrengthViewerOpen && !recentlyViewedViewerOpen) || typeof window === "undefined") return;
 
   const scrollY = window.scrollY;
   const body = document.body;
@@ -2001,7 +2225,7 @@ useEffect(() => {
 
     window.scrollTo(0, scrollY);
   };
-}, [profileBadgesViewerOpen, profileStrengthViewerOpen, recentlyViewedViewerOpen]);
+}, [profileBadgesViewerOpen, profileAchievementsViewerOpen, profileStrengthViewerOpen, recentlyViewedViewerOpen]);
 
 useEffect(() => {
   const targetIsInsideProfileActions = (event: Event) => {
@@ -3401,6 +3625,23 @@ useEffect(() => {
     ? "profile-data-ready"
     : "profile-data-waiting";
   const profilePhotoCount = posts.filter((post) => getPostImageUrls(post).length > 0).length;
+  const unlockedAchievementCount = profileAchievements.filter((achievement) => achievement.isUnlocked).length;
+  const nextLockedAchievement =
+    profileAchievements.find((achievement) => !achievement.isUnlocked) || null;
+  const featuredProfileAchievement =
+    profileAchievements.find((achievement) => achievement.isUnlocked) ||
+    nextLockedAchievement ||
+    profileAchievements[0] ||
+    null;
+  const highlightedProfileAchievement = activeProfileAchievement || featuredProfileAchievement;
+  const profileAchievementViewerList = highlightedProfileAchievement
+    ? profileAchievements.filter((achievement) => achievement.id !== highlightedProfileAchievement.id)
+    : profileAchievements;
+  const profileAchievementPanelTitle = isOwnProfile ? "My Achievements" : "Achievements";
+  const profileAchievementPanelCount = profileAchievementsLoading
+    ? "Loading"
+    : `${unlockedAchievementCount}/${profileAchievements.length}`;
+
   const profileTabItems = [
     {
       value: "Posts",
@@ -3441,6 +3682,18 @@ useEffect(() => {
         : "View photos shared through profile posts and media updates.",
     },
     {
+      value: "Achievements",
+      label: "Achievements",
+      detail: isProfileContentLocked
+        ? "Private"
+        : profileAchievementsLoading
+        ? "Loading"
+        : `${unlockedAchievementCount}/${profileAchievements.length}`,
+      summary: isProfileContentLocked
+        ? "This member's achievements are private."
+        : "View Community Reach achievements unlocked through followers and friends.",
+    },
+    {
       value: "Events",
       label: "Events",
       detail: "Coming soon",
@@ -3476,6 +3729,22 @@ useEffect(() => {
   const closeProfileBadgesViewer = useCallback(() => {
     setProfileBadgesViewerOpen(false);
     setActiveProfileBadge(null);
+  }, []);
+
+  const openProfileAchievementsViewer = useCallback(
+    (achievement?: ProfileAchievement | null) => {
+      if (profileAchievementsLoading) return;
+
+      setActiveProfileAchievement(achievement || featuredProfileAchievement || null);
+      setProfileAchievementsViewerOpen(true);
+      setProfileActionsOpen(false);
+    },
+    [featuredProfileAchievement, profileAchievementsLoading]
+  );
+
+  const closeProfileAchievementsViewer = useCallback(() => {
+    setProfileAchievementsViewerOpen(false);
+    setActiveProfileAchievement(null);
   }, []);
 
   const openProfileStrengthViewer = useCallback(() => {
@@ -10572,6 +10841,137 @@ return (
 
 
 
+                {isClientMounted && profileAchievementsViewerOpen
+                  ? createPortal(
+                      <div
+                        className="profile-badges-viewer-overlay profile-achievements-viewer-overlay"
+                        style={profileBadgesViewerOverlayStyle}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Profile achievements"
+                        onClick={closeProfileAchievementsViewer}
+                      >
+                        <div
+                          className="profile-badges-viewer-shell profile-achievements-viewer-shell"
+                          style={profileBadgesViewerShellStyle}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="profile-badges-viewer-header" style={profileBadgesViewerHeaderStyle}>
+                            <div>
+                              <p style={profileBadgesViewerEyebrowStyle}>Community Reach</p>
+                              <h3 className="profile-badges-viewer-title" style={profileBadgesViewerTitleStyle}>
+                                {profileAchievementPanelTitle}
+                              </h3>
+                              <p style={profileBadgesViewerSubtextStyle}>
+                                Followers and accepted friends count together as unique people. Locked achievements unlock automatically when reached.
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={closeProfileAchievementsViewer}
+                              style={profileBadgesViewerCloseStyle}
+                              aria-label="Close achievements viewer"
+                            >
+                              ×
+                            </button>
+                          </div>
+
+                          {highlightedProfileAchievement ? (
+                            <div
+                              className="profile-badges-viewer-hero"
+                              style={{
+                                ...profileBadgesViewerHeroStyle,
+                                opacity: highlightedProfileAchievement.isUnlocked ? 1 : 0.58,
+                              }}
+                            >
+                              <div className="profile-badges-viewer-hero-icon" style={profileAchievementsViewerHeroIconStyle}>
+                                {highlightedProfileAchievement.iconUrl ? (
+                                  <img src={highlightedProfileAchievement.iconUrl} alt="" style={profileAchievementImageStyle} />
+                                ) : (
+                                  <span style={profileAchievementFallbackIconStyle}>★</span>
+                                )}
+                              </div>
+
+                              <div style={{ minWidth: 0 }}>
+                                <p style={profileBadgesViewerEyebrowStyle}>
+                                  {highlightedProfileAchievement.isUnlocked ? "Unlocked Achievement" : "Locked Achievement"}
+                                </p>
+                                <h4 style={profileBadgesViewerBadgeTitleStyle}>{highlightedProfileAchievement.name}</h4>
+                                <p style={profileBadgesViewerBadgeDescriptionStyle}>
+                                  {highlightedProfileAchievement.description}
+                                </p>
+
+                                <div style={profileAchievementViewerProgressWrapStyle}>
+                                  <span style={profileAchievementProgressTrackStyle}>
+                                    <span
+                                      style={{
+                                        ...profileAchievementProgressFillStyle,
+                                        width: `${highlightedProfileAchievement.isUnlocked ? 100 : getAchievementProgressPercent(highlightedProfileAchievement)}%`,
+                                      }}
+                                    />
+                                  </span>
+
+                                  <small style={profileRealBadgeDifficultyStyle}>
+                                    {highlightedProfileAchievement.isUnlocked
+                                      ? `Unlocked ${formatTimeAgo(highlightedProfileAchievement.unlockedAt)}`
+                                      : `${formatAchievementCount(highlightedProfileAchievement.progressCount)} / ${formatAchievementCount(highlightedProfileAchievement.threshold)}`}
+                                  </small>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={profileBadgesViewerEmptyStyle}>
+                              Achievements will appear here once the collection is ready.
+                            </div>
+                          )}
+
+                          {profileAchievementViewerList.length > 0 ? (
+                            <div style={profileBadgesViewerListWrapStyle}>
+                              <div style={profileBadgesViewerListHeaderStyle}>
+                                <strong>Achievement collection</strong>
+                                <span>{unlockedAchievementCount}/{profileAchievements.length} unlocked</span>
+                              </div>
+
+                              <div className="profile-badges-viewer-grid" style={profileAchievementsViewerGridStyle}>
+                                {profileAchievementViewerList.map((achievement) => (
+                                  <button
+                                    key={`achievement-viewer-${achievement.id}`}
+                                    type="button"
+                                    onClick={() => setActiveProfileAchievement(achievement)}
+                                    style={{
+                                      ...profileAchievementViewerButtonStyle,
+                                      opacity: achievement.isUnlocked ? 1 : 0.44,
+                                    }}
+                                    title={`${achievement.name} · ${achievement.description}`}
+                                  >
+                                    <span style={profileAchievementViewerSmallIconShellStyle}>
+                                      {achievement.iconUrl ? (
+                                        <img src={achievement.iconUrl} alt="" style={profileAchievementImageStyle} />
+                                      ) : (
+                                        <span style={profileAchievementFallbackIconStyle}>★</span>
+                                      )}
+                                    </span>
+
+                                    <span style={profileBadgesViewerSmallTextStyle}>
+                                      <strong style={profileBadgesViewerSmallTitleStyle}>{achievement.name}</strong>
+                                      <small style={profileBadgesViewerSmallMetaStyle}>
+                                        {achievement.isUnlocked
+                                          ? "Unlocked"
+                                          : `${formatAchievementCount(achievement.progressCount)} / ${formatAchievementCount(achievement.threshold)}`}
+                                      </small>
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>,
+                      document.body
+                    )
+                  : null}
+
                 {isClientMounted && profileBadgesViewerOpen
                   ? createPortal(
                       (
@@ -11046,7 +11446,88 @@ return (
                 </div>
               ) : null}
 
-              {!["Posts", "About", "Reels", "Photos"].includes(activeProfileTab) ? (
+              {!isProfileContentLocked && activeProfileTab === "Achievements" ? (
+                <div className="profile-content-card" style={mainCardStyle}>
+                  <div style={profileAchievementsPageHeaderStyle}>
+                    <div>
+                      <p style={profileTabSummaryEyebrowStyle}>Community Reach</p>
+                      <h3 style={profileAchievementsPageTitleStyle}>{profileAchievementPanelTitle}</h3>
+                      <p style={profileAchievementsPageCopyStyle}>
+                        Followers and accepted friends count together as unique people. Locked achievements become full color when collected.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openProfileAchievementsViewer(featuredProfileAchievement)}
+                      disabled={profileAchievementsLoading || profileAchievements.length === 0}
+                      style={{
+                        ...profileAchievementViewAllButtonStyle,
+                        opacity: profileAchievementsLoading || profileAchievements.length === 0 ? 0.62 : 1,
+                        cursor: profileAchievementsLoading || profileAchievements.length === 0 ? "default" : "pointer",
+                      }}
+                    >
+                      View collection
+                    </button>
+                  </div>
+
+                  {profileAchievementsLoading ? (
+                    <div style={profileBadgeEmptyStateStyle}>Loading achievements...</div>
+                  ) : profileAchievements.length === 0 ? (
+                    <div style={profileBadgeEmptyStateStyle}>Achievements will appear here once set up.</div>
+                  ) : (
+                    <div style={profileAchievementsFullGridStyle}>
+                      {profileAchievements.map((achievement) => {
+                        const progressPercent = getAchievementProgressPercent(achievement);
+
+                        return (
+                          <button
+                            key={`achievement-tab-${achievement.id}`}
+                            type="button"
+                            onClick={() => openProfileAchievementsViewer(achievement)}
+                            style={{
+                              ...profileAchievementFullCardStyle,
+                              opacity: achievement.isUnlocked ? 1 : 0.48,
+                            }}
+                            title={`${achievement.name} · ${achievement.description}`}
+                          >
+                            <span style={profileAchievementFullIconShellStyle}>
+                              {achievement.iconUrl ? (
+                                <img src={achievement.iconUrl} alt="" style={profileAchievementImageStyle} />
+                              ) : (
+                                <span style={profileAchievementFallbackIconStyle}>★</span>
+                              )}
+                            </span>
+
+                            <span style={profileAchievementFullTextStyle}>
+                              <strong>{achievement.name}</strong>
+                              <small>
+                                {achievement.isUnlocked
+                                  ? `Unlocked ${formatTimeAgo(achievement.unlockedAt)}`
+                                  : `${formatAchievementCount(achievement.progressCount)} / ${formatAchievementCount(achievement.threshold)}`}
+                              </small>
+                              <span style={profileAchievementProgressTrackStyle}>
+                                <span
+                                  style={{
+                                    ...profileAchievementProgressFillStyle,
+                                    width: `${achievement.isUnlocked ? 100 : progressPercent}%`,
+                                  }}
+                                />
+                              </span>
+                            </span>
+
+                            <span style={achievement.isUnlocked ? profileAchievementUnlockedPillStyle : profileAchievementLockedPillStyle}>
+                              {achievement.isUnlocked ? "Unlocked" : "Locked"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {!["Posts", "About", "Reels", "Photos", "Achievements"].includes(activeProfileTab) ? (
                 <div className="profile-content-card" style={mainCardStyle}>
                   <div className="profile-empty-state-card" style={profilePolishedEmptyStateStyle}>
                     <div style={profileEmptyStateIconStyle}>◇</div>
@@ -11382,6 +11863,62 @@ return (
                           );
                         }
 
+                        if (item.feedKind === "achievement") {
+                          const achievement = item.achievement;
+
+                          return (
+                            <article
+                              key={`achievement-activity-${item.id}`}
+                              className="profile-feed-card profile-achievement-feed-card"
+                              style={profileAchievementTimelineCardStyle}
+                            >
+                              <header style={postHeaderStyle}>
+                                <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
+                                  {profile?.avatar_url ? (
+                                    <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  ) : (
+                                    <span style={postAuthorFallbackStyle}>{profileDisplayInitial || "P"}</span>
+                                  )}
+                                </div>
+
+                                <div style={postAuthorTextStyle}>
+                                  <strong style={postAuthorNameStyle}>
+                                    {profileDisplayName || "Parapost Member"}
+                                  </strong>
+                                  <span style={postMetaStyle}>
+                                    @{profileDisplayUsername || "new-member"} unlocked an achievement · {formatTimeAgo(item.created_at)}
+                                  </span>
+                                </div>
+                              </header>
+
+                              <button
+                                type="button"
+                                onClick={() => achievement ? openProfileAchievementsViewer(achievement) : openProfileAchievementsViewer()}
+                                style={profileAchievementTimelineBodyStyle}
+                              >
+                                <span style={profileAchievementTimelineIconShellStyle}>
+                                  {achievement?.iconUrl ? (
+                                    <img src={achievement.iconUrl} alt="" style={profileAchievementImageStyle} />
+                                  ) : (
+                                    <span style={profileAchievementFallbackIconStyle}>★</span>
+                                  )}
+                                </span>
+
+                                <span style={profileAchievementTimelineTextStyle}>
+                                  <span style={profileBadgeFeaturedEyebrowStyle}>Community Reach Achievement</span>
+                                  <strong>{achievement?.name || "Achievement unlocked"}</strong>
+                                  <small>
+                                    {item.message ||
+                                      `Unlocked ${achievement?.name || "a new achievement"} on Parapost Network.`}
+                                  </small>
+                                </span>
+
+                                <span style={profileAchievementUnlockedPillStyle}>Unlocked</span>
+                              </button>
+                            </article>
+                          );
+                        }
+
                         if (item.feedKind === "shared_post") {
                           const originalPost = item.originalPost;
                           const originalCreator = item.originalCreator;
@@ -11614,37 +12151,89 @@ return (
 
             <div style={rightPanelCardStyle}>
               <div style={rightPanelHeaderStyle}>
-                <h3 style={rightPanelTitleStyle}>Achievements</h3>
-                <span style={miniPurpleLinkStyle}>Future</span>
+                <h3 style={rightPanelTitleStyle}>{profileAchievementPanelTitle}</h3>
+                <button
+                  type="button"
+                  onClick={() => openProfileAchievementsViewer(featuredProfileAchievement)}
+                  disabled={profileAchievementsLoading || profileAchievements.length === 0}
+                  style={{
+                    ...profileBadgeViewAllButtonStyle,
+                    opacity: profileAchievementsLoading || profileAchievements.length === 0 ? 0.62 : 1,
+                    cursor: profileAchievementsLoading || profileAchievements.length === 0 ? "default" : "pointer",
+                  }}
+                >
+                  {profileAchievementPanelCount}
+                </button>
               </div>
 
-              <div style={achievementGridStyle}>
-                {[
-                  { icon: "LV", label: "Levels" },
-                  { icon: "XP", label: "Progress" },
-                  { icon: "ST", label: "Streaks" },
-                  { icon: "CR", label: "Creator" },
-                ].map((item) => (
-                  <div key={item.label} style={achievementItemStyle}>
-                    <div
-                      style={{
-                        ...achievementIconStyle,
-                        color: "var(--parapost-accent-text)",
-                        fontSize: "11px",
-                        fontWeight: 950,
-                        letterSpacing: "0.08em",
-                      }}
-                    >
-                      {item.icon}
-                    </div>
-                    <span>{item.label}</span>
+              {profileAchievementsLoading ? (
+                <div style={profileBadgeEmptyStateStyle}>Loading achievements...</div>
+              ) : featuredProfileAchievement ? (
+                <div style={profileAchievementCleanStackStyle}>
+                  <button
+                    type="button"
+                    onClick={() => openProfileAchievementsViewer(featuredProfileAchievement)}
+                    style={{
+                      ...profileAchievementFeaturedCardStyle,
+                      opacity: featuredProfileAchievement.isUnlocked ? 1 : 0.56,
+                    }}
+                    title={`${featuredProfileAchievement.name} · ${featuredProfileAchievement.description}`}
+                  >
+                    <span style={profileAchievementFeaturedIconShellStyle}>
+                      {featuredProfileAchievement.iconUrl ? (
+                        <img src={featuredProfileAchievement.iconUrl} alt="" style={profileAchievementImageStyle} />
+                      ) : (
+                        <span style={profileAchievementFallbackIconStyle}>★</span>
+                      )}
+                    </span>
+
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={profileBadgeFeaturedEyebrowStyle}>
+                        {featuredProfileAchievement.isUnlocked ? "Featured achievement" : "Next achievement"}
+                      </span>
+                      <strong style={profileRealBadgeNameStyle}>{featuredProfileAchievement.name}</strong>
+                      <span style={profileRealBadgeDifficultyStyle}>
+                        {featuredProfileAchievement.isUnlocked
+                          ? `Unlocked ${formatTimeAgo(featuredProfileAchievement.unlockedAt)}`
+                          : `${formatAchievementCount(featuredProfileAchievement.progressCount)} / ${formatAchievementCount(featuredProfileAchievement.threshold)}`}
+                      </span>
+                    </span>
+                  </button>
+
+                  <div style={profileAchievementMiniStripStyle}>
+                    {profileAchievements.slice(0, 5).map((achievement) => (
+                      <button
+                        key={`achievement-mini-${achievement.id}`}
+                        type="button"
+                        onClick={() => openProfileAchievementsViewer(achievement)}
+                        title={`${achievement.name} · ${achievement.description}`}
+                        style={{
+                          ...profileAchievementMiniBubbleStyle,
+                          opacity: achievement.isUnlocked ? 1 : 0.36,
+                        }}
+                      >
+                        {achievement.iconUrl ? (
+                          <img src={achievement.iconUrl} alt="" style={profileAchievementMiniImageStyle} />
+                        ) : (
+                          <span style={profileAchievementFallbackIconStyle}>★</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <p style={{ ...rightPanelTextStyle, marginTop: "12px" }}>
-                Achievements will stay separate from badges and power future levels, streaks, and progression.
-              </p>
+                  <button
+                    type="button"
+                    onClick={() => openProfileAchievementsViewer(featuredProfileAchievement)}
+                    style={profileBadgeOpenViewerButtonStyle}
+                  >
+                    View achievement collection
+                  </button>
+                </div>
+              ) : (
+                <div style={profileBadgeEmptyStateStyle}>
+                  Achievements will appear here once the collection is ready.
+                </div>
+              )}
             </div>
 
             <div style={rightPanelCardStyle}>
@@ -16051,6 +16640,13 @@ const profileBadgesViewerSmallIconShellStyle: CSSProperties = {
   background: "rgba(255,255,255,0.045)",
 };
 
+const profileBadgesViewerSmallTextStyle: CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "3px",
+  alignContent: "center",
+};
+
 const profileBadgesViewerSmallTitleStyle: CSSProperties = {
   display: "block",
   color: "#ffffff",
@@ -16608,5 +17204,273 @@ const profileActionLogoutIconStyle: CSSProperties = {
   color: "#fecaca",
   fontSize: "18px",
   fontWeight: 950,
+};
+
+
+const profileAchievementsPageHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "16px",
+  flexWrap: "wrap",
+  marginBottom: "16px",
+};
+
+const profileAchievementsPageTitleStyle: CSSProperties = {
+  margin: "4px 0 6px",
+  color: "#ffffff",
+  fontSize: "24px",
+  fontWeight: 950,
+  letterSpacing: "-0.05em",
+};
+
+const profileAchievementsPageCopyStyle: CSSProperties = {
+  margin: 0,
+  color: "#9ca3af",
+  fontSize: "13px",
+  lineHeight: 1.55,
+  maxWidth: "620px",
+};
+
+const profileAchievementViewAllButtonStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "var(--parapost-accent-active-bg)",
+  color: "#ffffff",
+  borderRadius: "999px",
+  padding: "10px 13px",
+  fontWeight: 900,
+  cursor: "pointer",
+  fontSize: "12px",
+  boxShadow: "0 0 18px var(--parapost-accent-soft)",
+};
+
+const profileAchievementsFullGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+  gap: "12px",
+};
+
+const profileAchievementFullCardStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "linear-gradient(145deg, rgba(168,85,247,0.10), rgba(255,255,255,0.035))",
+  borderRadius: "20px",
+  padding: "12px",
+  color: "#ffffff",
+  textAlign: "left",
+  cursor: "pointer",
+  display: "grid",
+  gridTemplateColumns: "68px minmax(0, 1fr)",
+  gap: "12px",
+  position: "relative",
+  overflow: "hidden",
+  transition: "transform 160ms ease, border-color 160ms ease, opacity 160ms ease",
+};
+
+const profileAchievementFullIconShellStyle: CSSProperties = {
+  width: "68px",
+  height: "68px",
+  borderRadius: "18px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  overflow: "hidden",
+};
+
+const profileAchievementFullTextStyle: CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "5px",
+  alignContent: "center",
+};
+
+const profileAchievementImageStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  display: "block",
+};
+
+const profileAchievementFallbackIconStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  display: "grid",
+  placeItems: "center",
+  color: "#facc15",
+  fontWeight: 950,
+  fontSize: "22px",
+};
+
+const profileAchievementProgressTrackStyle: CSSProperties = {
+  width: "100%",
+  height: "7px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.09)",
+  overflow: "hidden",
+  display: "block",
+};
+
+const profileAchievementProgressFillStyle: CSSProperties = {
+  display: "block",
+  height: "100%",
+  borderRadius: "999px",
+  background: "linear-gradient(90deg, var(--parapost-accent-1), var(--parapost-accent-2), #facc15)",
+  boxShadow: "0 0 16px var(--parapost-accent-soft)",
+};
+
+const profileAchievementUnlockedPillStyle: CSSProperties = {
+  position: "absolute",
+  top: "10px",
+  right: "10px",
+  borderRadius: "999px",
+  padding: "5px 8px",
+  color: "#dcfce7",
+  background: "rgba(34,197,94,0.13)",
+  border: "1px solid rgba(34,197,94,0.28)",
+  fontSize: "10px",
+  fontWeight: 950,
+};
+
+const profileAchievementLockedPillStyle: CSSProperties = {
+  ...profileAchievementUnlockedPillStyle,
+  color: "#d1d5db",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid rgba(255,255,255,0.12)",
+};
+
+const profileAchievementCleanStackStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+};
+
+const profileAchievementFeaturedCardStyle: CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(168,85,247,0.34)",
+  background: "linear-gradient(145deg, rgba(168,85,247,0.16), rgba(255,255,255,0.04))",
+  color: "#ffffff",
+  borderRadius: "18px",
+  padding: "12px",
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  cursor: "pointer",
+  textAlign: "left",
+  boxShadow: "0 16px 34px rgba(0,0,0,0.22)",
+};
+
+const profileAchievementFeaturedIconShellStyle: CSSProperties = {
+  width: "76px",
+  height: "76px",
+  borderRadius: "18px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  overflow: "hidden",
+  flexShrink: 0,
+};
+
+const profileAchievementMiniStripStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  alignItems: "center",
+  flexWrap: "wrap",
+};
+
+const profileAchievementMiniBubbleStyle: CSSProperties = {
+  width: "44px",
+  height: "44px",
+  borderRadius: "14px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid rgba(255,255,255,0.11)",
+  cursor: "pointer",
+  padding: "4px",
+  overflow: "hidden",
+};
+
+const profileAchievementMiniImageStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  display: "block",
+};
+
+const profileAchievementTimelineCardStyle: CSSProperties = {
+  ...profileNormalPostCardStyle,
+  borderColor: "rgba(250,204,21,0.26)",
+  background:
+    "radial-gradient(circle at 12% 0%, rgba(250,204,21,0.12), transparent 35%), linear-gradient(145deg, rgba(17,24,39,0.94), rgba(88,28,135,0.18))",
+};
+
+const profileAchievementTimelineBodyStyle: CSSProperties = {
+  width: "100%",
+  marginTop: "14px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  borderRadius: "20px",
+  padding: "14px",
+  color: "#ffffff",
+  display: "grid",
+  gridTemplateColumns: "88px minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: "14px",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const profileAchievementTimelineIconShellStyle: CSSProperties = {
+  width: "88px",
+  height: "88px",
+  borderRadius: "20px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(0,0,0,0.18)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  overflow: "hidden",
+};
+
+const profileAchievementTimelineTextStyle: CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "5px",
+};
+
+const profileAchievementsViewerHeroIconStyle: CSSProperties = {
+  ...profileBadgesViewerHeroIconStyle,
+  width: "130px",
+  height: "130px",
+  borderRadius: "28px",
+  padding: "10px",
+  background: "rgba(255,255,255,0.055)",
+};
+
+const profileAchievementViewerProgressWrapStyle: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  marginTop: "12px",
+};
+
+const profileAchievementsViewerGridStyle: CSSProperties = {
+  ...profileBadgesViewerGridStyle,
+  gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+};
+
+const profileAchievementViewerButtonStyle: CSSProperties = {
+  ...profileBadgesViewerBadgeButtonStyle,
+  gridTemplateColumns: "56px minmax(0, 1fr)",
+};
+
+const profileAchievementViewerSmallIconShellStyle: CSSProperties = {
+  width: "56px",
+  height: "56px",
+  borderRadius: "16px",
+  display: "grid",
+  placeItems: "center",
+  overflow: "hidden",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  flexShrink: 0,
 };
 

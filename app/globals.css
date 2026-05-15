@@ -3,6 +3,7 @@
 :root {
   --background: #07090d;
   --foreground: #ededed;
+  --parapost-user-font: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 
   --parapost-accent-1: #8b5cf6;
   --parapost-accent-2: #a855f7;
@@ -16,7 +17,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--parapost-user-font, var(--font-geist-sans));
   --font-mono: var(--font-geist-mono);
 }
 
@@ -51,7 +52,7 @@ body {
   margin: 0;
   background: #07090d;
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--parapost-user-font, var(--font-geist-sans), Arial, Helvetica, sans-serif);
   overflow-x: hidden;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -84,6 +85,7 @@ input,
 textarea,
 select {
   font: inherit;
+  font-family: inherit;
 }
 
 /* Keep links clean by default */
@@ -281,21 +283,44 @@ html[data-parapost-accent="ghost-white"] {
 }
 
 /* Account-backed font choices */
-html.parapost-font-default body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+html.parapost-font-default {
+  --parapost-user-font: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-clean-modern {
+  --parapost-user-font: Inter, Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-rounded {
+  --parapost-user-font: "Nunito", "Avenir Next", "Segoe UI Rounded", Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-bold-creator {
+  --parapost-user-font: "Arial Black", var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-classic-serif {
+  --parapost-user-font: Georgia, "Times New Roman", serif;
+}
+
+html.parapost-font-minimal {
+  --parapost-user-font: "Helvetica Neue", Arial, Helvetica, sans-serif;
+}
+
+html.parapost-font-default body,
+html.parapost-font-clean-modern body,
+html.parapost-font-rounded body,
+html.parapost-font-bold-creator body,
+html.parapost-font-classic-serif body,
+html.parapost-font-minimal body {
+  font-family: var(--parapost-user-font, var(--font-geist-sans), Arial, Helvetica, sans-serif);
 }
 
 html.parapost-font-clean-modern body {
-  font-family: var(--font-geist-sans), Inter, Arial, Helvetica, sans-serif;
   letter-spacing: -0.01em;
 }
 
-html.parapost-font-rounded body {
-  font-family: var(--font-geist-sans), "Nunito", "Avenir Next", Arial, Helvetica, sans-serif;
-}
-
 html.parapost-font-bold-creator body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   letter-spacing: -0.018em;
 }
 
@@ -305,12 +330,7 @@ html.parapost-font-bold-creator h3 {
   letter-spacing: -0.055em;
 }
 
-html.parapost-font-classic-serif body {
-  font-family: Georgia, "Times New Roman", serif;
-}
-
 html.parapost-font-minimal body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   letter-spacing: 0.01em;
 }
 /* === PARAPOST SAFE THEME EXPANSION === */

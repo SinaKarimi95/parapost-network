@@ -2367,8 +2367,8 @@ export default function DashboardPage() {
             <nav style={sidebarNavStyle}>
               <SidebarButton label="Investigations" badge="Soon" muted />
               <SidebarButton label="Evidence Vault" badge="Soon" muted />
-              <SidebarButton label="Case Files" badge="Soon" muted />
-              <SidebarButton label="Field Reports" badge="Soon" muted />
+              <SidebarButton label="Podcasts" badge="Soon" muted />
+              <SidebarButton label="Events" badge="Soon" muted />
             </nav>
 
             <div style={goLiveCardStyle} aria-disabled="true" title="Live streaming is coming soon.">
@@ -2993,6 +2993,50 @@ export default function DashboardPage() {
           }
         }
 
+
+
+
+        /* Desktop rails correction: keep side columns in the normal grid, sticky only.
+           This removes the failed fixed-rail behavior and keeps the browser scrollbar as the only page scroll. */
+        @media (min-width: 1181px) {
+          .dashboard-grid-desktop-safe {
+            display: grid !important;
+            grid-template-columns: 300px minmax(0, 1fr) 360px !important;
+            gap: 28px !important;
+            align-items: start !important;
+          }
+
+          .dashboard-desktop-left {
+            position: sticky !important;
+            top: 18px !important;
+            left: auto !important;
+            right: auto !important;
+            width: auto !important;
+            min-height: calc(100vh - 36px) !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            overflow-y: visible !important;
+            overscroll-behavior: auto !important;
+          }
+
+          .dashboard-right-rail {
+            position: sticky !important;
+            top: 18px !important;
+            left: auto !important;
+            right: auto !important;
+            width: auto !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            overflow-y: visible !important;
+            overscroll-behavior: auto !important;
+          }
+
+          .dashboard-main-column {
+            grid-column: auto !important;
+          }
+        }
 
 
         /* === Phase 10 dashboard mobile/tablet template alignment === */
@@ -5888,6 +5932,7 @@ const leftSidebarStyle: CSSProperties = {
   position: "sticky",
   top: "18px",
   alignSelf: "start",
+  minHeight: "calc(100vh - 36px)",
   height: "auto",
   maxHeight: "none",
   overflow: "visible",

@@ -28,6 +28,15 @@ type UserPreferenceRow = {
 const DEFAULT_ACCENT: AccentKey = "parapost-purple";
 const DEFAULT_FONT: FontKey = "parapost-default";
 
+const FONT_FAMILY_MAP: Record<FontKey, string> = {
+  "parapost-default": "var(--font-geist-sans), Arial, Helvetica, sans-serif",
+  "clean-modern": "Inter, Arial, Helvetica, sans-serif",
+  rounded: '"Nunito", "Avenir Next", "Segoe UI Rounded", Arial, Helvetica, sans-serif',
+  "bold-creator": '"Arial Black", var(--font-geist-sans), Arial, Helvetica, sans-serif',
+  "classic-serif": 'Georgia, "Times New Roman", serif',
+  minimal: '"Helvetica Neue", Arial, Helvetica, sans-serif',
+};
+
 const VALID_ACCENTS: AccentKey[] = [
   "parapost-purple",
   "mystic-blue",
@@ -60,6 +69,7 @@ function applyPreferenceAttributes(accent: AccentKey, font: FontKey) {
   const root = document.documentElement;
   root.dataset.parapostAccent = accent;
   root.dataset.parapostFont = font;
+  root.style.setProperty("--parapost-user-font", FONT_FAMILY_MAP[font] || FONT_FAMILY_MAP[DEFAULT_FONT]);
 
   root.classList.remove(
     "parapost-font-default",

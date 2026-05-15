@@ -42,6 +42,15 @@ type FontOption = {
 const DEFAULT_ACCENT = "parapost-purple";
 const DEFAULT_FONT = "parapost-default";
 
+const FONT_FAMILY_MAP: Record<string, string> = {
+  "parapost-default": "var(--font-geist-sans), Arial, Helvetica, sans-serif",
+  "clean-modern": "Inter, Arial, Helvetica, sans-serif",
+  rounded: '"Nunito", "Avenir Next", "Segoe UI Rounded", Arial, Helvetica, sans-serif',
+  "bold-creator": '"Arial Black", var(--font-geist-sans), Arial, Helvetica, sans-serif',
+  "classic-serif": 'Georgia, "Times New Roman", serif',
+  minimal: '"Helvetica Neue", Arial, Helvetica, sans-serif',
+};
+
 const accentOptions: AccentOption[] = [
   {
     id: "parapost-purple",
@@ -155,6 +164,10 @@ function findFont(id: string) {
   return fontOptions.find((option) => option.id === id) || fontOptions[0];
 }
 
+function getFontFamily(id: string) {
+  return FONT_FAMILY_MAP[id] || FONT_FAMILY_MAP[DEFAULT_FONT];
+}
+
 function isKnownAccent(value?: string | null) {
   return Boolean(value && accentOptions.some((option) => option.id === value));
 }
@@ -169,6 +182,10 @@ function applyPersonalizationToDocument(accent: string, font: string) {
   const root = document.documentElement;
   root.dataset.parapostAccent = accent;
   root.dataset.parapostFont = font;
+  root.style.setProperty(
+    "--parapost-user-font",
+    FONT_FAMILY_MAP[font] || FONT_FAMILY_MAP[DEFAULT_FONT]
+  );
 
   root.classList.remove(
     "parapost-font-default",
@@ -476,7 +493,10 @@ export default function PersonalizationSettingsPage() {
               </div>
 
               <div className="min-w-0">
-                <div className={`truncate text-lg font-black ${selectedFont.sampleClass}`}>
+                <div
+                  className={`truncate text-lg font-black ${selectedFont.sampleClass}`}
+                  style={{ fontFamily: getFontFamily(fontId) }}
+                >
                   {pageLoading ? "Loading..." : getDisplayName(currentProfile)}
                 </div>
                 <div className="truncate text-sm text-slate-400">{userEmail || "Signed out"}</div>
@@ -487,7 +507,10 @@ export default function PersonalizationSettingsPage() {
               <div className="text-xs font-black uppercase tracking-[0.14em] text-purple-200">
                 Saved Account Style
               </div>
-              <div className={`mt-2 text-2xl font-black ${savedFont.sampleClass}`}>
+              <div
+                className={`mt-2 text-2xl font-black ${savedFont.sampleClass}`}
+                style={{ fontFamily: getFontFamily(savedFontId) }}
+              >
                 {savedAccent.name}
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
@@ -603,7 +626,12 @@ export default function PersonalizationSettingsPage() {
                           : "border-purple-200/15 bg-black/25 hover:bg-white/[0.055]"
                       }`}
                     >
-                      <div className={`text-2xl text-white ${option.sampleClass}`}>{option.name}</div>
+                      <div
+                        className={`text-2xl text-white ${option.sampleClass}`}
+                        style={{ fontFamily: getFontFamily(option.id) }}
+                      >
+                        {option.name}
+                      </div>
                       <p className="mt-2 text-sm leading-6 text-slate-400">{option.description}</p>
                     </button>
                   );
@@ -654,7 +682,10 @@ export default function PersonalizationSettingsPage() {
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 Live Preview
               </p>
-              <h2 className={`text-2xl font-black tracking-[-0.03em] ${selectedFont.sampleClass}`}>
+              <h2
+                className={`text-2xl font-black tracking-[-0.03em] ${selectedFont.sampleClass}`}
+                style={{ fontFamily: getFontFamily(fontId) }}
+              >
                 Your Parapost style
               </h2>
 
@@ -662,7 +693,10 @@ export default function PersonalizationSettingsPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <div className={`h-14 w-14 rounded-full bg-gradient-to-br ${selectedAccent.gradient}`} />
                   <div>
-                    <div className={`text-lg font-black ${selectedFont.sampleClass}`}>
+                    <div
+                      className={`text-lg font-black ${selectedFont.sampleClass}`}
+                      style={{ fontFamily: getFontFamily(fontId) }}
+                    >
                       {getDisplayName(currentProfile)}
                     </div>
                     <div className="text-sm text-slate-400">@{currentProfile?.username || "username"}</div>

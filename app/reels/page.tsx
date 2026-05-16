@@ -2,7 +2,9 @@
 
 import {
   CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
+  SyntheticEvent as ReactSyntheticEvent,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -94,7 +96,23 @@ type ProfileRow = {
   avatar_url?: string | null;
 };
 
+type FriendRequestRelationDbRow = {
+  sender_id: string | null;
+  receiver_id: string | null;
+  status?: string | null;
+};
+
+type FollowerRelationDbRow = {
+  follower_id: string | null;
+  following_id: string | null;
+};
+
+type ReelRelationship = "you" | "friends" | "following" | "follower" | "profile";
+type PlayPauseFeedback = { reelId: string; mode: "play" | "pause"; nonce: number } | null;
+
 const initialComments: ReelComment[] = [];
+const REEL_CAPTION_MAX_LENGTH = 4000;
+
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
@@ -318,6 +336,54 @@ function formatRelativeTime(value?: string | null) {
   return `${years}y ago`;
 }
 
+function getRelationshipLabel(relationship: ReelRelationship) {
+  if (relationship === "you") return "You";
+  if (relationship === "friends") return "Friends";
+  if (relationship === "following") return "Following";
+  if (relationship === "follower") return "Follower";
+  return "Profile";
+}
+
+function getRelationshipBadgeStyle(relationship: ReelRelationship): CSSProperties {
+  if (relationship === "friends") {
+    return {
+      background: "rgba(168,85,247,0.26)",
+      borderColor: "rgba(216,180,254,0.36)",
+      color: "#f3e8ff",
+    };
+  }
+
+  if (relationship === "following") {
+    return {
+      background: "rgba(59,130,246,0.20)",
+      borderColor: "rgba(147,197,253,0.30)",
+      color: "#dbeafe",
+    };
+  }
+
+  if (relationship === "follower") {
+    return {
+      background: "rgba(34,197,94,0.18)",
+      borderColor: "rgba(134,239,172,0.28)",
+      color: "#dcfce7",
+    };
+  }
+
+  if (relationship === "you") {
+    return {
+      background: "rgba(255,255,255,0.16)",
+      borderColor: "rgba(255,255,255,0.24)",
+      color: "#ffffff",
+    };
+  }
+
+  return {
+    background: "rgba(255,255,255,0.10)",
+    borderColor: "rgba(255,255,255,0.18)",
+    color: "#f9fafb",
+  };
+}
+
 function getTargetReelIdFromUrl() {
   if (typeof window === "undefined") return "";
 
@@ -379,9 +445,10 @@ export default function ReelsPage() {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [muteAll, setMuteAll] = useState(true);
-  const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
+  const [detailsReelId, setDetailsReelId] = useState("");
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
-  const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
+  const [relationshipMap, setRelationshipMap] = useState<Record<string, ReelRelationship>>({});
+  const [videoFitMap, setVideoFitMap] = useState<Record<string, "cover" | "contain">>({});
   const [reelMenu, setReelMenu] = useState<MenuState>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editingReelId, setEditingReelId] = useState<string | null>(null);
@@ -390,16 +457,115 @@ export default function ReelsPage() {
   const [viewportWidth, setViewportWidth] = useState(1440);
   const [holdPausedId, setHoldPausedId] = useState<string | null>(null);
   const [heartBurstId, setHeartBurstId] = useState<string | null>(null);
+  const [playPauseFeedback, setPlayPauseFeedback] = useState<PlayPauseFeedback>(null);
   const [isFetchingReels, setIsFetchingReels] = useState(true);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const heartTimeoutRef = useRef<number | null>(null);
+  const playPauseFeedbackTimeoutRef = useRef<number | null>(null);
   const didPositionTargetReelRef = useRef(false);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const commentTouchTimeRef = useRef<Record<string, number>>({});
   const commentLongPressTimeoutRef = useRef<number | null>(null);
   const commentLikeBurstTimeoutRef = useRef<number | null>(null);
+
+  const detailsReel = useMemo(() => {
+    return reels.find((reel) => reel.id === detailsReelId) || null;
+  }, [reels, detailsReelId]);
+
+  const detailsOpen = Boolean(detailsReelId && detailsReel);
+
+  const loadRelationshipMap = async (viewerId: string, creatorIds: string[]) => {
+    const uniqueCreatorIds = Array.from(new Set(creatorIds.filter(Boolean)));
+
+    if (!viewerId || uniqueCreatorIds.length === 0) {
+      setRelationshipMap({});
+      return;
+    }
+
+    const nextRelationshipMap: Record<string, ReelRelationship> = {};
+    uniqueCreatorIds.forEach((creatorId) => {
+      nextRelationshipMap[creatorId] = creatorId === viewerId ? "you" : "profile";
+    });
+
+    const otherCreatorIds = uniqueCreatorIds.filter((creatorId) => creatorId !== viewerId);
+
+    if (otherCreatorIds.length === 0) {
+      setRelationshipMap(nextRelationshipMap);
+      return;
+    }
+
+    const [
+      { data: friendRows, error: friendError },
+      { data: followingRows, error: followingError },
+      { data: followerRows, error: followerError },
+    ] = await Promise.all([
+      supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id, status")
+        .eq("status", "accepted")
+        .or(`sender_id.eq.${viewerId},receiver_id.eq.${viewerId}`),
+      supabase
+        .from("followers")
+        .select("follower_id, following_id")
+        .eq("follower_id", viewerId)
+        .in("following_id", otherCreatorIds),
+      supabase
+        .from("followers")
+        .select("follower_id, following_id")
+        .eq("following_id", viewerId)
+        .in("follower_id", otherCreatorIds),
+    ]);
+
+    if (friendError) {
+      console.warn("Reel relationship friend check skipped:", friendError.message);
+    }
+
+    if (followingError) {
+      console.warn("Reel relationship following check skipped:", followingError.message);
+    }
+
+    if (followerError) {
+      console.warn("Reel relationship follower check skipped:", followerError.message);
+    }
+
+    const friendIdSet = new Set<string>();
+    ((friendRows || []) as FriendRequestRelationDbRow[]).forEach((row) => {
+      const friendId = row.sender_id === viewerId ? row.receiver_id : row.sender_id;
+      if (friendId && otherCreatorIds.includes(friendId)) {
+        friendIdSet.add(friendId);
+      }
+    });
+
+    const followingIdSet = new Set<string>();
+    ((followingRows || []) as FollowerRelationDbRow[]).forEach((row) => {
+      if (row.following_id) {
+        followingIdSet.add(row.following_id);
+      }
+    });
+
+    const followerIdSet = new Set<string>();
+    ((followerRows || []) as FollowerRelationDbRow[]).forEach((row) => {
+      if (row.follower_id) {
+        followerIdSet.add(row.follower_id);
+      }
+    });
+
+    otherCreatorIds.forEach((creatorId) => {
+      if (friendIdSet.has(creatorId)) {
+        nextRelationshipMap[creatorId] = "friends";
+      } else if (followingIdSet.has(creatorId)) {
+        nextRelationshipMap[creatorId] = "following";
+      } else if (followerIdSet.has(creatorId)) {
+        nextRelationshipMap[creatorId] = "follower";
+      } else {
+        nextRelationshipMap[creatorId] = "profile";
+      }
+    });
+
+    setRelationshipMap(nextRelationshipMap);
+  };
 
   const fetchReels = async (preferredReelId = "") => {
     setIsFetchingReels(true);
@@ -421,6 +587,8 @@ export default function ReelsPage() {
       setReels([]);
       setComments([]);
       setLikedMap({});
+      setRelationshipMap({});
+      setVideoFitMap({});
       setIsFetchingReels(false);
       return;
     }
@@ -446,6 +614,11 @@ export default function ReelsPage() {
     }
 
     let mapped = buildReelItems(rows, profiles);
+
+    await loadRelationshipMap(
+      nextUserId,
+      mapped.map((reel) => reel.creator_profile_id)
+    );
 
     const reelIds = mapped.map((reel) => reel.id);
 
@@ -646,7 +819,7 @@ export default function ReelsPage() {
 
       video.muted = muteAll;
 
-      if (reel.id === activeReelId && holdPausedId !== reel.id && !commentsOpen) {
+      if (reel.id === activeReelId && holdPausedId !== reel.id && !commentsOpen && !detailsOpen) {
         const playPromise = video.play();
         if (playPromise && typeof playPromise.catch === "function") {
           playPromise.catch(() => {});
@@ -655,12 +828,16 @@ export default function ReelsPage() {
         video.pause();
       }
     });
-  }, [activeReelId, reels, muteAll, holdPausedId, commentsOpen]);
+  }, [activeReelId, reels, muteAll, holdPausedId, commentsOpen, detailsOpen]);
 
   useEffect(() => {
     return () => {
       if (heartTimeoutRef.current) {
         window.clearTimeout(heartTimeoutRef.current);
+      }
+
+      if (playPauseFeedbackTimeoutRef.current) {
+        window.clearTimeout(playPauseFeedbackTimeoutRef.current);
       }
 
       if (commentLongPressTimeoutRef.current) {
@@ -690,6 +867,7 @@ export default function ReelsPage() {
         topOffset: 0,
         titleSize: 20,
         captionSize: 14,
+        captionLines: 2,
         topHeaderPad: 16,
       };
     }
@@ -708,6 +886,7 @@ export default function ReelsPage() {
         topOffset: 8,
         titleSize: 24,
         captionSize: 15,
+        captionLines: 3,
         topHeaderPad: 16,
       };
     }
@@ -725,6 +904,7 @@ export default function ReelsPage() {
       topOffset: 8,
       titleSize: 22,
       captionSize: 14,
+      captionLines: 3,
       topHeaderPad: 12,
     };
   }, [viewportType]);
@@ -732,6 +912,7 @@ export default function ReelsPage() {
   const activeReel = useMemo(() => {
     return reels.find((reel) => reel.id === activeReelId) || reels[0];
   }, [reels, activeReelId]);
+
 
   const activeComments = useMemo(() => {
     return comments.filter(
@@ -763,7 +944,7 @@ export default function ReelsPage() {
   };
 
   const scrollToAdjacentReel = (direction: "prev" | "next") => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const currentIndex = reels.findIndex((reel) => reel.id === activeReelId);
     if (currentIndex === -1) return;
@@ -775,7 +956,7 @@ export default function ReelsPage() {
   };
 
   const updateActiveFromScroll = () => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -803,19 +984,42 @@ export default function ReelsPage() {
     }
   };
 
+  const showPlayPauseFeedback = (reelId: string, mode: "play" | "pause") => {
+    if (playPauseFeedbackTimeoutRef.current) {
+      window.clearTimeout(playPauseFeedbackTimeoutRef.current);
+    }
+
+    setPlayPauseFeedback({ reelId, mode, nonce: Date.now() });
+
+    playPauseFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setPlayPauseFeedback(null);
+    }, 420);
+  };
+
   const handleTogglePlayPause = (reelId: string) => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const video = videoRefs.current[reelId];
     if (!video) return;
 
-    if (video.paused) {
+    const shouldPlay = video.paused || video.ended;
+
+    if (shouldPlay) {
+      showPlayPauseFeedback(reelId, "play");
       setHoldPausedId(null);
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(() => {});
-      }
+
+      window.requestAnimationFrame(() => {
+        const currentVideo = videoRefs.current[reelId];
+        if (!currentVideo) return;
+
+        const playPromise = currentVideo.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      });
     } else {
+      showPlayPauseFeedback(reelId, "pause");
+      setHoldPausedId(reelId);
       video.pause();
     }
   };
@@ -904,15 +1108,6 @@ export default function ReelsPage() {
     }));
   };
 
-  const handleFollowToggle = (creatorProfileId: string) => {
-    if (!creatorProfileId || creatorProfileId === currentUserId) return;
-
-    setFollowingMap((prev) => ({
-      ...prev,
-      [creatorProfileId]: !prev[creatorProfileId],
-    }));
-  };
-
   const handleShareLink = async (reelId: string) => {
     const reelUrl = `${window.location.origin}/reels#${reelId}`;
 
@@ -979,7 +1174,7 @@ export default function ReelsPage() {
   };
 
   const handleCommentInputKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -1132,7 +1327,7 @@ export default function ReelsPage() {
   };
 
   const handleOpenCommentMenu = (
-    event: React.MouseEvent<HTMLElement>,
+    event: ReactMouseEvent<HTMLElement>,
     commentId: string,
     isReply = false
   ) => {
@@ -1324,6 +1519,11 @@ export default function ReelsPage() {
       delete next[reelId];
       return next;
     });
+    setVideoFitMap((prev) => {
+      const next = { ...prev };
+      delete next[reelId];
+      return next;
+    });
 
     if (activeReelId === reelId) {
       setActiveReelId(nextReels[0]?.id || "");
@@ -1332,7 +1532,41 @@ export default function ReelsPage() {
     setReelMenu(null);
   };
 
-  const isCaptionExpanded = (reelId: string) => !!expandedCaptions[reelId];
+  const handleVideoLoadedMetadata = (
+    reelId: string,
+    event: ReactSyntheticEvent<HTMLVideoElement>
+  ) => {
+    const video = event.currentTarget;
+    const nextFit = video.videoWidth > video.videoHeight ? "contain" : "cover";
+
+    setVideoFitMap((prev) => {
+      if (prev[reelId] === nextFit) return prev;
+      return {
+        ...prev,
+        [reelId]: nextFit,
+      };
+    });
+  };
+
+  const openDetailsForReel = (reelId: string) => {
+    setActiveReelId(reelId);
+    setDetailsReelId(reelId);
+    videoRefs.current[reelId]?.pause();
+  };
+
+  const closeDetails = () => {
+    const resumeReelId = detailsReelId;
+    setDetailsReelId("");
+
+    window.setTimeout(() => {
+      if (!commentsOpen && resumeReelId === activeReelId) {
+        const playPromise = videoRefs.current[resumeReelId]?.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      }
+    }, 80);
+  };
 
   return (
     <div style={pageStyle}>
@@ -1396,13 +1630,13 @@ export default function ReelsPage() {
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(255,255,255,0.08)",
               color: "white",
-              cursor: commentsOpen ? "not-allowed" : "pointer",
+              cursor: commentsOpen || detailsOpen ? "not-allowed" : "pointer",
               fontSize: "22px",
               backdropFilter: "blur(12px)",
-              opacity: commentsOpen ? 0.45 : 1,
+              opacity: commentsOpen || detailsOpen ? 0.45 : 1,
             }}
             aria-label="Previous reel"
-            disabled={commentsOpen}
+            disabled={commentsOpen || detailsOpen}
           >
             ↑
           </button>
@@ -1416,13 +1650,13 @@ export default function ReelsPage() {
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(255,255,255,0.08)",
               color: "white",
-              cursor: commentsOpen ? "not-allowed" : "pointer",
+              cursor: commentsOpen || detailsOpen ? "not-allowed" : "pointer",
               fontSize: "22px",
               backdropFilter: "blur(12px)",
-              opacity: commentsOpen ? 0.45 : 1,
+              opacity: commentsOpen || detailsOpen ? 0.45 : 1,
             }}
             aria-label="Next reel"
-            disabled={commentsOpen}
+            disabled={commentsOpen || detailsOpen}
           >
             ↓
           </button>
@@ -1498,7 +1732,7 @@ export default function ReelsPage() {
             const isLiked = !!likedMap[reel.id];
             const isFavorited = !!favoritedMap[reel.id];
             const isOwner = !!currentUserId && reel.user_id === currentUserId;
-            const isFollowingCreator = !!followingMap[reel.creator_profile_id];
+            const relationship = relationshipMap[reel.creator_profile_id] || (isOwner ? "you" : "profile");
             const displayedLikes = reel.likes;
             const displayedFavorites = reel.favorites + (isFavorited ? 1 : 0);
             const displayedComments = comments.filter(
@@ -1506,13 +1740,13 @@ export default function ReelsPage() {
             ).length;
             const displayedShares = reel.shares;
             const progress = progressMap[reel.id] || 0;
-            const expanded = isCaptionExpanded(reel.id);
-            const shortCaption =
-              reel.caption.length > 100 && !expanded
-                ? `${reel.caption.slice(0, 100)}...`
-                : reel.caption;
+            const shouldShowSeeMore =
+              reel.caption.length > (viewportType === "desktop" ? 160 : 110) ||
+              reel.caption.includes("\n");
 
             const isActiveCommentsReel = commentsOpen && activeReelId === reel.id;
+            const isActiveDetailsReel = detailsReelId === reel.id;
+            const isOverlayedReel = isActiveCommentsReel || isActiveDetailsReel;
 
             return (
               <section
@@ -1528,7 +1762,7 @@ export default function ReelsPage() {
                   width={stageMetrics.stageWidth}
                   height={stageMetrics.stageHeight}
                   borderRadius={stageMetrics.borderRadius}
-                  isDimmed={isActiveCommentsReel}
+                  isDimmed={isOverlayedReel}
                   isMobile={viewportType === "mobile"}
                 >
                   <div
@@ -1555,57 +1789,10 @@ export default function ReelsPage() {
                   <div
                     onDoubleClick={() => handleDoubleTapLike(reel.id)}
                     onClick={() => handleTogglePlayPause(reel.id)}
-                    onMouseDown={() => {
-                      if (viewportType === "desktop" && !commentsOpen) {
-                        setHoldPausedId(reel.id);
-                        videoRefs.current[reel.id]?.pause();
-                      }
-                    }}
-                    onMouseUp={() => {
-                      if (
-                        viewportType === "desktop" &&
-                        holdPausedId === reel.id &&
-                        !commentsOpen
-                      ) {
-                        setHoldPausedId(null);
-                        const playPromise = videoRefs.current[reel.id]?.play();
-                        if (playPromise && typeof playPromise.catch === "function") {
-                          playPromise.catch(() => {});
-                        }
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      if (
-                        viewportType === "desktop" &&
-                        holdPausedId === reel.id &&
-                        !commentsOpen
-                      ) {
-                        setHoldPausedId(null);
-                        const playPromise = videoRefs.current[reel.id]?.play();
-                        if (playPromise && typeof playPromise.catch === "function") {
-                          playPromise.catch(() => {});
-                        }
-                      }
-                    }}
-                    onTouchStart={() => {
-                      if (!commentsOpen) {
-                        setHoldPausedId(reel.id);
-                        videoRefs.current[reel.id]?.pause();
-                      }
-                    }}
-                    onTouchEnd={() => {
-                      if (holdPausedId === reel.id && !commentsOpen) {
-                        setHoldPausedId(null);
-                        const playPromise = videoRefs.current[reel.id]?.play();
-                        if (playPromise && typeof playPromise.catch === "function") {
-                          playPromise.catch(() => {});
-                        }
-                      }
-                    }}
                     style={{
                       position: "absolute",
                       inset: 0,
-                      cursor: commentsOpen ? "default" : "pointer",
+                      cursor: commentsOpen || detailsOpen ? "default" : "pointer",
                     }}
                   >
                     <video
@@ -1616,7 +1803,9 @@ export default function ReelsPage() {
                       poster={reel.poster || undefined}
                       muted
                       playsInline
+                      loop
                       preload="metadata"
+                      onLoadedMetadata={(event) => handleVideoLoadedMetadata(reel.id, event)}
                       onTimeUpdate={(event) => {
                         const video = event.currentTarget;
                         const percent = video.duration
@@ -1628,13 +1817,13 @@ export default function ReelsPage() {
                           [reel.id]: percent,
                         }));
                       }}
-                      onEnded={() => scrollToAdjacentReel("next")}
                       style={{
                         position: "absolute",
                         inset: 0,
                         width: "100%",
                         height: "100%",
-                        objectFit: "cover",
+                        objectFit: videoFitMap[reel.id] || "cover",
+                        objectPosition: "center",
                         background: "#000",
                         filter: "contrast(1.04) saturate(1.07)",
                       }}
@@ -1666,6 +1855,67 @@ export default function ReelsPage() {
                         }}
                       >
                         ♥
+                      </div>
+                    )}
+
+                    {playPauseFeedback?.reelId === reel.id && (
+                      <div
+                        key={`${playPauseFeedback.reelId}-${playPauseFeedback.mode}-${playPauseFeedback.nonce}`}
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%) scale(0.92)",
+                          width: viewportType === "mobile" ? "64px" : "76px",
+                          height: viewportType === "mobile" ? "64px" : "76px",
+                          borderRadius: "50%",
+                          background: "rgba(0,0,0,0.34)",
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          color: "white",
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: viewportType === "mobile" ? "30px" : "36px",
+                          lineHeight: 1,
+                          opacity: 0,
+                          pointerEvents: "none",
+                          zIndex: 9,
+                          boxShadow: "0 14px 34px rgba(0,0,0,0.30)",
+                          backdropFilter: "blur(9px)",
+                          animation: "parapostPlayPausePop 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards",
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        {playPauseFeedback.mode === "play" ? (
+                          <span style={{ display: "block", transform: "translateX(2px)" }}>▶</span>
+                        ) : (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: viewportType === "mobile" ? "5px" : "6px",
+                                height: viewportType === "mobile" ? "22px" : "26px",
+                                borderRadius: "999px",
+                                background: "currentColor",
+                                display: "block",
+                              }}
+                            />
+                            <span
+                              style={{
+                                width: viewportType === "mobile" ? "5px" : "6px",
+                                height: viewportType === "mobile" ? "22px" : "26px",
+                                borderRadius: "999px",
+                                background: "currentColor",
+                                display: "block",
+                              }}
+                            />
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1709,8 +1959,8 @@ export default function ReelsPage() {
                       flexDirection: "column",
                       gap: "10px",
                       alignItems: "center",
-                      opacity: isActiveCommentsReel ? 0.12 : 1,
-                      pointerEvents: isActiveCommentsReel ? "none" : "auto",
+                      opacity: isOverlayedReel ? 0.12 : 1,
+                      pointerEvents: isOverlayedReel ? "none" : "auto",
                       transition: "opacity 180ms ease",
                     }}
                   >
@@ -1739,6 +1989,14 @@ export default function ReelsPage() {
                         action: () => {
                           setActiveReelId(reel.id);
                           setShareOpen(true);
+                        },
+                      },
+                      {
+                        symbol: "🔗",
+                        label: "Link",
+                        action: () => {
+                          setActiveReelId(reel.id);
+                          void handleShareLink(reel.id);
                         },
                       },
                     ].map((item, actionIndex) => (
@@ -1797,8 +2055,8 @@ export default function ReelsPage() {
                       zIndex: 7,
                       display: "grid",
                       gap: "8px",
-                      opacity: isActiveCommentsReel ? 0.1 : 1,
-                      pointerEvents: isActiveCommentsReel ? "none" : "auto",
+                      opacity: isOverlayedReel ? 0.1 : 1,
+                      pointerEvents: isOverlayedReel ? "none" : "auto",
                       transition: "opacity 180ms ease",
                     }}
                   >
@@ -1840,14 +2098,47 @@ export default function ReelsPage() {
                       <div style={{ minWidth: 0 }}>
                         <div
                           style={{
-                            fontWeight: 800,
-                            fontSize: "15px",
-                            lineHeight: 1.15,
-                            textShadow: "0 2px 10px rgba(0,0,0,0.42)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            minWidth: 0,
+                            flexWrap: "wrap",
                           }}
                         >
-                          {reel.creatorName}
+                          <div
+                            style={{
+                              fontWeight: 800,
+                              fontSize: "15px",
+                              lineHeight: 1.15,
+                              textShadow: "0 2px 10px rgba(0,0,0,0.42)",
+                            }}
+                          >
+                            {reel.creatorName}
+                          </div>
+
+                          <Link
+                            href={`/profile/${reel.creator_profile_id}`}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              minHeight: "22px",
+                              borderRadius: "999px",
+                              border: "1px solid rgba(255,255,255,0.18)",
+                              padding: "3px 8px",
+                              fontSize: "11px",
+                              fontWeight: 850,
+                              lineHeight: 1,
+                              textDecoration: "none",
+                              backdropFilter: "blur(12px)",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.20)",
+                              ...getRelationshipBadgeStyle(relationship),
+                            }}
+                          >
+                            {getRelationshipLabel(relationship)}
+                          </Link>
                         </div>
+
                         <div
                           style={{
                             fontSize: "13px",
@@ -1858,15 +2149,6 @@ export default function ReelsPage() {
                           {reel.creator}
                         </div>
                       </div>
-
-                      {!isOwner && (
-                        <button
-                          onClick={() => handleFollowToggle(reel.creator_profile_id)}
-                          style={isFollowingCreator ? buttonStyle : primaryButtonStyle}
-                        >
-                          {isFollowingCreator ? "Following" : "Follow"}
-                        </button>
-                      )}
                     </div>
 
                     <div
@@ -1880,70 +2162,58 @@ export default function ReelsPage() {
                       {reel.title}
                     </div>
 
-                    <p
-                      style={{
-                        margin: 0,
-                        color: "#f3f4f6",
-                        lineHeight: 1.45,
-                        maxWidth: "100%",
-                        fontSize: `${stageMetrics.captionSize}px`,
-                        textShadow: "0 2px 10px rgba(0,0,0,0.45)",
-                      }}
-                    >
-                      {shortCaption}{" "}
-                      {reel.caption.length > 100 && (
-                        <button
-                          onClick={() =>
-                            setExpandedCaptions((prev) => ({
-                              ...prev,
-                              [reel.id]: !prev[reel.id],
-                            }))
-                          }
+                    {reel.caption ? (
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "5px",
+                          maxWidth: "100%",
+                        }}
+                      >
+                        <p
                           style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "white",
-                            fontWeight: 800,
-                            cursor: "pointer",
-                            padding: 0,
+                            margin: 0,
+                            color: "#f3f4f6",
+                            lineHeight: 1.45,
+                            maxWidth: "100%",
+                            fontSize: `${stageMetrics.captionSize}px`,
                             textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                            whiteSpace: "pre-wrap",
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: stageMetrics.captionLines,
+                            WebkitBoxOrient: "vertical",
                           }}
                         >
-                          {expanded ? "less" : "more"}
-                        </button>
-                      )}
-                    </p>
+                          {reel.caption}
+                        </p>
 
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "2px" }}>
-                      <button
-                        onClick={() => {
-                          const video = videoRefs.current[reel.id];
-                          if (!video) return;
-                          video.currentTime = 0;
-                          const playPromise = video.play();
-                          if (playPromise && typeof playPromise.catch === "function") {
-                            playPromise.catch(() => {});
-                          }
-                        }}
-                        style={buttonStyle}
-                      >
-                        Replay
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setActiveReelId(reel.id);
-                          setCommentsOpen(true);
-                        }}
-                        style={buttonStyle}
-                      >
-                        Comments
-                      </button>
-
-                      <button onClick={() => handleShareLink(reel.id)} style={buttonStyle}>
-                        Copy Link
-                      </button>
-                    </div>
+                        {shouldShowSeeMore && (
+                          <button
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openDetailsForReel(reel.id);
+                            }}
+                            style={{
+                              width: "fit-content",
+                              background: "rgba(255,255,255,0.10)",
+                              border: "1px solid rgba(255,255,255,0.16)",
+                              color: "white",
+                              borderRadius: "999px",
+                              fontWeight: 850,
+                              cursor: "pointer",
+                              padding: "6px 10px",
+                              fontSize: "12px",
+                              backdropFilter: "blur(10px)",
+                              textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                            }}
+                          >
+                            See more
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
 
                     {shareMessage && activeReel?.id === reel.id ? (
                       <div
@@ -2062,6 +2332,169 @@ export default function ReelsPage() {
         </div>
       )}
 
+
+      {detailsOpen && detailsReel && (
+        <>
+          <div style={overlayStyle} onClick={closeDetails} />
+          <div
+            style={{
+              position: "fixed",
+              zIndex: 94,
+              ...(viewportType === "desktop"
+                ? {
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: "min(460px, 100%)",
+                    borderLeft: "1px solid rgba(255,255,255,0.11)",
+                    borderRadius: 0,
+                  }
+                : {
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    maxHeight: viewportType === "tablet" ? "72vh" : "78vh",
+                    borderTop: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: "28px 28px 0 0",
+                  }),
+              background: "linear-gradient(180deg, rgba(11,16,32,0.98), rgba(7,9,13,0.98))",
+              color: "white",
+              boxShadow:
+                viewportType === "desktop"
+                  ? "-18px 0 44px rgba(0,0,0,0.48)"
+                  : "0 -18px 44px rgba(0,0,0,0.48)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: viewportType === "desktop" ? "22px 22px 16px" : "16px 18px 12px",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1.1 }}>
+                  Reel Details
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "13px", marginTop: "5px" }}>
+                  Full caption and reel information
+                </div>
+              </div>
+
+              <button onClick={closeDetails} style={buttonStyle}>
+                Close
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: viewportType === "desktop" ? "18px 22px 22px" : "16px 18px 22px",
+                overflowY: "auto",
+                display: "grid",
+                gap: "16px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: "46px",
+                    height: "46px",
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.12)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    overflow: "hidden",
+                    display: "grid",
+                    placeItems: "center",
+                    fontWeight: 900,
+                  }}
+                >
+                  {detailsReel.creatorAvatarUrl ? (
+                    <img
+                      src={detailsReel.creatorAvatarUrl}
+                      alt={detailsReel.creatorName}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    detailsReel.creatorName.charAt(0)
+                  )}
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: "15px" }}>
+                    {detailsReel.creatorName}
+                  </div>
+                  <div style={{ color: "#9ca3af", fontSize: "13px" }}>
+                    {detailsReel.creator} • {formatRelativeTime(detailsReel.createdAt)}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ color: "#9ca3af", fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "7px" }}>
+                  Title
+                </div>
+                <div style={{ fontSize: "22px", fontWeight: 950, lineHeight: 1.12 }}>
+                  {detailsReel.title}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ color: "#9ca3af", fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "7px" }}>
+                  Caption
+                </div>
+                <div
+                  style={{
+                    borderRadius: "22px",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.045)",
+                    padding: "15px",
+                    color: "#f3f4f6",
+                    fontSize: "14px",
+                    lineHeight: 1.65,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {detailsReel.caption || "No caption added."}
+                </div>
+                <div style={{ marginTop: "8px", color: "#9ca3af", fontSize: "12px", textAlign: "right" }}>
+                  {detailsReel.caption.length}/{REEL_CAPTION_MAX_LENGTH}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  onClick={() => {
+                    const nextReelId = detailsReel.id;
+                    setDetailsReelId("");
+                    setActiveReelId(nextReelId);
+                    setCommentsOpen(true);
+                  }}
+                  style={buttonStyle}
+                >
+                  Comments
+                </button>
+                <button onClick={() => handleShareLink(detailsReel.id)} style={buttonStyle}>
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {shareOpen && activeReel && (
         <>
@@ -2188,17 +2621,29 @@ export default function ReelsPage() {
               <div style={{ display: "grid", gap: "14px" }}>
                 <input
                   value={editTitle}
-                  onChange={(event) => setEditTitle(event.target.value)}
+                  onChange={(event) => setEditTitle(event.target.value.slice(0, 80))}
                   placeholder="Reel title"
                   style={inputStyle}
+                  maxLength={80}
                 />
 
                 <textarea
                   value={editCaption}
-                  onChange={(event) => setEditCaption(event.target.value)}
+                  onChange={(event) => setEditCaption(event.target.value.slice(0, REEL_CAPTION_MAX_LENGTH))}
                   placeholder="Reel caption"
                   style={textAreaStyle}
+                  maxLength={REEL_CAPTION_MAX_LENGTH}
                 />
+                <div
+                  style={{
+                    marginTop: "-6px",
+                    color: "#9ca3af",
+                    fontSize: "12px",
+                    textAlign: "right",
+                  }}
+                >
+                  {editCaption.length}/{REEL_CAPTION_MAX_LENGTH}
+                </div>
 
                 <div
                   style={{
@@ -2226,6 +2671,27 @@ export default function ReelsPage() {
           </div>
         </>
       )}
+
+      <style jsx global>{`
+        @keyframes parapostPlayPausePop {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.82);
+          }
+          18% {
+            opacity: 0.96;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          68% {
+            opacity: 0.82;
+            transform: translate(-50%, -50%) scale(0.98);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.08);
+          }
+        }
+      `}</style>
 
       <ReelUploadModal
         isOpen={isUploadModalOpen}

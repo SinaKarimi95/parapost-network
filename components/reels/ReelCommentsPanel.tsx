@@ -62,41 +62,41 @@ type ReelCommentsPanelProps = {
   onDeleteLocalComment: (commentId: string) => void;
 };
 
-const buttonStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.08)",
-  color: "white",
-  border: "1px solid rgba(255,255,255,0.14)",
-  borderRadius: "999px",
-  padding: "10px 16px",
-  fontWeight: 700,
-  fontSize: "14px",
-  cursor: "pointer",
-  backdropFilter: "blur(10px)",
-};
-
 const primaryButtonStyle: CSSProperties = {
   background: "white",
   color: "#000",
   border: "none",
   borderRadius: "999px",
   padding: "10px 16px",
-  fontWeight: 800,
+  fontWeight: 850,
   fontSize: "14px",
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  background: "rgba(255,255,255,0.07)",
+  color: "white",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "999px",
+  padding: "9px 13px",
+  fontWeight: 750,
+  fontSize: "13px",
   cursor: "pointer",
 };
 
 const textAreaStyle: CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.04)",
+  background: "rgba(255,255,255,0.055)",
   color: "white",
-  border: "1px solid rgba(255,255,255,0.10)",
+  border: "1px solid rgba(255,255,255,0.11)",
   borderRadius: "18px",
-  padding: "14px 16px",
+  padding: "13px 14px",
   fontSize: "14px",
   outline: "none",
-  minHeight: "120px",
+  minHeight: "74px",
   resize: "vertical",
   fontFamily: "inherit",
+  lineHeight: 1.45,
 };
 
 const menuItemStyle: CSSProperties = {
@@ -120,6 +120,20 @@ function getVisibleRepliesForComment(
     (comment) =>
       comment.reelId === activeReelId && comment.parentCommentId === commentId
   );
+}
+
+function getCommentInitial(author: string) {
+  return author.replace(/^@+/, "").trim().charAt(0).toUpperCase() || "P";
+}
+
+function getCommentCountLabel(count: number) {
+  return `${count} comment${count === 1 ? "" : "s"}`;
+}
+
+function getFooterHint(viewportType: ViewportType) {
+  if (viewportType === "desktop") return "Enter to post · Shift + Enter for a new line";
+  if (viewportType === "tablet") return "Enter to post · Shift + Enter for a new line";
+  return "Add to the conversation";
 }
 
 export default function ReelCommentsPanel({
@@ -158,7 +172,9 @@ export default function ReelCommentsPanel({
   onDeleteLocalComment,
 }: ReelCommentsPanelProps) {
   if (!isOpen) return null;
+
   const canModerateComments = !!activeReelOwnerId && activeReelOwnerId === currentUserId;
+  const footerIsCompact = viewportType === "mobile";
 
   return (
     <>
@@ -166,9 +182,9 @@ export default function ReelCommentsPanel({
         isOpen={isOpen}
         onClose={onClose}
         title="Comments"
-        subtitle={`${activeComments.length} comment${activeComments.length === 1 ? "" : "s"} · ${reelTitle}`}
+        subtitle={`${getCommentCountLabel(activeComments.length)} · ${reelTitle}`}
         footer={
-          <div style={{ display: "grid", gap: "8px" }}>
+          <div style={{ display: "grid", gap: footerIsCompact ? 9 : 10 }}>
             <textarea
               ref={commentInputRef}
               value={commentDraft}
@@ -178,10 +194,8 @@ export default function ReelCommentsPanel({
               rows={2}
               style={{
                 ...textAreaStyle,
-                minHeight: "78px",
-                maxHeight: "110px",
-                borderRadius: "16px",
-                padding: "12px 14px",
+                minHeight: footerIsCompact ? "62px" : "72px",
+                maxHeight: footerIsCompact ? "96px" : "118px",
               }}
             />
 
@@ -191,42 +205,51 @@ export default function ReelCommentsPanel({
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: "10px",
-                flexWrap: "wrap",
+                flexWrap: footerIsCompact ? "nowrap" : "wrap",
               }}
             >
-              <div style={{ fontSize: "12px", color: "#9ca3af" }}>
-                {viewportType === "mobile"
-                  ? "Tap outside or × to close"
-                  : "Use mouse wheel or trackpad to scroll comments"}
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "#9ca3af",
+                  lineHeight: 1.35,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: footerIsCompact ? "nowrap" : "normal",
+                }}
+              >
+                {getFooterHint(viewportType)}
               </div>
 
               <button
+                type="button"
                 onClick={onAddComment}
                 disabled={!commentDraft.trim()}
                 style={{
                   ...primaryButtonStyle,
                   opacity: commentDraft.trim() ? 1 : 0.45,
                   cursor: commentDraft.trim() ? "pointer" : "not-allowed",
+                  padding: footerIsCompact ? "9px 14px" : primaryButtonStyle.padding,
+                  flexShrink: 0,
                 }}
               >
-                Post Comment
+                Post
               </button>
             </div>
           </div>
         }
       >
-        <div style={{ display: "grid", gap: "10px" }}>
+        <div style={{ display: "grid", gap: viewportType === "mobile" ? "10px" : "12px" }}>
           {activeComments.length === 0 ? (
-            <div
-              style={{
-                border: "1px dashed rgba(255,255,255,0.12)",
-                borderRadius: "18px",
-                padding: "16px",
-                color: "#9ca3af",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              No comments yet. Start the conversation.
+            <div style={emptyStateStyle}>
+              <div style={{ fontSize: "28px", lineHeight: 1, marginBottom: 10 }}>💬</div>
+              <div style={{ color: "#f9fafb", fontWeight: 850, marginBottom: 5 }}>
+                No comments yet
+              </div>
+              <div style={{ color: "#9ca3af", fontSize: 14, lineHeight: 1.5 }}>
+                Be the first to start the conversation on this reel.
+              </div>
             </div>
           ) : (
             activeComments.map((comment) => {
@@ -245,134 +268,36 @@ export default function ReelCommentsPanel({
                   onDoubleClick={() => onCommentLikeToggle(comment.id, true)}
                   onTouchStart={() => onCommentTouchStart(comment.id, false)}
                   onTouchEnd={() => onCommentTouchEnd(comment.id)}
-                  onMouseEnter={(event) => {
-                    if (viewportType === "desktop") {
-                      event.currentTarget.style.transform = "translateY(-1px)";
-                    }
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.transform = "translateY(0px)";
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.045)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: "18px",
-                    padding: "12px 13px",
-                    transition:
-                      "transform 180ms ease, border-color 180ms ease, background 180ms ease",
-                    transform: "translateY(0px)",
-                    position: "relative",
-                  }}
+                  style={commentCardStyle}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "10px",
-                      marginBottom: "7px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, fontSize: "14px" }}>
-                      {comment.author}
+                  <div style={commentHeaderStyle}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <div style={avatarStyle}>{getCommentInitial(comment.author)}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={commentAuthorStyle}>{comment.author}</div>
+                        <div style={commentTimeMobileStyle}>{comment.time}</div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: "12px", color: "#9ca3af" }}>
-                      {comment.time}
-                    </div>
+
+                    <div style={commentTimeDesktopStyle}>{comment.time}</div>
                   </div>
 
-                  <div
-                    style={{
-                      color: "#e5e7eb",
-                      lineHeight: 1.55,
-                      fontSize: "14px",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    {comment.text}
-                  </div>
+                  <div style={commentTextStyle}>{comment.text}</div>
 
-                  {commentLikeBurstId === comment.id ? (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        fontSize: "34px",
-                        color: "#ffffff",
-                        pointerEvents: "none",
-                        textShadow: "0 8px 24px rgba(0,0,0,0.45)",
-                        opacity: 0.95,
-                      }}
-                    >
-                      ♥
-                    </div>
-                  ) : null}
+                  {commentLikeBurstId === comment.id ? <HeartBurst size={34} /> : null}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onCommentLikeToggle(comment.id)}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: commentLiked ? "#ffffff" : "#aeb3bd",
-                        fontSize: "12px",
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        padding: 0,
-                      }}
-                    >
-                      {commentLiked ? "Liked" : "Like"}
-                      {commentLikeCount > 0 ? ` · ${commentLikeCount}` : ""}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onStartCommentReply(comment)}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "#aeb3bd",
-                        fontSize: "12px",
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        padding: 0,
-                      }}
-                    >
-                      Reply
-                    </button>
-
-                    {canModerateComments ? (
-                      <button
-                        type="button"
-                        onClick={() => onHideComment(comment.id)}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "#fca5a5",
-                          fontSize: "12px",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          padding: 0,
-                        }}
-                      >
-                        Hide
-                      </button>
-                    ) : null}
-                  </div>
+                  <CommentActions
+                    commentId={comment.id}
+                    liked={commentLiked}
+                    likeCount={commentLikeCount}
+                    canModerate={canModerateComments}
+                    onLike={onCommentLikeToggle}
+                    onReply={() => onStartCommentReply(comment)}
+                    onHide={onHideComment}
+                  />
 
                   {replyingToCommentId === comment.id ? (
-                    <div style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
+                    <div style={replyComposerWrapStyle}>
                       <textarea
                         value={replyDraft}
                         onChange={(event) => setReplyDraft(event.target.value)}
@@ -380,24 +305,19 @@ export default function ReelCommentsPanel({
                         rows={2}
                         style={{
                           ...textAreaStyle,
-                          minHeight: "68px",
-                          borderRadius: "15px",
+                          minHeight: "64px",
+                          maxHeight: "100px",
+                          borderRadius: "16px",
                           padding: "11px 12px",
+                          fontSize: "13px",
                         }}
                       />
 
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "flex-end",
-                          gap: "8px",
-                          flexWrap: "wrap",
-                        }}
-                      >
+                      <div style={replyComposerActionsStyle}>
                         <button
                           type="button"
                           onClick={onCancelCommentReply}
-                          style={{ ...buttonStyle, padding: "8px 12px", fontSize: "12px" }}
+                          style={secondaryButtonStyle}
                         >
                           Cancel
                         </button>
@@ -408,8 +328,8 @@ export default function ReelCommentsPanel({
                           disabled={!replyDraft.trim()}
                           style={{
                             ...primaryButtonStyle,
-                            padding: "8px 12px",
-                            fontSize: "12px",
+                            padding: "9px 13px",
+                            fontSize: "13px",
                             opacity: replyDraft.trim() ? 1 : 0.45,
                             cursor: replyDraft.trim() ? "pointer" : "not-allowed",
                           }}
@@ -423,13 +343,9 @@ export default function ReelCommentsPanel({
                   {replies.length > 0 ? (
                     <div
                       style={{
-                        marginTop: "10px",
-                        marginBottom: "6px",
-                        marginLeft: viewportType === "mobile" ? "10px" : "18px",
-                        paddingLeft: viewportType === "mobile" ? "10px" : "12px",
-                        borderLeft: "2px solid rgba(255,255,255,0.06)",
-                        display: "grid",
-                        gap: "8px",
+                        ...repliesWrapStyle,
+                        marginLeft: viewportType === "mobile" ? "8px" : "20px",
+                        paddingLeft: viewportType === "mobile" ? "10px" : "14px",
                       }}
                     >
                       {replies.map((reply) => {
@@ -443,140 +359,48 @@ export default function ReelCommentsPanel({
                             onDoubleClick={() => onCommentLikeToggle(reply.id, true)}
                             onTouchStart={() => onCommentTouchStart(reply.id, true)}
                             onTouchEnd={() => onCommentTouchEnd(reply.id)}
-                            onMouseEnter={(event) => {
-                              if (viewportType === "desktop") {
-                                event.currentTarget.style.transform = "translateY(-1px)";
-                              }
-                            }}
-                            onMouseLeave={(event) => {
-                              event.currentTarget.style.transform = "translateY(0px)";
-                            }}
-                            style={{
-                              background: "rgba(255,255,255,0.02)",
-                              border: "1px solid rgba(255,255,255,0.05)",
-                              borderRadius: "16px",
-                              padding: "10px 11px",
-                              transition:
-                                "transform 180ms ease, border-color 180ms ease, background 180ms ease",
-                              transform: "translateY(0px)",
-                              position: "relative",
-                            }}
+                            style={replyCardStyle}
                           >
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                gap: "8px",
-                                marginBottom: "6px",
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <div style={{ fontWeight: 800, fontSize: "13px" }}>
-                                {reply.author}
-                              </div>
-                              <div style={{ fontSize: "11px", color: "#9ca3af" }}>
-                                {reply.time}
-                              </div>
-                            </div>
-
-                            <div
-                              style={{
-                                color: "#d1d5db",
-                                fontSize: "13px",
-                                lineHeight: 1.5,
-                                marginBottom: "8px",
-                              }}
-                            >
+                            <div style={commentHeaderStyle}>
                               <div
                                 style={{
-                                  fontSize: "11px",
-                                  color: "#9ca3af",
-                                  fontWeight: 800,
-                                  marginBottom: "4px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 9,
+                                  minWidth: 0,
                                 }}
                               >
-                                replying to {reply.replyToAuthor}
+                                <div style={replyAvatarStyle}>{getCommentInitial(reply.author)}</div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ ...commentAuthorStyle, fontSize: 13 }}>
+                                    {reply.author}
+                                  </div>
+                                  <div style={commentTimeMobileStyle}>{reply.time}</div>
+                                </div>
                               </div>
-                              <div>{reply.text.replace(/^@\S+\s*/, "")}</div>
+
+                              <div style={commentTimeDesktopStyle}>{reply.time}</div>
                             </div>
 
-                            {commentLikeBurstId === reply.id ? (
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  top: "50%",
-                                  left: "50%",
-                                  transform: "translate(-50%, -50%)",
-                                  fontSize: "28px",
-                                  color: "#ffffff",
-                                  pointerEvents: "none",
-                                  textShadow: "0 8px 24px rgba(0,0,0,0.45)",
-                                  opacity: 0.95,
-                                }}
-                              >
-                                ♥
-                              </div>
-                            ) : null}
-
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => onCommentLikeToggle(reply.id)}
-                                style={{
-                                  background: "transparent",
-                                  border: "none",
-                                  color: replyLiked ? "#ffffff" : "#aeb3bd",
-                                  fontSize: "12px",
-                                  fontWeight: 800,
-                                  cursor: "pointer",
-                                  padding: 0,
-                                }}
-                              >
-                                {replyLiked ? "Liked" : "Like"}
-                                {replyLikeCount > 0 ? ` · ${replyLikeCount}` : ""}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => onStartCommentReply(comment)}
-                                style={{
-                                  background: "transparent",
-                                  border: "none",
-                                  color: "#aeb3bd",
-                                  fontSize: "12px",
-                                  fontWeight: 800,
-                                  cursor: "pointer",
-                                  padding: 0,
-                                }}
-                              >
-                                Reply
-                              </button>
-
-                              {canModerateComments ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onHideComment(reply.id)}
-                                  style={{
-                                    background: "transparent",
-                                    border: "none",
-                                    color: "#fca5a5",
-                                    fontSize: "12px",
-                                    fontWeight: 800,
-                                    cursor: "pointer",
-                                    padding: 0,
-                                  }}
-                                >
-                                  Hide
-                                </button>
-                              ) : null}
+                            <div style={replyingToStyle}>
+                              replying to {reply.replyToAuthor}
                             </div>
+
+                            <div style={{ ...commentTextStyle, fontSize: 13 }}>
+                              {reply.text.replace(/^@\S+\s*/, "")}
+                            </div>
+
+                            {commentLikeBurstId === reply.id ? <HeartBurst size={28} /> : null}
+
+                            <CommentActions
+                              commentId={reply.id}
+                              liked={replyLiked}
+                              likeCount={replyLikeCount}
+                              canModerate={canModerateComments}
+                              onLike={onCommentLikeToggle}
+                              onReply={() => onStartCommentReply(comment)}
+                              onHide={onHideComment}
+                            />
                           </div>
                         );
                       })}
@@ -595,7 +419,7 @@ export default function ReelCommentsPanel({
             position: "fixed",
             top: commentMenu.y,
             left: commentMenu.x,
-            zIndex: 120,
+            zIndex: 170,
             minWidth: "210px",
             background: "#0b1020",
             border: "1px solid rgba(255,255,255,0.12)",
@@ -667,3 +491,205 @@ export default function ReelCommentsPanel({
     </>
   );
 }
+
+function HeartBurst({ size }: { size: number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        fontSize: size,
+        color: "#ffffff",
+        pointerEvents: "none",
+        textShadow: "0 8px 24px rgba(0,0,0,0.45)",
+        opacity: 0.95,
+      }}
+    >
+      ♥
+    </div>
+  );
+}
+
+function CommentActions({
+  commentId,
+  liked,
+  likeCount,
+  canModerate,
+  onLike,
+  onReply,
+  onHide,
+}: {
+  commentId: string;
+  liked: boolean;
+  likeCount: number;
+  canModerate: boolean;
+  onLike: (commentId: string, forceLike?: boolean) => void;
+  onReply: () => void;
+  onHide: (commentId: string) => void;
+}) {
+  return (
+    <div style={actionRowStyle}>
+      <button
+        type="button"
+        onClick={() => onLike(commentId)}
+        style={{
+          ...textButtonStyle,
+          color: liked ? "#ffffff" : "#aeb3bd",
+        }}
+      >
+        {liked ? "Liked" : "Like"}
+        {likeCount > 0 ? ` · ${likeCount}` : ""}
+      </button>
+
+      <button type="button" onClick={onReply} style={textButtonStyle}>
+        Reply
+      </button>
+
+      {canModerate ? (
+        <button
+          type="button"
+          onClick={() => onHide(commentId)}
+          style={{ ...textButtonStyle, color: "#fca5a5" }}
+        >
+          Hide
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const emptyStateStyle: CSSProperties = {
+  border: "1px dashed rgba(255,255,255,0.13)",
+  borderRadius: "22px",
+  padding: "22px 16px",
+  color: "#9ca3af",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.025))",
+  textAlign: "center",
+};
+
+const commentCardStyle: CSSProperties = {
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: "21px",
+  padding: "13px",
+  position: "relative",
+  boxShadow: "0 12px 24px rgba(0,0,0,0.18)",
+};
+
+const replyCardStyle: CSSProperties = {
+  background: "rgba(255,255,255,0.028)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "18px",
+  padding: "11px",
+  position: "relative",
+};
+
+const commentHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "10px",
+  marginBottom: "8px",
+};
+
+const avatarStyle: CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.92), rgba(59,130,246,0.65))",
+  border: "1px solid rgba(255,255,255,0.13)",
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 900,
+  flexShrink: 0,
+};
+
+const replyAvatarStyle: CSSProperties = {
+  ...avatarStyle,
+  width: 29,
+  height: 29,
+  fontSize: 12,
+};
+
+const commentAuthorStyle: CSSProperties = {
+  color: "#fff",
+  fontWeight: 850,
+  fontSize: 14,
+  lineHeight: 1.15,
+  maxWidth: "260px",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const commentTimeDesktopStyle: CSSProperties = {
+  color: "#8f96a3",
+  fontSize: 12,
+  flexShrink: 0,
+};
+
+const commentTimeMobileStyle: CSSProperties = {
+  color: "#8f96a3",
+  fontSize: 11,
+  marginTop: 3,
+};
+
+const commentTextStyle: CSSProperties = {
+  color: "#e5e7eb",
+  lineHeight: 1.55,
+  fontSize: 14,
+  marginBottom: "10px",
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "13px",
+  flexWrap: "wrap",
+};
+
+const textButtonStyle: CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#aeb3bd",
+  fontSize: "12px",
+  fontWeight: 850,
+  cursor: "pointer",
+  padding: 0,
+};
+
+const replyComposerWrapStyle: CSSProperties = {
+  marginTop: "12px",
+  display: "grid",
+  gap: "8px",
+};
+
+const replyComposerActionsStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "8px",
+  flexWrap: "wrap",
+};
+
+const repliesWrapStyle: CSSProperties = {
+  marginTop: "11px",
+  marginBottom: "4px",
+  borderLeft: "2px solid rgba(168,85,247,0.20)",
+  display: "grid",
+  gap: "8px",
+};
+
+const replyingToStyle: CSSProperties = {
+  fontSize: "11px",
+  color: "#9ca3af",
+  fontWeight: 850,
+  marginBottom: "5px",
+};

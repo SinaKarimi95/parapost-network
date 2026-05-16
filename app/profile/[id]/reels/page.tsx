@@ -8,7 +8,9 @@ import { supabase } from "@/lib/supabase";
 type Reel = {
   id: string;
   user_id: string;
+  title?: string | null;
   video_url: string | null;
+  poster_url?: string | null;
   caption: string | null;
   created_at: string | null;
 };
@@ -148,7 +150,7 @@ export default function ProfileReelsGridPage() {
 
       const { data: reelsData, error: reelsError } = await supabase
         .from("reels")
-        .select("id, user_id, video_url, caption, created_at")
+        .select("id, user_id, title, video_url, poster_url, caption, created_at")
         .eq("user_id", profileId)
         .order("created_at", { ascending: false });
 
@@ -245,7 +247,7 @@ export default function ProfileReelsGridPage() {
                 >
                   {isPrivateLocked
                     ? "This profile keeps Reels private unless you are connected."
-                    : "Browse this profile’s reels in grid view."}
+                    : "Browse this profile’s reels in grid view. Portrait and landscape videos are supported."}
                 </p>
               </div>
             </div>
@@ -335,14 +337,16 @@ export default function ProfileReelsGridPage() {
                       <>
                         <video
                           src={reel.video_url}
+                          poster={reel.poster_url || undefined}
                           muted
                           playsInline
                           preload="metadata"
                           style={{
                             width: "100%",
                             height: "100%",
-                            objectFit: "cover",
+                            objectFit: "contain",
                             display: "block",
+                            background: "#000",
                           }}
                         />
                         <div
@@ -364,6 +368,23 @@ export default function ProfileReelsGridPage() {
                             gap: "6px",
                           }}
                         >
+                          {reel.title ? (
+                            <div
+                              style={{
+                                color: "#fff",
+                                fontSize: "13px",
+                                fontWeight: 850,
+                                lineHeight: 1.25,
+                                textShadow: "0 2px 10px rgba(0,0,0,0.55)",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {reel.title}
+                            </div>
+                          ) : null}
                           <div
                             style={{
                               display: "inline-flex",

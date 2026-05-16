@@ -267,8 +267,6 @@ export default function DashboardReelsSection() {
 
                 <div style={reelGradientStyle} />
 
-                <div style={reelTopBadgeStyle}>Reel</div>
-
                 <div style={reelFooterStyle}>
                   <div style={reelAuthorRowStyle}>
                     <div style={reelAvatarStyle}>
@@ -437,20 +435,6 @@ const reelGradientStyle: CSSProperties = {
   inset: 0,
   background: "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.18) 42%, rgba(0,0,0,0.78) 100%)",
   pointerEvents: "none",
-};
-
-const reelTopBadgeStyle: CSSProperties = {
-  position: "absolute",
-  left: 9,
-  top: 9,
-  borderRadius: 8,
-  background: "rgba(255,255,255,0.12)",
-  color: "#f9fafb",
-  border: "1px solid rgba(255,255,255,0.10)",
-  padding: "4px 7px",
-  fontSize: 10,
-  fontWeight: 900,
-  backdropFilter: "blur(10px)",
 };
 
 const reelFooterStyle: CSSProperties = {

@@ -81,7 +81,10 @@ type MenuState = {
   y: number;
 } | null;
 
+type PlayPauseFeedback = { reelId: string; mode: "play" | "pause"; nonce: number } | null;
+
 const initialComments: ReelComment[] = [];
+const REEL_CAPTION_MAX_LENGTH = 4000;
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
@@ -376,8 +379,9 @@ export default function ProfileReelsViewerPage() {
   const [lockedCommentReelId, setLockedCommentReelId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [muteAll, setMuteAll] = useState(true);
-  const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
+  const [detailsReelId, setDetailsReelId] = useState("");
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+  const [videoFitMap, setVideoFitMap] = useState<Record<string, "cover" | "contain">>({});
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
   const [reelMenu, setReelMenu] = useState<MenuState>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -387,6 +391,7 @@ export default function ProfileReelsViewerPage() {
   const [viewportWidth, setViewportWidth] = useState(1440);
   const [holdPausedId, setHoldPausedId] = useState<string | null>(null);
   const [heartBurstId, setHeartBurstId] = useState<string | null>(null);
+  const [playPauseFeedback, setPlayPauseFeedback] = useState<PlayPauseFeedback>(null);
   const [isFetchingReels, setIsFetchingReels] = useState(true);
   const [canViewProfileContent, setCanViewProfileContent] = useState(true);
   const [pageErrorMessage, setPageErrorMessage] = useState("");
@@ -394,8 +399,15 @@ export default function ProfileReelsViewerPage() {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const heartTimeoutRef = useRef<number | null>(null);
+  const playPauseFeedbackTimeoutRef = useRef<number | null>(null);
   const initialTargetReelIdRef = useRef("");
   const hasInitialScrolledRef = useRef(false);
+
+  const detailsReel = useMemo(() => {
+    return reels.find((reel) => reel.id === detailsReelId) || null;
+  }, [reels, detailsReelId]);
+
+  const detailsOpen = Boolean(detailsReelId && detailsReel);
 
   const fetchReels = async () => {
     setIsFetchingReels(true);
@@ -701,7 +713,7 @@ export default function ProfileReelsViewerPage() {
 
       video.muted = muteAll;
 
-      if (reel.id === activeReelId && holdPausedId !== reel.id && !commentsOpen) {
+      if (reel.id === activeReelId && holdPausedId !== reel.id && !commentsOpen && !detailsOpen) {
         const playPromise = video.play();
         if (playPromise && typeof playPromise.catch === "function") {
           playPromise.catch(() => {});
@@ -710,7 +722,7 @@ export default function ProfileReelsViewerPage() {
         video.pause();
       }
     });
-  }, [activeReelId, reels, muteAll, holdPausedId, commentsOpen]);
+  }, [activeReelId, reels, muteAll, holdPausedId, commentsOpen, detailsOpen]);
 
   useEffect(() => {
     if (!isFetchingReels && activeReelId && !hasInitialScrolledRef.current) {
@@ -727,6 +739,10 @@ export default function ProfileReelsViewerPage() {
     return () => {
       if (heartTimeoutRef.current) {
         window.clearTimeout(heartTimeoutRef.current);
+      }
+
+      if (playPauseFeedbackTimeoutRef.current) {
+        window.clearTimeout(playPauseFeedbackTimeoutRef.current);
       }
     };
   }, []);
@@ -791,6 +807,7 @@ export default function ProfileReelsViewerPage() {
     return reels.find((reel) => reel.id === activeReelId) || reels[0];
   }, [reels, activeReelId]);
 
+
   const commentReelId = lockedCommentReelId || activeReelId;
 
   const commentReel = useMemo(() => {
@@ -802,6 +819,7 @@ export default function ProfileReelsViewerPage() {
   }, [comments, commentReelId]);
 
   const openCommentsForReel = (reelId: string) => {
+    setDetailsReelId("");
     setActiveReelId(reelId);
     setLockedCommentReelId(reelId);
     setCommentsOpen(true);
@@ -830,8 +848,35 @@ export default function ProfileReelsViewerPage() {
     }, 80);
   };
 
+  const openDetailsForReel = (reelId: string) => {
+    setCommentsOpen(false);
+    setLockedCommentReelId("");
+    setDetailsReelId(reelId);
+    setActiveReelId(reelId);
+
+    const video = videoRefs.current[reelId];
+    if (video) {
+      video.pause();
+    }
+  };
+
+  const closeDetails = () => {
+    const resumeReelId = detailsReelId;
+    setDetailsReelId("");
+
+    window.setTimeout(() => {
+      const video = videoRefs.current[resumeReelId];
+      if (video) {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      }
+    }, 80);
+  };
+
   const scrollToReel = (reelId: string, behavior: ScrollBehavior = "smooth") => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -844,7 +889,7 @@ export default function ProfileReelsViewerPage() {
   };
 
   const scrollToAdjacentReel = (direction: "prev" | "next") => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const currentIndex = reels.findIndex((reel) => reel.id === activeReelId);
     if (currentIndex === -1) return;
@@ -856,7 +901,7 @@ export default function ProfileReelsViewerPage() {
   };
 
   const updateActiveFromScroll = () => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -882,19 +927,42 @@ export default function ProfileReelsViewerPage() {
     }
   };
 
+  const showPlayPauseFeedback = (reelId: string, mode: "play" | "pause") => {
+    if (playPauseFeedbackTimeoutRef.current) {
+      window.clearTimeout(playPauseFeedbackTimeoutRef.current);
+    }
+
+    setPlayPauseFeedback({ reelId, mode, nonce: Date.now() });
+
+    playPauseFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setPlayPauseFeedback(null);
+    }, 420);
+  };
+
   const handleTogglePlayPause = (reelId: string) => {
-    if (commentsOpen) return;
+    if (commentsOpen || detailsOpen) return;
 
     const video = videoRefs.current[reelId];
     if (!video) return;
 
-    if (video.paused) {
+    const shouldPlay = video.paused || video.ended;
+
+    if (shouldPlay) {
+      showPlayPauseFeedback(reelId, "play");
       setHoldPausedId(null);
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(() => {});
-      }
+
+      window.requestAnimationFrame(() => {
+        const currentVideo = videoRefs.current[reelId];
+        if (!currentVideo) return;
+
+        const playPromise = currentVideo.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      });
     } else {
+      showPlayPauseFeedback(reelId, "pause");
+      setHoldPausedId(reelId);
       video.pause();
     }
   };
@@ -1118,7 +1186,7 @@ export default function ProfileReelsViewerPage() {
   const handleStartEditReel = (reel: ReelItem) => {
     setEditingReelId(reel.id);
     setEditTitle(reel.title);
-    setEditCaption(reel.caption);
+    setEditCaption(reel.caption.slice(0, REEL_CAPTION_MAX_LENGTH));
     setEditOpen(true);
     setReelMenu(null);
   };
@@ -1192,7 +1260,6 @@ export default function ProfileReelsViewerPage() {
     setReelMenu(null);
   };
 
-  const isCaptionExpanded = (reelId: string) => !!expandedCaptions[reelId];
   const isOwnProfile = !!currentUserId && currentUserId === profileId;
   const creatorName =
     profile?.display_name?.trim() ||
@@ -1262,7 +1329,7 @@ export default function ProfileReelsViewerPage() {
         >
           <button
             onClick={() => scrollToAdjacentReel("prev")}
-            disabled={commentsOpen}
+            disabled={commentsOpen || detailsOpen}
             style={{
               width: "56px",
               height: "56px",
@@ -1270,8 +1337,8 @@ export default function ProfileReelsViewerPage() {
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(255,255,255,0.08)",
               color: "white",
-              cursor: commentsOpen ? "not-allowed" : "pointer",
-              opacity: commentsOpen ? 0.45 : 1,
+              cursor: commentsOpen || detailsOpen ? "not-allowed" : "pointer",
+              opacity: commentsOpen || detailsOpen ? 0.45 : 1,
               fontSize: "22px",
               backdropFilter: "blur(12px)",
             }}
@@ -1282,7 +1349,7 @@ export default function ProfileReelsViewerPage() {
 
           <button
             onClick={() => scrollToAdjacentReel("next")}
-            disabled={commentsOpen}
+            disabled={commentsOpen || detailsOpen}
             style={{
               width: "56px",
               height: "56px",
@@ -1290,8 +1357,8 @@ export default function ProfileReelsViewerPage() {
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(255,255,255,0.08)",
               color: "white",
-              cursor: commentsOpen ? "not-allowed" : "pointer",
-              opacity: commentsOpen ? 0.45 : 1,
+              cursor: commentsOpen || detailsOpen ? "not-allowed" : "pointer",
+              opacity: commentsOpen || detailsOpen ? 0.45 : 1,
               fontSize: "22px",
               backdropFilter: "blur(12px)",
             }}
@@ -1458,13 +1525,13 @@ export default function ProfileReelsViewerPage() {
          ref={scrollContainerRef}
          style={{
            ...scrollContainerStyle,
-           overflowY: commentsOpen ? "hidden" : "auto",
-           scrollBehavior: commentsOpen ? "auto" : "smooth",
+           overflowY: commentsOpen || detailsOpen ? "hidden" : "auto",
+           scrollBehavior: commentsOpen || detailsOpen ? "auto" : "smooth",
            overscrollBehavior: "contain",
            background: "#07090d",
            scrollSnapType: "y mandatory",
          }}
-         onScroll={commentsOpen ? undefined : updateActiveFromScroll} 
+         onScroll={commentsOpen || detailsOpen ? undefined : updateActiveFromScroll} 
         >
           {reels.map((reel) => {
             const isLiked = !!likedMap[reel.id];
@@ -1478,12 +1545,10 @@ export default function ProfileReelsViewerPage() {
             ).length;
             const displayedShares = reel.shares + (shareBoostMap[reel.id] || 0);
             const progress = progressMap[reel.id] || 0;
-            const expanded = isCaptionExpanded(reel.id);
-            const shortCaption =
-              reel.caption.length > 100 && !expanded
-                ? `${reel.caption.slice(0, 100)}...`
-                : reel.caption;
+            const hasLongCaption = reel.caption.length > 140;
             const isActiveCommentsReel = commentsOpen && commentReelId === reel.id;
+            const isActiveDetailsReel = detailsReelId === reel.id;
+            const isDimmedReel = isActiveCommentsReel || isActiveDetailsReel;
 
             return (
               <section
@@ -1508,8 +1573,8 @@ export default function ProfileReelsViewerPage() {
                       viewportType === "mobile"
                         ? "none"
                         : "0 16px 44px rgba(0,0,0,0.46)",
-                    transform: isActiveCommentsReel ? "scale(0.985)" : "scale(1)",
-                    filter: isActiveCommentsReel ? "brightness(0.78)" : "brightness(1)",
+                    transform: isDimmedReel ? "scale(0.985)" : "scale(1)",
+                    filter: isDimmedReel ? "brightness(0.78)" : "brightness(1)",
                     transition: "transform 220ms ease, filter 220ms ease",
                   }}
                 >
@@ -1537,49 +1602,10 @@ export default function ProfileReelsViewerPage() {
                   <div
                     onDoubleClick={() => handleDoubleTapLike(reel.id)}
                     onClick={() => handleTogglePlayPause(reel.id)}
-                    onMouseDown={() => {
-                      if (viewportType === "desktop" && !commentsOpen) {
-                        setHoldPausedId(reel.id);
-                        videoRefs.current[reel.id]?.pause();
-                      }
-                    }}
-                    onMouseUp={() => {
-                      if (viewportType === "desktop" && holdPausedId === reel.id && !commentsOpen) {
-                        setHoldPausedId(null);
-                        const playPromise = videoRefs.current[reel.id]?.play();
-                        if (playPromise && typeof playPromise.catch === "function") {
-                          playPromise.catch(() => {});
-                        }
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      if (viewportType === "desktop" && holdPausedId === reel.id && !commentsOpen) {
-                        setHoldPausedId(null);
-                        const playPromise = videoRefs.current[reel.id]?.play();
-                        if (playPromise && typeof playPromise.catch === "function") {
-                          playPromise.catch(() => {});
-                        }
-                      }
-                    }}
-                    onTouchStart={() => {
-                      if (!commentsOpen) {
-                        setHoldPausedId(reel.id);
-                        videoRefs.current[reel.id]?.pause();
-                      }
-                    }}
-                    onTouchEnd={() => {
-                      if (holdPausedId === reel.id && !commentsOpen) {
-                        setHoldPausedId(null);
-                        const playPromise = videoRefs.current[reel.id]?.play();
-                        if (playPromise && typeof playPromise.catch === "function") {
-                          playPromise.catch(() => {});
-                        }
-                      }
-                    }}
                     style={{
                       position: "absolute",
                       inset: 0,
-                      cursor: commentsOpen ? "default" : "pointer",
+                      cursor: commentsOpen || detailsOpen ? "default" : "pointer",
                     }}
                   >
                     <video
@@ -1591,6 +1617,14 @@ export default function ProfileReelsViewerPage() {
                       muted
                       playsInline
                       preload="metadata"
+                      onLoadedMetadata={(event) => {
+                        const video = event.currentTarget;
+                        const isLandscape = video.videoWidth > video.videoHeight;
+                        setVideoFitMap((prev) => ({
+                          ...prev,
+                          [reel.id]: isLandscape ? "contain" : "cover",
+                        }));
+                      }}
                       onTimeUpdate={(event) => {
                         const video = event.currentTarget;
                         const percent = video.duration
@@ -1602,13 +1636,19 @@ export default function ProfileReelsViewerPage() {
                           [reel.id]: percent,
                         }));
                       }}
-                      onEnded={() => scrollToAdjacentReel("next")}
+                      onEnded={(event) => {
+                        event.currentTarget.currentTime = 0;
+                        const playPromise = event.currentTarget.play();
+                        if (playPromise && typeof playPromise.catch === "function") {
+                          playPromise.catch(() => {});
+                        }
+                      }}
                       style={{
                         position: "absolute",
                         inset: 0,
                         width: "100%",
                         height: "100%",
-                        objectFit: "cover",
+                        objectFit: videoFitMap[reel.id] || "cover",
                         background: "#000",
                         filter: "contrast(1.04) saturate(1.07)",
                       }}
@@ -1640,6 +1680,67 @@ export default function ProfileReelsViewerPage() {
                         }}
                       >
                         ♥
+                      </div>
+                    )}
+
+                    {playPauseFeedback?.reelId === reel.id && (
+                      <div
+                        key={`${playPauseFeedback.reelId}-${playPauseFeedback.mode}-${playPauseFeedback.nonce}`}
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%) scale(0.92)",
+                          width: viewportType === "mobile" ? "64px" : "76px",
+                          height: viewportType === "mobile" ? "64px" : "76px",
+                          borderRadius: "50%",
+                          background: "rgba(0,0,0,0.34)",
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          color: "white",
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: viewportType === "mobile" ? "30px" : "36px",
+                          lineHeight: 1,
+                          opacity: 0,
+                          pointerEvents: "none",
+                          zIndex: 9,
+                          boxShadow: "0 14px 34px rgba(0,0,0,0.30)",
+                          backdropFilter: "blur(9px)",
+                          animation: "parapostPlayPausePop 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards",
+                          willChange: "transform, opacity",
+                        }}
+                      >
+                        {playPauseFeedback.mode === "play" ? (
+                          <span style={{ display: "block", transform: "translateX(2px)" }}>▶</span>
+                        ) : (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: viewportType === "mobile" ? "5px" : "6px",
+                                height: viewportType === "mobile" ? "22px" : "26px",
+                                borderRadius: "999px",
+                                background: "currentColor",
+                                display: "block",
+                              }}
+                            />
+                            <span
+                              style={{
+                                width: viewportType === "mobile" ? "5px" : "6px",
+                                height: viewportType === "mobile" ? "22px" : "26px",
+                                borderRadius: "999px",
+                                background: "currentColor",
+                                display: "block",
+                              }}
+                            />
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1683,8 +1784,8 @@ export default function ProfileReelsViewerPage() {
                       flexDirection: "column",
                       gap: "10px",
                       alignItems: "center",
-                      opacity: isActiveCommentsReel ? 0.12 : 1,
-                      pointerEvents: isActiveCommentsReel ? "none" : "auto",
+                      opacity: isDimmedReel ? 0.12 : 1,
+                      pointerEvents: isDimmedReel ? "none" : "auto",
                       transition: "opacity 180ms ease",
                     }}
                   >
@@ -1713,6 +1814,11 @@ export default function ProfileReelsViewerPage() {
                           setActiveReelId(reel.id);
                           setShareOpen(true);
                         },
+                      },
+                      {
+                        symbol: "🔗",
+                        label: "Link",
+                        action: () => handleShareLink(reel.id),
                       },
                     ].map((item, actionIndex) => (
                       <div
@@ -1770,8 +1876,8 @@ export default function ProfileReelsViewerPage() {
                       zIndex: 7,
                       display: "grid",
                       gap: "8px",
-                      opacity: isActiveCommentsReel ? 0.1 : 1,
-                      pointerEvents: isActiveCommentsReel ? "none" : "auto",
+                      opacity: isDimmedReel ? 0.1 : 1,
+                      pointerEvents: isDimmedReel ? "none" : "auto",
                       transition: "opacity 180ms ease",
                     }}
                   >
@@ -1853,69 +1959,46 @@ export default function ProfileReelsViewerPage() {
                       {reel.title}
                     </div>
 
-                    <p
-                      style={{
-                        margin: 0,
-                        color: "#f3f4f6",
-                        lineHeight: 1.45,
-                        maxWidth: "100%",
-                        fontSize: `${stageMetrics.captionSize}px`,
-                        textShadow: "0 2px 10px rgba(0,0,0,0.45)",
-                      }}
-                    >
-                      {shortCaption}{" "}
-                      {reel.caption.length > 100 && (
-                        <button
-                          onClick={() =>
-                            setExpandedCaptions((prev) => ({
-                              ...prev,
-                              [reel.id]: !prev[reel.id],
-                            }))
-                          }
+                    {reel.caption ? (
+                      <div
+                        style={{
+                          margin: 0,
+                          color: "#f3f4f6",
+                          lineHeight: 1.45,
+                          maxWidth: "100%",
+                          fontSize: `${stageMetrics.captionSize}px`,
+                          textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                        }}
+                      >
+                        <span
                           style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "white",
-                            fontWeight: 800,
-                            cursor: "pointer",
-                            padding: 0,
-                            textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                            display: "-webkit-box",
+                            WebkitLineClamp: viewportType === "mobile" ? 2 : 3,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            whiteSpace: "pre-wrap",
                           }}
                         >
-                          {expanded ? "less" : "more"}
-                        </button>
-                      )}
-                    </p>
-
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "2px" }}>
-                      <button
-                        onClick={() => {
-                          const video = videoRefs.current[reel.id];
-                          if (!video) return;
-                          video.currentTime = 0;
-                          const playPromise = video.play();
-                          if (playPromise && typeof playPromise.catch === "function") {
-                            playPromise.catch(() => {});
-                          }
-                        }}
-                        style={buttonStyle}
-                      >
-                        Replay
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          openCommentsForReel(reel.id);
-                        }}
-                        style={buttonStyle}
-                      >
-                        Comments
-                      </button>
-
-                      <button onClick={() => handleShareLink(reel.id)} style={buttonStyle}>
-                        Copy Link
-                      </button>
-                    </div>
+                          {reel.caption}
+                        </span>
+                        {hasLongCaption && (
+                          <button
+                            onClick={() => openDetailsForReel(reel.id)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "white",
+                              fontWeight: 900,
+                              cursor: "pointer",
+                              padding: "4px 0 0",
+                              textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                            }}
+                          >
+                            See more
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
 
                     {shareMessage && activeReel?.id === reel.id ? (
                       <div
@@ -2241,6 +2324,175 @@ export default function ProfileReelsViewerPage() {
         </div>
       )}
 
+      {detailsOpen && detailsReel && (
+        <>
+          <div style={overlayStyle} onClick={closeDetails} />
+          <div
+            style={{
+              position: "fixed",
+              zIndex: 94,
+              ...(viewportType === "desktop"
+                ? {
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: "min(460px, 100%)",
+                    borderLeft: "1px solid rgba(255,255,255,0.11)",
+                    borderRadius: 0,
+                  }
+                : {
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    maxHeight: viewportType === "tablet" ? "72vh" : "78vh",
+                    borderTop: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: "28px 28px 0 0",
+                  }),
+              background: "linear-gradient(180deg, rgba(11,16,32,0.98), rgba(7,9,13,0.98))",
+              color: "white",
+              boxShadow:
+                viewportType === "desktop"
+                  ? "-18px 0 44px rgba(0,0,0,0.48)"
+                  : "0 -18px 44px rgba(0,0,0,0.48)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: viewportType === "desktop" ? "22px 22px 16px" : "16px 18px 12px",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1.1 }}>
+                  Reel Details
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "13px", marginTop: "5px" }}>
+                  Full caption and reel information
+                </div>
+              </div>
+
+              <button onClick={closeDetails} style={buttonStyle}>
+                Close
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: viewportType === "desktop" ? "18px 22px 22px" : "16px 18px 22px",
+                overflowY: "auto",
+                display: "grid",
+                gap: "16px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                <div
+                  style={{
+                    width: "46px",
+                    height: "46px",
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.12)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    overflow: "hidden",
+                    display: "grid",
+                    placeItems: "center",
+                    fontWeight: 900,
+                  }}
+                >
+                  {detailsReel.creatorAvatarUrl ? (
+                    <img
+                      src={detailsReel.creatorAvatarUrl}
+                      alt={detailsReel.creatorName}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    detailsReel.creatorName.charAt(0)
+                  )}
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: "15px" }}>
+                    {detailsReel.creatorName}
+                  </div>
+                  <div style={{ color: "#9ca3af", fontSize: "13px" }}>
+                    {detailsReel.creator} • {formatRelativeTime(detailsReel.createdAt)}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ color: "#9ca3af", fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "7px" }}>
+                  Title
+                </div>
+                <div style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1.12 }}>
+                  {detailsReel.title}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ color: "#9ca3af", fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "7px" }}>
+                  Caption
+                </div>
+                <div
+                  style={{
+                    borderRadius: "22px",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.045)",
+                    padding: "15px",
+                    color: "#f3f4f6",
+                    fontSize: "14px",
+                    lineHeight: 1.65,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {detailsReel.caption || "No caption added."}
+                </div>
+                <div style={{ marginTop: "8px", color: "#9ca3af", fontSize: "12px", textAlign: "right" }}>
+                  {detailsReel.caption.length}/{REEL_CAPTION_MAX_LENGTH}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button onClick={() => openCommentsForReel(detailsReel.id)} style={buttonStyle}>
+                  Comments
+                </button>
+                <button onClick={() => handleShareLink(detailsReel.id)} style={buttonStyle}>
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <style jsx global>{`
+        @keyframes parapostPlayPausePop {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.82);
+          }
+          18% {
+            opacity: 0.96;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          68% {
+            opacity: 0.82;
+            transform: translate(-50%, -50%) scale(0.98);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.08);
+          }
+        }
+      `}</style>
+
       {shareOpen && activeReel && (
         <>
           <div style={overlayStyle} onClick={() => setShareOpen(false)} />
@@ -2288,8 +2540,9 @@ export default function ProfileReelsViewerPage() {
                     style={{
                       width: "100%",
                       height: "260px",
-                      objectFit: "cover",
+                      objectFit: "contain",
                       display: "block",
+                      background: "#000",
                     }}
                   />
                 </div>
@@ -2373,10 +2626,14 @@ export default function ProfileReelsViewerPage() {
 
                 <textarea
                   value={editCaption}
-                  onChange={(event) => setEditCaption(event.target.value)}
+                  onChange={(event) => setEditCaption(event.target.value.slice(0, REEL_CAPTION_MAX_LENGTH))}
                   placeholder="Reel caption"
                   style={textAreaStyle}
+                  maxLength={REEL_CAPTION_MAX_LENGTH}
                 />
+                <div style={{ marginTop: "-8px", color: "#9ca3af", fontSize: "12px", textAlign: "right" }}>
+                  {editCaption.length}/{REEL_CAPTION_MAX_LENGTH}
+                </div>
 
                 <div
                   style={{

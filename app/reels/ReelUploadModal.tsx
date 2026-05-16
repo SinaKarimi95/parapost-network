@@ -128,6 +128,8 @@ const statCardStyle: CSSProperties = {
   padding: "12px 14px",
 };
 
+const REEL_CAPTION_MAX_LENGTH = 4000;
+
 const fileBoxBase: CSSProperties = {
   position: "relative",
   borderRadius: "24px",
@@ -727,7 +729,7 @@ export default function ReelUploadModal({
                       width: "100%",
                       height: "100%",
                       maxWidth: viewportType === "mobile" ? "100%" : "390px",
-                      objectFit: "cover",
+                      objectFit: "contain",
                       background: "#000",
                       filter: "contrast(1.05) saturate(1.1)",
                     }}
@@ -816,7 +818,7 @@ export default function ReelUploadModal({
                       marginBottom: "18px",
                     }}
                   >
-                    Drag and drop a vertical video here or choose a file. Reels are set to a 30-second maximum for launch.
+                    Drag and drop a portrait or landscape video here, or choose a file. Reels are set to a 30-second maximum for launch.
                   </div>
 
                   <button
@@ -835,7 +837,7 @@ export default function ReelUploadModal({
                       lineHeight: 1.6,
                     }}
                   >
-                    Recommended: 9:16 portrait, sharp lighting, strong opening frame, short title, concise caption.
+                    Recommended: 9:16 portrait for full-screen Reels. Landscape videos are supported and will display cleanly without being forced to crop.
                   </div>
                 </div>
               )}
@@ -872,7 +874,7 @@ export default function ReelUploadModal({
                   Create a Reel
                 </div>
                 <div style={{ color: "#9ca3af", fontSize: "14px", lineHeight: 1.6 }}>
-                  Upload a short vertical video for Parapost Reels. This modal is built to fit your reels page flow cleanly.
+                  Upload a short portrait or landscape video for Parapost Reels. The preview and captions are built to flow cleanly on desktop, tablet, and mobile.
                 </div>
               </div>
 
@@ -985,10 +987,10 @@ export default function ReelUploadModal({
               <div style={labelStyle}>Caption</div>
               <textarea
                 value={caption}
-                onChange={(event) => setCaption(event.target.value.slice(0, 2200))}
+                onChange={(event) => setCaption(event.target.value.slice(0, REEL_CAPTION_MAX_LENGTH))}
                 placeholder="Write a caption for your reel..."
                 style={textAreaStyle}
-                maxLength={2200}
+                maxLength={REEL_CAPTION_MAX_LENGTH}
               />
               <div
                 style={{
@@ -998,7 +1000,7 @@ export default function ReelUploadModal({
                   textAlign: "right",
                 }}
               >
-                {caption.length}/2200
+                {caption.length}/{REEL_CAPTION_MAX_LENGTH}
               </div>
             </div>
 

@@ -103,6 +103,15 @@ type Post = {
   images?: PostImage[];
 };
 
+type DashboardComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  is_hidden?: boolean | null;
+};
+
 type SharedReelItem = {
   id: string;
   reel_id: string;
@@ -982,6 +991,11 @@ export default function DashboardPage() {
   const [followingMap, setFollowingMap] = useState<FollowMap>({});
   const [likeCounts, setLikeCounts] = useState<CountMap>({});
   const [commentCounts, setCommentCounts] = useState<CountMap>({});
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [commentsByPostId, setCommentsByPostId] = useState<Record<string, DashboardComment[]>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [commentsLoadingPostId, setCommentsLoadingPostId] = useState<string | null>(null);
+  const [postingCommentPostId, setPostingCommentPostId] = useState<string | null>(null);
   const [shareCounts, setShareCounts] = useState<CountMap>({});
   const [userLikes, setUserLikes] = useState<ToggleMap>({});
   const [openPostMenuId, setOpenPostMenuId] = useState<string | null>(null);
@@ -1800,6 +1814,7 @@ export default function DashboardPage() {
       setSearchOpen(false);
       setFeelingActivityOpen(false);
       setOpenPostMenuId(null);
+      setOpenCommentsPostId(null);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -2190,6 +2205,188 @@ export default function DashboardPage() {
     alert("Shared to your feed and profile. Post link copied too.");
   };
 
+
+  const fetchDashboardComments = useCallback(
+    async (postId: string) => {
+      if (!postId) return;
+
+      setCommentsLoadingPostId(postId);
+
+      try {
+        const { data, error } = await supabase
+          .from("comments")
+          .select("id, post_id, user_id, content, created_at, is_hidden")
+          .eq("post_id", postId)
+          .order("created_at", { ascending: true })
+          .limit(80);
+
+        if (error) {
+          console.error("Dashboard comments fetch error:", error.message);
+          alert(error.message || "Could not load comments for this post.");
+          return;
+        }
+
+        const nextComments = ((data || []) as DashboardComment[]).filter(
+          (comment) => !comment.is_hidden
+        );
+
+        setCommentsByPostId((prev) => ({
+          ...prev,
+          [postId]: nextComments,
+        }));
+
+        const commenterIds = [
+          ...new Set(nextComments.map((comment) => comment.user_id).filter(Boolean)),
+        ];
+
+        if (commenterIds.length > 0) {
+          const { data: profileRows, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, avatar_url, bio, location, is_online")
+            .in("id", commenterIds);
+
+          if (!profilesError && profileRows) {
+            const nextProfiles: Record<string, ProfilePreview> = {};
+            for (const profile of profileRows as ProfilePreview[]) {
+              if (profile.id) nextProfiles[profile.id] = profile;
+            }
+
+            setProfilesMap((prev) => ({
+              ...prev,
+              ...nextProfiles,
+            }));
+          }
+        }
+      } finally {
+        setCommentsLoadingPostId((current) => (current === postId ? null : current));
+      }
+    },
+    []
+  );
+
+  const handleToggleDashboardComments = useCallback(
+    async (postId: string) => {
+      if (!postId) return;
+
+      setOpenPostMenuId(null);
+
+      if (openCommentsPostId === postId) {
+        setOpenCommentsPostId(null);
+        return;
+      }
+
+      setOpenCommentsPostId(postId);
+      await fetchDashboardComments(postId);
+    },
+    [fetchDashboardComments, openCommentsPostId]
+  );
+
+  const handleDashboardCommentDraftChange = (postId: string, value: string) => {
+    setCommentDrafts((prev) => ({
+      ...prev,
+      [postId]: value,
+    }));
+  };
+
+  const handleAddDashboardComment = async (postId: string, postOwnerId?: string | null) => {
+    const trimmed = (commentDrafts[postId] || "").trim();
+
+    if (!trimmed) return;
+
+    if (!currentUserId) {
+      alert("You must be logged in to comment.");
+      return;
+    }
+
+    setPostingCommentPostId(postId);
+
+    try {
+      const { data, error } = await supabase
+        .from("comments")
+        .insert([
+          {
+            post_id: postId,
+            user_id: currentUserId,
+            content: trimmed,
+          },
+        ])
+        .select("id, post_id, user_id, content, created_at, is_hidden")
+        .single();
+
+      if (error) {
+        alert(`Comment error: ${error.message}`);
+        return;
+      }
+
+      const savedComment = data as DashboardComment;
+
+      setCommentDrafts((prev) => ({
+        ...prev,
+        [postId]: "",
+      }));
+
+      setCommentsByPostId((prev) => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), savedComment],
+      }));
+
+      setCommentCounts((prev) => ({
+        ...prev,
+        [postId]: (prev[postId] || 0) + 1,
+      }));
+
+      if (currentProfile) {
+        setProfilesMap((prev) => ({
+          ...prev,
+          [currentUserId]: currentProfile,
+        }));
+      }
+
+      if (postOwnerId && postOwnerId !== currentUserId) {
+        await supabase.from("notifications").insert([
+          {
+            user_id: postOwnerId,
+            actor_id: currentUserId,
+            type: "post_comment",
+            post_id: postId,
+            comment_id: savedComment.id,
+            friend_request_id: null,
+            message: "commented on your post.",
+            is_read: false,
+          },
+        ]);
+      }
+    } finally {
+      setPostingCommentPostId((current) => (current === postId ? null : current));
+    }
+  };
+
+  const handleDeleteDashboardComment = async (postId: string, commentId: string) => {
+    if (!currentUserId) return;
+    if (!window.confirm("Delete this comment?")) return;
+
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      alert(`Delete comment error: ${error.message}`);
+      return;
+    }
+
+    setCommentsByPostId((prev) => ({
+      ...prev,
+      [postId]: (prev[postId] || []).filter((comment) => comment.id !== commentId),
+    }));
+
+    setCommentCounts((prev) => ({
+      ...prev,
+      [postId]: Math.max((prev[postId] || 1) - 1, 0),
+    }));
+  };
+
   const handleStartEditPost = (post: Post) => {
     setEditingPostId(post.id);
     setEditingPostContent(post.content || "");
@@ -2538,6 +2735,7 @@ export default function DashboardPage() {
                         post={item.post}
                         profile={profilesMap[item.post.user_id]}
                         currentUserId={currentUserId}
+                        profilesMap={profilesMap}
                         isLiked={!!userLikes[item.post.id]}
                         likeCount={likeCounts[item.post.id] || 0}
                         commentCount={commentCounts[item.post.id] || 0}
@@ -2549,7 +2747,16 @@ export default function DashboardPage() {
                         editingPostContent={editingPostContent}
                         setEditingPostContent={setEditingPostContent}
                         setOpenPostMenuId={setOpenPostMenuId}
+                        commentsOpen={openCommentsPostId === item.post.id}
+                        comments={commentsByPostId[item.post.id] || []}
+                        commentsLoading={commentsLoadingPostId === item.post.id}
+                        commentDraft={commentDrafts[item.post.id] || ""}
+                        postingComment={postingCommentPostId === item.post.id}
                         onLike={() => handleLikeToggle(item.post.id)}
+                        onToggleComments={() => handleToggleDashboardComments(item.post.id)}
+                        onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.post.id, value)}
+                        onAddComment={() => handleAddDashboardComment(item.post.id, item.post.user_id)}
+                        onDeleteComment={(commentId) => handleDeleteDashboardComment(item.post.id, commentId)}
                         onShare={() => handleShare(item.post.id)}
                         onStartEdit={() => handleStartEditPost(item.post)}
                         onSaveEdit={() => handleSavePostEdit(item.post.id)}
@@ -2566,11 +2773,27 @@ export default function DashboardPage() {
                         sharerProfile={profilesMap[item.sharedPost.user_id]}
                         originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
                         currentUserId={currentUserId}
+                        profilesMap={profilesMap}
+                        isLiked={!!userLikes[item.sharedPost.post_id]}
+                        likeCount={likeCounts[item.sharedPost.post_id] || 0}
+                        commentCount={commentCounts[item.sharedPost.post_id] || 0}
+                        shareCount={shareCounts[item.sharedPost.post_id] || 0}
                         openPostMenuId={openPostMenuId}
                         editingPostId={editingPostId}
                         editingPostContent={editingPostContent}
                         setEditingPostContent={setEditingPostContent}
                         setOpenPostMenuId={setOpenPostMenuId}
+                        commentsOpen={openCommentsPostId === item.sharedPost.post_id}
+                        comments={commentsByPostId[item.sharedPost.post_id] || []}
+                        commentsLoading={commentsLoadingPostId === item.sharedPost.post_id}
+                        commentDraft={commentDrafts[item.sharedPost.post_id] || ""}
+                        postingComment={postingCommentPostId === item.sharedPost.post_id}
+                        onLikeOriginal={() => handleLikeToggle(item.sharedPost.post_id)}
+                        onToggleComments={() => handleToggleDashboardComments(item.sharedPost.post_id)}
+                        onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.sharedPost.post_id, value)}
+                        onAddComment={() => handleAddDashboardComment(item.sharedPost.post_id, item.sharedPost.original_post.user_id)}
+                        onDeleteComment={(commentId) => handleDeleteDashboardComment(item.sharedPost.post_id, commentId)}
+                        onShareOriginal={() => handleShare(item.sharedPost.post_id)}
                         onStartEditOriginal={() => handleStartEditPost(item.sharedPost.original_post)}
                         onSaveEditOriginal={() => handleSavePostEdit(item.sharedPost.original_post.id)}
                         onCancelEditOriginal={() => {
@@ -4623,6 +4846,7 @@ function PostCard({
   post,
   profile,
   currentUserId,
+  profilesMap,
   isLiked,
   likeCount,
   commentCount,
@@ -4634,7 +4858,16 @@ function PostCard({
   editingPostContent,
   setEditingPostContent,
   setOpenPostMenuId,
+  commentsOpen,
+  comments,
+  commentsLoading,
+  commentDraft,
+  postingComment,
   onLike,
+  onToggleComments,
+  onCommentDraftChange,
+  onAddComment,
+  onDeleteComment,
   onShare,
   onStartEdit,
   onSaveEdit,
@@ -4644,6 +4877,7 @@ function PostCard({
   post: Post;
   profile?: ProfilePreview | null;
   currentUserId: string;
+  profilesMap: Record<string, ProfilePreview>;
   isLiked: boolean;
   likeCount: number;
   commentCount: number;
@@ -4655,7 +4889,16 @@ function PostCard({
   editingPostContent: string;
   setEditingPostContent: (value: string) => void;
   setOpenPostMenuId: (value: string | null | ((prev: string | null) => string | null)) => void;
+  commentsOpen: boolean;
+  comments: DashboardComment[];
+  commentsLoading: boolean;
+  commentDraft: string;
+  postingComment: boolean;
   onLike: () => void;
+  onToggleComments: () => void;
+  onCommentDraftChange: (value: string) => void;
+  onAddComment: () => void;
+  onDeleteComment: (commentId: string) => void;
   onShare: () => void;
   onStartEdit: () => void;
   onSaveEdit: () => void;
@@ -4736,11 +4979,127 @@ function PostCard({
 
       <div className="dashboard-post-actions" style={postActionsStyle}>
         <ActionButton onClick={onLike} active={isLiked}><HeartIcon filled={isLiked} /> Like</ActionButton>
-        <ActionButton onClick={() => document.getElementById(`post-${post.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}><CommentIcon /> Comment</ActionButton>
+        <ActionButton onClick={onToggleComments} active={commentsOpen}><CommentIcon /> Comment</ActionButton>
         <ActionButton onClick={onShare}><ShareIcon /> Share</ActionButton>
         <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}>Save</ActionButton>
       </div>
+
+      {commentsOpen ? (
+        <DashboardCommentsPanel
+          postId={post.id}
+          comments={comments}
+          profilesMap={profilesMap}
+          currentUserId={currentUserId}
+          loading={commentsLoading}
+          draft={commentDraft}
+          posting={postingComment}
+          onDraftChange={onCommentDraftChange}
+          onAddComment={onAddComment}
+          onDeleteComment={onDeleteComment}
+        />
+      ) : null}
     </article>
+  );
+}
+
+
+function DashboardCommentsPanel({
+  postId,
+  comments,
+  profilesMap,
+  currentUserId,
+  loading,
+  draft,
+  posting,
+  onDraftChange,
+  onAddComment,
+  onDeleteComment,
+}: {
+  postId: string;
+  comments: DashboardComment[];
+  profilesMap: Record<string, ProfilePreview>;
+  currentUserId: string;
+  loading: boolean;
+  draft: string;
+  posting: boolean;
+  onDraftChange: (value: string) => void;
+  onAddComment: () => void;
+  onDeleteComment: (commentId: string) => void;
+}) {
+  return (
+    <section style={dashboardCommentsPanelStyle} onClick={(event) => event.stopPropagation()}>
+      <div style={dashboardCommentsHeaderStyle}>
+        <strong>Comments</strong>
+        <span>{loading ? "Loading..." : `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`}</span>
+      </div>
+
+      <div style={dashboardCommentComposerStyle}>
+        <textarea
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
+          placeholder="Write a comment..."
+          rows={2}
+          maxLength={1200}
+          style={dashboardCommentTextareaStyle}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              onAddComment();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={onAddComment}
+          disabled={!draft.trim() || posting}
+          style={{
+            ...dashboardCommentSubmitButtonStyle,
+            opacity: draft.trim() && !posting ? 1 : 0.55,
+            cursor: draft.trim() && !posting ? "pointer" : "not-allowed",
+          }}
+        >
+          {posting ? "Posting..." : "Post"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={dashboardCommentsEmptyStyle}>Loading comments...</div>
+      ) : comments.length === 0 ? (
+        <div style={dashboardCommentsEmptyStyle}>No comments yet. Be the first to reply.</div>
+      ) : (
+        <div style={dashboardCommentsListStyle}>
+          {comments.map((comment) => {
+            const author = profilesMap[comment.user_id];
+            const authorName = author?.full_name || author?.username || "Parapost member";
+            const canDelete = !!currentUserId && comment.user_id === currentUserId;
+
+            return (
+              <div key={`${postId}-${comment.id}`} style={dashboardCommentRowStyle}>
+                <Avatar profile={author} size={34} href={comment.user_id ? `/profile/${comment.user_id}` : undefined} />
+                <div style={dashboardCommentBubbleStyle}>
+                  <div style={dashboardCommentTopLineStyle}>
+                    <Link href={comment.user_id ? `/profile/${comment.user_id}` : "#"} style={dashboardCommentAuthorStyle}>
+                      {authorName}
+                    </Link>
+                    <span style={dashboardCommentTimeStyle}>{formatRelativeTime(comment.created_at)}</span>
+                  </div>
+                  <div style={dashboardCommentTextStyle}>{renderLinkedText(comment.content || "")}</div>
+                  {canDelete ? (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteComment(comment.id)}
+                      style={dashboardCommentDeleteButtonStyle}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -4749,11 +5108,27 @@ function SharedPostCard({
   sharerProfile,
   originalProfile,
   currentUserId,
+  profilesMap,
+  isLiked,
+  likeCount,
+  commentCount,
+  shareCount,
   openPostMenuId,
   editingPostId,
   editingPostContent,
   setEditingPostContent,
   setOpenPostMenuId,
+  commentsOpen,
+  comments,
+  commentsLoading,
+  commentDraft,
+  postingComment,
+  onLikeOriginal,
+  onToggleComments,
+  onCommentDraftChange,
+  onAddComment,
+  onDeleteComment,
+  onShareOriginal,
   onStartEditOriginal,
   onSaveEditOriginal,
   onCancelEditOriginal,
@@ -4764,11 +5139,27 @@ function SharedPostCard({
   sharerProfile?: ProfilePreview | null;
   originalProfile?: ProfilePreview | null;
   currentUserId: string;
+  profilesMap: Record<string, ProfilePreview>;
+  isLiked: boolean;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
   openPostMenuId: string | null;
   editingPostId: string | null;
   editingPostContent: string;
   setEditingPostContent: (value: string) => void;
   setOpenPostMenuId: (value: string | null | ((prev: string | null) => string | null)) => void;
+  commentsOpen: boolean;
+  comments: DashboardComment[];
+  commentsLoading: boolean;
+  commentDraft: string;
+  postingComment: boolean;
+  onLikeOriginal: () => void;
+  onToggleComments: () => void;
+  onCommentDraftChange: (value: string) => void;
+  onAddComment: () => void;
+  onDeleteComment: (commentId: string) => void;
+  onShareOriginal: () => void;
   onStartEditOriginal: () => void;
   onSaveEditOriginal: () => void;
   onCancelEditOriginal: () => void;
@@ -4899,6 +5290,38 @@ function SharedPostCard({
         <PostImageGrid imageUrls={getPostImageUrls(originalPost)} alt="Shared post image" />
 
       </div>
+
+      {likeCount > 0 || commentCount > 0 || shareCount > 0 ? (
+        <div style={postStatsSummaryStyle}>
+          <span>{likeCount} Likes</span>
+          <span>·</span>
+          <span>{commentCount} Comments</span>
+          <span>·</span>
+          <span>{shareCount} Shares</span>
+        </div>
+      ) : null}
+
+      <div className="dashboard-post-actions" style={postActionsStyle}>
+        <ActionButton onClick={onLikeOriginal} active={isLiked}><HeartIcon filled={isLiked} /> Like</ActionButton>
+        <ActionButton onClick={onToggleComments} active={commentsOpen}><CommentIcon /> Comment</ActionButton>
+        <ActionButton onClick={onShareOriginal}><ShareIcon /> Share</ActionButton>
+        <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}>Save</ActionButton>
+      </div>
+
+      {commentsOpen ? (
+        <DashboardCommentsPanel
+          postId={originalPost.id}
+          comments={comments}
+          profilesMap={profilesMap}
+          currentUserId={currentUserId}
+          loading={commentsLoading}
+          draft={commentDraft}
+          posting={postingComment}
+          onDraftChange={onCommentDraftChange}
+          onAddComment={onAddComment}
+          onDeleteComment={onDeleteComment}
+        />
+      ) : null}
     </article>
   );
 }
@@ -7461,6 +7884,137 @@ const softDangerButtonStyle: CSSProperties = { ...softButtonStyle, color: "#feca
 const postStatsSummaryStyle: CSSProperties = { display: "flex", justifyContent: "flex-end", gap: 9, alignItems: "center", color: "#d1d5db", fontSize: 13, borderBottom: "1px solid rgba(255,255,255,0.10)", paddingBottom: 12, marginTop: 14 };
 const postStatusLinkStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontWeight: 900, textDecoration: "none" };
 const postActionsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 10 };
+
+const dashboardCommentsPanelStyle: CSSProperties = {
+  marginTop: "12px",
+  borderRadius: "22px",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-1) 20%, rgba(255,255,255,0.09))",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.028))",
+  padding: "12px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045)",
+};
+
+const dashboardCommentsHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  padding: "2px 2px 10px",
+  color: "#f8fafc",
+  fontSize: "13px",
+};
+
+const dashboardCommentComposerStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto",
+  gap: "10px",
+  alignItems: "end",
+  paddingBottom: "12px",
+  borderBottom: "1px solid rgba(255,255,255,0.075)",
+};
+
+const dashboardCommentTextareaStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "46px",
+  maxHeight: "120px",
+  resize: "vertical",
+  borderRadius: "17px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(6,8,15,0.78)",
+  color: "#fff",
+  outline: "none",
+  padding: "11px 13px",
+  fontFamily: "inherit",
+  fontSize: "13px",
+  lineHeight: 1.45,
+};
+
+const dashboardCommentSubmitButtonStyle: CSSProperties = {
+  minHeight: "42px",
+  borderRadius: "999px",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-1) 38%, rgba(255,255,255,0.12))",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2))",
+  color: "#fff",
+  fontWeight: 900,
+  padding: "0 16px",
+  boxShadow: "0 10px 22px color-mix(in srgb, var(--parapost-accent-2) 20%, transparent)",
+};
+
+const dashboardCommentsEmptyStyle: CSSProperties = {
+  padding: "14px 4px 4px",
+  color: "#9ca3af",
+  fontSize: "13px",
+};
+
+const dashboardCommentsListStyle: CSSProperties = {
+  display: "grid",
+  gap: "10px",
+  paddingTop: "12px",
+  maxHeight: "330px",
+  overflowY: "auto",
+};
+
+const dashboardCommentRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "9px",
+};
+
+const dashboardCommentBubbleStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  borderRadius: "17px",
+  background: "rgba(255,255,255,0.055)",
+  border: "1px solid rgba(255,255,255,0.07)",
+  padding: "10px 11px",
+};
+
+const dashboardCommentTopLineStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  marginBottom: "4px",
+};
+
+const dashboardCommentAuthorStyle: CSSProperties = {
+  color: "#fff",
+  fontWeight: 900,
+  fontSize: "13px",
+  textDecoration: "none",
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const dashboardCommentTimeStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: "11px",
+  flexShrink: 0,
+};
+
+const dashboardCommentTextStyle: CSSProperties = {
+  color: "#e5e7eb",
+  fontSize: "13px",
+  lineHeight: 1.45,
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+};
+
+const dashboardCommentDeleteButtonStyle: CSSProperties = {
+  marginTop: "7px",
+  border: "none",
+  background: "transparent",
+  color: "#fca5a5",
+  fontSize: "12px",
+  fontWeight: 800,
+  cursor: "pointer",
+  padding: 0,
+};
+
 const actionButtonStyle: CSSProperties = { minHeight: 42, borderRadius: 14, border: "1px solid transparent", background: "transparent", color: "#e5e7eb", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 850, cursor: "pointer" };
 const activeActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: "var(--parapost-accent-text)", background: "var(--parapost-accent-muted-bg)", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)" };
 

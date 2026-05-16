@@ -178,9 +178,10 @@ export default function ProfileReelsGridPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#07090d",
+        background:
+          "radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--parapost-accent, #a855f7) 22%, transparent), transparent 34%), radial-gradient(circle at 92% 10%, rgba(124,58,237,0.16), transparent 30%), #07090d",
         color: "#ffffff",
-        padding: "22px 14px 56px",
+        padding: "24px 14px 64px",
       }}
     >
       <div
@@ -191,13 +192,16 @@ export default function ProfileReelsGridPage() {
         }}
       >
         <div
+          className="profile-reels-header-card parapost-accent-card"
           style={{
-            background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.04) 100%)",
-            borderRadius: "28px",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent, #a855f7) 18%, transparent), rgba(255,255,255,0.055) 36%, rgba(10,13,24,0.94) 100%)",
+            borderRadius: "30px",
             padding: "18px",
-            border: "1px solid rgba(255,255,255,0.10)",
-            backdropFilter: "blur(10px)",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
+            border: "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 30%, rgba(255,255,255,0.10))",
+            backdropFilter: "blur(14px)",
+            boxShadow:
+              "0 18px 44px rgba(0,0,0,0.28), 0 0 36px color-mix(in srgb, var(--parapost-accent, #a855f7) 16%, transparent)",
             marginBottom: "18px",
           }}
         >
@@ -229,6 +233,27 @@ export default function ProfileReelsGridPage() {
               </div>
 
               <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "8px",
+                    padding: "6px 10px",
+                    borderRadius: "999px",
+                    background:
+                      "color-mix(in srgb, var(--parapost-accent, #a855f7) 18%, rgba(255,255,255,0.06))",
+                    border:
+                      "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 28%, rgba(255,255,255,0.12))",
+                    color: "#f3e8ff",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Parapost Reels
+                </div>
                 <h1
                   style={{
                     margin: 0,
@@ -259,7 +284,11 @@ export default function ProfileReelsGridPage() {
                 flexWrap: "wrap",
               }}
             >
-              <Link href={`/profile/${profileId}`} style={secondaryLinkStyle}>
+              <Link
+                href={`/profile/${profileId}`}
+                className="profile-reels-back-button parapost-accent-button"
+                style={secondaryLinkStyle}
+              >
                 Back to Profile
               </Link>
             </div>
@@ -300,16 +329,32 @@ export default function ProfileReelsGridPage() {
                 flexWrap: "wrap",
               }}
             >
-              <div style={{ color: "#d1d5db", fontSize: "0.95rem" }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 12px",
+                  borderRadius: "999px",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent, #a855f7) 18%, transparent), rgba(255,255,255,0.055))",
+                  border:
+                    "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 24%, rgba(255,255,255,0.10))",
+                  color: "#f4f0ff",
+                  fontSize: "0.92rem",
+                  fontWeight: 800,
+                }}
+              >
                 {reels.length} {reels.length === 1 ? "reel" : "reels"}
               </div>
             </div>
 
             <div
+              className="profile-reels-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
-                gap: "12px",
+                gap: "14px",
               }}
             >
               {reels.map((reel) => (
@@ -323,14 +368,20 @@ export default function ProfileReelsGridPage() {
                   }}
                 >
                   <div
+                    className="profile-reel-card"
                     style={{
                       position: "relative",
                       aspectRatio: "9 / 16",
-                      borderRadius: "22px",
+                      borderRadius: "24px",
                       overflow: "hidden",
-                      background: "#000",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      boxShadow: "0 10px 24px rgba(0,0,0,0.24)",
+                      background:
+                        "linear-gradient(180deg, rgba(10,13,24,0.96), #000)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 20%, rgba(255,255,255,0.12))",
+                      boxShadow:
+                        "0 14px 32px rgba(0,0,0,0.30), 0 0 22px color-mix(in srgb, var(--parapost-accent, #a855f7) 10%, transparent)",
+                      transition:
+                        "transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
                     }}
                   >
                     {reel.video_url ? (
@@ -354,7 +405,20 @@ export default function ProfileReelsGridPage() {
                             position: "absolute",
                             inset: 0,
                             background:
-                              "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.00) 45%, rgba(0,0,0,0.60) 100%)",
+                              "linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.00) 38%, rgba(0,0,0,0.72) 100%)",
+                          }}
+                        />
+
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: "3px",
+                            background:
+                              "linear-gradient(90deg, var(--parapost-accent, #a855f7), rgba(255,255,255,0.72))",
+                            opacity: 0.88,
                           }}
                         />
                         <div
@@ -385,18 +449,41 @@ export default function ProfileReelsGridPage() {
                               {reel.title}
                             </div>
                           ) : null}
+
+                          {reel.caption ? (
+                            <div
+                              style={{
+                                color: "rgba(255,255,255,0.88)",
+                                fontSize: "11.5px",
+                                fontWeight: 650,
+                                lineHeight: 1.25,
+                                textShadow: "0 2px 9px rgba(0,0,0,0.58)",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {reel.caption}
+                            </div>
+                          ) : null}
+
                           <div
+                            className="profile-reel-open-pill"
                             style={{
                               display: "inline-flex",
                               width: "fit-content",
                               alignItems: "center",
                               borderRadius: "999px",
-                              background: "rgba(0,0,0,0.56)",
+                              background:
+                                "linear-gradient(135deg, var(--parapost-accent, #a855f7), #6d28d9)",
                               color: "#fff",
-                              padding: "6px 10px",
+                              padding: "6px 11px",
                               fontSize: "12px",
-                              fontWeight: 700,
-                              border: "1px solid rgba(255,255,255,0.14)",
+                              fontWeight: 850,
+                              border: "1px solid rgba(255,255,255,0.18)",
+                              boxShadow:
+                                "0 8px 18px color-mix(in srgb, var(--parapost-accent, #a855f7) 26%, transparent)",
                             }}
                           >
                             Open Reel
@@ -433,39 +520,64 @@ export default function ProfileReelsGridPage() {
                     )}
                   </div>
 
-                  {reel.caption ? (
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        color: "#d1d5db",
-                        fontSize: "13px",
-                        lineHeight: 1.4,
-                        padding: "0 4px",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {reel.caption}
-                    </div>
-                  ) : null}
                 </Link>
               ))}
             </div>
           </>
         )}
       </div>
+
+      <style jsx global>{`
+        .profile-reels-header-card,
+        .profile-reel-card,
+        .profile-reels-back-button,
+        .profile-reel-open-pill {
+          --profile-reels-accent: var(--parapost-accent, #a855f7);
+        }
+
+        .profile-reel-card:hover {
+          transform: translateY(-3px);
+          border-color: color-mix(in srgb, var(--parapost-accent, #a855f7) 58%, rgba(255,255,255,0.18)) !important;
+          box-shadow:
+            0 18px 40px rgba(0,0,0,0.36),
+            0 0 34px color-mix(in srgb, var(--parapost-accent, #a855f7) 22%, transparent) !important;
+        }
+
+        .profile-reels-back-button:hover,
+        .profile-reel-open-pill:hover {
+          filter: brightness(1.08);
+          transform: translateY(-1px);
+        }
+
+        .profile-reels-back-button,
+        .profile-reel-open-pill {
+          transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+        }
+
+        @media (max-width: 760px) {
+          .profile-reels-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 11px !important;
+          }
+
+          .profile-reels-header-card {
+            border-radius: 24px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
 const cardStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.035))",
   borderRadius: "24px",
   padding: "18px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+  border:
+    "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 20%, rgba(255,255,255,0.10))",
+  boxShadow:
+    "0 10px 26px rgba(0,0,0,0.22), 0 0 22px color-mix(in srgb, var(--parapost-accent, #a855f7) 8%, transparent)",
 };
 
 const avatarStyle: CSSProperties = {
@@ -476,8 +588,12 @@ const avatarStyle: CSSProperties = {
   overflow: "hidden",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, rgba(139,92,246,0.95), rgba(15,23,42,0.95))",
-  border: "1px solid rgba(255,255,255,0.14)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent, #a855f7), rgba(15,23,42,0.95))",
+  border:
+    "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 36%, rgba(255,255,255,0.14))",
+  boxShadow:
+    "0 0 22px color-mix(in srgb, var(--parapost-accent, #a855f7) 28%, transparent)",
   color: "#fff",
   fontSize: "22px",
   fontWeight: 800,
@@ -500,8 +616,10 @@ const privateIconStyle: CSSProperties = {
   borderRadius: "999px",
   display: "grid",
   placeItems: "center",
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.12)",
+  background:
+    "color-mix(in srgb, var(--parapost-accent, #a855f7) 16%, rgba(255,255,255,0.08))",
+  border:
+    "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 24%, rgba(255,255,255,0.12))",
   fontSize: "24px",
   marginBottom: "16px",
 };
@@ -523,8 +641,9 @@ const primaryLinkStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   textDecoration: "none",
-  background: "#ffffff",
-  color: "#05050b",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent, #a855f7), #7c3aed)",
+  color: "#ffffff",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: "999px",
   padding: "10px 16px",
@@ -536,9 +655,11 @@ const secondaryLinkStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   textDecoration: "none",
-  background: "rgba(255,255,255,0.05)",
+  background:
+    "color-mix(in srgb, var(--parapost-accent, #a855f7) 12%, rgba(255,255,255,0.055))",
   color: "white",
-  border: "1px solid rgba(255,255,255,0.10)",
+  border:
+    "1px solid color-mix(in srgb, var(--parapost-accent, #a855f7) 24%, rgba(255,255,255,0.10))",
   borderRadius: "999px",
   padding: "10px 16px",
   fontWeight: 600,

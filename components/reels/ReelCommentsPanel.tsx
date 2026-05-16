@@ -6,6 +6,7 @@ import ReelsCommentsBottomSheet from "@/components/reels/ReelsCommentsBottomShee
 type ReelComment = {
   id: string;
   reelId: string;
+  authorUserId: string;
   author: string;
   text: string;
   time: string;
@@ -175,6 +176,13 @@ export default function ReelCommentsPanel({
 
   const canModerateComments = !!activeReelOwnerId && activeReelOwnerId === currentUserId;
   const footerIsCompact = viewportType === "mobile";
+  const selectedMenuComment = commentMenu
+    ? allComments.find((comment) => comment.id === commentMenu.commentId)
+    : null;
+  const canDeleteSelectedMenuComment = Boolean(
+    selectedMenuComment &&
+      (selectedMenuComment.authorUserId === currentUserId || canModerateComments)
+  );
 
   return (
     <>
@@ -260,6 +268,8 @@ export default function ReelCommentsPanel({
                 activeReelId,
                 comment.id
               );
+              const canDeleteComment =
+                comment.authorUserId === currentUserId || canModerateComments;
 
               return (
                 <div
@@ -290,9 +300,11 @@ export default function ReelCommentsPanel({
                     commentId={comment.id}
                     liked={commentLiked}
                     likeCount={commentLikeCount}
+                    canDelete={canDeleteComment}
                     canModerate={canModerateComments}
                     onLike={onCommentLikeToggle}
                     onReply={() => onStartCommentReply(comment)}
+                    onDelete={onDeleteLocalComment}
                     onHide={onHideComment}
                   />
 
@@ -351,6 +363,8 @@ export default function ReelCommentsPanel({
                       {replies.map((reply) => {
                         const replyLiked = !!commentLikedMap[reply.id];
                         const replyLikeCount = commentLikeMap[reply.id] || 0;
+                        const canDeleteReply =
+                          reply.authorUserId === currentUserId || canModerateComments;
 
                         return (
                           <div
@@ -396,9 +410,11 @@ export default function ReelCommentsPanel({
                               commentId={reply.id}
                               liked={replyLiked}
                               likeCount={replyLikeCount}
+                              canDelete={canDeleteReply}
                               canModerate={canModerateComments}
                               onLike={onCommentLikeToggle}
                               onReply={() => onStartCommentReply(comment)}
+                              onDelete={onDeleteLocalComment}
                               onHide={onHideComment}
                             />
                           </div>
@@ -461,7 +477,7 @@ export default function ReelCommentsPanel({
             Reply
           </button>
 
-          {canModerateComments ? (
+          {canModerateComments && selectedMenuComment?.authorUserId !== currentUserId ? (
             <button style={menuItemStyle} onClick={() => onHideComment(commentMenu.commentId)}>
               Hide Comment
             </button>
@@ -471,12 +487,12 @@ export default function ReelCommentsPanel({
             Report Comment
           </button>
 
-          {canModerateComments ? (
+          {canDeleteSelectedMenuComment ? (
             <button
               style={{ ...menuItemStyle, color: "#fecaca", borderBottom: "none" }}
               onClick={() => onDeleteLocalComment(commentMenu.commentId)}
             >
-              Delete From View
+              Delete Comment
             </button>
           ) : (
             <button
@@ -516,17 +532,21 @@ function CommentActions({
   commentId,
   liked,
   likeCount,
+  canDelete,
   canModerate,
   onLike,
   onReply,
+  onDelete,
   onHide,
 }: {
   commentId: string;
   liked: boolean;
   likeCount: number;
+  canDelete: boolean;
   canModerate: boolean;
   onLike: (commentId: string, forceLike?: boolean) => void;
   onReply: () => void;
+  onDelete: (commentId: string) => void;
   onHide: (commentId: string) => void;
 }) {
   return (
@@ -547,7 +567,15 @@ function CommentActions({
         Reply
       </button>
 
-      {canModerate ? (
+      {canDelete ? (
+        <button
+          type="button"
+          onClick={() => onDelete(commentId)}
+          style={{ ...textButtonStyle, color: "#fca5a5" }}
+        >
+          Delete
+        </button>
+      ) : canModerate ? (
         <button
           type="button"
           onClick={() => onHide(commentId)}

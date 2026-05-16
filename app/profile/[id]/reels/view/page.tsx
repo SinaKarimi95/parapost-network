@@ -33,9 +33,12 @@ type ReelItem = {
 type ReelComment = {
   id: string;
   reelId: string;
+  authorUserId: string;
   author: string;
   text: string;
   time: string;
+  parentCommentId?: string | null;
+  replyToAuthor?: string | null;
 };
 
 type ReelLikeDbRow = {
@@ -50,6 +53,15 @@ type ReelCommentDbRow = {
   reel_id: string | null;
   user_id: string | null;
   content: string | null;
+  parent_comment_id?: string | null;
+  reply_to_author?: string | null;
+  created_at?: string | null;
+};
+
+type ReelCommentLikeDbRow = {
+  id: string;
+  comment_id: string | null;
+  user_id: string | null;
   created_at?: string | null;
 };
 
@@ -371,6 +383,8 @@ export default function ProfileReelsViewerPage() {
   const [favoritedMap, setFavoritedMap] = useState<Record<string, boolean>>({});
   const [shareBoostMap, setShareBoostMap] = useState<Record<string, number>>({});
   const [comments, setComments] = useState<ReelComment[]>(initialComments);
+  const [commentLikeMap, setCommentLikeMap] = useState<Record<string, number>>({});
+  const [commentLikedMap, setCommentLikedMap] = useState<Record<string, boolean>>({});
   const [commentDraft, setCommentDraft] = useState("");
   const [shareCaption, setShareCaption] = useState("");
   const [shareMessage, setShareMessage] = useState("");
@@ -417,6 +431,8 @@ export default function ProfileReelsViewerPage() {
       setProfile(null);
       setReels([]);
       setComments([]);
+      setCommentLikeMap({});
+      setCommentLikedMap({});
       setLikedMap({});
       setFollowingMap({});
       setCanViewProfileContent(false);
@@ -443,6 +459,8 @@ export default function ProfileReelsViewerPage() {
       setProfile(null);
       setReels([]);
       setComments([]);
+      setCommentLikeMap({});
+      setCommentLikedMap({});
       setLikedMap({});
       setFollowingMap({});
       setCanViewProfileContent(false);
@@ -457,6 +475,8 @@ export default function ProfileReelsViewerPage() {
     if (!loadedProfile) {
       setReels([]);
       setComments([]);
+      setCommentLikeMap({});
+      setCommentLikedMap({});
       setLikedMap({});
       setFollowingMap({});
       setCanViewProfileContent(false);
@@ -492,6 +512,8 @@ export default function ProfileReelsViewerPage() {
     if (!canView) {
       setReels([]);
       setComments([]);
+      setCommentLikeMap({});
+      setCommentLikedMap({});
       setLikedMap({});
       setFavoritedMap({});
       setShareBoostMap({});
@@ -567,7 +589,7 @@ export default function ProfileReelsViewerPage() {
             .in("reel_id", reelIds),
           supabase
             .from("reel_comments")
-            .select("id, reel_id, user_id, content, created_at")
+            .select("id, reel_id, user_id, content, parent_comment_id, reply_to_author, created_at")
             .in("reel_id", reelIds)
             .order("created_at", { ascending: false }),
         ]);
@@ -598,18 +620,45 @@ export default function ProfileReelsViewerPage() {
       }
 
       if (!commentsError && commentRows) {
+        const commentUserIds = Array.from(
+          new Set(
+            (commentRows as ReelCommentDbRow[])
+              .map((row) => row.user_id)
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        let commentProfiles: ProfileRow[] = [];
+
+        if (commentUserIds.length > 0) {
+          const { data: commentProfileRows, error: commentProfilesError } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, display_name, avatar_url")
+            .in("id", commentUserIds);
+
+          if (commentProfilesError) {
+            console.warn("Error loading profile reel comment profiles:", commentProfilesError.message);
+          } else {
+            commentProfiles = (commentProfileRows || []) as ProfileRow[];
+          }
+        }
+
         const profileMap = new Map<string, ProfileRow>();
         profiles.forEach((item) => profileMap.set(item.id, item));
         profileMap.set(loadedProfile.id, loadedProfile);
+        commentProfiles.forEach((item) => profileMap.set(item.id, item));
 
         const mappedComments = (commentRows as ReelCommentDbRow[]).map((row) => {
           const commentProfile = row.user_id ? profileMap.get(row.user_id) : undefined;
           return {
             id: row.id,
             reelId: row.reel_id || "",
+            authorUserId: row.user_id || "",
             author: formatHandle(commentProfile?.username),
             text: row.content?.trim() || "",
             time: formatRelativeTime(row.created_at),
+            parentCommentId: row.parent_comment_id || null,
+            replyToAuthor: row.reply_to_author || null,
           } satisfies ReelComment;
         });
 
@@ -625,14 +674,54 @@ export default function ProfileReelsViewerPage() {
         }));
 
         setComments(mappedComments);
+
+        const commentIds = mappedComments.map((comment) => comment.id).filter(Boolean);
+
+        if (commentIds.length > 0) {
+          const { data: commentLikeRows, error: commentLikesError } = await supabase
+            .from("reel_comment_likes")
+            .select("id, comment_id, user_id, created_at")
+            .in("comment_id", commentIds);
+
+          if (!commentLikesError && commentLikeRows) {
+            const nextCommentLikeMap: Record<string, number> = {};
+            const nextCommentLikedMap: Record<string, boolean> = {};
+
+            (commentLikeRows as ReelCommentLikeDbRow[]).forEach((row) => {
+              if (!row.comment_id) return;
+              nextCommentLikeMap[row.comment_id] = (nextCommentLikeMap[row.comment_id] || 0) + 1;
+
+              if (nextUserId && row.user_id === nextUserId) {
+                nextCommentLikedMap[row.comment_id] = true;
+              }
+            });
+
+            setCommentLikeMap(nextCommentLikeMap);
+            setCommentLikedMap(nextCommentLikedMap);
+          } else {
+            setCommentLikeMap({});
+            setCommentLikedMap({});
+
+            if (commentLikesError) {
+              console.warn("Error loading profile reel comment likes:", commentLikesError.message);
+            }
+          }
+        } else {
+          setCommentLikeMap({});
+          setCommentLikedMap({});
+        }
       } else {
         setComments(initialComments);
+        setCommentLikeMap({});
+        setCommentLikedMap({});
         if (commentsError) {
           console.error("Error loading reel comments:", commentsError.message);
         }
       }
     } else {
       setComments(initialComments);
+      setCommentLikeMap({});
+      setCommentLikedMap({});
       setLikedMap({});
     }
 
@@ -680,6 +769,9 @@ export default function ProfileReelsViewerPage() {
         await fetchReels();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "reel_comments" }, async () => {
+        await fetchReels();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "reel_comment_likes" }, async () => {
         await fetchReels();
       })
       .subscribe();
@@ -815,8 +907,17 @@ export default function ProfileReelsViewerPage() {
   }, [reels, commentReelId, activeReel]);
 
   const activeComments = useMemo(() => {
-    return comments.filter((comment) => comment.reelId === commentReelId);
+    return comments.filter(
+      (comment) => comment.reelId === commentReelId && !comment.parentCommentId
+    );
   }, [comments, commentReelId]);
+
+  const getVisibleRepliesForComment = (commentId: string) => {
+    return comments.filter(
+      (comment) =>
+        comment.reelId === commentReelId && comment.parentCommentId === commentId
+    );
+  };
 
   const openCommentsForReel = (reelId: string) => {
     setDetailsReelId("");
@@ -1108,12 +1209,17 @@ export default function ProfileReelsViewerPage() {
       return;
     }
 
+    const optimisticCommentId = `comment-${Date.now()}`;
+
     const nextComment: ReelComment = {
-      id: `comment-${Date.now()}`,
+      id: optimisticCommentId,
       reelId: targetReel.id,
-      author: currentUserId === profileId ? "@you" : formatHandle(profile?.username),
+      authorUserId: currentUserId,
+      author: "@you",
       text: trimmed,
       time: "Just now",
+      parentCommentId: null,
+      replyToAuthor: null,
     };
 
     setComments((prev) => [nextComment, ...prev]);
@@ -1124,19 +1230,33 @@ export default function ProfileReelsViewerPage() {
     );
     setCommentDraft("");
 
-    const { error: commentInsertError } = await supabase.from("reel_comments").insert([
-      {
-        reel_id: targetReel.id,
-        user_id: currentUserId,
-        content: trimmed,
-      },
-    ]);
+    const { data: insertedComment, error: commentInsertError } = await supabase
+      .from("reel_comments")
+      .insert([
+        {
+          reel_id: targetReel.id,
+          user_id: currentUserId,
+          content: trimmed,
+          parent_comment_id: null,
+          reply_to_author: null,
+        },
+      ])
+      .select("id")
+      .single();
 
     if (commentInsertError) {
       console.error("Profile reel comment insert error:", commentInsertError.message);
       alert(commentInsertError.message || "Could not save reel comment.");
       await fetchReels();
       return;
+    }
+
+    if (insertedComment?.id) {
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === optimisticCommentId ? { ...comment, id: insertedComment.id } : comment
+        )
+      );
     }
 
     await insertReelNotification({
@@ -1147,6 +1267,108 @@ export default function ProfileReelsViewerPage() {
     });
 
     closeComments();
+  };
+
+  const handleCommentLikeToggle = async (commentId: string, forceLike = false) => {
+    if (!currentUserId) {
+      alert("You must be logged in to like comments.");
+      return;
+    }
+
+    const currentLiked = !!commentLikedMap[commentId];
+    const nextLiked = forceLike ? true : !currentLiked;
+
+    if (forceLike && currentLiked) return;
+
+    setCommentLikedMap((prev) => ({ ...prev, [commentId]: nextLiked }));
+    setCommentLikeMap((prev) => ({
+      ...prev,
+      [commentId]: Math.max((prev[commentId] || 0) + (nextLiked ? 1 : -1), 0),
+    }));
+
+    if (nextLiked) {
+      const { error } = await supabase.from("reel_comment_likes").insert([
+        {
+          comment_id: commentId,
+          user_id: currentUserId,
+        },
+      ]);
+
+      if (error && !error.message.toLowerCase().includes("duplicate")) {
+        alert(error.message || "Could not like comment.");
+        await fetchReels();
+      }
+      return;
+    }
+
+    const { error } = await supabase
+      .from("reel_comment_likes")
+      .delete()
+      .eq("comment_id", commentId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      alert(error.message || "Could not remove comment like.");
+      await fetchReels();
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!currentUserId) {
+      alert("You must be logged in to delete comments.");
+      return;
+    }
+
+    const comment = comments.find((item) => item.id === commentId);
+    if (!comment) return;
+
+    const reel = reels.find((item) => item.id === comment.reelId);
+    const canDeleteComment =
+      comment.authorUserId === currentUserId || (!!reel && reel.user_id === currentUserId);
+
+    if (!canDeleteComment) {
+      alert("You can only delete your own comments.");
+      return;
+    }
+
+    const confirmDelete = window.confirm("Delete this comment?");
+    if (!confirmDelete) return;
+
+    const deletedCommentIds = comments
+      .filter((item) => item.id === commentId || item.parentCommentId === commentId)
+      .map((item) => item.id);
+
+    const { error } = await supabase.from("reel_comments").delete().eq("id", commentId);
+
+    if (error) {
+      alert(error.message || "Could not delete comment.");
+      await fetchReels();
+      return;
+    }
+
+    setComments((prev) =>
+      prev.filter((item) => item.id !== commentId && item.parentCommentId !== commentId)
+    );
+
+    setCommentLikeMap((prev) => {
+      const next = { ...prev };
+      deletedCommentIds.forEach((id) => delete next[id]);
+      return next;
+    });
+
+    setCommentLikedMap((prev) => {
+      const next = { ...prev };
+      deletedCommentIds.forEach((id) => delete next[id]);
+      return next;
+    });
+
+    setReels((prev) =>
+      prev.map((item) =>
+        item.id === comment.reelId
+          ? { ...item, comments: Math.max(item.comments - deletedCommentIds.length, 0) }
+          : item
+      )
+    );
   };
 
   const handleShareToFeed = () => {
@@ -2227,44 +2449,211 @@ export default function ProfileReelsViewerPage() {
                     No comments yet. Start the conversation.
                   </div>
                 ) : (
-                  activeComments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      style={{
-                        background: "rgba(255,255,255,0.045)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: "18px",
-                        padding: "12px 13px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "10px",
-                          marginBottom: "7px",
-                        }}
-                      >
-                        <div style={{ fontWeight: 800, fontSize: "14px" }}>
-                          {comment.author}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
-                          {comment.time}
-                        </div>
-                      </div>
+                  activeComments.map((comment) => {
+                    const commentLiked = !!commentLikedMap[comment.id];
+                    const commentLikeCount = commentLikeMap[comment.id] || 0;
+                    const canDeleteComment =
+                      comment.authorUserId === currentUserId || commentReel.user_id === currentUserId;
+                    const replies = getVisibleRepliesForComment(comment.id);
 
+                    return (
                       <div
+                        key={comment.id}
                         style={{
-                          color: "#e5e7eb",
-                          lineHeight: 1.55,
-                          fontSize: "14px",
+                          background: "rgba(255,255,255,0.045)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: "18px",
+                          padding: "12px 13px",
                         }}
                       >
-                        {comment.text}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            marginBottom: "7px",
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, fontSize: "14px" }}>
+                            {comment.author}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                            {comment.time}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            color: "#e5e7eb",
+                            lineHeight: 1.55,
+                            fontSize: "14px",
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          {comment.text}
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "13px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleCommentLikeToggle(comment.id)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: commentLiked ? "#ffffff" : "#aeb3bd",
+                              fontSize: "12px",
+                              fontWeight: 850,
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            {commentLiked ? "Liked" : "Like"}
+                            {commentLikeCount > 0 ? ` · ${commentLikeCount}` : ""}
+                          </button>
+
+                          {canDeleteComment ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(comment.id)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#fca5a5",
+                                fontSize: "12px",
+                                fontWeight: 850,
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {replies.length > 0 ? (
+                          <div
+                            style={{
+                              marginTop: "11px",
+                              marginLeft: "12px",
+                              paddingLeft: "12px",
+                              borderLeft: "2px solid rgba(168,85,247,0.20)",
+                              display: "grid",
+                              gap: "8px",
+                            }}
+                          >
+                            {replies.map((reply) => {
+                              const replyLiked = !!commentLikedMap[reply.id];
+                              const replyLikeCount = commentLikeMap[reply.id] || 0;
+                              const canDeleteReply =
+                                reply.authorUserId === currentUserId || commentReel.user_id === currentUserId;
+
+                              return (
+                                <div
+                                  key={reply.id}
+                                  style={{
+                                    background: "rgba(255,255,255,0.028)",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    borderRadius: "16px",
+                                    padding: "10px 11px",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      gap: "10px",
+                                      marginBottom: "6px",
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 800, fontSize: "13px" }}>
+                                      {reply.author}
+                                    </div>
+                                    <div style={{ fontSize: "11px", color: "#9ca3af" }}>
+                                      {reply.time}
+                                    </div>
+                                  </div>
+
+                                  {reply.replyToAuthor ? (
+                                    <div
+                                      style={{
+                                        fontSize: "11px",
+                                        color: "#9ca3af",
+                                        fontWeight: 800,
+                                        marginBottom: "5px",
+                                      }}
+                                    >
+                                      replying to {reply.replyToAuthor}
+                                    </div>
+                                  ) : null}
+
+                                  <div
+                                    style={{
+                                      color: "#d1d5db",
+                                      lineHeight: 1.5,
+                                      fontSize: "13px",
+                                      whiteSpace: "pre-wrap",
+                                      overflowWrap: "anywhere",
+                                      marginBottom: "9px",
+                                    }}
+                                  >
+                                    {reply.text.replace(/^@\S+\s*/, "")}
+                                  </div>
+
+                                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCommentLikeToggle(reply.id)}
+                                      style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: replyLiked ? "#ffffff" : "#aeb3bd",
+                                        fontSize: "12px",
+                                        fontWeight: 850,
+                                        cursor: "pointer",
+                                        padding: 0,
+                                      }}
+                                    >
+                                      {replyLiked ? "Liked" : "Like"}
+                                      {replyLikeCount > 0 ? ` · ${replyLikeCount}` : ""}
+                                    </button>
+
+                                    {canDeleteReply ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteComment(reply.id)}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          color: "#fca5a5",
+                                          fontSize: "12px",
+                                          fontWeight: 850,
+                                          cursor: "pointer",
+                                          padding: 0,
+                                        }}
+                                      >
+                                        Delete
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 

@@ -38,6 +38,7 @@ type ReelItem = {
 type ReelComment = {
   id: string;
   reelId: string;
+  authorUserId: string;
   author: string;
   text: string;
   time: string;
@@ -57,6 +58,15 @@ type ReelCommentDbRow = {
   reel_id: string | null;
   user_id: string | null;
   content: string | null;
+  parent_comment_id?: string | null;
+  reply_to_author?: string | null;
+  created_at?: string | null;
+};
+
+type ReelCommentLikeDbRow = {
+  id: string;
+  comment_id: string | null;
+  user_id: string | null;
   created_at?: string | null;
 };
 
@@ -626,7 +636,7 @@ export default function ReelsPage() {
       const [{ data: likeRows, error: likesError }, { data: commentRows, error: commentsError }] =
         await Promise.all([
           supabase.from("reel_likes").select("id, reel_id, user_id, created_at").in("reel_id", reelIds),
-          supabase.from("reel_comments").select("id, reel_id, user_id, content, created_at").in("reel_id", reelIds).order("created_at", { ascending: false }),
+          supabase.from("reel_comments").select("id, reel_id, user_id, content, parent_comment_id, reply_to_author, created_at").in("reel_id", reelIds).order("created_at", { ascending: false }),
         ]);
 
       if (!likesError && likeRows) {
@@ -653,17 +663,44 @@ export default function ReelsPage() {
       }
 
       if (!commentsError && commentRows) {
+        const commentUserIds = Array.from(
+          new Set(
+            (commentRows as ReelCommentDbRow[])
+              .map((row) => row.user_id)
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        let commentProfiles: ProfileRow[] = [];
+
+        if (commentUserIds.length > 0) {
+          const { data: commentProfileRows, error: commentProfilesError } = await supabase
+            .from("profiles")
+            .select("id, username, display_name, avatar_url")
+            .in("id", commentUserIds);
+
+          if (commentProfilesError) {
+            console.warn("Error loading reel comment profiles:", commentProfilesError.message);
+          } else {
+            commentProfiles = (commentProfileRows || []) as ProfileRow[];
+          }
+        }
+
         const profileMap = new Map<string, ProfileRow>();
         profiles.forEach((profile) => profileMap.set(profile.id, profile));
+        commentProfiles.forEach((profile) => profileMap.set(profile.id, profile));
 
         const mappedComments = (commentRows as ReelCommentDbRow[]).map((row) => {
           const profile = row.user_id ? profileMap.get(row.user_id) : undefined;
           return {
             id: row.id,
             reelId: row.reel_id || "",
+            authorUserId: row.user_id || "",
             author: formatHandle(profile?.username),
             text: row.content?.trim() || "",
             time: formatRelativeTime(row.created_at),
+            parentCommentId: row.parent_comment_id || null,
+            replyToAuthor: row.reply_to_author || null,
           } satisfies ReelComment;
         });
 
@@ -679,9 +716,47 @@ export default function ReelsPage() {
         }));
 
         setComments(mappedComments);
+
+        const commentIds = mappedComments.map((comment) => comment.id).filter(Boolean);
+
+        if (commentIds.length > 0) {
+          const { data: commentLikeRows, error: commentLikesError } = await supabase
+            .from("reel_comment_likes")
+            .select("id, comment_id, user_id, created_at")
+            .in("comment_id", commentIds);
+
+          if (!commentLikesError && commentLikeRows) {
+            const nextCommentLikeMap: Record<string, number> = {};
+            const nextCommentLikedMap: Record<string, boolean> = {};
+
+            (commentLikeRows as ReelCommentLikeDbRow[]).forEach((row) => {
+              if (!row.comment_id) return;
+              nextCommentLikeMap[row.comment_id] = (nextCommentLikeMap[row.comment_id] || 0) + 1;
+
+              if (nextUserId && row.user_id === nextUserId) {
+                nextCommentLikedMap[row.comment_id] = true;
+              }
+            });
+
+            setCommentLikeMap(nextCommentLikeMap);
+            setCommentLikedMap(nextCommentLikedMap);
+          } else {
+            setCommentLikeMap({});
+            setCommentLikedMap({});
+
+            if (commentLikesError) {
+              console.warn("Error loading reel comment likes:", commentLikesError.message);
+            }
+          }
+        } else {
+          setCommentLikeMap({});
+          setCommentLikedMap({});
+        }
       } else if (commentsError) {
         console.error("Error loading reel comments:", commentsError.message);
         setComments(initialComments);
+        setCommentLikeMap({});
+        setCommentLikedMap({});
       }
 
       const { data: shareRows, error: shareRowsError } = await supabase
@@ -742,6 +817,9 @@ export default function ReelsPage() {
         await fetchReels();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "reel_comments" }, async () => {
+        await fetchReels();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "reel_comment_likes" }, async () => {
         await fetchReels();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "reel_shares" }, async () => {
@@ -1132,12 +1210,17 @@ export default function ReelsPage() {
       return;
     }
 
+    const optimisticCommentId = `comment-${Date.now()}`;
+
     const nextComment: ReelComment = {
-      id: `comment-${Date.now()}`,
+      id: optimisticCommentId,
       reelId: activeReel.id,
+      authorUserId: currentUserId,
       author: "@you",
       text: trimmed,
       time: "Just now",
+      parentCommentId: null,
+      replyToAuthor: null,
     };
 
     setComments((prev) => [nextComment, ...prev]);
@@ -1148,19 +1231,33 @@ export default function ReelsPage() {
     );
     setCommentDraft("");
 
-    const { error: commentInsertError } = await supabase.from("reel_comments").insert([
-      {
-        reel_id: activeReel.id,
-        user_id: currentUserId,
-        content: trimmed,
-      },
-    ]);
+    const { data: insertedComment, error: commentInsertError } = await supabase
+      .from("reel_comments")
+      .insert([
+        {
+          reel_id: activeReel.id,
+          user_id: currentUserId,
+          content: trimmed,
+          parent_comment_id: null,
+          reply_to_author: null,
+        },
+      ])
+      .select("id")
+      .single();
 
     if (commentInsertError) {
       console.error("Reel comment insert error:", commentInsertError.message);
       alert(commentInsertError.message || "Could not save reel comment.");
       await fetchReels();
       return;
+    }
+
+    if (insertedComment?.id) {
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === optimisticCommentId ? { ...comment, id: insertedComment.id } : comment
+        )
+      );
     }
 
     if (activeReel.user_id && activeReel.user_id !== currentUserId) {
@@ -1182,10 +1279,15 @@ export default function ReelsPage() {
     }
   };
 
-  const handleCommentLikeToggle = (commentId: string, forceLike = false) => {
-    const nextLiked = forceLike ? true : !commentLikedMap[commentId];
+  const handleCommentLikeToggle = async (commentId: string, forceLike = false) => {
+    if (!currentUserId) {
+      alert("You must be logged in to like comments.");
+      return;
+    }
 
-    if (forceLike && commentLikedMap[commentId]) {
+    const currentLiked = !!commentLikedMap[commentId];
+
+    if (forceLike && currentLiked) {
       setCommentLikeBurstId(commentId);
       if (commentLikeBurstTimeoutRef.current) {
         window.clearTimeout(commentLikeBurstTimeoutRef.current);
@@ -1195,6 +1297,8 @@ export default function ReelsPage() {
       }, 520);
       return;
     }
+
+    const nextLiked = forceLike ? true : !currentLiked;
 
     setCommentLikedMap((prev) => ({
       ...prev,
@@ -1214,6 +1318,33 @@ export default function ReelsPage() {
       commentLikeBurstTimeoutRef.current = window.setTimeout(() => {
         setCommentLikeBurstId(null);
       }, 520);
+
+      const { error } = await supabase.from("reel_comment_likes").insert([
+        {
+          comment_id: commentId,
+          user_id: currentUserId,
+        },
+      ]);
+
+      if (error && !error.message.toLowerCase().includes("duplicate")) {
+        console.error("Reel comment like insert error:", error.message);
+        alert(error.message || "Could not like comment.");
+        await fetchReels();
+      }
+
+      return;
+    }
+
+    const { error } = await supabase
+      .from("reel_comment_likes")
+      .delete()
+      .eq("comment_id", commentId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      console.error("Reel comment like delete error:", error.message);
+      alert(error.message || "Could not remove comment like.");
+      await fetchReels();
     }
   };
 
@@ -1236,9 +1367,12 @@ export default function ReelsPage() {
       return;
     }
 
+    const optimisticReplyId = `reply-${Date.now()}`;
+
     const nextReply: ReelComment = {
-      id: `reply-${Date.now()}`,
+      id: optimisticReplyId,
       reelId: activeReel.id,
+      authorUserId: currentUserId,
       author: "@you",
       text: trimmed,
       time: "Just now",
@@ -1262,19 +1396,33 @@ export default function ReelsPage() {
     setReplyingToCommentId(null);
     setReplyDraft("");
 
-    const { error: commentInsertError } = await supabase.from("reel_comments").insert([
-      {
-        reel_id: activeReel.id,
-        user_id: currentUserId,
-        content: trimmed,
-      },
-    ]);
+    const { data: insertedReply, error: commentInsertError } = await supabase
+      .from("reel_comments")
+      .insert([
+        {
+          reel_id: activeReel.id,
+          user_id: currentUserId,
+          content: trimmed,
+          parent_comment_id: parentComment.id,
+          reply_to_author: parentComment.author,
+        },
+      ])
+      .select("id")
+      .single();
 
     if (commentInsertError) {
       console.error("Reel comment reply insert error:", commentInsertError.message);
       alert(commentInsertError.message || "Could not save reel reply.");
       await fetchReels();
       return;
+    }
+
+    if (insertedReply?.id) {
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === optimisticReplyId ? { ...comment, id: insertedReply.id } : comment
+        )
+      );
     }
 
     if (activeReel.user_id && activeReel.user_id !== currentUserId) {
@@ -1295,12 +1443,64 @@ export default function ReelsPage() {
     setCommentMenu(null);
   };
 
-  const handleDeleteLocalComment = (commentId: string) => {
+  const handleDeleteLocalComment = async (commentId: string) => {
+    if (!currentUserId) {
+      alert("You must be logged in to delete comments.");
+      return;
+    }
+
+    const comment = comments.find((item) => item.id === commentId);
+    if (!comment) return;
+
+    const reel = reels.find((item) => item.id === comment.reelId);
+    const canDeleteComment =
+      comment.authorUserId === currentUserId || (!!reel && reel.user_id === currentUserId);
+
+    if (!canDeleteComment) {
+      alert("You can only delete your own comments.");
+      return;
+    }
+
+    const confirmDelete = window.confirm("Delete this comment?");
+    if (!confirmDelete) return;
+
+    const deletedCommentIds = comments
+      .filter((item) => item.id === commentId || item.parentCommentId === commentId)
+      .map((item) => item.id);
+
+    const { error } = await supabase.from("reel_comments").delete().eq("id", commentId);
+
+    if (error) {
+      console.error("Reel comment delete error:", error.message);
+      alert(error.message || "Could not delete comment.");
+      await fetchReels();
+      return;
+    }
+
     setComments((prev) =>
-      prev.filter(
-        (comment) => comment.id !== commentId && comment.parentCommentId !== commentId
+      prev.filter((item) => item.id !== commentId && item.parentCommentId !== commentId)
+    );
+
+    setCommentLikeMap((prev) => {
+      const next = { ...prev };
+      deletedCommentIds.forEach((id) => delete next[id]);
+      return next;
+    });
+
+    setCommentLikedMap((prev) => {
+      const next = { ...prev };
+      deletedCommentIds.forEach((id) => delete next[id]);
+      return next;
+    });
+
+    setReels((prev) =>
+      prev.map((item) =>
+        item.id === comment.reelId
+          ? { ...item, comments: Math.max(item.comments - deletedCommentIds.length, 0) }
+          : item
       )
     );
+
     setCommentMenu(null);
   };
 

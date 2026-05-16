@@ -11656,10 +11656,33 @@ return (
                       disabled={profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)}
                       style={{
                         ...profileCompactPrimaryButtonStyle,
-                        background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))",
-                        boxShadow: "0 12px 28px var(--parapost-accent-active-border)",
-                        opacity: profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0) ? 0.62 : 1,
-                        cursor: profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0) ? "not-allowed" : "pointer",
+                        minWidth: "118px",
+                        height: "34px",
+                        color:
+                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
+                            ? "#cbd5e1"
+                            : "var(--parapost-accent-button-text, #ffffff)",
+                        background:
+                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
+                            ? "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.07))"
+                            : "linear-gradient(135deg, var(--parapost-accent-1, #a855f7), var(--parapost-accent-2, #7c3aed), var(--parapost-accent-3, #ec4899))",
+                        border:
+                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
+                            ? "1px solid rgba(255,255,255,0.14)"
+                            : "1px solid var(--parapost-accent-active-border, rgba(168,85,247,0.42))",
+                        boxShadow:
+                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
+                            ? "inset 0 1px 0 rgba(255,255,255,0.05)"
+                            : "0 12px 28px var(--parapost-accent-active-border, rgba(168,85,247,0.28))",
+                        opacity: 1,
+                        cursor:
+                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
+                            ? "not-allowed"
+                            : "pointer",
+                        filter:
+                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
+                            ? "none"
+                            : "brightness(1.04)",
                       }}
                     >
                       {profilePostLoading ? "Posting..." : "Publish post"}

@@ -2211,6 +2211,13 @@ export default function DashboardPage() {
     }
 
     setPosts((prev) => prev.map((post) => (post.id === postId ? { ...post, content: trimmed } : post)));
+    setSharedPostItems((prev) =>
+      prev.map((item) =>
+        item.original_post.id === postId
+          ? { ...item, original_post: { ...item.original_post, content: trimmed } }
+          : item
+      )
+    );
     setEditingPostId(null);
     setEditingPostContent("");
   };
@@ -2242,6 +2249,42 @@ export default function DashboardPage() {
     }
 
     setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setSharedPostItems((prev) =>
+      prev.filter((item) => item.post_id !== postId && item.original_post.id !== postId)
+    );
+    setOpenPostMenuId(null);
+  };
+
+  const handleDeleteSharedPostShare = async (shareId: string, postId: string) => {
+    if (!currentUserId) return;
+    if (!window.confirm("Remove this shared post from your feed?")) return;
+
+    const deletedAt = new Date().toISOString();
+
+    const { error: softDeleteError } = await supabase
+      .from("shares")
+      .update({ deleted_at: deletedAt })
+      .eq("id", shareId)
+      .eq("user_id", currentUserId);
+
+    if (softDeleteError) {
+      const { error: hardDeleteError } = await supabase
+        .from("shares")
+        .delete()
+        .eq("id", shareId)
+        .eq("user_id", currentUserId);
+
+      if (hardDeleteError) {
+        alert(`Remove shared post error: ${hardDeleteError.message}`);
+        return;
+      }
+    }
+
+    setSharedPostItems((prev) => prev.filter((item) => item.id !== shareId));
+    setShareCounts((prev) => ({
+      ...prev,
+      [postId]: Math.max((prev[postId] || 1) - 1, 0),
+    }));
     setOpenPostMenuId(null);
   };
 
@@ -2522,6 +2565,20 @@ export default function DashboardPage() {
                         sharedPost={item.sharedPost}
                         sharerProfile={profilesMap[item.sharedPost.user_id]}
                         originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
+                        currentUserId={currentUserId}
+                        openPostMenuId={openPostMenuId}
+                        editingPostId={editingPostId}
+                        editingPostContent={editingPostContent}
+                        setEditingPostContent={setEditingPostContent}
+                        setOpenPostMenuId={setOpenPostMenuId}
+                        onStartEditOriginal={() => handleStartEditPost(item.sharedPost.original_post)}
+                        onSaveEditOriginal={() => handleSavePostEdit(item.sharedPost.original_post.id)}
+                        onCancelEditOriginal={() => {
+                          setEditingPostId(null);
+                          setEditingPostContent("");
+                        }}
+                        onDeleteOriginal={() => handleDeletePost(item.sharedPost.original_post.id)}
+                        onRemoveShare={() => handleDeleteSharedPostShare(item.sharedPost.id, item.sharedPost.post_id)}
                       />
                     ) : (
                       <SharedReelCard
@@ -4679,7 +4736,7 @@ function PostCard({
 
       <div className="dashboard-post-actions" style={postActionsStyle}>
         <ActionButton onClick={onLike} active={isLiked}><HeartIcon filled={isLiked} /> Like</ActionButton>
-        <ActionButton onClick={() => alert("Comments polish comes in the next dashboard pass.")}><CommentIcon /> Comment</ActionButton>
+        <ActionButton onClick={() => document.getElementById(`post-${post.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}><CommentIcon /> Comment</ActionButton>
         <ActionButton onClick={onShare}><ShareIcon /> Share</ActionButton>
         <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}>Save</ActionButton>
       </div>
@@ -4691,19 +4748,51 @@ function SharedPostCard({
   sharedPost,
   sharerProfile,
   originalProfile,
+  currentUserId,
+  openPostMenuId,
+  editingPostId,
+  editingPostContent,
+  setEditingPostContent,
+  setOpenPostMenuId,
+  onStartEditOriginal,
+  onSaveEditOriginal,
+  onCancelEditOriginal,
+  onDeleteOriginal,
+  onRemoveShare,
 }: {
   sharedPost: SharedPostItem;
   sharerProfile?: ProfilePreview | null;
   originalProfile?: ProfilePreview | null;
+  currentUserId: string;
+  openPostMenuId: string | null;
+  editingPostId: string | null;
+  editingPostContent: string;
+  setEditingPostContent: (value: string) => void;
+  setOpenPostMenuId: (value: string | null | ((prev: string | null) => string | null)) => void;
+  onStartEditOriginal: () => void;
+  onSaveEditOriginal: () => void;
+  onCancelEditOriginal: () => void;
+  onDeleteOriginal: () => void;
+  onRemoveShare: () => void;
 }) {
   const originalPost = sharedPost.original_post;
   const sharerName = sharerProfile?.full_name || sharerProfile?.username || "Parapost user";
   const originalName = originalProfile?.full_name || originalProfile?.username || "Parapost member";
   const originalHref = `/profile/${originalPost.user_id}`;
   const sharerHref = `/profile/${sharedPost.user_id}`;
+  const menuId = `shared-post-menu-${sharedPost.id}`;
+  const isShareOwner = !!currentUserId && sharedPost.user_id === currentUserId;
+  const isOriginalPostOwner = !!currentUserId && originalPost.user_id === currentUserId;
+  const showOwnerMenu = isShareOwner || isOriginalPostOwner;
+  const isEditingOriginalPost = editingPostId === originalPost.id;
 
   return (
-    <article id={`share-${sharedPost.id}`} className="dashboard-card dashboard-feed-card" style={postCardStyle}>
+    <article
+      id={`share-${sharedPost.id}`}
+      className="dashboard-card dashboard-feed-card"
+      style={postCardStyle}
+      onClick={(event) => event.stopPropagation()}
+    >
       <div style={postHeaderStyle}>
         <div style={postAuthorStyle}>
           <Avatar profile={sharerProfile} size={54} href={sharerHref} />
@@ -4716,6 +4805,56 @@ function SharedPostCard({
             </div>
           </div>
         </div>
+
+        {showOwnerMenu ? (
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpenPostMenuId((prev) => (prev === menuId ? null : menuId));
+              }}
+              style={dotsButtonStyle}
+              aria-label="Shared post options"
+            >
+              <DotsIcon />
+            </button>
+
+            {openPostMenuId === menuId ? (
+              <div style={postMenuStyle} onClick={(event) => event.stopPropagation()}>
+                {isOriginalPostOwner ? (
+                  <>
+                    <button type="button" style={menuItemStyle} onClick={onStartEditOriginal}>
+                      Edit original post
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...menuItemStyle, color: "#fca5a5" }}
+                      onClick={onDeleteOriginal}
+                    >
+                      Delete original post
+                    </button>
+                  </>
+                ) : null}
+
+                {isShareOwner ? (
+                  <button
+                    type="button"
+                    style={{
+                      ...menuItemStyle,
+                      color: isOriginalPostOwner ? "#d8b4fe" : "#fca5a5",
+                      borderBottomColor: "transparent",
+                    }}
+                    onClick={onRemoveShare}
+                  >
+                    Remove shared post
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {sharedPost.caption ? <p style={postContentStyle}>{renderLinkedText(sharedPost.caption)}</p> : null}
@@ -4733,7 +4872,24 @@ function SharedPostCard({
           </div>
         </div>
 
-        {originalPost.content ? (
+        {isEditingOriginalPost ? (
+          <div style={{ marginTop: 14 }}>
+            <textarea
+              value={editingPostContent}
+              onChange={(event) => setEditingPostContent(event.target.value)}
+              rows={4}
+              style={editTextareaStyle}
+            />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+              <button type="button" onClick={onSaveEditOriginal} style={publishButtonStyle}>
+                Save
+              </button>
+              <button type="button" onClick={onCancelEditOriginal} style={softButtonStyle}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : originalPost.content ? (
           <>
             <p style={sharedPostOriginalContentStyle}>{renderLinkedText(originalPost.content)}</p>
             <LinkPreviewCard text={originalPost.content} />

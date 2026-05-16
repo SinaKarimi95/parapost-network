@@ -3695,18 +3695,6 @@ useEffect(() => {
         : "View photos shared through profile posts and media updates.",
     },
     {
-      value: "Achievements",
-      label: "Achievements",
-      detail: isProfileContentLocked
-        ? "Private"
-        : profileAchievementsLoading
-        ? "Loading"
-        : `${unlockedAchievementCount}/${profileAchievements.length}`,
-      summary: isProfileContentLocked
-        ? "This member's achievements are private."
-        : "View Community Reach achievements unlocked through followers and friends.",
-    },
-    {
       value: "Events",
       label: "Events",
       detail: "Coming soon",
@@ -11538,95 +11526,7 @@ return (
                 </div>
               ) : null}
 
-              {!isProfileContentLocked && activeProfileTab === "Achievements" ? (
-                <div className="profile-content-card" style={mainCardStyle}>
-                  <div style={profileAchievementsPageHeaderStyle}>
-                    <div>
-                      <p style={profileTabSummaryEyebrowStyle}>Community Reach</p>
-                      <h3 style={profileAchievementsPageTitleStyle}>{profileAchievementPanelTitle}</h3>
-                      <p style={profileAchievementsPageCopyStyle}>
-                        Followers and accepted friends count together as unique people. Locked achievements become full color when collected.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => openProfileAchievementsViewer(featuredProfileAchievement)}
-                      disabled={profileAchievementsLoading || profileAchievements.length === 0}
-                      style={{
-                        ...profileAchievementViewAllButtonStyle,
-                        opacity: profileAchievementsLoading || profileAchievements.length === 0 ? 0.62 : 1,
-                        cursor: profileAchievementsLoading || profileAchievements.length === 0 ? "default" : "pointer",
-                      }}
-                    >
-                      View collection
-                    </button>
-                  </div>
-
-                  {profileAchievementsLoading ? (
-                    <div style={profileBadgeEmptyStateStyle}>Loading achievements...</div>
-                  ) : profileAchievements.length === 0 ? (
-                    <div style={profileBadgeEmptyStateStyle}>Achievements will appear here once set up.</div>
-                  ) : (
-                    <div style={profileAchievementsFullGridStyle}>
-                      {profileAchievements.map((achievement) => {
-                        const progressPercent = getAchievementProgressPercent(achievement);
-
-                        return (
-                          <button
-                            key={`achievement-tab-${achievement.id}`}
-                            type="button"
-                            onClick={() => openProfileAchievementsViewer(achievement)}
-                            style={{
-                              ...profileAchievementFullCardStyle,
-                              opacity: achievement.isUnlocked ? 1 : 0.48,
-                            }}
-                            title={`${achievement.name} · ${achievement.description}`}
-                          >
-                            <span style={profileAchievementFullIconShellStyle}>
-                              {achievement.iconUrl ? (
-                                <img
-                                  src={achievement.iconUrl}
-                                  alt=""
-                                  style={{
-                                    ...profileAchievementImageStyle,
-                                    filter: achievement.isUnlocked ? "none" : "saturate(0.74) brightness(0.72)",
-                                  }}
-                                />
-                              ) : (
-                                <span style={profileAchievementFallbackIconStyle}>★</span>
-                              )}
-                            </span>
-
-                            <span style={profileAchievementFullTextStyle}>
-                              <strong>{achievement.name}</strong>
-                              <small>
-                                {achievement.isUnlocked
-                                  ? `Unlocked ${formatTimeAgo(achievement.unlockedAt || new Date().toISOString())}`
-                                  : `${formatAchievementCount(achievement.progressCount)} / ${formatAchievementCount(achievement.threshold)}`}
-                              </small>
-                              <span style={profileAchievementProgressTrackStyle}>
-                                <span
-                                  style={{
-                                    ...profileAchievementProgressFillStyle,
-                                    width: `${achievement.isUnlocked ? 100 : progressPercent}%`,
-                                  }}
-                                />
-                              </span>
-                            </span>
-
-                            <span style={achievement.isUnlocked ? profileAchievementUnlockedPillStyle : profileAchievementLockedPillStyle}>
-                              {achievement.isUnlocked ? "Unlocked" : "Locked"}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              {!["Posts", "About", "Reels", "Photos", "Achievements"].includes(activeProfileTab) ? (
+              {!["Posts", "About", "Reels", "Photos"].includes(activeProfileTab) ? (
                 <div className="profile-content-card" style={mainCardStyle}>
                   <div className="profile-empty-state-card" style={profilePolishedEmptyStateStyle}>
                     <div style={profileEmptyStateIconStyle}>◇</div>

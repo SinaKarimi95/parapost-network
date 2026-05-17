@@ -21,37 +21,37 @@ const paymentAreas = [
     title: "Promoted Posts",
     status: "Coming soon",
     description:
-      "Future tools for boosting selected posts so creators, teams, and businesses can reach more people on Parapost Network.",
+      "Tools for boosting selected posts so creators, teams, and businesses can reach more people on Parapost Network once payments are active.",
     items: ["Boosted reach", "Campaign controls", "Post review", "Performance tracking"],
   },
   {
     title: "Sponsored Posts",
     status: "Coming soon",
     description:
-      "Future sponsored placements that can appear naturally inside the dashboard timeline and other approved areas.",
+      "Sponsored placements that can appear naturally inside the dashboard timeline and other approved areas once ads are active.",
     items: ["Timeline placement", "Sponsor labels", "Approval flow", "Audience controls"],
   },
   {
     title: "Business & Creator Tools",
     status: "Planned",
     description:
-      "Future business-ready tools for creators, paranormal teams, brands, sponsors, and event organizers.",
+      "Business-ready tools for creators, paranormal teams, brands, sponsors, and event organizers.",
     items: ["Creator packages", "Sponsor options", "Event promotion", "Business profiles"],
   },
   {
     title: "Billing History",
     status: "Coming soon",
     description:
-      "A future area where users can review invoices, receipts, payments, and promotion history.",
+      "An area where users will be able to review invoices, receipts, payments, and promotion history once payments are live.",
     items: ["Receipts", "Invoices", "Payment status", "Refund support"],
   },
 ];
 
 const safetyNotes = [
-  "No payments are being collected from this page yet.",
-  "Future payment tools should be tested carefully before launch.",
-  "Promoted content should always be clearly labeled.",
-  "Billing, refunds, and sponsor support should connect to Parapost support.",
+  "No payments are being collected from this page.",
+  "Payment tools will stay disabled until they are fully tested.",
+  "Promoted content will be clearly labeled.",
+  "Billing, refunds, and sponsor support will connect to Parapost support.",
 ];
 
 function getDisplayName(profile: ProfilePreview | null) {
@@ -190,7 +190,7 @@ export default function PaymentsSettingsPage() {
               boxShadow: "0 12px 28px var(--parapost-accent-glow)",
             }}
           >
-            Settings Phase 5
+            Payments
           </span>
         </div>
 
@@ -212,13 +212,11 @@ export default function PaymentsSettingsPage() {
             </p>
 
             <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
-              Payments, promotions, and sponsor tools.
+              Payments are coming soon.
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              This page prepares the future payment area for Parapost Network. Payments are not live yet,
-              but this gives users a clear place for promoted posts, sponsored content, billing history,
-              business tools, and support once payments are ready.
+              Payments are not live yet on Parapost Network. This page gives users a clear place to understand upcoming promoted posts, sponsored content, billing history, creator tools, and payment support before those features are available.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -294,7 +292,7 @@ export default function PaymentsSettingsPage() {
               </div>
               <div className="mt-2 text-2xl font-black">Not live yet</div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Users cannot be charged from this page. Future payment tools should be tested before public release.
+                Users cannot be charged from this page. Payment tools remain disabled until they are fully tested.
               </p>
             </div>
           </aside>
@@ -316,9 +314,9 @@ export default function PaymentsSettingsPage() {
                     className="mb-2 text-xs font-black uppercase tracking-[0.18em]"
                     style={{ color: "var(--parapost-accent-text)" }}
                   >
-                    Future Payment Areas
+                    Upcoming Payment Areas
                   </p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">Prepared, but not charging users.</h2>
+                  <h2 className="text-2xl font-black tracking-[-0.03em]">Coming soon / not live yet.</h2>
                 </div>
 
                 <span
@@ -329,7 +327,7 @@ export default function PaymentsSettingsPage() {
                     color: "var(--parapost-accent-readable-text)",
                   }}
                 >
-                  Safe placeholder
+                  Not live yet
                 </span>
               </div>
 
@@ -398,7 +396,7 @@ export default function PaymentsSettingsPage() {
                     className="text-[11px] font-black uppercase tracking-[0.16em]"
                     style={{ color: "var(--parapost-accent-text)" }}
                   >
-                    Connected
+                    Related
                   </span>
                   <span
                     className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300"

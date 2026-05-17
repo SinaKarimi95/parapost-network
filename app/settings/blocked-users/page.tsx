@@ -263,7 +263,7 @@ export default function BlockedUsersSettingsPage() {
               boxShadow: "0 12px 28px var(--parapost-accent-glow)",
             }}
           >
-            Settings Phase 6
+            Privacy Control
           </span>
         </div>
 
@@ -284,8 +284,8 @@ export default function BlockedUsersSettingsPage() {
           </h1>
 
           <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-            This page lets users review and unblock accounts they previously blocked. The actual block action
-            will be connected to profile menus and report flows later, but the management area is now ready.
+            Review accounts you have blocked on Parapost Network. You can search your blocked list,
+            review when someone was blocked, and unblock an account when you are ready.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -467,16 +467,16 @@ export default function BlockedUsersSettingsPage() {
                 className="mb-2 text-xs font-black uppercase tracking-[0.16em]"
                 style={{ color: "var(--parapost-accent-text)" }}
               >
-                How blocking should work
+                How blocking helps
               </p>
-              <h3 className="text-lg font-black tracking-[-0.02em]">Simple and controlled</h3>
+              <h3 className="text-lg font-black tracking-[-0.02em]">Safer interactions</h3>
 
               <div className="mt-4 space-y-3">
                 {[
-                  "Blocked users should not be able to message you.",
-                  "Blocked users should be hidden from private interactions.",
-                  "Future profile menus can add a Block User action.",
-                  "This page gives users a safe way to unblock later.",
+                  "Blocked users are kept away from unwanted interactions.",
+                  "Blocking helps reduce unwanted contact across the platform.",
+                  "You can return here anytime to review your blocked list.",
+                  "Unblocking is controlled and asks for confirmation first.",
                 ].map((item) => (
                   <div key={item} className="rounded-2xl border border-white/10 bg-black/25 p-3 text-sm leading-6 text-slate-300">
                     {item}
@@ -499,7 +499,7 @@ export default function BlockedUsersSettingsPage() {
                     className="text-[11px] font-black uppercase tracking-[0.16em]"
                     style={{ color: "var(--parapost-accent-text)" }}
                   >
-                    Connected
+                    Related
                   </span>
                   <span
                     className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300"
@@ -511,7 +511,7 @@ export default function BlockedUsersSettingsPage() {
 
                 <h3 className="text-lg font-black tracking-[-0.02em]">Privacy & Safety</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Return to privacy, safety, moderation, report, and account protection controls.
+                  Return to privacy, safety, reporting, and account protection controls.
                 </p>
               </section>
             </Link>

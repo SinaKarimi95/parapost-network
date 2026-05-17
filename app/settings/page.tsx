@@ -71,92 +71,93 @@ const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string
 
 const SETTINGS_CARDS = [
   {
-    eyebrow: "Phase 4",
+    eyebrow: "Account",
     title: "Account & Security",
     description:
-      "Manage account email, password reset, sign out, account status, support, data, and deletion request flow.",
-    items: ["Account email", "Password reset", "Sign out", "Data & deletion"],
+      "Manage sign-in status, email, password reset, account access, sign out, and account security tools.",
+    items: ["Signed-in account", "Email & password", "Password reset", "Sign out"],
     href: "/settings/account",
     active: true,
   },
   {
-    eyebrow: "Phase 1",
+    eyebrow: "Profile",
+    title: "Profile Settings",
+    description: "Edit your profile details, avatar, bio, and public/private profile controls.",
+    items: ["Profile info", "Avatar", "Bio", "Profile controls"],
+    href: "/settings/profile",
+    active: true,
+  },
+  {
+    eyebrow: "Privacy",
     title: "Privacy & Safety",
-    description: "Safety tools for blocking, reporting, moderation, and community protection.",
-    items: ["Blocked users", "Report content", "Report a user", "Safety center"],
+    description: "Control profile visibility, blocking, reports, safety support, and community protection tools.",
+    items: ["Profile visibility", "Blocked users", "Report support", "Safety tools"],
     href: "/settings/privacy-safety",
     active: true,
   },
   {
-    eyebrow: "Phase 6",
+    eyebrow: "Safety",
     title: "Blocked Users",
-    description: "Review accounts you have blocked and safely unblock them later.",
+    description: "Review accounts you have blocked and safely unblock them later when needed.",
     items: ["Blocked accounts", "Search list", "Unblock users", "Safety control"],
     href: "/settings/blocked-users",
     active: true,
   },
   {
-    eyebrow: "Phase 7",
-    title: "Help & Support",
-    description: "A dedicated support center for account help, privacy, safety, bugs, data, and policy questions.",
-    items: ["Contact support", "Report a problem", "Account help", "Safety help"],
-    href: "/settings/help-support",
+    eyebrow: "Personalization",
+    title: "Personalization",
+    description: "Customize Parapost Network with accent colors, theme appearance, and font style options.",
+    items: ["Accent color", "Theme appearance", "Font style", "Saved preferences"],
+    href: "/settings/personalization",
     active: true,
   },
   {
-    eyebrow: "Phase 8",
-    title: "Content & Feed",
-    description: "Future controls for feed preferences, hidden posts, muted words, content filters, and Reels preferences.",
-    items: ["Feed preferences", "Muted words", "Hidden posts", "Reels filters"],
-    href: "/settings/content-feed",
-    active: true,
-  },
-  {
-    eyebrow: "Phase 1",
-    title: "Data & Privacy",
-    description: "Data access, data deletion, privacy choices, and account controls.",
-    items: ["Request my data", "Correct data", "Data deletion", "Account deletion"],
-    href: "/settings/data",
-    active: true,
-  },
-  {
-    eyebrow: "Phase 1",
+    eyebrow: "Notifications",
     title: "Notifications",
-    description: "Prepared controls for friend requests, Parachat, comments, likes, Reels, and badges.",
+    description: "Manage alerts for friend requests, Parachat, comments, likes, Reels, badges, and support updates.",
     items: ["Friend requests", "Parachat", "Comments & likes", "Reels activity"],
     href: "/settings/notifications",
     active: true,
   },
   {
-    eyebrow: "Phase 2",
-    title: "Profile Visibility",
-    description: "Public/private profile controls hide protected content while keeping the profile shell visible.",
-    items: ["Public profile", "Private profile", "Protected routes", "Friend-only content"],
-    href: "/settings/profile-visibility",
+    eyebrow: "Feed",
+    title: "Content & Feed",
+    description: "Manage feed preferences, hidden posts, muted words, content filters, and Reels preferences.",
+    items: ["Feed preferences", "Muted words", "Hidden posts", "Reels filters"],
+    href: "/settings/content-feed",
     active: true,
   },
   {
-    eyebrow: "Phase 3",
-    title: "Personalization",
-    description: "Accent colors, font style, and account-backed profile customization.",
-    items: ["Accent color", "Font style", "Account saved", "Global theme"],
-    href: "/settings/personalization",
+    eyebrow: "Data",
+    title: "Data & Account",
+    description: "Request account data, correct information, ask for data deletion, or start account deletion support.",
+    items: ["Request my data", "Correct data", "Data deletion", "Account deletion"],
+    href: "/settings/data",
     active: true,
   },
   {
-    eyebrow: "Phase 5",
-    title: "Payments",
-    description: "Coming-soon payment area for promoted posts, sponsored content, billing, and business tools.",
-    items: ["Payment methods", "Promote a post", "Sponsored posts", "Billing history"],
-    href: "/settings/payments",
+    eyebrow: "Support",
+    title: "Help & Support",
+    description: "Contact Parapost Network for account help, privacy, safety, bugs, data, and policy questions.",
+    items: ["Contact support", "Report a problem", "Account help", "Safety help"],
+    href: "/settings/help-support",
     active: true,
   },
   {
-    eyebrow: "Launch",
+    eyebrow: "Legal",
     title: "Legal",
-    description: "Parapost Network policies for app-store readiness and user trust.",
+    description: "Review Parapost Network policies for trust, safety, app-store readiness, and user protection.",
     items: ["Terms of Service", "Privacy Policy", "Community Guidelines", "Data Deletion Policy"],
     href: "/settings/legal",
+    active: true,
+  },
+  {
+    eyebrow: "Coming Soon",
+    title: "Payments",
+    description:
+      "A polished coming-soon area for promoted posts, sponsored content, billing history, and business tools.",
+    items: ["Promotions", "Sponsored posts", "Billing history", "Not live yet"],
+    href: "/settings/payments",
     active: true,
   },
 ];
@@ -397,9 +398,7 @@ export default function SettingsPage() {
               Control your account, privacy, safety, and support.
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Settings is being built as a serious launch-ready area for Parapost Network, using the same purple,
-              black, and glass-style platform identity across account controls, safety tools, data requests,
-              legal policies, support, and future payments.
+              Manage your Parapost Network account, privacy, safety, support, personalization, notifications, data requests, legal policies, and coming-soon payment tools from one polished settings center.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -553,11 +552,11 @@ export default function SettingsPage() {
               </div>
 
               <p className="mb-5 text-sm leading-7 text-slate-300">
-                This starts the account or data deletion request flow. The full Data & Privacy request area now lives at{" "}
+                This starts the account or data deletion request flow. The full Data & Account request area also lives at{" "}
                 <Link href="/settings/data" className="font-black text-purple-200 no-underline hover:text-white">
                   /settings/data
                 </Link>
-                . Later, this can become a fully automated deletion process, but for Phase 1 it creates a private support request.
+                . This sends a private support request so Parapost Network can review the request safely and clearly.
               </p>
 
               <form onSubmit={handleDeleteRequestSubmit} className="space-y-4">

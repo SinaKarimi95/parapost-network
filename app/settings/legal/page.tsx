@@ -18,7 +18,7 @@ type AdminUserRow = {
 
 const legalSections = [
   {
-    eyebrow: "Launch Draft",
+    eyebrow: "Policy",
     title: "Terms of Service",
     description:
       "The Terms of Service should explain account rules, acceptable use, user content, platform rights, restrictions, suspensions, and account termination.",
@@ -32,7 +32,7 @@ const legalSections = [
     ],
   },
   {
-    eyebrow: "Launch Draft",
+    eyebrow: "Policy",
     title: "Privacy Policy",
     description:
       "The Privacy Policy should explain what data Parapost Network collects, how it is used, how users can contact support, and how privacy/data requests are handled.",
@@ -46,7 +46,7 @@ const legalSections = [
     ],
   },
   {
-    eyebrow: "Launch Draft",
+    eyebrow: "Policy",
     title: "Community Guidelines",
     description:
       "Community Guidelines should help users understand what behavior and content is not allowed, how reporting works, and how moderation decisions may happen.",
@@ -60,7 +60,7 @@ const legalSections = [
     ],
   },
   {
-    eyebrow: "Launch Draft",
+    eyebrow: "Policy",
     title: "Data Deletion Policy",
     description:
       "The Data Deletion Policy should explain how users can request deletion, what may be deleted, what may be retained for legal/safety reasons, and how support follows up.",
@@ -95,10 +95,10 @@ const trustCards = [
     href: "/settings/data",
   },
   {
-    title: "Private profile controls",
+    title: "Profile visibility controls",
     description:
-      "Users can control whether their profile content is public or private through Profile Settings.",
-    href: "/settings/profile",
+      "Users can control whether profile content is public or private through Profile Visibility.",
+    href: "/settings/profile-visibility",
   },
 ];
 
@@ -229,7 +229,7 @@ export default function LegalSettingsPage() {
           </div>
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
-            Settings Phase 2.4
+            Legal & Policies
           </span>
         </div>
 
@@ -240,15 +240,13 @@ export default function LegalSettingsPage() {
             </p>
 
             <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
-              Prepare Parapost Network for trust, safety, and app launch.
+              Review Parapost Network policies, privacy, and community rules.
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              This page organizes the legal and policy areas Parapost Network
-              needs before public launch: Terms of Service, Privacy Policy,
-              Community Guidelines, and Data Deletion Policy. These are
-              launch-prep sections and should be reviewed before final public
-              release.
+              This page organizes the main policy areas for Parapost Network: Terms of Service, Privacy Policy,
+              Community Guidelines, and Data Deletion Policy. Users should have clear places to understand platform rules,
+              privacy choices, support paths, and data/account request options.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -303,13 +301,12 @@ export default function LegalSettingsPage() {
 
             <div className="mt-5 rounded-2xl border border-purple-200/15 bg-black/30 p-4 shadow-inner shadow-purple-950/10">
               <div className="text-xs font-black uppercase tracking-[0.14em] text-purple-200">
-                Launch Note
+                Policy Center
               </div>
-              <div className="mt-2 text-2xl font-black">Draft Area</div>
+              <div className="mt-2 text-2xl font-black">User Trust</div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                These are structured launch-policy sections, not final legal
-                approval. Final public wording should be reviewed before
-                release.
+                These sections help users understand Parapost Network rules,
+                privacy choices, support paths, and data/account request options.
               </p>
             </div>
           </aside>
@@ -327,12 +324,12 @@ export default function LegalSettingsPage() {
                     Policy Areas
                   </p>
                   <h2 className="text-2xl font-black tracking-[-0.03em]">
-                    Launch policy checklist
+                    Policy overview
                   </h2>
                 </div>
 
                 <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-black text-amber-100">
-                  Draft
+                  Policy
                 </span>
               </div>
 
@@ -347,7 +344,7 @@ export default function LegalSettingsPage() {
                         {section.eyebrow}
                       </span>
                       <span className="rounded-full border border-purple-200/15 bg-purple-400/10 px-2.5 py-1 text-[11px] font-black text-slate-300">
-                        Needs final review
+                        Review
                       </span>
                     </div>
 
@@ -375,17 +372,15 @@ export default function LegalSettingsPage() {
 
             <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-                App Store Readiness
+                User Rights & Safety
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em]">
                 Clear user controls matter.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                For Google Play and the iOS App Store, Parapost Network should
-                clearly show where users can contact support, report concerns,
-                manage privacy, request account/data deletion, and review
-                platform rules. This page keeps those areas organized while the
-                final policy wording is prepared.
+                Parapost Network should clearly show where users can contact support, report concerns,
+                manage privacy, request account/data deletion, and review platform rules. This page keeps those areas organized
+                so account, privacy, safety, and policy information is easy to find.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -395,7 +390,7 @@ export default function LegalSettingsPage() {
                   "Account deletion request",
                   "Data deletion request",
                   "Community rules",
-                  "Policy review before launch",
+                  "Policy review",
                 ].map((item) => (
                   <div
                     key={item}
@@ -418,7 +413,7 @@ export default function LegalSettingsPage() {
                 <section className="rounded-[26px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.045] to-slate-950/55 p-5 shadow-xl shadow-purple-950/10 transition hover:bg-purple-400/10">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
-                      Connected
+                      Related
                     </span>
                     <span className="rounded-full border border-purple-200/15 bg-purple-400/10 px-2.5 py-1 text-[11px] font-black text-slate-300">
                       Open

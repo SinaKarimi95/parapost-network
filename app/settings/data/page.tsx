@@ -73,45 +73,45 @@ const accountDataCards = [
     title: "Data / Account Request",
     description:
       "Send data access, correction, deletion, privacy, or account deletion requests directly to Parapost Network support.",
-    items: ["Saved to support inbox", "Private support record", "No public email shown", "Admin review"],
+    items: ["Private support record", "Admin review", "No public email shown", "Clear request path"],
     active: true,
   },
   {
-    eyebrow: "Active",
+    eyebrow: "Privacy",
     title: "Profile Visibility",
     description:
-      "Use Profile Settings to control whether your profile content is public or private.",
+      "Control whether your profile content is public or private while keeping your basic profile shell visible.",
     items: ["Public profile", "Private profile", "Friend-only access", "Profile shell visible"],
-    href: "/settings/profile",
+    href: "/settings/profile-visibility",
     active: true,
   },
   {
-    eyebrow: "Phase 2",
-    title: "Account Deletion Flow",
+    eyebrow: "Account",
+    title: "Account Deletion",
     description:
-      "This page starts the request flow now. Later, Parapost Network can add a deeper confirmation and automated deletion workflow.",
-    items: ["Confirm request", "Review account data", "Support record", "Final confirmation"],
-    active: false,
+      "Start a careful account deletion request so support can review the request, confirm details, and explain what happens next.",
+    items: ["Confirm request", "Review account data", "Support follow-up", "Final confirmation"],
+    active: true,
   },
   {
-    eyebrow: "Phase 2",
-    title: "Data Export",
+    eyebrow: "Data",
+    title: "Data Access & Correction",
     description:
-      "A future download/export area can help users access account data in a clear format before deletion or review.",
+      "Request help accessing, understanding, correcting, or deleting account-related data connected to your profile.",
     items: ["Profile data", "Posts", "Reels", "Comments"],
-    active: false,
+    active: true,
   },
   {
-    eyebrow: "Launch",
+    eyebrow: "Policy",
     title: "Data Deletion Policy",
     description:
-      "A clear policy should explain deletion timing, retained records, safety/legal exceptions, and support follow-up.",
+      "Review how deletion requests, retained records, safety exceptions, and support follow-up should be handled.",
     items: ["Deletion timing", "Retained records", "Policy review", "User confirmation"],
     href: "/settings/legal",
-    active: false,
+    active: true,
   },
   {
-    eyebrow: "Launch",
+    eyebrow: "Safety",
     title: "Privacy & Safety",
     description:
       "Privacy controls, report tools, blocked-user management, and community safety settings support user trust.",
@@ -136,6 +136,36 @@ function isAdminRole(role: string) {
 
 function getRequestLabel(value: RequestType) {
   return requestTypes.find((item) => item.value === value)?.label || "Data / Account Request";
+}
+
+function BackToPrevious({
+  label = "← Back",
+  fallbackHref = "/settings",
+}: {
+  label?: string;
+  fallbackHref?: string;
+}) {
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = fallbackHref;
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleBack}
+      className="text-sm font-bold no-underline transition hover:text-white"
+      style={{ color: "var(--parapost-accent-text)" }}
+    >
+      {label}
+    </button>
+  );
 }
 
 export default function DataAccountSettingsPage() {
@@ -272,16 +302,14 @@ export default function DataAccountSettingsPage() {
   };
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
       <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/settings" className="text-sm font-bold text-purple-200 no-underline hover:text-white">
-              ← Back to Settings
-            </Link>
+            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
             <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
               Dashboard
@@ -289,7 +317,7 @@ export default function DataAccountSettingsPage() {
           </div>
 
           <span className="rounded-full border border-purple-400/30 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100">
-            Settings Phase 2.3
+            Data & Account
           </span>
         </div>
 
@@ -304,8 +332,8 @@ export default function DataAccountSettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Parapost Network needs clear, trustworthy paths for account help, data access, data correction,
-              data deletion, and account deletion requests before public app launch.
+              Parapost Network gives users clear, trustworthy paths for account help, data access, data correction,
+              data deletion, privacy questions, and account deletion requests.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -338,7 +366,7 @@ export default function DataAccountSettingsPage() {
             <div className="flex items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
                 {currentProfile?.avatar_url ? (
-                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
                 ) : (
                   getInitial(currentProfile)
                 )}
@@ -475,9 +503,8 @@ export default function DataAccountSettingsPage() {
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em]">Requests are reviewed before action.</h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                For Phase 2.3, data and account requests create private support records. This gives Parapost Network
-                a clear review path before deeper automation is added. Before public launch, the full account deletion
-                flow should include confirmations, policy wording, and careful data handling.
+                Data and account requests create private support records so Parapost Network can review important requests carefully.
+                Account deletion and data deletion should include confirmation, clear policy wording, and careful handling before action is taken.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -487,7 +514,7 @@ export default function DataAccountSettingsPage() {
                   "High-impact requests are flagged",
                   "User can provide extra details",
                   "No public support email shown",
-                  "Ready for future automation",
+                  "Clear review process",
                 ].map((item) => (
                   <div
                     key={item}

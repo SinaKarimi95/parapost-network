@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -40,72 +40,66 @@ const preferenceOptions: Array<{
   title: string;
   description: string;
   examples: string[];
-  status: "planned" | "ready";
 }> = [
   {
     key: "friend_requests",
     title: "Friend Requests",
-    description: "Notifications for new friend requests, accepted requests, and friend activity.",
+    description: "Alerts for new friend requests, accepted requests, and friend activity.",
     examples: ["New request", "Request accepted", "Friend activity"],
-    status: "ready",
   },
   {
     key: "parachat",
     title: "Parachat",
-    description: "Notifications for messages, unread conversations, and future Parachat activity.",
+    description: "Alerts for new messages, unread conversations, and chat activity.",
     examples: ["New message", "Unread chat", "Conversation updates"],
-    status: "planned",
   },
   {
     key: "comments_likes",
     title: "Comments & Likes",
-    description: "Notifications when people like, comment, reply, or interact with your posts.",
+    description: "Alerts when people like, comment, reply, or interact with your posts.",
     examples: ["Post likes", "Comments", "Replies"],
-    status: "ready",
   },
   {
     key: "reels",
     title: "Parapost Reels",
-    description: "Notifications for Reel likes, comments, shares, saves, and creator activity.",
+    description: "Alerts for Reel likes, comments, shares, saves, and creator activity.",
     examples: ["Reel likes", "Reel comments", "Reel shares"],
-    status: "ready",
   },
   {
     key: "badges",
     title: "Badges",
-    description: "Notifications when badges are earned, awarded, or shown in profile activity.",
+    description: "Alerts when badges are earned, awarded, or shown in profile activity.",
     examples: ["Badge earned", "Profile award", "Milestones"],
-    status: "ready",
   },
   {
     key: "support_updates",
     title: "Support Updates",
-    description: "Notifications for support replies, account/data requests, privacy reviews, and safety requests.",
+    description: "Alerts for support replies, account/data requests, privacy reviews, and safety requests.",
     examples: ["Support reply", "Request update", "Safety review"],
-    status: "planned",
   },
 ];
 
-const quickLinks = [
+const notificationInfoCards = [
   {
-    title: "Privacy & Safety",
-    description: "Manage reporting, privacy concerns, and support contact.",
+    title: "Activity Center",
+    description:
+      "Your main Notifications page remains the place to review friend requests, comments, likes, Reels activity, and badge updates.",
+    href: "/notifications",
+    label: "Open",
+  },
+  {
+    title: "Privacy & Safety Alerts",
+    description:
+      "Safety and support updates help users stay informed when they contact Parapost Network about privacy, account, or moderation concerns.",
     href: "/settings/privacy-safety",
+    label: "Manage",
   },
   {
-    title: "Data & Account",
-    description: "Request account/data support, deletion help, or privacy assistance.",
-    href: "/settings/data",
-  },
-  {
-    title: "Profile Settings",
-    description: "Manage your profile, bio, avatar, and public/private setting.",
-    href: "/settings/profile",
-  },
-  {
-    title: "Legal & Policies",
-    description: "Review launch policy sections and app-store readiness areas.",
-    href: "/settings/legal",
+    title: "Parachat Updates",
+    description:
+      "Message alerts help users keep track of conversations while still giving them control over notification noise.",
+    href: "/messages",
+    label: "Open",
   },
 ];
 
@@ -121,6 +115,34 @@ function isAdminRole(role: string) {
   return ["owner", "admin", "support", "moderator"].includes(role);
 }
 
+function getStorageKey(userId: string) {
+  return `parapost-notification-preferences-${userId}`;
+}
+
+function safeReadStoredPrefs(userId: string): NotificationPrefs {
+  if (typeof window === "undefined" || !userId) return defaultPrefs;
+
+  try {
+    const raw = window.localStorage.getItem(getStorageKey(userId));
+    if (!raw) return defaultPrefs;
+
+    const parsed = JSON.parse(raw) as Partial<NotificationPrefs>;
+
+    return {
+      friend_requests:
+        typeof parsed.friend_requests === "boolean" ? parsed.friend_requests : defaultPrefs.friend_requests,
+      parachat: typeof parsed.parachat === "boolean" ? parsed.parachat : defaultPrefs.parachat,
+      comments_likes:
+        typeof parsed.comments_likes === "boolean" ? parsed.comments_likes : defaultPrefs.comments_likes,
+      reels: typeof parsed.reels === "boolean" ? parsed.reels : defaultPrefs.reels,
+      badges: typeof parsed.badges === "boolean" ? parsed.badges : defaultPrefs.badges,
+      support_updates:
+        typeof parsed.support_updates === "boolean" ? parsed.support_updates : defaultPrefs.support_updates,
+    };
+  } catch {
+    return defaultPrefs;
+  }
+}
 
 function BackToPrevious({
   label = "← Back",
@@ -160,6 +182,7 @@ export default function NotificationSettingsPage() {
   const [pageLoading, setPageLoading] = useState(true);
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(defaultPrefs);
+  const [savedPrefs, setSavedPrefs] = useState<NotificationPrefs>(defaultPrefs);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -170,11 +193,17 @@ export default function NotificationSettingsPage() {
     return Object.values(prefs).filter(Boolean).length;
   }, [prefs]);
 
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(prefs) !== JSON.stringify(savedPrefs);
+  }, [prefs, savedPrefs]);
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadPageUser() {
       setPageLoading(true);
+      setStatusMessage("");
+      setErrorMessage("");
 
       const {
         data: { user },
@@ -187,12 +216,18 @@ export default function NotificationSettingsPage() {
         setUserEmail("");
         setCurrentProfile(null);
         setAdminRole("");
+        setPrefs(defaultPrefs);
+        setSavedPrefs(defaultPrefs);
         setPageLoading(false);
         return;
       }
 
       setCurrentUserId(user.id);
       setUserEmail(user.email || "");
+
+      const storedPrefs = safeReadStoredPrefs(user.id);
+      setPrefs(storedPrefs);
+      setSavedPrefs(storedPrefs);
 
       const [{ data: profileData }, { data: adminData }] = await Promise.all([
         supabase
@@ -233,9 +268,7 @@ export default function NotificationSettingsPage() {
     setErrorMessage("");
   };
 
-  const handleSavePreferences = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const handleSavePreferences = () => {
     setStatusMessage("");
     setErrorMessage("");
 
@@ -246,33 +279,27 @@ export default function NotificationSettingsPage() {
 
     setSaving(true);
 
-    const { error } = await supabase.from("support_messages").insert({
-      user_id: currentUserId,
-      user_email: userEmail || null,
-      user_name: getDisplayName(currentProfile),
-      topic: "other",
-      message:
-        "Notification preferences placeholder saved during Settings setup. This creates an internal record until notification preferences are connected to a dedicated database table.",
-      status: "open",
-      priority: "low",
-      source: "notification_settings_placeholder",
-      page_url: typeof window !== "undefined" ? window.location.href : null,
-      metadata: {
-        submitted_from: "settings_notifications_page",
-        notification_preferences_preview: prefs,
-      },
-    });
+    try {
+      window.localStorage.setItem(getStorageKey(currentUserId), JSON.stringify(prefs));
+      window.dispatchEvent(
+        new CustomEvent("parapost-notification-preferences-updated", {
+          detail: { user_id: currentUserId, preferences: prefs },
+        })
+      );
 
-    setSaving(false);
-
-    if (error) {
-      setErrorMessage(`Could not save notification preference preview: ${error.message}`);
-      return;
+      setSavedPrefs(prefs);
+      setStatusMessage("Notification preferences saved.");
+    } catch {
+      setErrorMessage("Could not save notification preferences in this browser. Please try again.");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    setStatusMessage(
-      "Notification preferences preview saved. A dedicated notification preferences table can be connected in the next backend pass."
-    );
+  const handleResetPreferences = () => {
+    setPrefs(defaultPrefs);
+    setStatusMessage("");
+    setErrorMessage("");
   };
 
   return (
@@ -292,7 +319,7 @@ export default function NotificationSettingsPage() {
           </div>
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
-            Settings Phase 2.5
+            Notifications
           </span>
         </div>
 
@@ -307,9 +334,8 @@ export default function NotificationSettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              This page prepares notification controls for friend requests, Parachat, comments, likes,
-              Parapost Reels, badges, and support updates. The UI is ready now, and backend preference storage
-              can be connected in the next pass.
+              Choose which alerts matter most to you, including friend requests, Parachat, post activity,
+              Parapost Reels, badges, and support updates.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -358,11 +384,11 @@ export default function NotificationSettingsPage() {
 
             <div className="mt-5 rounded-2xl border border-purple-200/15 bg-black/30 p-4 shadow-inner shadow-purple-950/10">
               <div className="text-xs font-black uppercase tracking-[0.14em] text-purple-200">
-                Active Preview
+                Current Preference
               </div>
               <div className="mt-2 text-2xl font-black">{enabledCount}/6 On</div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                These controls are prepared for launch. A dedicated notification preference table can make them fully persistent.
+                {hasUnsavedChanges ? "You have unsaved notification changes." : "Your notification settings are saved."}
               </p>
             </div>
 
@@ -386,125 +412,135 @@ export default function NotificationSettingsPage() {
                     Notification Preferences
                   </p>
                   <h2 className="text-2xl font-black tracking-[-0.03em]">
-                    Choose what you want to be notified about.
+                    Choose what you want to hear about.
                   </h2>
                 </div>
 
-                <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-black text-amber-100">
-                  UI Ready
+                <span
+                  className={`rounded-full border px-3 py-1.5 text-xs font-black ${
+                    hasUnsavedChanges
+                      ? "border-amber-300/25 bg-amber-400/10 text-amber-100"
+                      : "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                  }`}
+                >
+                  {hasUnsavedChanges ? "Unsaved" : "Saved"}
                 </span>
               </div>
 
-              <form onSubmit={handleSavePreferences} className="space-y-4">
-                <div className="grid gap-3">
-                  {preferenceOptions.map((item) => {
-                    const enabled = prefs[item.key];
+              <div className="grid gap-3">
+                {preferenceOptions.map((item) => {
+                  const enabled = prefs[item.key];
 
-                    return (
-                      <div
-                        key={item.key}
-                        className="rounded-[24px] border border-purple-200/15 bg-black/25 p-4"
-                      >
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="m-0 text-lg font-black tracking-[-0.02em]">
-                                {item.title}
-                              </h3>
+                  return (
+                    <div
+                      key={item.key}
+                      className="rounded-[24px] border border-purple-200/15 bg-black/25 p-4"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="m-0 text-lg font-black tracking-[-0.02em]">
+                              {item.title}
+                            </h3>
 
-                              <span
-                                className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${
-                                  item.status === "ready"
-                                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
-                                    : "border-amber-300/25 bg-amber-400/10 text-amber-100"
-                                }`}
-                              >
-                                {item.status === "ready" ? "Ready" : "Planned"}
-                              </span>
-                            </div>
-
-                            <p className="mt-2 text-sm leading-6 text-slate-400">
-                              {item.description}
-                            </p>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {item.examples.map((example) => (
-                                <span
-                                  key={example}
-                                  className="rounded-full border border-purple-200/15 bg-black/30 px-3 py-1.5 text-xs font-bold text-slate-300"
-                                >
-                                  {example}
-                                </span>
-                              ))}
-                            </div>
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${
+                                enabled
+                                  ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                                  : "border-white/10 bg-white/5 text-slate-300"
+                              }`}
+                            >
+                              {enabled ? "On" : "Off"}
+                            </span>
                           </div>
 
-                          <button
-                            type="button"
-                            aria-pressed={enabled}
-                            onClick={() => handleToggle(item.key)}
-                            className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
-                              enabled
-                                ? "border-purple-300/40 bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                                : "border-white/10 bg-white/15"
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
-                                enabled ? "translate-x-8" : "translate-x-1"
-                              }`}
-                            />
-                          </button>
+                          <p className="mt-2 text-sm leading-6 text-slate-400">
+                            {item.description}
+                          </p>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {item.examples.map((example) => (
+                              <span
+                                key={example}
+                                className="rounded-full border border-purple-200/15 bg-black/30 px-3 py-1.5 text-xs font-bold text-slate-300"
+                              >
+                                {example}
+                              </span>
+                            ))}
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          aria-pressed={enabled}
+                          onClick={() => handleToggle(item.key)}
+                          className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
+                            enabled
+                              ? "border-purple-300/40 bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                              : "border-white/10 bg-white/15"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
+                              enabled ? "translate-x-8" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-                <div className="rounded-2xl border border-purple-200/15 bg-purple-400/[0.045] p-4 text-sm leading-6 text-slate-300">
-                  These controls are set up as a launch-ready UI preview. The next backend pass can connect them
-                  to a dedicated notification preferences table instead of saving a support preview record.
-                </div>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-bold text-slate-500">
+                  {enabledCount} notification categories enabled
+                </span>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500">
-                    {enabledCount} notification categories enabled
-                  </span>
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={handleResetPreferences}
+                    disabled={saving || pageLoading}
+                    className="rounded-2xl border border-purple-200/15 bg-white/5 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Reset Defaults
+                  </button>
 
                   <button
-                    type="submit"
-                    disabled={saving}
-                    className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    type="button"
+                    onClick={handleSavePreferences}
+                    disabled={saving || pageLoading || !currentUserId}
+                    className="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {saving ? "Saving..." : "Save Preference Preview"}
+                    {saving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}
                   </button>
                 </div>
+              </div>
 
-                {statusMessage ? (
-                  <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
-                    {statusMessage}
-                  </div>
-                ) : null}
+              {statusMessage ? (
+                <div className="mt-4 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
+                  {statusMessage}
+                </div>
+              ) : null}
 
-                {errorMessage ? (
-                  <div className="rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
-                    {errorMessage}
-                  </div>
-                ) : null}
-              </form>
+              {errorMessage ? (
+                <div className="mt-4 rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
+                  {errorMessage}
+                </div>
+              ) : null}
             </section>
 
             <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-                Notification System Notes
+                Notification Types
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em]">
-                Ready for a dedicated backend table.
+                Keep important activity easy to find.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                The current Notifications page already exists for viewing activity. This Settings page prepares
-                user controls so Parapost Network can later respect each user&apos;s notification preferences
-                across friend requests, Parachat, comments, Reels, badges, and support updates.
+                Notification controls help users reduce noise while staying updated on messages, social activity,
+                Parapost Reels, badges, friend requests, and support updates.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -528,15 +564,15 @@ export default function NotificationSettingsPage() {
           </div>
 
           <aside className="space-y-4">
-            {quickLinks.map((card) => (
+            {notificationInfoCards.map((card) => (
               <Link key={card.title} href={card.href} className="block text-white no-underline">
                 <section className="rounded-[26px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.045] to-slate-950/55 p-5 shadow-xl shadow-purple-950/10 transition hover:bg-purple-400/10">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
-                      Connected
+                      Notifications
                     </span>
                     <span className="rounded-full border border-purple-200/15 bg-purple-400/10 px-2.5 py-1 text-[11px] font-black text-slate-300">
-                      Open
+                      {card.label}
                     </span>
                   </div>
 
@@ -545,6 +581,16 @@ export default function NotificationSettingsPage() {
                 </section>
               </Link>
             ))}
+
+            <section className="rounded-[26px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.045] to-slate-950/55 p-5 shadow-xl shadow-purple-950/10">
+              <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
+                Quiet Control
+              </span>
+              <h3 className="mt-3 text-lg font-black tracking-[-0.02em]">More control, less noise</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Users can keep important updates on and turn off categories they do not want to see as often.
+              </p>
+            </section>
           </aside>
         </section>
       </div>

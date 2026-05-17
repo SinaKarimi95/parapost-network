@@ -24,65 +24,101 @@ type PreferenceKey =
   | "hide_seen_posts"
   | "reduce_sensitive";
 
-type PreferenceItem = {
+type FeedPreferenceItem = {
   key: PreferenceKey;
   title: string;
   description: string;
-  status: "Prepared" | "Coming soon";
+  examples: string[];
 };
 
-const preferenceItems: PreferenceItem[] = [
+type FeedPreferences = Record<PreferenceKey, boolean>;
+
+const defaultFeedPreferences: FeedPreferences = {
+  prioritize_friends: true,
+  show_reels: true,
+  show_trending: true,
+  show_sponsored: true,
+  hide_seen_posts: false,
+  reduce_sensitive: false,
+};
+
+const preferenceItems: FeedPreferenceItem[] = [
   {
     key: "prioritize_friends",
-    title: "Prioritize friends",
-    description:
-      "Future setting to show more posts from friends and accepted connections in the dashboard feed.",
-    status: "Prepared",
+    title: "Prioritize Friends",
+    description: "Show more updates from friends and accepted connections when possible.",
+    examples: ["Friend posts", "Accepted connections", "Closer community"],
   },
   {
     key: "show_reels",
-    title: "Show Parapost Reels in feed",
-    description:
-      "Future setting to control whether Reels recommendations appear inside the dashboard timeline.",
-    status: "Prepared",
+    title: "Show Parapost Reels",
+    description: "Allow Parapost Reels recommendations and shared Reels to appear in feed areas.",
+    examples: ["Reels", "Shared clips", "Creator videos"],
   },
   {
     key: "show_trending",
     title: "Trending in Parapost",
-    description:
-      "Future setting to control trending topics, popular community posts, and discovery sections.",
-    status: "Coming soon",
+    description: "Show trending topics, popular community activity, and discovery suggestions.",
+    examples: ["Trending topics", "Popular posts", "Discovery"],
   },
   {
     key: "show_sponsored",
-    title: "Sponsored content",
-    description:
-      "Future setting area for understanding sponsored posts and promoted placements when ads are live.",
-    status: "Coming soon",
+    title: "Sponsored Content",
+    description: "Allow sponsored posts, promoted placements, and partner content when ads are active.",
+    examples: ["Sponsored posts", "Promotions", "Partner content"],
   },
   {
     key: "hide_seen_posts",
-    title: "Reduce repeated posts",
-    description:
-      "Future setting to reduce posts you have already seen or interacted with.",
-    status: "Coming soon",
+    title: "Reduce Repeated Posts",
+    description: "Prefer fewer repeated posts you have already seen or interacted with.",
+    examples: ["Less repetition", "Cleaner feed", "Fresh posts"],
   },
   {
     key: "reduce_sensitive",
-    title: "Sensitive content controls",
-    description:
-      "Future controls for reducing certain types of mature, intense, or unwanted content in discovery areas.",
-    status: "Coming soon",
+    title: "Reduce Sensitive Content",
+    description: "Prefer fewer intense, unwanted, or sensitive posts in discovery and feed areas.",
+    examples: ["Sensitive content", "Discovery controls", "Safer browsing"],
   },
 ];
 
-const mutedExamples = [
-  "Muted words",
-  "Hidden hashtags",
-  "Hidden post topics",
-  "Reels content filters",
-  "Feed ranking controls",
-  "Blocked discovery suggestions",
+const contentControlCards = [
+  {
+    title: "Muted Words",
+    description: "A future control for hiding words, topics, or phrases you do not want to see often.",
+  },
+  {
+    title: "Hidden Hashtags",
+    description: "A future control for reducing hashtags or topics that are not relevant to your feed.",
+  },
+  {
+    title: "Reels Preferences",
+    description: "A future control for shaping the types of Parapost Reels shown in discovery and timelines.",
+  },
+  {
+    title: "Discovery Filters",
+    description: "A future control for refining people, posts, Reels, and topics recommended to you.",
+  },
+];
+
+const quickLinks = [
+  {
+    title: "Privacy & Safety",
+    description: "Manage blocking, reporting, private profile controls, and safety support.",
+    href: "/settings/privacy-safety",
+    label: "Open",
+  },
+  {
+    title: "Blocked Users",
+    description: "Review accounts you have blocked and unblock them later if needed.",
+    href: "/settings/blocked-users",
+    label: "Manage",
+  },
+  {
+    title: "Notifications",
+    description: "Choose which activity alerts matter most to you.",
+    href: "/settings/notifications",
+    label: "Manage",
+  },
 ];
 
 function getDisplayName(profile: ProfilePreview | null) {
@@ -97,6 +133,47 @@ function isAdminRole(role: string) {
   return ["owner", "admin", "support", "moderator"].includes(role);
 }
 
+function getStorageKey(userId: string) {
+  return `parapost-content-feed-preferences-${userId}`;
+}
+
+function safeReadStoredPreferences(userId: string): FeedPreferences {
+  if (typeof window === "undefined" || !userId) return defaultFeedPreferences;
+
+  try {
+    const raw = window.localStorage.getItem(getStorageKey(userId));
+    if (!raw) return defaultFeedPreferences;
+
+    const parsed = JSON.parse(raw) as Partial<FeedPreferences>;
+
+    return {
+      prioritize_friends:
+        typeof parsed.prioritize_friends === "boolean"
+          ? parsed.prioritize_friends
+          : defaultFeedPreferences.prioritize_friends,
+      show_reels:
+        typeof parsed.show_reels === "boolean" ? parsed.show_reels : defaultFeedPreferences.show_reels,
+      show_trending:
+        typeof parsed.show_trending === "boolean"
+          ? parsed.show_trending
+          : defaultFeedPreferences.show_trending,
+      show_sponsored:
+        typeof parsed.show_sponsored === "boolean"
+          ? parsed.show_sponsored
+          : defaultFeedPreferences.show_sponsored,
+      hide_seen_posts:
+        typeof parsed.hide_seen_posts === "boolean"
+          ? parsed.hide_seen_posts
+          : defaultFeedPreferences.hide_seen_posts,
+      reduce_sensitive:
+        typeof parsed.reduce_sensitive === "boolean"
+          ? parsed.reduce_sensitive
+          : defaultFeedPreferences.reduce_sensitive,
+    };
+  } catch {
+    return defaultFeedPreferences;
+  }
+}
 
 function BackToPrevious({
   label = "← Back",
@@ -129,31 +206,35 @@ function BackToPrevious({
 }
 
 export default function ContentFeedSettingsPage() {
+  const [currentUserId, setCurrentUserId] = useState("");
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
   const [userEmail, setUserEmail] = useState("");
   const [adminRole, setAdminRole] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
 
-  const [draftPreferences, setDraftPreferences] = useState<Record<PreferenceKey, boolean>>({
-    prioritize_friends: true,
-    show_reels: true,
-    show_trending: true,
-    show_sponsored: true,
-    hide_seen_posts: false,
-    reduce_sensitive: false,
-  });
+  const [feedPreferences, setFeedPreferences] = useState<FeedPreferences>(defaultFeedPreferences);
+  const [savedFeedPreferences, setSavedFeedPreferences] = useState<FeedPreferences>(defaultFeedPreferences);
+  const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const canSeeAdminSupport = isAdminRole(adminRole);
 
   const enabledCount = useMemo(() => {
-    return Object.values(draftPreferences).filter(Boolean).length;
-  }, [draftPreferences]);
+    return Object.values(feedPreferences).filter(Boolean).length;
+  }, [feedPreferences]);
+
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(feedPreferences) !== JSON.stringify(savedFeedPreferences);
+  }, [feedPreferences, savedFeedPreferences]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadUser() {
       setPageLoading(true);
+      setStatusMessage("");
+      setErrorMessage("");
 
       const {
         data: { user },
@@ -162,14 +243,22 @@ export default function ContentFeedSettingsPage() {
       if (cancelled) return;
 
       if (!user) {
+        setCurrentUserId("");
         setCurrentProfile(null);
         setUserEmail("");
         setAdminRole("");
+        setFeedPreferences(defaultFeedPreferences);
+        setSavedFeedPreferences(defaultFeedPreferences);
         setPageLoading(false);
         return;
       }
 
+      setCurrentUserId(user.id);
       setUserEmail(user.email || "");
+
+      const storedPreferences = safeReadStoredPreferences(user.id);
+      setFeedPreferences(storedPreferences);
+      setSavedFeedPreferences(storedPreferences);
 
       const [{ data: profileData }, { data: adminData }] = await Promise.all([
         supabase
@@ -201,10 +290,46 @@ export default function ContentFeedSettingsPage() {
   }, []);
 
   const togglePreference = (key: PreferenceKey) => {
-    setDraftPreferences((prev) => ({
+    setFeedPreferences((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
+    setStatusMessage("");
+    setErrorMessage("");
+  };
+
+  const handleSavePreferences = () => {
+    setStatusMessage("");
+    setErrorMessage("");
+
+    if (!currentUserId) {
+      setErrorMessage("Please sign in before saving content and feed preferences.");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      window.localStorage.setItem(getStorageKey(currentUserId), JSON.stringify(feedPreferences));
+      window.dispatchEvent(
+        new CustomEvent("parapost-content-feed-preferences-updated", {
+          detail: { user_id: currentUserId, preferences: feedPreferences },
+        })
+      );
+
+      setSavedFeedPreferences(feedPreferences);
+      setStatusMessage("Content and feed preferences saved.");
+    } catch {
+      setErrorMessage("Could not save content and feed preferences in this browser. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetPreferences = () => {
+    setFeedPreferences(defaultFeedPreferences);
+    setStatusMessage("");
+    setErrorMessage("");
   };
 
   return (
@@ -241,7 +366,7 @@ export default function ContentFeedSettingsPage() {
               boxShadow: "0 12px 28px var(--parapost-accent-glow)",
             }}
           >
-            Settings Phase 8
+            Content & Feed
           </span>
         </div>
 
@@ -267,13 +392,14 @@ export default function ContentFeedSettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              This page prepares the future controls for feed ranking, muted words, hidden posts, sensitive content,
-              Reels recommendations, trending topics, discovery sections, and sponsored placements.
+              Choose your preferred feed direction for friends, Parapost Reels, trending topics, sponsored content,
+              repeated posts, and sensitive content controls.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <span
-                className="rounded-full px-5 py-3 text-sm font-black shadow-lg"
+              <a
+                href="#feed-controls"
+                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -281,15 +407,15 @@ export default function ContentFeedSettingsPage() {
                   boxShadow: "0 12px 26px var(--parapost-accent-glow)",
                 }}
               >
-                {enabledCount} preview controls on
-              </span>
+                Feed Controls
+              </a>
 
               <Link
-                href="/settings/privacy-safety"
+                href="/dashboard"
                 className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
-                Privacy & Safety
+                Open Dashboard
               </Link>
 
               {canSeeAdminSupport ? (
@@ -340,19 +466,26 @@ export default function ContentFeedSettingsPage() {
                 className="text-xs font-black uppercase tracking-[0.14em]"
                 style={{ color: "var(--parapost-accent-text)" }}
               >
-                Feed Status
+                Feed Preference
               </div>
-              <div className="mt-2 text-2xl font-black">Prepared</div>
+              <div className="mt-2 text-2xl font-black">{enabledCount}/6 On</div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                These controls are staged for future connection to the dashboard, Reels, discovery, and moderation systems.
+                {hasUnsavedChanges ? "You have unsaved feed preference changes." : "Your feed preferences are saved."}
               </p>
             </div>
+
+            {!pageLoading && !currentUserId ? (
+              <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                Sign in is required to save content and feed preferences.
+              </div>
+            ) : null}
           </aside>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
             <section
+              id="feed-controls"
               className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
@@ -369,7 +502,7 @@ export default function ContentFeedSettingsPage() {
                     Feed Controls
                   </p>
                   <h2 className="text-2xl font-black tracking-[-0.03em]">
-                    Preview controls
+                    Choose your feed preferences.
                   </h2>
                 </div>
 
@@ -381,13 +514,13 @@ export default function ContentFeedSettingsPage() {
                     color: "var(--parapost-accent-readable-text)",
                   }}
                 >
-                  Coming soon
+                  {hasUnsavedChanges ? "Unsaved" : "Saved"}
                 </span>
               </div>
 
               <div className="grid gap-3">
                 {preferenceItems.map((item) => {
-                  const enabled = draftPreferences[item.key];
+                  const enabled = feedPreferences[item.key];
 
                   return (
                     <button
@@ -401,44 +534,150 @@ export default function ContentFeedSettingsPage() {
                         boxShadow: enabled ? "0 0 22px var(--parapost-accent-glow)" : "none",
                       }}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                          <h3 className="text-lg font-black tracking-[-0.02em]">{item.title}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="m-0 text-lg font-black tracking-[-0.02em]">{item.title}</h3>
+
+                            <span
+                              className="rounded-full border px-2.5 py-1 text-[11px] font-black"
+                              style={{
+                                borderColor: enabled ? "var(--parapost-accent-active-border)" : "rgba(255,255,255,0.12)",
+                                background: enabled ? "var(--parapost-accent-active-bg)" : "rgba(255,255,255,0.05)",
+                                color: enabled ? "var(--parapost-accent-readable-text)" : "#cbd5e1",
+                              }}
+                            >
+                              {enabled ? "On" : "Off"}
+                            </span>
+                          </div>
+
                           <p className="mt-2 text-sm leading-6 text-slate-400">{item.description}</p>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {item.examples.map((example) => (
+                              <span
+                                key={example}
+                                className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-bold text-slate-300"
+                              >
+                                {example}
+                              </span>
+                            ))}
+                          </div>
                         </div>
 
                         <span
-                          className="rounded-full border px-3 py-1.5 text-xs font-black"
-                          style={{
-                            borderColor: enabled ? "var(--parapost-accent-active-border)" : "rgba(255,255,255,0.12)",
-                            background: enabled ? "var(--parapost-accent-active-bg)" : "rgba(255,255,255,0.05)",
-                            color: enabled ? "var(--parapost-accent-readable-text)" : "#cbd5e1",
-                          }}
+                          className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
+                            enabled
+                              ? "border-purple-300/40 bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                              : "border-white/10 bg-white/15"
+                          }`}
                         >
-                          {enabled ? "On" : "Off"} · {item.status}
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
+                              enabled ? "translate-x-8" : "translate-x-1"
+                            }`}
+                          />
                         </span>
                       </div>
                     </button>
                   );
                 })}
               </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-bold text-slate-500">
+                  {enabledCount} content and feed controls enabled
+                </span>
+
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={handleResetPreferences}
+                    disabled={saving || pageLoading}
+                    className="rounded-2xl border border-purple-200/15 bg-white/5 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Reset Defaults
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSavePreferences}
+                    disabled={saving || pageLoading || !currentUserId}
+                    className="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}
+                  </button>
+                </div>
+              </div>
+
+              {statusMessage ? (
+                <div className="mt-4 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
+                  {statusMessage}
+                </div>
+              ) : null}
+
+              {errorMessage ? (
+                <div className="mt-4 rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
+                  {errorMessage}
+                </div>
+              ) : null}
             </section>
 
-            <section className="rounded-[28px] border border-amber-300/20 bg-amber-400/10 p-5 shadow-2xl shadow-amber-950/10 sm:p-6">
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-amber-100">
-                Important
+            <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+                Advanced Content Controls
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em] text-white">
-                These controls are staged, not active ranking logic yet.
+              <h2 className="text-2xl font-black tracking-[-0.03em]">
+                More filtering tools can be added as the platform grows.
               </h2>
-              <p className="mt-4 text-sm leading-7 text-amber-50/85">
-                The switches are preview controls for the Settings UI. Later, we can save them to Supabase and connect
-                them to the dashboard, Reels, discovery, hidden posts, and moderation systems.
+              <p className="mt-4 text-sm leading-7 text-slate-300">
+                Parapost Network can expand this area with muted words, hidden hashtags, discovery filters,
+                Reels content preferences, and stronger feed controls after the core launch features are stable.
               </p>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {contentControlCards.map((card) => (
+                  <div key={card.title} className="rounded-2xl border border-purple-200/15 bg-black/30 p-4">
+                    <h3 className="text-base font-black text-white">{card.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
+                  </div>
+                ))}
+              </div>
             </section>
           </div>
 
           <aside className="space-y-4">
+            {quickLinks.map((card) => (
+              <Link key={card.title} href={card.href} className="block text-white no-underline">
+                <section
+                  className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                  style={{
+                    borderColor: "var(--parapost-accent-border)",
+                    background:
+                      "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
+                  }}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span
+                      className="text-[11px] font-black uppercase tracking-[0.16em]"
+                      style={{ color: "var(--parapost-accent-text)" }}
+                    >
+                      Related
+                    </span>
+                    <span
+                      className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300"
+                      style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" }}
+                    >
+                      {card.label}
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-black tracking-[-0.02em]">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
+                </section>
+              </Link>
+            ))}
+
             <section
               className="rounded-[26px] border p-5 shadow-xl"
               style={{
@@ -451,83 +690,13 @@ export default function ContentFeedSettingsPage() {
                 className="mb-2 text-xs font-black uppercase tracking-[0.16em]"
                 style={{ color: "var(--parapost-accent-text)" }}
               >
-                Future tools
+                Feed Balance
               </p>
-              <h3 className="text-lg font-black tracking-[-0.02em]">Content controls to connect later</h3>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {mutedExamples.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-bold text-slate-300"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
+              <h3 className="text-lg font-black tracking-[-0.02em]">Control without clutter</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                These settings are designed to give users more control without making the dashboard feel complicated.
+              </p>
             </section>
-
-            <Link href="/settings/blocked-users" className="block text-white no-underline">
-              <section
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
-                style={{
-                  borderColor: "var(--parapost-accent-border)",
-                  background:
-                    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
-                }}
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span
-                    className="text-[11px] font-black uppercase tracking-[0.16em]"
-                    style={{ color: "var(--parapost-accent-text)" }}
-                  >
-                    Safety
-                  </span>
-                  <span
-                    className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300"
-                    style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" }}
-                  >
-                    Open
-                  </span>
-                </div>
-
-                <h3 className="text-lg font-black tracking-[-0.02em]">Blocked Users</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Manage accounts you have blocked and unblock them later.
-                </p>
-              </section>
-            </Link>
-
-            <Link href="/settings/help-support" className="block text-white no-underline">
-              <section
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
-                style={{
-                  borderColor: "var(--parapost-accent-border)",
-                  background:
-                    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
-                }}
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span
-                    className="text-[11px] font-black uppercase tracking-[0.16em]"
-                    style={{ color: "var(--parapost-accent-text)" }}
-                  >
-                    Support
-                  </span>
-                  <span
-                    className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300"
-                    style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" }}
-                  >
-                    Open
-                  </span>
-                </div>
-
-                <h3 className="text-lg font-black tracking-[-0.02em]">Help & Support</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Contact support for account, privacy, data, safety, bug, or policy help.
-                </p>
-              </section>
-            </Link>
           </aside>
         </section>
       </div>

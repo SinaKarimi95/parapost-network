@@ -24,68 +24,58 @@ const safetyTopics: Array<{ value: SafetyTopic; label: string; helper: string }>
     value: "privacy_safety",
     label: "Privacy or Safety Concern",
     helper:
-      "Use this for harassment, unwanted contact, privacy issues, blocked-user questions, or safety concerns.",
+      "Use this for harassment, unwanted contact, blocked-user questions, profile privacy, or safety concerns.",
   },
   {
     value: "report_problem",
     label: "Report Content or User",
     helper:
-      "Use this when something on Parapost Network should be reviewed by support or moderation.",
+      "Use this when a profile, post, comment, Reel, message, or Showcase should be reviewed by support.",
   },
 ];
 
-const safetyCards = [
+const primarySafetyActions = [
   {
-    eyebrow: "Active",
-    title: "Contact Safety Support",
+    title: "Profile Visibility",
     description:
-      "Send privacy, safety, blocking, reporting, or moderation concerns directly to Parapost Network support.",
-    items: ["Private support request", "Saved to admin inbox", "No public support email", "Reviewed internally"],
-    active: true,
+      "Choose whether your profile content is public or protected while keeping your basic profile shell visible.",
+    href: "/settings/profile-visibility",
+    status: "Privacy control",
+    items: ["Public profile", "Private profile", "Protected profile content"],
   },
   {
-    eyebrow: "Active",
-    title: "Private Profile Control",
-    description:
-      "Control whether non-friends can see your profile content while your basic profile shell remains visible.",
-    items: ["Public profile", "Private profile", "Owner access", "Friend-only content"],
-    href: "/settings/profile",
-    active: true,
-  },
-  {
-    eyebrow: "Coming soon",
     title: "Blocked Users",
     description:
-      "A dedicated blocked-user management screen will let users review and manage blocked accounts.",
-    items: ["Block user", "Unblock user", "Blocked list", "Reduced unwanted contact"],
-    active: false,
+      "Review blocked accounts and unblock people later if you choose to.",
+    href: "/settings/blocked-users",
+    status: "Safety control",
+    items: ["Blocked list", "Unblock users", "Reduce unwanted contact"],
   },
   {
-    eyebrow: "Coming soon",
-    title: "Report Center",
+    title: "Content & Feed Controls",
     description:
-      "A dedicated reporting flow will support profile, post, comment, Reel, message, and Showcase reports.",
-    items: ["Report profile", "Report post", "Report Reel", "Report message"],
-    active: false,
+      "Review prepared controls for feed preferences, hidden content, discovery, and future content filters.",
+    href: "/settings/content-feed",
+    status: "Content control",
+    items: ["Feed preferences", "Hidden posts", "Reels filters"],
   },
   {
-    eyebrow: "Launch",
-    title: "Community Guidelines",
+    title: "Legal & Guidelines",
     description:
-      "Clear rules help protect the community and explain what content or behavior is not allowed.",
-    items: ["Respectful behavior", "No harassment", "No spam", "Moderation review"],
+      "Review the community rules, privacy policy areas, and launch-ready policy sections.",
     href: "/settings/legal",
-    active: false,
+    status: "Guidelines",
+    items: ["Community rules", "Privacy policy", "Data deletion policy"],
   },
-  {
-    eyebrow: "Launch",
-    title: "Data & Account Safety",
-    description:
-      "Users need clear ways to request data help, privacy support, account deletion, or account safety review.",
-    items: ["Data request", "Delete account", "Privacy help", "Support record"],
-    href: "/settings/data",
-    active: false,
-  },
+];
+
+const trustChecklist = [
+  "Private profile controls",
+  "Blocked user management",
+  "Support and report forms",
+  "No public support email exposed",
+  "Community guidelines access",
+  "Data and account request path",
 ];
 
 function getInitial(profile: ProfilePreview | null) {
@@ -104,7 +94,6 @@ function isAdminRole(role: string) {
 function getTopicLabel(topic: SafetyTopic) {
   return safetyTopics.find((item) => item.value === topic)?.label || "Privacy or Safety Concern";
 }
-
 
 function BackToPrevious({
   label = "← Back",
@@ -273,14 +262,14 @@ export default function PrivacySafetySettingsPage() {
           </div>
 
           <span className="rounded-full border border-purple-400/30 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100">
-            Settings Phase 2.2
+            Privacy & Safety
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
           <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-white/[0.075] via-purple-900/20 to-slate-950/60 p-5 shadow-2xl sm:p-7">
             <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-              Privacy & Safety
+              Safety Center
             </p>
 
             <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
@@ -288,23 +277,30 @@ export default function PrivacySafetySettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              This area gives Parapost Network users clear safety paths for privacy concerns, reports,
-              private-profile controls, blocked-user management, community guidelines, and support review.
+              Manage privacy controls, blocked users, reporting, content preferences, community guidelines,
+              and support requests from one focused safety area.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#safety-contact"
-                className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/30"
+                className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/30 transition hover:brightness-110"
               >
                 Send Safety Message
               </a>
 
               <Link
-                href="/settings/profile"
+                href="/settings/profile-visibility"
                 className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
               >
-                Profile Privacy
+                Profile Visibility
+              </Link>
+
+              <Link
+                href="/settings/blocked-users"
+                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+              >
+                Blocked Users
               </Link>
 
               {canSeeAdminSupport ? (
@@ -322,7 +318,11 @@ export default function PrivacySafetySettingsPage() {
             <div className="flex items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
                 {currentProfile?.avatar_url ? (
-                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
+                  <img
+                    src={currentProfile.avatar_url}
+                    alt=""
+                    className="h-full w-full object-cover object-center"
+                  />
                 ) : (
                   getInitial(currentProfile)
                 )}
@@ -344,7 +344,7 @@ export default function PrivacySafetySettingsPage() {
                 {pageLoading ? "Checking..." : currentProfile?.is_private ? "Private" : "Public"}
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Manage this from Profile Settings. Private profiles can hide timeline content from non-friends.
+                Private profiles can protect profile content from people who are not connected to you.
               </p>
             </div>
 
@@ -368,7 +368,7 @@ export default function PrivacySafetySettingsPage() {
                 </div>
 
                 <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-black text-emerald-200">
-                  Active
+                  Available
                 </span>
               </div>
 
@@ -438,24 +438,16 @@ export default function PrivacySafetySettingsPage() {
 
             <section className="rounded-[28px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-                Safety Center
+                Trust & Safety
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em]">Built for user trust and app-store review.</h2>
+              <h2 className="text-2xl font-black tracking-[-0.03em]">Core protections before launch.</h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
                 Parapost Network should give users clear ways to control privacy, contact support, report issues,
-                request account/data help, and understand community rules. These settings are being built in phases
-                so the platform is safer before public launch.
+                request account or data help, and understand community rules before public launch.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {[
-                  "Private profile controls",
-                  "Support inbox records",
-                  "Report and moderation path",
-                  "Blocked users area",
-                  "Data deletion support",
-                  "Community guidelines",
-                ].map((item) => (
+                {trustChecklist.map((item) => (
                   <div
                     key={item}
                     className="rounded-2xl border border-purple-200/15 bg-black/25 px-4 py-3 text-sm font-bold text-slate-200"
@@ -468,22 +460,16 @@ export default function PrivacySafetySettingsPage() {
           </div>
 
           <aside className="space-y-4">
-            {safetyCards.map((card) => {
-              const content = (
-                <section
-                  className={`rounded-[26px] border border-purple-200/15 bg-white/[0.045] p-5 shadow-xl ${
-                    card.active ? "" : "opacity-70"
-                  }`}
-                >
+            {primarySafetyActions.map((card) => (
+              <Link key={card.title} href={card.href} className="block text-white no-underline">
+                <section className="rounded-[26px] border border-purple-200/15 bg-white/[0.045] p-5 shadow-xl transition hover:bg-white/[0.065]">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
-                      {card.eyebrow}
+                      {card.status}
                     </span>
-                    {!card.active ? (
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-black text-slate-300">
-                        Coming soon
-                      </span>
-                    ) : null}
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-black text-slate-300">
+                      Open
+                    </span>
                   </div>
 
                   <h3 className="text-lg font-black tracking-[-0.02em]">{card.title}</h3>
@@ -500,18 +486,8 @@ export default function PrivacySafetySettingsPage() {
                     ))}
                   </div>
                 </section>
-              );
-
-              if (card.href) {
-                return (
-                  <Link key={card.title} href={card.href} className="block text-white no-underline">
-                    {content}
-                  </Link>
-                );
-              }
-
-              return <div key={card.title}>{content}</div>;
-            })}
+              </Link>
+            ))}
           </aside>
         </section>
       </div>

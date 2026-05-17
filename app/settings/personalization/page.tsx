@@ -466,7 +466,7 @@ export default function PersonalizationSettingsPage() {
           </div>
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
-            Settings Phase 3
+            Personalization
           </span>
         </div>
 
@@ -481,8 +481,8 @@ export default function PersonalizationSettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Choose account-based accent colors and font styles while keeping the main Parapost Network identity
-              purple, black, glassy, and premium by default.
+              Choose account-based accent colors, appearance preferences, and font styles while keeping the main
+              Parapost Network identity purple, black, glassy, and premium by default.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -491,6 +491,13 @@ export default function PersonalizationSettingsPage() {
                 className={`rounded-full bg-gradient-to-r ${selectedAccent.gradient} px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110`}
               >
                 Accent Colors
+              </a>
+
+              <a
+                href="#theme-appearance"
+                className="rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15"
+              >
+                Appearance
               </a>
 
               <a
@@ -611,6 +618,64 @@ export default function PersonalizationSettingsPage() {
               </div>
             </section>
 
+
+            <section
+              id="theme-appearance"
+              className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6"
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+                    Theme & Appearance
+                  </p>
+                  <h2 className="text-2xl font-black tracking-[-0.03em]">
+                    Keep the Parapost look clean and readable.
+                  </h2>
+                </div>
+
+                <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-black text-emerald-100">
+                  Dark default active
+                </span>
+              </div>
+
+              <p className="mb-5 text-sm leading-7 text-slate-300">
+                Parapost Network currently uses the dark purple-and-black platform style by default. Accent colors
+                and font choices personalize highlights while the core dark identity stays consistent across the app.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    title: "Parapost Dark",
+                    status: "Active",
+                    description: "The default purple, black, and glass-style appearance for Parapost Network.",
+                  },
+                  {
+                    title: "Accent Highlights",
+                    status: "Personalized",
+                    description: "Your selected accent can style buttons, tabs, badges, avatar rings, and active states.",
+                  },
+                  {
+                    title: "System Appearance",
+                    status: "Prepared",
+                    description: "A future system setting can follow device appearance once light mode is added.",
+                  },
+                  {
+                    title: "Readable Layout",
+                    status: "Active",
+                    description: "Spacing, contrast, and card styling stay optimized for mobile, tablet, and desktop.",
+                  },
+                ].map((item) => (
+                  <article key={item.title} className="rounded-[24px] border border-purple-200/15 bg-black/25 p-4">
+                    <span className="rounded-full border border-purple-200/15 bg-white/[0.055] px-2.5 py-1 text-[11px] font-black text-purple-100">
+                      {item.status}
+                    </span>
+                    <h3 className="mt-4 text-lg font-black tracking-[-0.02em] text-white">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
             <section
               id="font-style"
               className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6"
@@ -733,7 +798,7 @@ export default function PersonalizationSettingsPage() {
                 </div>
 
                 <p className="mt-4 text-sm leading-7 text-slate-300">
-                  Accent colors can later affect buttons, active tabs, avatar rings, badges, Showcase accents,
+                  Accent colors help shape buttons, active tabs, avatar rings, badges, Showcase accents,
                   and creator highlights while keeping the core Parapost Network identity consistent.
                 </p>
 
@@ -754,24 +819,24 @@ export default function PersonalizationSettingsPage() {
           <aside className="space-y-4">
             {[
               {
-                title: "Account-backed settings",
+                title: "Account-backed style",
                 description:
-                  "Accent color and font style now save in Supabase through the user_preferences table.",
+                  "Accent color and font style save to your account so your Parapost experience can stay consistent.",
               },
               {
-                title: "Default stays Parapost",
+                title: "Parapost stays recognizable",
                 description:
-                  "Purple and black remain the main Parapost Network brand. Personalization is optional and controlled.",
+                  "Purple and black remain the main Parapost Network brand. Personalization adds polish without changing the platform identity.",
               },
               {
-                title: "Next app-wide step",
+                title: "Consistent appearance",
                 description:
-                  "Later, we can load these preferences globally and apply them to buttons, active tabs, avatar rings, and badges.",
+                  "Your selected style is designed to support buttons, active tabs, avatar rings, badges, and profile highlights.",
               },
               {
-                title: "Creator-friendly",
+                title: "Creator-friendly personalization",
                 description:
-                  "Accent color and font choices can later support creator profiles, Showcases, badges, and personal branding.",
+                  "Accent color and font choices support creator profiles, Showcases, badges, and personal branding as the platform grows.",
               },
             ].map((card) => (
               <section

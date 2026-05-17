@@ -6054,7 +6054,7 @@ function MobileDashboardMenuDrawer({
             {recentlyViewed.length > 0 ? (
               recentlyViewed.map((profile) => <MobileMenuProfileLinkRow key={profile.id} profile={profile} />)
             ) : (
-              <div style={mobileMenuInfoCardStyle}>Profiles you recently view will appear here privately.</div>
+              <div style={mobileMenuInfoCardStyle}>Profiles you recently viewed will appear here privately.</div>
             )}
           </div>
         ) : null}
@@ -6100,7 +6100,7 @@ function MobileDashboardMenuDrawer({
             <MobileMenuMutedRow label="Audience insights" />
 
             <div style={mobileMenuInfoCardStyle}>
-              Creator tools will support profile growth, performance insights, and future business features after the core mobile dashboard is finished.
+              Creator tools will support profile growth, performance insights, sponsor opportunities, and future business features.
             </div>
           </div>
         ) : null}
@@ -6108,14 +6108,14 @@ function MobileDashboardMenuDrawer({
         {activeSection === "ads" ? (
           <div style={mobileMenuListWrapStyle}>
             <div style={mobileMenuSectionHeadingStyle}>Ads and sponsors</div>
+            <MobileMenuLink href="/settings/payments" label="Payments and promotions" />
             <MobileMenuLink href="/settings/payments" label="Sponsor placements" />
             <MobileMenuLink href="/settings/payments" label="Advertise with Parapost Network" />
-            <MobileMenuLink href="/settings/payments" label="Payments" />
             <MobileMenuMutedRow label="Boosted posts" />
             <MobileMenuMutedRow label="Sponsored Reels" />
 
             <div style={mobileMenuInfoCardStyle}>
-              Sponsored placements will also appear naturally in the timeline after every 20 feed posts, so they are visible without crowding the mobile dashboard.
+              Payments and promotion tools are coming soon. Sponsored placements will also appear naturally in the timeline without crowding the mobile dashboard.
             </div>
           </div>
         ) : null}
@@ -6141,7 +6141,7 @@ function MobileDashboardMenuDrawer({
             <div style={mobileMenuSectionHeadingStyle}>Settings and support</div>
             <MobileMenuButton label="Your account" onClick={() => setActiveSection("settingsAccount")} />
             <MobileMenuButton label="Privacy and safety" onClick={() => setActiveSection("settingsPrivacy")} />
-            <MobileMenuButton label="Help" onClick={() => setActiveSection("settingsHelp")} />
+            <MobileMenuButton label="Help and legal" onClick={() => setActiveSection("settingsHelp")} />
           </div>
         ) : null}
 
@@ -6150,14 +6150,13 @@ function MobileDashboardMenuDrawer({
             <div style={mobileMenuSectionHeadingStyle}>Your account</div>
             <MobileMenuLink href="/settings" label="Settings home" />
             <MobileMenuLink href="/settings/profile" label="Profile settings" />
-            <MobileMenuLink href="/settings/account" label="Account management" />
-            <MobileMenuLink href="/settings/account" label="Email and password" />
-            <MobileMenuLink href="/settings/account" label="Delete account" />
+            <MobileMenuLink href="/settings/account" label="Account and security" />
+            <MobileMenuLink href="/settings/profile-visibility" label="Profile visibility" />
             <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
             <MobileMenuLink href="/settings/personalization" label="Personalization" />
             <MobileMenuLink href="/settings/payments" label="Payments" />
-            <MobileMenuLink href="/settings/account" label="Data and account files" />
-            <MobileMenuInfoCardText text="Account tools are grouped here so mobile users can move through settings without returning to the dashboard." />
+            <MobileMenuLink href="/settings/account" label="Data and account requests" />
+            <MobileMenuInfoCardText text="Manage your account, profile controls, personalization, blocked users, and data-related settings from one clean area." />
           </div>
         ) : null}
 
@@ -6167,32 +6166,26 @@ function MobileDashboardMenuDrawer({
             <MobileMenuLink href="/settings/profile-visibility" label="Profile visibility" />
             <MobileMenuLink href="/settings/privacy-safety" label="Privacy and safety center" />
             <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
-            <MobileMenuLink href="/settings/account" label="Security" />
             <MobileMenuLink href="/settings/notifications" label="Notifications" badge={notificationsCount || undefined} />
-            <MobileMenuLink href="/settings/content-feed" label="Posts and comments" />
-            <MobileMenuLink href="/settings/content-feed" label="Reels and feed preferences" />
-            <MobileMenuLink href="/settings/content-feed" label="Content feed" />
+            <MobileMenuLink href="/settings/content-feed" label="Posts, comments, and feed" />
+            <MobileMenuLink href="/settings/content-feed" label="Reels preferences" />
             <MobileMenuLink href="/settings/privacy-safety" label="Message requests" />
-            <MobileMenuLink href="/settings/privacy-safety" label="Who can see your content" />
-            <MobileMenuLink href="/settings/privacy-safety" label="Who can interact with you" />
             <MobileMenuLink href="/settings/privacy-safety" label="Reporting and moderation" />
-            <MobileMenuInfoCardText text="Privacy and safety controls will continue expanding as report, block, private profile, and moderation tools are finalized." />
+            <MobileMenuInfoCardText text="Control visibility, blocked accounts, notifications, reports, feed preferences, and who can interact with you." />
           </div>
         ) : null}
 
         {activeSection === "settingsHelp" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Help</div>
+            <div style={mobileMenuSectionHeadingStyle}>Help and legal</div>
             <MobileMenuLink href="/settings/help-support" label="Contact Parapost Network" />
-            <MobileMenuLink href="/settings/help-support" label="Help and support" />
             <MobileMenuLink href="/settings/help-support" label="Report a problem" />
-            <MobileMenuLink href="/settings/legal" label="Legal" />
+            <MobileMenuLink href="/settings/help-support" label="Account help" />
+            <MobileMenuLink href="/settings/help-support" label="Safety resources" />
+            <MobileMenuLink href="/settings/legal" label="Legal center" />
             <MobileMenuLink href="/settings/legal" label="Terms of Service" />
             <MobileMenuLink href="/settings/legal" label="Privacy Policy" />
             <MobileMenuLink href="/settings/legal" label="Community Guidelines" />
-            <MobileMenuLink href="/settings/help-support" label="Support messages" />
-            <MobileMenuLink href="/settings/help-support" label="Safety resources" />
-            <MobileMenuLink href="/settings/help-support" label="Account help" />
             {pendingFriendRequestCount > 0 ? <MobileMenuInfoCardText text={`${pendingFriendRequestCount} pending friend request${pendingFriendRequestCount === 1 ? "" : "s"} may need your attention.`} /> : null}
           </div>
         ) : null}

@@ -19,31 +19,31 @@ type AdminUserRow = {
 
 const visibilityCards = [
   {
-    eyebrow: "Active",
+    eyebrow: "Visibility",
     title: "Public Profile",
     description:
-      "Your profile content can be viewed by people who visit your profile, depending on future post-level privacy settings.",
-    items: ["Profile shell visible", "Timeline visible", "Reels visible", "Friends route available"],
+      "People can visit your profile and view your available profile content based on your privacy settings.",
+    items: ["Profile shell visible", "Timeline visible", "Reels visible", "Friends page available"],
   },
   {
-    eyebrow: "Active",
+    eyebrow: "Privacy",
     title: "Private Profile",
     description:
-      "Your profile shell remains visible, but profile content routes are protected from non-friends.",
+      "Your profile identity stays visible, but your timeline, Reels, Friends page, and protected content stay limited to you and approved connections.",
     items: ["Timeline hidden", "Reels protected", "Friends protected", "Private message shown"],
   },
   {
-    eyebrow: "Protected Routes",
-    title: "Direct Route Protection",
+    eyebrow: "Access",
+    title: "Protected Content",
     description:
-      "Private profile protection has already been added to the main profile page, Reels grid, direct Reels viewer, and Friends route.",
-    items: ["Profile page", "Reels grid", "Reel viewer", "Friends page"],
+      "Private profile protection helps keep direct profile sections from being viewed by people who should not have access.",
+    items: ["Profile content", "Reels grid", "Direct Reel viewer", "Friends page"],
   },
   {
-    eyebrow: "Future",
-    title: "Advanced Visibility",
+    eyebrow: "Control",
+    title: "More Privacy Controls",
     description:
-      "Later, Parapost Network can add per-post, per-Reel, Showcase, message, and friend-list visibility controls.",
+      "Parapost Network can expand this area with post-level, Reel-level, Showcase, message, and friend-list privacy controls as the platform grows.",
     items: ["Post privacy", "Reel privacy", "Showcase privacy", "Message privacy"],
   },
 ];
@@ -217,7 +217,7 @@ export default function ProfileVisibilitySettingsPage() {
           </div>
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
-            Settings Phase 2.6
+            Privacy Control
           </span>
         </div>
 
@@ -232,8 +232,8 @@ export default function ProfileVisibilitySettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Public profiles show profile content normally. Private profiles keep the basic profile shell visible,
-              but hide timeline content and protected routes from non-friends.
+              Public profiles show available profile content normally. Private profiles keep your basic profile shell visible,
+              while protecting timeline content, Reels, Friends, and other private sections from non-friends.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -290,7 +290,7 @@ export default function ProfileVisibilitySettingsPage() {
                 {pageLoading ? "Checking..." : isPrivate ? "Private" : "Public"}
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                This setting updates your profile privacy status immediately after saving.
+                This setting updates your profile visibility after saving.
               </p>
             </div>
 
@@ -335,7 +335,7 @@ export default function ProfileVisibilitySettingsPage() {
                     <p className="text-base font-black text-white">Private Profile</p>
                     <p className="mt-1 text-sm leading-6 text-slate-400">
                       When this is on, non-friends can still see your basic profile shell, but your protected
-                      profile content and direct profile routes stay hidden.
+                      content stays limited to you and approved connections.
                     </p>
                   </div>
 
@@ -403,7 +403,7 @@ export default function ProfileVisibilitySettingsPage() {
                 Private profiles still show a basic profile shell.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                This keeps Parapost Network social and discoverable while protecting sensitive content. Non-friends
+                This keeps Parapost Network social and discoverable while protecting personal content. Non-friends
                 see the profile identity area and a private message instead of timeline, Reels, Friends, and other
                 protected sections.
               </p>

@@ -42,57 +42,6 @@ function formatDate(value?: string | null) {
   });
 }
 
-const securityCards = [
-  {
-    title: "Password",
-    description:
-      "Send yourself a secure reset email when you want to update your password.",
-    label: "Reset by email",
-  },
-  {
-    title: "Active session",
-    description:
-      "Your browser session keeps you signed in until you sign out or the session expires.",
-    label: "Session active",
-  },
-  {
-    title: "Account deletion",
-    description:
-      "Account and data deletion requests are handled through Data & Account for safety and review.",
-    label: "Request flow",
-  },
-  {
-    title: "Support",
-    description:
-      "Questions about account access, privacy, safety, or deletion can be sent through Parapost support.",
-    label: "Contact form",
-  },
-];
-
-const quickLinks = [
-  {
-    title: "Profile Settings",
-    description: "Edit profile details, avatar, bio, and public/private profile controls.",
-    href: "/settings/profile",
-  },
-  {
-    title: "Privacy & Safety",
-    description: "Report privacy, safety, moderation, or account concerns.",
-    href: "/settings/privacy-safety",
-  },
-  {
-    title: "Data & Account",
-    description: "Request account deletion, data deletion, correction, or access help.",
-    href: "/settings/data",
-  },
-  {
-    title: "Legal & Policies",
-    description: "Review Terms, Privacy Policy, Community Guidelines, and deletion policy areas.",
-    href: "/settings/legal",
-  },
-];
-
-
 function BackToPrevious({
   label = "← Back",
   fallbackHref = "/settings",
@@ -122,6 +71,36 @@ function BackToPrevious({
     </button>
   );
 }
+
+const accountControls = [
+  {
+    title: "Password reset",
+    description: "Send a secure reset email to the address connected to this account.",
+    status: "Available",
+  },
+  {
+    title: "Signed-in session",
+    description: "Your browser session keeps you signed in until you sign out or the session expires.",
+    status: "Active when signed in",
+  },
+  {
+    title: "Account data",
+    description: "Data access, deletion, and account removal requests stay in the controlled data request flow.",
+    status: "Controlled",
+  },
+  {
+    title: "Account support",
+    description: "Account access, security, and deletion questions can be sent through Parapost support.",
+    status: "Support ready",
+  },
+];
+
+const accountChecklist = [
+  "Use a private email account you control.",
+  "Request a password reset if you think your password needs to be changed.",
+  "Sign out on shared or public devices.",
+  "Use the support form for account access, deletion, or data concerns.",
+];
 
 export default function AccountSecuritySettingsPage() {
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
@@ -236,6 +215,10 @@ export default function AccountSecuritySettingsPage() {
     setErrorMessage("");
     setSigningOut(true);
 
+    if (userId) {
+      await supabase.from("profiles").update({ is_online: false }).eq("id", userId);
+    }
+
     const { error } = await supabase.auth.signOut();
 
     setSigningOut(false);
@@ -252,9 +235,18 @@ export default function AccountSecuritySettingsPage() {
 
   return (
     <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl" style={{ background: "var(--parapost-accent-soft)" }} />
-      <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl" style={{ background: "var(--parapost-accent-muted-bg)" }} />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl" style={{ background: "var(--parapost-accent-soft)" }} />
+      <div
+        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
+      <div
+        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-muted-bg)" }}
+      />
+      <div
+        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -266,24 +258,40 @@ export default function AccountSecuritySettingsPage() {
             </Link>
           </div>
 
-          <span className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg" style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)", boxShadow: "0 12px 28px var(--parapost-accent-glow)" }}>
-            Settings Phase 4
+          <span
+            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background: "var(--parapost-accent-muted-bg)",
+              color: "var(--parapost-accent-readable-text)",
+              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
+            }}
+          >
+            Account & Security
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7" style={{ borderColor: "var(--parapost-accent-border)", background: "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.06), rgba(15,23,42,0.70))", boxShadow: "0 24px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)" }}>
+          <div
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.06), rgba(15,23,42,0.70))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+            }}
+          >
             <p className="mb-3 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
-              Account & Security
+              Account Safety
             </p>
 
             <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
-              Manage your Parapost Network account safely.
+              Keep your Parapost Network account secure.
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Review your signed-in account, request a password reset email, sign out, and reach the right
-              privacy, data, support, and deletion request areas from one clean Settings page.
+              Manage your signed-in account, password reset, session status, sign-out access, and account data
+              request flow from one focused security page.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -293,7 +301,8 @@ export default function AccountSecuritySettingsPage() {
                 disabled={sendingReset || pageLoading || !userEmail}
                 className="rounded-full px-5 py-3 text-sm font-black shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
-                  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
                   color: "var(--parapost-accent-button-text)",
                   boxShadow: "0 12px 26px var(--parapost-accent-glow)",
                 }}
@@ -304,9 +313,23 @@ export default function AccountSecuritySettingsPage() {
               <Link
                 href="/settings/data"
                 className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
-                style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
+                style={{
+                  borderColor: "var(--parapost-accent-border)",
+                  background: "rgba(255,255,255,0.055)",
+                }}
               >
-                Data & Deletion
+                Data & Account
+              </Link>
+
+              <Link
+                href="/settings/help-support"
+                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                style={{
+                  borderColor: "var(--parapost-accent-border)",
+                  background: "rgba(255,255,255,0.055)",
+                }}
+              >
+                Account Support
               </Link>
 
               {canSeeAdminSupport ? (
@@ -320,11 +343,29 @@ export default function AccountSecuritySettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]" style={{ borderColor: "var(--parapost-accent-border)", background: "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.56))", boxShadow: "0 24px 70px rgba(0,0,0,0.30)" }}>
+          <aside
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.56))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
+            }}
+          >
             <div className="flex items-center gap-4">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15" style={{ background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))" }}>
+              <div
+                className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                }}
+              >
                 {currentProfile?.avatar_url ? (
-                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
+                  <img
+                    src={currentProfile.avatar_url}
+                    alt=""
+                    className="h-full w-full object-cover object-center"
+                  />
                 ) : (
                   getInitial(currentProfile)
                 )}
@@ -357,7 +398,11 @@ export default function AccountSecuritySettingsPage() {
               >
                 {signingOut ? "Signing out..." : "Sign Out"}
               </button>
-            ) : null}
+            ) : (
+              <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                Sign in to manage account security controls.
+              </div>
+            )}
           </aside>
         </section>
 
@@ -373,29 +418,50 @@ export default function AccountSecuritySettingsPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
-            <section className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6" style={{ borderColor: "var(--parapost-accent-border)", background: "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.55))" }}>
+            <section
+              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              style={{
+                borderColor: "var(--parapost-accent-border)",
+                background:
+                  "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.55))",
+              }}
+            >
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
-                    Security Overview
+                    Security Controls
                   </p>
                   <h2 className="text-2xl font-black tracking-[-0.03em]">
-                    Account controls
+                    Account protection tools
                   </h2>
                 </div>
 
-                <span className="rounded-full border px-3 py-1.5 text-xs font-black" style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)" }}>
-                  Controlled
+                <span
+                  className="rounded-full border px-3 py-1.5 text-xs font-black"
+                  style={{
+                    borderColor: "var(--parapost-accent-border)",
+                    background: "var(--parapost-accent-muted-bg)",
+                    color: "var(--parapost-accent-readable-text)",
+                  }}
+                >
+                  Ready
                 </span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {securityCards.map((card) => (
+                {accountControls.map((card) => (
                   <article key={card.title} className="rounded-[24px] border border-white/10 bg-black/25 p-4">
-                    <span className="rounded-full border px-2.5 py-1 text-[11px] font-black" style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)" }}>
-                      {card.label}
+                    <span
+                      className="rounded-full border px-2.5 py-1 text-[11px] font-black"
+                      style={{
+                        borderColor: "var(--parapost-accent-border)",
+                        background: "var(--parapost-accent-muted-bg)",
+                        color: "var(--parapost-accent-readable-text)",
+                      }}
+                    >
+                      {card.status}
                     </span>
 
                     <h3 className="mt-4 text-lg font-black tracking-[-0.02em]">{card.title}</h3>
@@ -407,15 +473,15 @@ export default function AccountSecuritySettingsPage() {
 
             <section className="rounded-[28px] border border-amber-300/20 bg-amber-400/10 p-5 shadow-2xl shadow-amber-950/10 sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-amber-100">
-                Important
+                Data & Account
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em] text-white">
                 Account deletion stays controlled.
               </h2>
               <p className="mt-4 text-sm leading-7 text-amber-50/85">
-                We are not adding an instant delete button here. Account and data deletion should stay inside a
-                careful request flow so users understand what happens to their profile, posts, media, messages,
-                reports, support history, and safety records.
+                Parapost Network should not use a casual one-tap delete flow. Account and data deletion requests
+                should stay inside a careful process so users understand what happens to their profile, posts,
+                media, messages, comments, reports, and safety records.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -427,33 +493,94 @@ export default function AccountSecuritySettingsPage() {
                 </Link>
 
                 <Link
-                  href="/settings/legal"
+                  href="/settings/help-support"
                   className="rounded-full border border-amber-200/25 bg-black/20 px-5 py-3 text-sm font-black text-amber-50 no-underline hover:bg-black/30"
                 >
-                  Legal & Policies
+                  Contact Support
                 </Link>
               </div>
             </section>
           </div>
 
           <aside className="space-y-4">
-            {quickLinks.map((card) => (
-              <Link key={card.title} href={card.href} className="block text-white no-underline">
-                <section className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]" style={{ borderColor: "var(--parapost-accent-border)", background: "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))" }}>
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: "var(--parapost-accent-text)" }}>
-                      Connected
-                    </span>
-                    <span className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300" style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" }}>
-                      Open
-                    </span>
-                  </div>
+            <section
+              className="rounded-[26px] border p-5 shadow-xl"
+              style={{
+                borderColor: "var(--parapost-accent-border)",
+                background:
+                  "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
+              }}
+            >
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.16em]" style={{ color: "var(--parapost-accent-text)" }}>
+                Account Checklist
+              </p>
+              <h3 className="text-lg font-black tracking-[-0.02em]">Quick safety reminders</h3>
 
-                  <h3 className="text-lg font-black tracking-[-0.02em]">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
-                </section>
-              </Link>
-            ))}
+              <div className="mt-4 space-y-3">
+                {accountChecklist.map((item) => (
+                  <div key={item} className="flex gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+                    <span
+                      className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black"
+                      style={{
+                        background: "var(--parapost-accent-muted-bg)",
+                        color: "var(--parapost-accent-readable-text)",
+                      }}
+                    >
+                      ✓
+                    </span>
+                    <p className="text-sm leading-6 text-slate-300">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section
+              className="rounded-[26px] border p-5 shadow-xl"
+              style={{
+                borderColor: "var(--parapost-accent-border)",
+                background:
+                  "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
+              }}
+            >
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.16em]" style={{ color: "var(--parapost-accent-text)" }}>
+                Related Account Areas
+              </p>
+              <h3 className="text-lg font-black tracking-[-0.02em]">Only account-related shortcuts</h3>
+
+              <div className="mt-4 grid gap-3">
+                <Link
+                  href="/settings/data"
+                  className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white no-underline transition hover:bg-white/[0.06]"
+                >
+                  <strong className="block text-sm font-black">Data & Account</strong>
+                  <span className="mt-1 block text-xs leading-5 text-slate-400">
+                    Account data, deletion requests, and privacy/data help.
+                  </span>
+                </Link>
+
+                <Link
+                  href="/settings/help-support"
+                  className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white no-underline transition hover:bg-white/[0.06]"
+                >
+                  <strong className="block text-sm font-black">Account Support</strong>
+                  <span className="mt-1 block text-xs leading-5 text-slate-400">
+                    Help with sign-in, account access, deletion, or account questions.
+                  </span>
+                </Link>
+
+                {canSeeAdminSupport ? (
+                  <Link
+                    href="/admin/support"
+                    className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-emerald-100 no-underline transition hover:bg-emerald-400/15"
+                  >
+                    <strong className="block text-sm font-black">Admin Support Inbox</strong>
+                    <span className="mt-1 block text-xs leading-5 text-emerald-100/75">
+                      Review account support requests and safety messages.
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+            </section>
           </aside>
         </section>
       </div>

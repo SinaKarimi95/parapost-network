@@ -50,7 +50,7 @@ const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string
   {
     value: "payments",
     label: "Payments",
-    helper: "Future payments, promoted posts, sponsorships, billing, or business tools.",
+    helper: "Payment questions, promoted posts, sponsorships, billing, or business tools once payments are available.",
   },
   {
     value: "bug_report",
@@ -302,7 +302,7 @@ export default function HelpSupportSettingsPage() {
               boxShadow: "0 12px 28px var(--parapost-accent-glow)",
             }}
           >
-            Settings Phase 7
+            Help & Support
           </span>
         </div>
 
@@ -329,7 +329,7 @@ export default function HelpSupportSettingsPage() {
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
               Contact Parapost Network support for account help, privacy and safety concerns, data and deletion
-              requests, bug reports, policy questions, future payment questions, and other platform issues.
+              requests, bug reports, policy questions, payment questions, and other platform issues.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -406,7 +406,7 @@ export default function HelpSupportSettingsPage() {
               </div>
               <div className="mt-2 text-2xl font-black">{currentUserId ? "Signed in" : "Signed out"}</div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Signed-in users can send support messages directly from this page.
+                Signed-in users can send support messages directly from this secure support form.
               </p>
             </div>
           </aside>

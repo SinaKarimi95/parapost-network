@@ -862,6 +862,16 @@ function DotsIcon() {
   );
 }
 
+function MenuIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4.5 7H19.5" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M4.5 12H19.5" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M4.5 17H19.5" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} aria-hidden="true">
@@ -1031,6 +1041,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProfilePreview[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dashboardShowcaseInputRef = useRef<HTMLInputElement | null>(null);
@@ -1815,6 +1826,7 @@ export default function DashboardPage() {
       setFeelingActivityOpen(false);
       setOpenPostMenuId(null);
       setOpenCommentsPostId(null);
+      setMobileMenuOpen(false);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -1856,8 +1868,36 @@ export default function DashboardPage() {
     return () => window.clearTimeout(timeout);
   }, [searchQuery]);
 
-  const handleOpenDashboardShowcaseComposer = () => {
-    if (!currentUserId) {
+  const getActiveDashboardUserId = useCallback(async () => {
+    if (currentUserId) return currentUserId;
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) return "";
+
+    setCurrentUserId(user.id);
+    setUserEmail(user.email || "");
+
+    if (!currentProfile) {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, bio, location, is_online")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setCurrentProfile((profileData as ProfilePreview | null) || null);
+    }
+
+    return user.id;
+  }, [currentProfile, currentUserId]);
+
+  const handleOpenDashboardShowcaseComposer = async () => {
+    const activeUserId = await getActiveDashboardUserId();
+
+    if (!activeUserId) {
       alert("Please sign in to create a Showcase.");
       return;
     }
@@ -1933,7 +1973,9 @@ export default function DashboardPage() {
   };
 
   const handleCreateDashboardShowcase = async () => {
-    if (!currentUserId) {
+    const activeUserId = await getActiveDashboardUserId();
+
+    if (!activeUserId) {
       setDashboardShowcaseError("Please sign in to create a Showcase.");
       return;
     }
@@ -1958,7 +2000,7 @@ export default function DashboardPage() {
           : null;
 
     const insertPayload = {
-      user_id: currentUserId,
+      user_id: activeUserId,
       title: cleanTitle || cleanCoverText || "Showcase",
       cover_text: cleanCoverText,
       media_url: dashboardShowcaseMediaPreviewUrl || null,
@@ -1982,7 +2024,7 @@ export default function DashboardPage() {
       return;
     }
 
-    await fetchFriendShowcases(currentUserId);
+    await fetchFriendShowcases(activeUserId);
     setDashboardShowcaseSaving(false);
     handleCloseDashboardShowcaseComposer();
   };
@@ -2587,6 +2629,7 @@ export default function DashboardPage() {
           currentProfile={currentProfile}
           notificationsCount={notificationsCount}
           onOpenSearch={openSearch}
+          onOpenMenu={() => setMobileMenuOpen(true)}
         />
 
         <div className="dashboard-grid-desktop-safe" style={dashboardGridStyle}>
@@ -2594,7 +2637,7 @@ export default function DashboardPage() {
             <SidebarLogo />
             <nav style={sidebarNavStyle}>
               <SidebarLink href="/dashboard" active icon={<HomeIcon />} label="Home" />
-              <SidebarLink href="/reels" icon={<SidebarParapostReelIcon />} label="Parapost Reels" />
+              <SidebarLink href="/reels" icon={<SidebarParapostReelIcon />} label="Explore Reels" />
               <SidebarButton label="Live" badge="Soon" muted />
               <SidebarLink href="/friends" label="Friends" badge={pendingFriendRequestCount || undefined} />
               <SidebarButton label="Groups" muted />
@@ -2652,6 +2695,15 @@ export default function DashboardPage() {
                 <Link href="/messages" style={topIconButtonStyle} aria-label="Parachat">
                   <ChatIcon />
                 </Link>
+                <button
+                  type="button"
+                  className="dashboard-tablet-menu-button"
+                  onClick={() => setMobileMenuOpen(true)}
+                  style={topIconButtonStyle}
+                  aria-label="Open dashboard menu"
+                >
+                  <MenuIcon />
+                </button>
                 <Link
                   href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"}
                   style={topProfileButtonStyle}
@@ -2693,19 +2745,6 @@ export default function DashboardPage() {
               totalShares={totalShares}
             />
 
-            <MobileDashboardUtilityRail
-              currentProfile={currentProfile}
-              currentUserId={currentUserId}
-              recentlyViewed={recentlyViewed}
-              peopleToDiscover={peopleToDiscover}
-              followedCount={followedUserIds.length}
-              feedItems={mixedFeedItems.length}
-              totalLikes={totalLikes}
-              totalComments={totalComments}
-              totalShares={totalShares}
-              onCreatePost={scrollToComposer}
-            />
-
             <section style={feedStackStyle}>
               {fetchingPosts ? (
                 <DashboardEmptyState title="Loading your feed" text="Parapost Network is pulling in posts, shared reels, and profile activity." />
@@ -2728,92 +2767,99 @@ export default function DashboardPage() {
                 />
               ) : (
                 <>
-                  {visibleFeedItems.map((item) =>
-                    item.type === "post" ? (
-                      <PostCard
-                        key={`post-${item.post.id}`}
-                        post={item.post}
-                        profile={profilesMap[item.post.user_id]}
-                        currentUserId={currentUserId}
-                        profilesMap={profilesMap}
-                        isLiked={!!userLikes[item.post.id]}
-                        likeCount={likeCounts[item.post.id] || 0}
-                        commentCount={commentCounts[item.post.id] || 0}
-                        shareCount={shareCounts[item.post.id] || 0}
-                        isFollowing={!!followingMap[item.post.user_id]}
-                        isFriend={acceptedFriendUserIds.includes(item.post.user_id)}
-                        openPostMenuId={openPostMenuId}
-                        editingPostId={editingPostId}
-                        editingPostContent={editingPostContent}
-                        setEditingPostContent={setEditingPostContent}
-                        setOpenPostMenuId={setOpenPostMenuId}
-                        commentsOpen={openCommentsPostId === item.post.id}
-                        comments={commentsByPostId[item.post.id] || []}
-                        commentsLoading={commentsLoadingPostId === item.post.id}
-                        commentDraft={commentDrafts[item.post.id] || ""}
-                        postingComment={postingCommentPostId === item.post.id}
-                        onLike={() => handleLikeToggle(item.post.id)}
-                        onToggleComments={() => handleToggleDashboardComments(item.post.id)}
-                        onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.post.id, value)}
-                        onAddComment={() => handleAddDashboardComment(item.post.id, item.post.user_id)}
-                        onDeleteComment={(commentId) => handleDeleteDashboardComment(item.post.id, commentId)}
-                        onShare={() => handleShare(item.post.id)}
-                        onStartEdit={() => handleStartEditPost(item.post)}
-                        onSaveEdit={() => handleSavePostEdit(item.post.id)}
-                        onCancelEdit={() => {
-                          setEditingPostId(null);
-                          setEditingPostContent("");
-                        }}
-                        onDelete={() => handleDeletePost(item.post.id)}
-                      />
-                    ) : item.type === "shared_post" ? (
-                      <SharedPostCard
-                        key={`shared-post-${item.sharedPost.id}`}
-                        sharedPost={item.sharedPost}
-                        sharerProfile={profilesMap[item.sharedPost.user_id]}
-                        originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
-                        currentUserId={currentUserId}
-                        profilesMap={profilesMap}
-                        isLiked={!!userLikes[item.sharedPost.post_id]}
-                        likeCount={likeCounts[item.sharedPost.post_id] || 0}
-                        commentCount={commentCounts[item.sharedPost.post_id] || 0}
-                        shareCount={shareCounts[item.sharedPost.post_id] || 0}
-                        openPostMenuId={openPostMenuId}
-                        editingPostId={editingPostId}
-                        editingPostContent={editingPostContent}
-                        setEditingPostContent={setEditingPostContent}
-                        setOpenPostMenuId={setOpenPostMenuId}
-                        commentsOpen={openCommentsPostId === item.sharedPost.post_id}
-                        comments={commentsByPostId[item.sharedPost.post_id] || []}
-                        commentsLoading={commentsLoadingPostId === item.sharedPost.post_id}
-                        commentDraft={commentDrafts[item.sharedPost.post_id] || ""}
-                        postingComment={postingCommentPostId === item.sharedPost.post_id}
-                        onLikeOriginal={() => handleLikeToggle(item.sharedPost.post_id)}
-                        onToggleComments={() => handleToggleDashboardComments(item.sharedPost.post_id)}
-                        onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.sharedPost.post_id, value)}
-                        onAddComment={() => handleAddDashboardComment(item.sharedPost.post_id, item.sharedPost.original_post.user_id)}
-                        onDeleteComment={(commentId) => handleDeleteDashboardComment(item.sharedPost.post_id, commentId)}
-                        onShareOriginal={() => handleShare(item.sharedPost.post_id)}
-                        onStartEditOriginal={() => handleStartEditPost(item.sharedPost.original_post)}
-                        onSaveEditOriginal={() => handleSavePostEdit(item.sharedPost.original_post.id)}
-                        onCancelEditOriginal={() => {
-                          setEditingPostId(null);
-                          setEditingPostContent("");
-                        }}
-                        onDeleteOriginal={() => handleDeletePost(item.sharedPost.original_post.id)}
-                        onRemoveShare={() => handleDeleteSharedPostShare(item.sharedPost.id, item.sharedPost.post_id)}
-                      />
-                    ) : (
-                      <SharedReelCard
-                        key={`shared-${item.share.id}`}
-                        shared={item.share}
-                        sharerProfile={profilesMap[item.share.user_id]}
-                        creatorProfile={profilesMap[item.share.creator_profile_id || ""] || profilesMap[item.share.reel_user_id]}
-                        currentUserId={currentUserId}
-                        onDelete={() => handleDeleteReelShare(item.share.id)}
-                      />
-                    )
-                  )}
+                  {visibleFeedItems.map((item, index) => {
+                    const shouldShowMobileSponsor = (index + 1) % 20 === 0;
+
+                    return (
+                      <div key={`feed-item-${item.type}-${item.id}`} style={{ display: "contents" }}>
+                        {item.type === "post" ? (
+                          <PostCard
+                            post={item.post}
+                            profile={profilesMap[item.post.user_id]}
+                            currentUserId={currentUserId}
+                            profilesMap={profilesMap}
+                            isLiked={!!userLikes[item.post.id]}
+                            likeCount={likeCounts[item.post.id] || 0}
+                            commentCount={commentCounts[item.post.id] || 0}
+                            shareCount={shareCounts[item.post.id] || 0}
+                            isFollowing={!!followingMap[item.post.user_id]}
+                            isFriend={acceptedFriendUserIds.includes(item.post.user_id)}
+                            openPostMenuId={openPostMenuId}
+                            editingPostId={editingPostId}
+                            editingPostContent={editingPostContent}
+                            setEditingPostContent={setEditingPostContent}
+                            setOpenPostMenuId={setOpenPostMenuId}
+                            commentsOpen={openCommentsPostId === item.post.id}
+                            comments={commentsByPostId[item.post.id] || []}
+                            commentsLoading={commentsLoadingPostId === item.post.id}
+                            commentDraft={commentDrafts[item.post.id] || ""}
+                            postingComment={postingCommentPostId === item.post.id}
+                            onLike={() => handleLikeToggle(item.post.id)}
+                            onToggleComments={() => handleToggleDashboardComments(item.post.id)}
+                            onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.post.id, value)}
+                            onAddComment={() => handleAddDashboardComment(item.post.id, item.post.user_id)}
+                            onDeleteComment={(commentId) => handleDeleteDashboardComment(item.post.id, commentId)}
+                            onShare={() => handleShare(item.post.id)}
+                            onStartEdit={() => handleStartEditPost(item.post)}
+                            onSaveEdit={() => handleSavePostEdit(item.post.id)}
+                            onCancelEdit={() => {
+                              setEditingPostId(null);
+                              setEditingPostContent("");
+                            }}
+                            onDelete={() => handleDeletePost(item.post.id)}
+                          />
+                        ) : item.type === "shared_post" ? (
+                          <SharedPostCard
+                            sharedPost={item.sharedPost}
+                            sharerProfile={profilesMap[item.sharedPost.user_id]}
+                            originalProfile={profilesMap[item.sharedPost.original_post.user_id]}
+                            currentUserId={currentUserId}
+                            profilesMap={profilesMap}
+                            isLiked={!!userLikes[item.sharedPost.post_id]}
+                            likeCount={likeCounts[item.sharedPost.post_id] || 0}
+                            commentCount={commentCounts[item.sharedPost.post_id] || 0}
+                            shareCount={shareCounts[item.sharedPost.post_id] || 0}
+                            openPostMenuId={openPostMenuId}
+                            editingPostId={editingPostId}
+                            editingPostContent={editingPostContent}
+                            setEditingPostContent={setEditingPostContent}
+                            setOpenPostMenuId={setOpenPostMenuId}
+                            commentsOpen={openCommentsPostId === item.sharedPost.post_id}
+                            comments={commentsByPostId[item.sharedPost.post_id] || []}
+                            commentsLoading={commentsLoadingPostId === item.sharedPost.post_id}
+                            commentDraft={commentDrafts[item.sharedPost.post_id] || ""}
+                            postingComment={postingCommentPostId === item.sharedPost.post_id}
+                            onLikeOriginal={() => handleLikeToggle(item.sharedPost.post_id)}
+                            onToggleComments={() => handleToggleDashboardComments(item.sharedPost.post_id)}
+                            onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.sharedPost.post_id, value)}
+                            onAddComment={() => handleAddDashboardComment(item.sharedPost.post_id, item.sharedPost.original_post.user_id)}
+                            onDeleteComment={(commentId) => handleDeleteDashboardComment(item.sharedPost.post_id, commentId)}
+                            onShareOriginal={() => handleShare(item.sharedPost.post_id)}
+                            onStartEditOriginal={() => handleStartEditPost(item.sharedPost.original_post)}
+                            onSaveEditOriginal={() => handleSavePostEdit(item.sharedPost.original_post.id)}
+                            onCancelEditOriginal={() => {
+                              setEditingPostId(null);
+                              setEditingPostContent("");
+                            }}
+                            onDeleteOriginal={() => handleDeletePost(item.sharedPost.original_post.id)}
+                            onRemoveShare={() => handleDeleteSharedPostShare(item.sharedPost.id, item.sharedPost.post_id)}
+                          />
+                        ) : (
+                          <SharedReelCard
+                            shared={item.share}
+                            sharerProfile={profilesMap[item.share.user_id]}
+                            creatorProfile={profilesMap[item.share.creator_profile_id || ""] || profilesMap[item.share.reel_user_id]}
+                            currentUserId={currentUserId}
+                            onDelete={() => handleDeleteReelShare(item.share.id)}
+                          />
+                        )}
+
+                        {shouldShowMobileSponsor ? (
+                          <MobileTimelineSponsorCard slotNumber={Math.floor((index + 1) / 20)} />
+                        ) : null}
+                      </div>
+                    );
+                  })}
 
                   {hasMoreFeedItems ? <div ref={feedLoadMoreSentinelRef} style={feedLoadMoreSentinelStyle} /> : null}
                 </>
@@ -2877,12 +2923,12 @@ export default function DashboardPage() {
               )}
             </RightRailCard>
 
-            <RightRailCard title="Parapost Reels" action="Explore">
+            <RightRailCard title="Explore Reels" action="Public">
               <div style={reelsRailFeatureStyle}>
                 <div style={reelsRailIconStyle}>▶</div>
                 <div style={{ minWidth: 0 }}>
-                  <strong style={railNameStyle}>Discover new Parapost Reels</strong>
-                  <span style={railMetaStyle}>Short videos, investigations, creator moments, and shared reels.</span>
+                  <strong style={railNameStyle}>Discover public Parapost Reels</strong>
+                  <span style={railMetaStyle}>Short videos, creator moments, and public reels from across the platform.</span>
                 </div>
               </div>
               <Link href="/reels" style={railPrimaryLinkStyle}>Open Explore Reels</Link>
@@ -2950,6 +2996,27 @@ export default function DashboardPage() {
         />
       ) : null}
 
+      <MobileDashboardMenuDrawer
+        isOpen={mobileMenuOpen}
+        currentProfile={currentProfile}
+        currentUserId={currentUserId}
+        notificationsCount={notificationsCount}
+        pendingFriendRequestCount={pendingFriendRequestCount}
+        recentlyViewed={recentlyViewed}
+        peopleToDiscover={peopleToDiscover}
+        trendingTopics={trendingTopics}
+        followedCount={followedUserIds.length}
+        feedItems={mixedFeedItems.length}
+        totalLikes={totalLikes}
+        totalComments={totalComments}
+        totalShares={totalShares}
+        onClose={() => setMobileMenuOpen(false)}
+        onCreatePost={() => {
+          setMobileMenuOpen(false);
+          scrollToComposer();
+        }}
+      />
+
       <MobileBottomNav currentUserId={currentUserId} notificationsCount={notificationsCount} onCreatePost={scrollToComposer} />
 
       {feelingActivityOpen ? (
@@ -2977,7 +3044,7 @@ export default function DashboardPage() {
         />
       ) : null}
 
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         html {
           scroll-behavior: smooth;
         }
@@ -3662,12 +3729,10 @@ export default function DashboardPage() {
           }
 
           .dashboard-bottom-nav {
-            left: 10px !important;
-            right: 10px !important;
-            bottom: max(9px, env(safe-area-inset-bottom)) !important;
-            min-height: 72px !important;
-            padding: 7px 8px !important;
-            border-radius: 25px !important;
+            width: min(calc(100vw - 22px), 520px) !important;
+            min-height: 78px !important;
+            padding: 8px 8px 10px !important;
+            border-radius: 28px !important;
           }
 
           .dashboard-bottom-nav a span:last-child {
@@ -3690,8 +3755,7 @@ export default function DashboardPage() {
           }
 
           .dashboard-bottom-nav {
-            left: 8px !important;
-            right: 8px !important;
+            width: min(calc(100vw - 18px), 520px) !important;
           }
         }
 
@@ -3709,7 +3773,7 @@ export default function DashboardPage() {
           }
 
           .dashboard-bottom-nav a span:last-child {
-            display: none !important;
+            font-size: 9.5px !important;
           }
         }
 
@@ -3865,6 +3929,33 @@ export default function DashboardPage() {
           }
         }
 
+
+        .dashboard-mobile-menu-drawer {
+          touch-action: pan-y !important;
+          overscroll-behavior: contain !important;
+        }
+
+        .dashboard-mobile-menu-drawer * {
+          overscroll-behavior: contain;
+        }
+
+        .dashboard-mobile-menu-scroll-area {
+          height: calc(100vh - 78px) !important;
+          max-height: calc(100vh - 78px) !important;
+          overflow-y: scroll !important;
+          overflow-x: hidden !important;
+          -webkit-overflow-scrolling: touch !important;
+          overscroll-behavior-y: contain !important;
+          touch-action: pan-y !important;
+        }
+
+        @supports (height: 100dvh) {
+          .dashboard-mobile-menu-scroll-area {
+            height: calc(100dvh - 78px) !important;
+            max-height: calc(100dvh - 78px) !important;
+          }
+        }
+
         /* === Dashboard mobile vertical scroll fix === */
         html,
         body {
@@ -3961,8 +4052,18 @@ export default function DashboardPage() {
           }
 
           .profile-showcase-preview-column {
+            order: -1 !important;
             border-left: 0 !important;
             padding-left: 0 !important;
+            padding-bottom: 4px !important;
+          }
+
+          .profile-showcase-simple-controls {
+            order: 1 !important;
+          }
+
+          .profile-showcase-preview-header {
+            padding: 2px 2px 0 !important;
           }
         }
 
@@ -3974,8 +4075,8 @@ export default function DashboardPage() {
 
           .profile-showcase-modal-shell {
             width: 100% !important;
-            height: calc(100vh - 20px) !important;
-            max-height: calc(100vh - 20px) !important;
+            height: calc(100dvh - 20px) !important;
+            max-height: calc(100dvh - 20px) !important;
             border-radius: 24px !important;
             padding: 14px !important;
           }
@@ -3997,8 +4098,19 @@ export default function DashboardPage() {
           }
 
           .profile-showcase-preview-phone {
-            min-height: 320px !important;
-            height: 340px !important;
+            min-height: 280px !important;
+            height: 310px !important;
+            border-radius: 24px !important;
+          }
+
+          .profile-showcase-modal-actions {
+            position: sticky !important;
+            bottom: -14px !important;
+            z-index: 5 !important;
+            margin: 10px -2px -2px !important;
+            padding-top: 12px !important;
+            background: linear-gradient(180deg, rgba(7,10,18,0.12), rgba(7,10,18,0.96) 44%, rgba(7,10,18,0.99)) !important;
+            backdrop-filter: blur(12px) !important;
           }
         }
 
@@ -4397,7 +4509,102 @@ export default function DashboardPage() {
           }
 
           .dashboard-bottom-nav a span:last-child {
+            font-size: 9.5px !important;
+          }
+        }
+
+        .dashboard-tablet-menu-button {
+          display: none !important;
+        }
+
+        @media (max-width: 1180px) {
+          .dashboard-tablet-menu-button {
+            display: grid !important;
+          }
+        }
+
+        .dashboard-mobile-sponsored-placement {
+          display: none;
+        }
+
+        @media (max-width: 1180px) {
+          .dashboard-mobile-insights {
             display: none !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-mobile-sponsored-placement {
+            display: grid !important;
+            gap: 12px !important;
+          }
+
+          .dashboard-mobile-header a[aria-label="Parachat"],
+          .dashboard-mobile-header button[aria-label="Open dashboard menu"],
+          .dashboard-mobile-header button[aria-label="Search Parapost"],
+          .dashboard-mobile-header a[aria-label="Notifications"] {
+            flex-shrink: 0 !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .dashboard-mobile-header button[aria-label="Open dashboard menu"] {
+            display: grid !important;
+          }
+
+          .dashboard-mobile-header button,
+          .dashboard-mobile-header a[aria-label="Notifications"],
+          .dashboard-mobile-header a[aria-label="Parachat"] {
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+          }
+        }
+
+        @media (max-width: 370px) {
+          .dashboard-mobile-header a:first-child > div:first-child {
+            width: 38px !important;
+            height: 38px !important;
+            min-width: 38px !important;
+          }
+
+          .dashboard-mobile-header a:first-child > div:last-child > div:first-child {
+            font-size: 17px !important;
+          }
+
+          .dashboard-mobile-header button,
+          .dashboard-mobile-header a[aria-label="Notifications"],
+          .dashboard-mobile-header a[aria-label="Parachat"] {
+            width: 34px !important;
+            height: 34px !important;
+            min-width: 34px !important;
+          }
+        }
+
+        /* === Phase 5 mobile bottom navigation hardening === */
+        @media (max-width: 760px) {
+          .dashboard-bottom-nav {
+            display: grid !important;
+            left: 50% !important;
+            right: auto !important;
+            width: min(calc(100vw - 22px), 520px) !important;
+            transform: translateX(-50%) !important;
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            justify-items: center !important;
+            align-items: center !important;
+          }
+
+          .dashboard-bottom-nav a {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+
+          .dashboard-bottom-nav a span:last-child {
+            display: block !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
           }
         }
 
@@ -4407,7 +4614,285 @@ export default function DashboardPage() {
             display: none !important;
           }
         }
-      `}</style>
+
+
+        /* === Phase 2 mobile/tablet dashboard shell polish === */
+        /* Mobile and tablet now use a clean app-style dashboard instead of squeezed desktop columns. */
+        @media (max-width: 1024px) {
+          html,
+          body {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+          }
+
+          .dashboard-shell-pad {
+            padding: 10px max(10px, env(safe-area-inset-left)) calc(96px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)) !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .dashboard-grid-desktop-safe {
+            display: block !important;
+            width: 100% !important;
+            max-width: 820px !important;
+            margin: 0 auto !important;
+          }
+
+          .dashboard-desktop-left,
+          .dashboard-right-rail,
+          .dashboard-desktop-topbar,
+          .dashboard-tablet-menu-button {
+            display: none !important;
+          }
+
+          .dashboard-mobile-header {
+            display: flex !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 120 !important;
+            margin: -2px 0 12px !important;
+            padding: 8px 8px !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 22px !important;
+            background: linear-gradient(180deg, rgba(7,9,13,0.92), rgba(7,9,13,0.72)) !important;
+            backdrop-filter: blur(18px) !important;
+            box-shadow: 0 12px 34px rgba(0,0,0,0.28), 0 0 24px var(--parapost-accent-glow) !important;
+          }
+
+          .dashboard-main-column {
+            width: 100% !important;
+            max-width: 760px !important;
+            margin: 0 auto !important;
+            display: grid !important;
+            gap: 12px !important;
+          }
+
+          .dashboard-card {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .dashboard-showcase-row {
+            margin: 0 !important;
+            padding: 13px 12px !important;
+            border-radius: 24px !important;
+          }
+
+          .dashboard-showcase-scroller {
+            gap: 12px !important;
+            padding: 2px 2px 6px !important;
+            overflow-x: auto !important;
+            scrollbar-width: none !important;
+          }
+
+          .dashboard-showcase-scroller::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-composer-card {
+            margin: 0 !important;
+            padding: 13px !important;
+            border-radius: 24px !important;
+          }
+
+          .dashboard-composer-top-row {
+            grid-template-columns: auto minmax(0, 1fr) auto !important;
+            gap: 10px !important;
+            align-items: center !important;
+          }
+
+          .dashboard-composer-top-row textarea {
+            min-height: 48px !important;
+            padding: 12px 14px !important;
+            border-radius: 18px !important;
+            font-size: 14px !important;
+          }
+
+          .dashboard-composer-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            min-height: 42px !important;
+            justify-content: flex-start !important;
+            padding: 0 10px !important;
+          }
+
+          .dashboard-composer-footer {
+            margin-top: 10px !important;
+            justify-content: flex-end !important;
+          }
+
+          .dashboard-composer-footer button {
+            width: 100% !important;
+            min-height: 40px !important;
+            border-radius: 16px !important;
+          }
+
+          .dashboard-feed-pulse {
+            margin: 0 !important;
+            border-radius: 22px !important;
+            padding: 13px !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .dashboard-feed-pulse-stats {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+
+          .dashboard-feed-card {
+            border-radius: 23px !important;
+            padding: 14px !important;
+            margin: 0 !important;
+            box-shadow: 0 14px 34px rgba(0,0,0,0.26), 0 0 22px color-mix(in srgb, var(--parapost-accent-2) 10%, transparent) !important;
+          }
+
+          .dashboard-post-header {
+            gap: 10px !important;
+            align-items: flex-start !important;
+          }
+
+          .dashboard-post-actions {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .dashboard-post-actions button {
+            justify-content: center !important;
+            min-width: 0 !important;
+            padding-left: 9px !important;
+            padding-right: 9px !important;
+          }
+
+          .dashboard-post-actions button:nth-child(4) {
+            display: none !important;
+          }
+
+          .dashboard-mobile-sponsored-placement {
+            display: grid !important;
+            gap: 12px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shell-pad {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .dashboard-mobile-header {
+            margin-bottom: 10px !important;
+            border-radius: 20px !important;
+          }
+
+          .dashboard-mobile-header a:first-child > div:last-child > div:last-child {
+            display: none !important;
+          }
+
+          .dashboard-main-column {
+            max-width: 100% !important;
+            gap: 10px !important;
+          }
+
+          .dashboard-feed-pulse {
+            display: none !important;
+          }
+
+          .dashboard-composer-actions {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            font-size: 12px !important;
+          }
+
+          .dashboard-feed-card {
+            padding: 13px !important;
+            border-radius: 21px !important;
+          }
+
+          .dashboard-post-actions {
+            border-radius: 18px !important;
+            padding: 6px !important;
+            background: rgba(255,255,255,0.025) !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1024px) {
+          .dashboard-mobile-header {
+            max-width: 820px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+
+          .dashboard-bottom-nav {
+            display: none !important;
+          }
+
+          .dashboard-feed-card,
+          .dashboard-composer-card,
+          .dashboard-showcase-row,
+          .dashboard-feed-pulse {
+            border-radius: 28px !important;
+          }
+        }
+
+        @media (max-width: 900px) {
+          .dashboard-bottom-nav {
+            display: grid !important;
+          }
+        }
+
+
+        /* === Final mobile bottom nav override: keep Home/Reels/Create/Parachat/Profile aligned === */
+        @media (max-width: 760px) {
+          .dashboard-bottom-nav {
+            display: grid !important;
+            position: fixed !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: max(10px, env(safe-area-inset-bottom)) !important;
+            width: min(calc(100vw - 22px), 520px) !important;
+            min-height: 78px !important;
+            transform: translateX(-50%) !important;
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            align-items: center !important;
+            justify-items: center !important;
+            gap: 2px !important;
+            padding: 8px 8px 10px !important;
+            border-radius: 28px !important;
+          }
+
+          .dashboard-bottom-nav a {
+            display: grid !important;
+            grid-template-rows: 26px auto !important;
+            place-items: center !important;
+            align-content: center !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 58px !important;
+            gap: 3px !important;
+          }
+
+          .dashboard-bottom-nav a span:last-child {
+            display: block !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            font-size: 10.5px !important;
+            line-height: 1.05 !important;
+          }
+        }
+      ` }} />
     </div>
   );
 }
@@ -4482,19 +4967,17 @@ function MobileDashboardHeader({
   currentProfile,
   notificationsCount,
   onOpenSearch,
+  onOpenMenu,
 }: {
   currentProfile: ProfilePreview | null;
   notificationsCount: number;
   onOpenSearch: () => void;
+  onOpenMenu: () => void;
 }) {
   return (
     <header className="dashboard-mobile-header" style={mobileHeaderStyle}>
-      <Link href="/dashboard" style={mobileLogoStyle}>
-        <div style={mobileLogoCircleStyle}><ParaGhostLogoIcon size={32} /></div>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 950, lineHeight: 1 }}>PARAPOST</div>
-          <div style={{ color: "var(--parapost-accent-text)", letterSpacing: "0.42em", fontSize: 13, fontWeight: 900 }}>NETWORK</div>
-        </div>
+      <Link href="/dashboard" style={mobileLogoStyle} aria-label="Parapost Network home">
+        <div style={mobileLogoCircleStyle}><ParaGhostLogoIcon size={36} /></div>
       </Link>
 
       <div style={mobileHeaderActionsStyle}>
@@ -4508,6 +4991,9 @@ function MobileDashboardHeader({
         <Link href="/messages" style={mobileTopIconButtonStyle} aria-label="Parachat">
           <ChatIcon />
         </Link>
+        <button type="button" onClick={onOpenMenu} style={mobileTopIconButtonStyle} aria-label="Open dashboard menu">
+          <MenuIcon />
+        </button>
         <Link href={currentProfile?.id ? `/profile/${currentProfile.id}` : "/dashboard"} style={{ display: "none" }} aria-label="Profile" />
       </div>
     </header>
@@ -5375,6 +5861,441 @@ function SharedReelCard({
 }
 
 
+
+function MobileDashboardMenuDrawer({
+  isOpen,
+  currentProfile,
+  currentUserId,
+  notificationsCount,
+  pendingFriendRequestCount,
+  recentlyViewed,
+  peopleToDiscover,
+  trendingTopics,
+  followedCount,
+  feedItems,
+  totalLikes,
+  totalComments,
+  totalShares,
+  onClose,
+  onCreatePost,
+}: {
+  isOpen: boolean;
+  currentProfile: ProfilePreview | null;
+  currentUserId: string;
+  notificationsCount: number;
+  pendingFriendRequestCount: number;
+  recentlyViewed: ProfilePreview[];
+  peopleToDiscover: ProfilePreview[];
+  trendingTopics: Array<{ title: string; meta: string }>;
+  followedCount: number;
+  feedItems: number;
+  totalLikes: number;
+  totalComments: number;
+  totalShares: number;
+  onClose: () => void;
+  onCreatePost: () => void;
+}) {
+  type MobileMenuSection =
+    | "main"
+    | "discover"
+    | "discoverRecentlyViewed"
+    | "discoverPeople"
+    | "discoverTrending"
+    | "discoverActivity"
+    | "settings"
+    | "settingsAccount"
+    | "settingsPrivacy"
+    | "settingsHelp"
+    | "creator"
+    | "ads"
+    | "hub";
+
+  const [activeSection, setActiveSection] = useState<MobileMenuSection>("main");
+  const menuScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) setActiveSection("main");
+  }, [isOpen]);
+
+  useEffect(() => {
+    menuScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [activeSection]);
+
+  if (!isOpen) return null;
+
+  void currentProfile;
+
+  const parentSectionMap: Partial<Record<MobileMenuSection, MobileMenuSection>> = {
+    discoverRecentlyViewed: "discover",
+    discoverPeople: "discover",
+    discoverTrending: "discover",
+    discoverActivity: "discover",
+    settingsAccount: "settings",
+    settingsPrivacy: "settings",
+    settingsHelp: "settings",
+  };
+
+  const goBack = () => {
+    const parent = parentSectionMap[activeSection];
+    if (parent) {
+      setActiveSection(parent);
+      return;
+    }
+
+    if (activeSection !== "main") {
+      setActiveSection("main");
+      return;
+    }
+
+    onClose();
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (currentUserId) {
+        await supabase.from("profiles").update({ is_online: false }).eq("id", currentUserId);
+      }
+      await supabase.auth.signOut();
+    } finally {
+      window.location.href = "/";
+    }
+  };
+
+  const sectionTitle =
+    activeSection === "main"
+      ? "Menu"
+      : activeSection === "discover"
+        ? "Discover"
+        : activeSection === "discoverRecentlyViewed"
+          ? "Recently Viewed"
+          : activeSection === "discoverPeople"
+            ? "People to Discover"
+            : activeSection === "discoverTrending"
+              ? "Trending in Parapost"
+              : activeSection === "discoverActivity"
+                ? "Timeline Activity"
+                : activeSection === "creator"
+                  ? "Creator Tools"
+                  : activeSection === "ads"
+                    ? "Ads & Sponsors"
+                    : activeSection === "hub"
+                      ? "Parapost Hub"
+                      : activeSection === "settingsAccount"
+                        ? "Your Account"
+                        : activeSection === "settingsPrivacy"
+                          ? "Privacy and Safety"
+                          : activeSection === "settingsHelp"
+                            ? "Help"
+                            : "Settings and Support";
+
+  return (
+    <>
+      <div className="dashboard-mobile-menu-backdrop" style={mobileMenuBackdropStyle} onClick={onClose} />
+      <aside className="dashboard-mobile-menu-drawer" style={mobileMenuDrawerStyle} role="dialog" aria-modal="true" aria-label="Dashboard menu">
+        <div style={mobileMenuTopBarStyle}>
+          <button type="button" onClick={goBack} style={mobileMenuBackButtonStyle} aria-label={activeSection === "main" ? "Close dashboard menu" : "Back"}>‹</button>
+          <h2 style={mobileMenuTitleStyle}>{sectionTitle}</h2>
+          <button type="button" onClick={onClose} style={mobileMenuCloseButtonStyle} aria-label="Close dashboard menu">×</button>
+        </div>
+
+        <div ref={menuScrollRef} className="dashboard-mobile-menu-scroll-area" style={mobileMenuScrollAreaStyle}>
+        {activeSection === "main" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Dashboard extras</div>
+            <MobileMenuButton label="Discover" onClick={() => setActiveSection("discover")} />
+            <MobileMenuButton label="Parapost Hub" onClick={() => setActiveSection("hub")} />
+            <MobileMenuButton label="Creator tools" onClick={() => setActiveSection("creator")} />
+            <MobileMenuButton label="Ads & Sponsors" onClick={() => setActiveSection("ads")} />
+            <MobileMenuButton label="Settings and support" onClick={() => setActiveSection("settings")} />
+            <div style={mobileMenuDividerStyle} />
+            <MobileMenuLogoutButton label="Log out" onClick={handleLogout} />
+          </div>
+        ) : null}
+
+        {activeSection === "discover" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Private and suggested</div>
+            <MobileMenuButton label={`Recently viewed${recentlyViewed.length ? ` (${recentlyViewed.length})` : ""}`} onClick={() => setActiveSection("discoverRecentlyViewed")} />
+            <MobileMenuButton label={`People to discover${peopleToDiscover.length ? ` (${Math.min(peopleToDiscover.length, 4)})` : ""}`} onClick={() => setActiveSection("discoverPeople")} />
+            <MobileMenuButton label="Trending in Parapost" onClick={() => setActiveSection("discoverTrending")} />
+
+            <div style={mobileMenuDividerStyle} />
+            <div style={mobileMenuSectionHeadingStyle}>Timeline</div>
+            <MobileMenuButton label="Timeline activity" onClick={() => setActiveSection("discoverActivity")} />
+          </div>
+        ) : null}
+
+        {activeSection === "discoverRecentlyViewed" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Profiles you recently viewed</div>
+            {recentlyViewed.length > 0 ? (
+              recentlyViewed.map((profile) => <MobileMenuProfileLinkRow key={profile.id} profile={profile} />)
+            ) : (
+              <div style={mobileMenuInfoCardStyle}>Profiles you recently view will appear here privately.</div>
+            )}
+          </div>
+        ) : null}
+
+        {activeSection === "discoverPeople" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Suggested people</div>
+            {peopleToDiscover.length > 0 ? (
+              peopleToDiscover.map((profile) => <MobileMenuProfileLinkRow key={profile.id} profile={profile} />)
+            ) : (
+              <div style={mobileMenuInfoCardStyle}>New people to discover will appear here as more completed profiles are found.</div>
+            )}
+          </div>
+        ) : null}
+
+        {activeSection === "discoverTrending" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Active topics</div>
+            {trendingTopics.map((topic) => (
+              <MobileMenuTrendDetailRow key={`${topic.title}-${topic.meta}`} title={topic.title} meta={topic.meta} />
+            ))}
+          </div>
+        ) : null}
+
+        {activeSection === "discoverActivity" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Your dashboard activity</div>
+            <MobileMenuStatRow label="Following" value={followedCount} />
+            <MobileMenuStatRow label="Feed items" value={feedItems} />
+            <MobileMenuStatRow label="Likes" value={totalLikes} />
+            <MobileMenuStatRow label="Comments" value={totalComments} />
+            <MobileMenuStatRow label="Shares" value={totalShares} />
+          </div>
+        ) : null}
+
+        {activeSection === "creator" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Creator tools</div>
+            <MobileMenuMutedRow label="Creator Studio" />
+            <MobileMenuMutedRow label="Post insights" />
+            <MobileMenuMutedRow label="Reel insights" />
+            <MobileMenuMutedRow label="Saved replies" />
+            <MobileMenuMutedRow label="Audience insights" />
+
+            <div style={mobileMenuInfoCardStyle}>
+              Creator tools will support profile growth, performance insights, and future business features after the core mobile dashboard is finished.
+            </div>
+          </div>
+        ) : null}
+
+        {activeSection === "ads" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Ads and sponsors</div>
+            <MobileMenuLink href="/settings/payments" label="Sponsor placements" />
+            <MobileMenuLink href="/settings/payments" label="Advertise with Parapost Network" />
+            <MobileMenuLink href="/settings/payments" label="Payments" />
+            <MobileMenuMutedRow label="Boosted posts" />
+            <MobileMenuMutedRow label="Sponsored Reels" />
+
+            <div style={mobileMenuInfoCardStyle}>
+              Sponsored placements will also appear naturally in the timeline after every 20 feed posts, so they are visible without crowding the mobile dashboard.
+            </div>
+          </div>
+        ) : null}
+
+        {activeSection === "hub" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Parapost Hub</div>
+            <MobileMenuMutedRow label="Ghost Hunts" />
+            <MobileMenuMutedRow label="Investigations" />
+            <MobileMenuMutedRow label="Evidence Collections" />
+            <MobileMenuMutedRow label="Case Files" />
+            <MobileMenuMutedRow label="Events" />
+            <MobileMenuMutedRow label="Groups" />
+
+            <div style={mobileMenuInfoCardStyle}>
+              Parapost Hub will hold deeper community areas and future feature shortcuts without overcrowding the main mobile dashboard.
+            </div>
+          </div>
+        ) : null}
+
+        {activeSection === "settings" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Settings and support</div>
+            <MobileMenuButton label="Your account" onClick={() => setActiveSection("settingsAccount")} />
+            <MobileMenuButton label="Privacy and safety" onClick={() => setActiveSection("settingsPrivacy")} />
+            <MobileMenuButton label="Help" onClick={() => setActiveSection("settingsHelp")} />
+          </div>
+        ) : null}
+
+        {activeSection === "settingsAccount" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Your account</div>
+            <MobileMenuLink href="/settings" label="Settings home" />
+            <MobileMenuLink href="/settings/profile" label="Profile settings" />
+            <MobileMenuLink href="/settings/account" label="Account management" />
+            <MobileMenuLink href="/settings/account" label="Email and password" />
+            <MobileMenuLink href="/settings/account" label="Delete account" />
+            <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
+            <MobileMenuLink href="/settings/personalization" label="Personalization" />
+            <MobileMenuLink href="/settings/personalization" label="Accent color" />
+            <MobileMenuLink href="/settings/personalization" label="Theme and appearance" />
+            <MobileMenuLink href="/settings/payments" label="Payments" />
+            <MobileMenuLink href="/settings/account" label="Data and account files" />
+            <MobileMenuInfoCardText text="Account tools are grouped here so mobile users can move through settings without returning to the dashboard." />
+          </div>
+        ) : null}
+
+        {activeSection === "settingsPrivacy" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Privacy and safety</div>
+            <MobileMenuLink href="/settings/profile-visibility" label="Profile visibility" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Privacy and safety center" />
+            <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
+            <MobileMenuLink href="/settings/account" label="Security" />
+            <MobileMenuLink href="/settings/notifications" label="Notifications" badge={notificationsCount || undefined} />
+            <MobileMenuLink href="/settings/content-feed" label="Posts and comments" />
+            <MobileMenuLink href="/settings/content-feed" label="Reels and feed preferences" />
+            <MobileMenuLink href="/settings/content-feed" label="Content feed" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Message requests" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Who can see your content" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Who can interact with you" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Reporting and moderation" />
+            <MobileMenuInfoCardText text="Privacy and safety controls will continue expanding as report, block, private profile, and moderation tools are finalized." />
+          </div>
+        ) : null}
+
+        {activeSection === "settingsHelp" ? (
+          <div style={mobileMenuListWrapStyle}>
+            <div style={mobileMenuSectionHeadingStyle}>Help</div>
+            <MobileMenuLink href="/settings/help-support" label="Contact Parapost Network" />
+            <MobileMenuLink href="/settings/help-support" label="Help and support" />
+            <MobileMenuLink href="/settings/help-support" label="Report a problem" />
+            <MobileMenuLink href="/settings/legal" label="Legal" />
+            <MobileMenuLink href="/settings/legal" label="Terms of Service" />
+            <MobileMenuLink href="/settings/legal" label="Privacy Policy" />
+            <MobileMenuLink href="/settings/legal" label="Community Guidelines" />
+            <MobileMenuLink href="/settings/help-support" label="Support messages" />
+            <MobileMenuLink href="/settings/help-support" label="Safety resources" />
+            <MobileMenuLink href="/settings/help-support" label="Account help" />
+            {pendingFriendRequestCount > 0 ? <MobileMenuInfoCardText text={`${pendingFriendRequestCount} pending friend request${pendingFriendRequestCount === 1 ? "" : "s"} may need your attention.`} /> : null}
+          </div>
+        ) : null}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function MobileMenuLink({
+  href,
+  label,
+  badge,
+}: {
+  href: string;
+  label: string;
+  badge?: number | string;
+}) {
+  return (
+    <Link href={href} style={mobileMenuListRowStyle}>
+      <span style={mobileMenuRowLabelStyle}>{label}</span>
+      <span style={mobileMenuRowRightStyle}>
+        {badge ? <span style={mobileMenuBadgeStyle}>{badge}</span> : null}
+        <span style={mobileMenuArrowStyle}>›</span>
+      </span>
+    </Link>
+  );
+}
+
+function MobileMenuButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} style={mobileMenuListRowButtonStyle}>
+      <span style={mobileMenuRowLabelStyle}>{label}</span>
+      <span style={mobileMenuArrowStyle}>›</span>
+    </button>
+  );
+}
+
+function MobileMenuLogoutButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} style={mobileMenuLogoutButtonStyle}>
+      <span style={mobileMenuRowLabelStyle}>{label}</span>
+    </button>
+  );
+}
+
+function MobileMenuMutedRow({ label }: { label: string }) {
+  return (
+    <div style={mobileMenuMutedRowStyle}>
+      <span style={mobileMenuRowLabelStyle}>{label}</span>
+      <span style={mobileMenuComingSoonStyle}>Soon</span>
+    </div>
+  );
+}
+
+function MobileMenuInfoCardText({ text }: { text: string }) {
+  return <div style={mobileMenuInfoCardStyle}>{text}</div>;
+}
+
+function MobileMenuProfileLinkRow({ profile }: { profile: ProfilePreview }) {
+  const displayName = profile.full_name || profile.username || "Parapost member";
+  const subline = profile.username ? `@${profile.username}` : profile.location || "View profile";
+
+  return (
+    <Link href={`/profile/${profile.id}`} style={mobileMenuProfileLinkRowStyle}>
+      <Avatar profile={profile} size={42} />
+      <span style={mobileMenuProfileTextStyle}>
+        <span style={mobileMenuProfileNameStyle}>{displayName}</span>
+        <span style={mobileMenuProfileMetaStyle}>{subline}</span>
+      </span>
+      <span style={mobileMenuArrowStyle}>›</span>
+    </Link>
+  );
+}
+
+function MobileMenuTrendDetailRow({ title, meta }: { title: string; meta: string }) {
+  return (
+    <div style={mobileMenuDetailRowStyle}>
+      <span style={mobileMenuRowLabelStyle}>{title}</span>
+      <span style={mobileMenuDetailMetaStyle}>{meta}</span>
+    </div>
+  );
+}
+
+function MobileMenuStatRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={mobileMenuDetailRowStyle}>
+      <span style={mobileMenuRowLabelStyle}>{label}</span>
+      <span style={mobileMenuStatValueStyle}>{value}</span>
+    </div>
+  );
+}
+
+function MobileTimelineSponsorCard({ slotNumber }: { slotNumber: number }) {
+  return (
+    <article className="dashboard-mobile-sponsored-placement dashboard-feed-card" style={mobileTimelineSponsorStyle}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={sponsorIconStyle}>★</div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={miniEyebrowStyle}>Sponsored Placement</div>
+          <strong style={{ display: "block", color: "#fff", fontSize: 15 }}>Advertise with Parapost Network</strong>
+          <span style={{ ...railMetaStyle, marginTop: 3 }}>
+            Mobile sponsor spot #{slotNumber}. Future paid placements can appear naturally in the feed without crowding the dashboard.
+          </span>
+        </div>
+      </div>
+      <Link href="/settings" style={railPrimaryLinkStyle}>Learn more</Link>
+    </article>
+  );
+}
+
+
 function MobileDashboardUtilityRail({
   currentProfile,
   currentUserId,
@@ -5431,7 +6352,7 @@ function MobileDashboardUtilityRail({
 
       <div style={mobileQuickToolsGridStyle}>
         <button type="button" onClick={onCreatePost} style={mobileQuickToolButtonStyle}>Create Post</button>
-        <Link href="/reels" style={mobileQuickToolLinkStyle}>Parapost Reels</Link>
+        <Link href="/reels" style={mobileQuickToolLinkStyle}>Explore Reels</Link>
         <Link href="/messages" style={mobileQuickToolLinkStyle}>Parachat</Link>
         <Link href="/notifications" style={mobileQuickToolLinkStyle}>Notifications</Link>
       </div>
@@ -6209,28 +7130,441 @@ function MobileBottomNav({
   onCreatePost: () => void;
 }) {
   return (
-    <nav className="dashboard-bottom-nav" style={mobileBottomNavStyle}>
-      <Link href="/dashboard" style={mobileNavItemActiveStyle}><HomeIcon /> <span>Home</span></Link>
-      <Link href="/reels" style={mobileNavItemStyle}><ReelsIcon /> <span>Reels</span></Link>
-      <button type="button" onClick={onCreatePost} style={mobileCenterPlusStyle} aria-label="Create post"><PlusIcon /></button>
-      <Link href="/messages" style={mobileNavItemStyle}>
-        <span style={{ position: "relative", display: "inline-flex" }}>
+    <nav className="dashboard-bottom-nav" style={mobileBottomNavStyle} aria-label="Mobile dashboard navigation">
+      <Link href="/dashboard" style={mobileNavItemActiveStyle} aria-label="Home">
+        <span style={mobileNavIconSlotStyle}><HomeIcon /></span>
+        <span style={mobileNavLabelStyle}>Home</span>
+      </Link>
+
+      <Link href="/reels" style={mobileNavItemStyle} aria-label="Explore Reels">
+        <span style={mobileNavIconSlotStyle}><ReelsIcon /></span>
+        <span style={mobileNavLabelStyle}>Reels</span>
+      </Link>
+
+      <button type="button" onClick={onCreatePost} style={mobileCenterPlusStyle} aria-label="Create post">
+        <PlusIcon />
+      </button>
+
+      <Link href="/messages" style={mobileNavItemStyle} aria-label="Parachat">
+        <span style={{ ...mobileNavIconSlotStyle, position: "relative" }}>
           <ChatIcon />
           {notificationsCount > 0 ? <span style={mobileNavBadgeStyle}>{notificationsCount > 9 ? "9+" : notificationsCount}</span> : null}
         </span>
-        <span>Parachat</span>
+        <span style={mobileNavLabelStyle}>Parachat</span>
       </Link>
-      <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={mobileNavItemStyle}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
-          <path d="M4.5 21C5.5 16.8 8.4 14.5 12 14.5C15.6 14.5 18.5 16.8 19.5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-        <span>Profile</span>
+
+      <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={mobileNavItemStyle} aria-label="Profile">
+        <span style={mobileNavIconSlotStyle}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+            <path d="M4.5 21C5.5 16.8 8.4 14.5 12 14.5C15.6 14.5 18.5 16.8 19.5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </span>
+        <span style={mobileNavLabelStyle}>Profile</span>
       </Link>
     </nav>
   );
 }
 
+
+
+const mobileMenuTopBarStyle: CSSProperties = {
+  flexShrink: 0,
+  position: "sticky",
+  top: 0,
+  zIndex: 5,
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr) 42px",
+  alignItems: "center",
+  gap: 10,
+  padding: "max(12px, env(safe-area-inset-top)) 0 14px",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  background: "linear-gradient(180deg, rgba(10,12,22,0.995), rgba(10,12,22,0.92))",
+  backdropFilter: "blur(16px)",
+};
+
+const mobileMenuBackButtonStyle: CSSProperties = {
+  width: 42,
+  height: 42,
+  border: "none",
+  background: "transparent",
+  color: "#fff",
+  fontSize: 42,
+  lineHeight: 0.7,
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const mobileMenuTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#fff",
+  fontSize: 24,
+  fontWeight: 950,
+  letterSpacing: "-0.04em",
+  textAlign: "left",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const mobileMenuListWrapStyle: CSSProperties = {
+  display: "grid",
+  gap: 0,
+  paddingTop: 8,
+  paddingBottom: "calc(160px + env(safe-area-inset-bottom))",
+};
+
+const mobileMenuScrollAreaStyle: CSSProperties = {
+  flex: "1 1 auto",
+  minHeight: 0,
+  height: "calc(100vh - 78px)",
+  maxHeight: "calc(100vh - 78px)",
+  overflowY: "scroll",
+  overflowX: "hidden",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehaviorY: "contain",
+  overscrollBehaviorX: "none",
+  paddingRight: 2,
+  paddingBottom: "calc(72px + env(safe-area-inset-bottom))",
+  touchAction: "pan-y",
+  scrollbarGutter: "stable",
+};
+
+const mobileMenuSectionHeadingStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: 15,
+  fontWeight: 850,
+  padding: "18px 0 10px",
+};
+
+const mobileMenuDividerStyle: CSSProperties = {
+  height: 8,
+  margin: "14px -16px 0",
+  background: "rgba(255,255,255,0.06)",
+  borderTop: "1px solid rgba(255,255,255,0.045)",
+  borderBottom: "1px solid rgba(255,255,255,0.045)",
+};
+
+const mobileMenuListRowStyle: CSSProperties = {
+  minHeight: 58,
+  padding: "0 4px",
+  border: "none",
+  borderBottom: "1px solid rgba(255,255,255,0.055)",
+  background: "transparent",
+  color: "#fff",
+  textDecoration: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 14,
+  cursor: "pointer",
+};
+
+const mobileMenuListRowButtonStyle: CSSProperties = {
+  ...mobileMenuListRowStyle,
+  width: "100%",
+  font: "inherit",
+  textAlign: "left",
+};
+
+const mobileMenuLogoutButtonStyle: CSSProperties = {
+  ...mobileMenuListRowButtonStyle,
+  color: "#fca5a5",
+  justifyContent: "flex-start",
+};
+
+const mobileMenuRowLabelStyle: CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: 20,
+  fontWeight: 650,
+  letterSpacing: "-0.025em",
+};
+
+const mobileMenuRowRightStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 10,
+  flexShrink: 0,
+};
+
+const mobileMenuBadgeStyle: CSSProperties = {
+  minWidth: 24,
+  height: 24,
+  padding: "0 7px",
+  borderRadius: 999,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "var(--parapost-accent-2)",
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 950,
+  boxShadow: "0 0 18px var(--parapost-accent-glow)",
+};
+
+const mobileMenuArrowStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: 33,
+  lineHeight: 1,
+  fontWeight: 350,
+};
+
+const mobileMenuInfoCardStyle: CSSProperties = {
+  marginTop: 14,
+  padding: "14px 4px",
+  color: "#aeb7c8",
+  fontSize: 14,
+  lineHeight: 1.55,
+};
+
+const mobileMenuMutedRowStyle: CSSProperties = {
+  ...mobileMenuListRowStyle,
+  color: "#d1d5db",
+};
+
+const mobileMenuComingSoonStyle: CSSProperties = {
+  color: "#8b93a3",
+  fontSize: 14,
+  fontWeight: 700,
+};
+
+const mobileMenuProfileLinkRowStyle: CSSProperties = {
+  ...mobileMenuListRowStyle,
+  minHeight: 68,
+  justifyContent: "flex-start",
+};
+
+const mobileMenuProfileTextStyle: CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+  display: "grid",
+  gap: 2,
+};
+
+const mobileMenuProfileNameStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 18,
+  fontWeight: 850,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const mobileMenuProfileMetaStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: 13,
+  fontWeight: 650,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const mobileMenuDetailRowStyle: CSSProperties = {
+  minHeight: 58,
+  padding: "10px 4px",
+  borderBottom: "1px solid rgba(255,255,255,0.055)",
+  color: "#fff",
+  display: "grid",
+  gap: 4,
+};
+
+const mobileMenuDetailMetaStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: 13,
+  fontWeight: 650,
+};
+
+const mobileMenuStatValueStyle: CSSProperties = {
+  color: "var(--parapost-accent-text)",
+  fontSize: 18,
+  fontWeight: 950,
+};
+
+const mobileMenuBackdropStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 210,
+  background: "rgba(0,0,0,0.78)",
+  backdropFilter: "blur(10px)",
+};
+
+const mobileMenuDrawerStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 220,
+  width: "100vw",
+  height: "100vh",
+  maxHeight: "100vh",
+  background:
+    "radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--parapost-accent-2) 22%, transparent), transparent 34%), linear-gradient(180deg, rgba(10,12,22,0.995), rgba(5,7,13,0.995))",
+  border: "none",
+  boxShadow: "none",
+  padding: "0 16px 0",
+  overflow: "hidden",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehavior: "contain",
+  display: "flex",
+  flexDirection: "column",
+  gap: 0,
+};
+
+const mobileMenuHandleStyle: CSSProperties = {
+  width: 42,
+  height: 5,
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.24)",
+  justifySelf: "center",
+  display: "none",
+};
+
+const mobileMenuHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  padding: "6px 0 4px",
+};
+
+const mobileMenuProfileRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 11,
+  minWidth: 0,
+  flex: 1,
+};
+
+const mobileMenuCloseButtonStyle: CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.065)",
+  color: "#fff",
+  fontSize: 26,
+  lineHeight: 1,
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+const mobileMenuStatsGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const mobileMenuSectionStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  padding: 12,
+  borderRadius: 22,
+  border: "1px solid rgba(255,255,255,0.09)",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.052), rgba(255,255,255,0.030))",
+};
+
+const mobileMenuSectionTitleStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 900,
+  letterSpacing: "0.02em",
+};
+
+const mobileMenuLinkGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const mobileMenuLinkStyle: CSSProperties = {
+  minHeight: 42,
+  borderRadius: 15,
+  padding: "10px 12px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  color: "#fff",
+  textDecoration: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  fontSize: 13,
+  fontWeight: 850,
+};
+
+const mobileMenuActionButtonStyle: CSSProperties = {
+  ...mobileMenuLinkStyle,
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const mobileMenuSponsorCardStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  padding: 12,
+  borderRadius: 18,
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 26%, rgba(255,255,255,0.10))",
+  background:
+    "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 18%, transparent), rgba(255,255,255,0.035))",
+};
+
+const mobileMenuHorizontalProfilesStyle: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  overflowX: "auto",
+  paddingBottom: 4,
+};
+
+const mobileMenuPersonRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: 10,
+  borderRadius: 16,
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.035)",
+  textDecoration: "none",
+  color: "#fff",
+};
+
+const mobileMenuTrendRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "30px minmax(0, 1fr)",
+  gap: 9,
+  alignItems: "start",
+  padding: 9,
+  borderRadius: 15,
+  background: "rgba(255,255,255,0.035)",
+  border: "1px solid rgba(255,255,255,0.07)",
+};
+
+const mobileMenuMutedFeatureStyle: CSSProperties = {
+  minHeight: 40,
+  borderRadius: 15,
+  padding: "10px 12px",
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.025)",
+  color: "#9ca3af",
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const mobileTimelineSponsorStyle: CSSProperties = {
+  display: "none",
+  padding: 14,
+  borderRadius: 23,
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 25%, rgba(255,255,255,0.12))",
+  background:
+    "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 16%, transparent), rgba(255,255,255,0.045))",
+  boxShadow: "0 16px 40px rgba(0,0,0,0.26)",
+};
 
 const selectedFeelingActivityStyle: CSSProperties = {
   marginTop: 12,
@@ -8083,12 +9417,83 @@ const modalCloseButtonStyle: CSSProperties = { width: 40, height: 40, borderRadi
 
 const mobileHeaderStyle: CSSProperties = { display: "none", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "18px 16px 12px", position: "sticky", top: 0, zIndex: 60, background: "linear-gradient(180deg, rgba(5,7,13,0.985), rgba(5,7,13,0.86))", backdropFilter: "blur(18px)", borderBottom: "1px solid rgba(255,255,255,0.055)" };
 const mobileLogoStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 10, color: "#fff", textDecoration: "none", minWidth: 0, flex: "1 1 auto" };
-const mobileLogoCircleStyle: CSSProperties = { width: 54, height: 54, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid color-mix(in srgb, var(--parapost-accent-3) 72%, transparent)", background: "var(--parapost-accent-active-bg)", boxShadow: "0 0 22px var(--parapost-accent-strong-glow)", fontWeight: 950 };
+const mobileLogoCircleStyle: CSSProperties = { width: 50, height: 50, borderRadius: 999, display: "grid", placeItems: "center", border: "2px solid color-mix(in srgb, var(--parapost-accent-3) 72%, transparent)", background: "var(--parapost-accent-active-bg)", boxShadow: "0 0 22px var(--parapost-accent-strong-glow)", fontWeight: 950 };
 const mobileHeaderActionsStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexShrink: 0 };
 const mobileTopIconButtonStyle: CSSProperties = { position: "relative", width: 42, height: 42, borderRadius: 14, color: "#fff", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.10)", display: "grid", placeItems: "center", textDecoration: "none", cursor: "pointer" };
 
-const mobileBottomNavStyle: CSSProperties = { position: "fixed", left: 12, right: 12, bottom: 10, zIndex: 120, gridTemplateColumns: "repeat(5, 1fr)", alignItems: "center", gap: 4, minHeight: 76, padding: "8px 10px", borderRadius: 26, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.94)", backdropFilter: "blur(18px)", boxShadow: "0 22px 60px rgba(0,0,0,0.56)" };
-const mobileNavItemStyle: CSSProperties = { color: "#e5e7eb", textDecoration: "none", display: "grid", placeItems: "center", gap: 4, fontSize: 11, fontWeight: 800 };
-const mobileNavItemActiveStyle: CSSProperties = { ...mobileNavItemStyle, color: "var(--parapost-accent-text)", textShadow: "0 0 16px color-mix(in srgb, var(--parapost-accent-2) 52%, transparent)" };
-const mobileCenterPlusStyle: CSSProperties = { width: 58, height: 58, margin: "-24px auto 0", borderRadius: 999, display: "grid", placeItems: "center", color: "#0b1020", background: "#fff", border: "4px solid var(--parapost-accent-1)", boxShadow: "0 0 0 4px color-mix(in srgb, var(--parapost-accent-3) 32%, transparent), 0 16px 38px var(--parapost-accent-strong-glow)", cursor: "pointer", textDecoration: "none", padding: 0, font: "inherit" };
-const mobileNavBadgeStyle: CSSProperties = { position: "absolute", right: -10, top: -9, minWidth: 21, height: 21, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--parapost-accent-1)", color: "#fff", fontSize: 11, fontWeight: 950, padding: "0 5px" };
+const mobileBottomNavStyle: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  right: "auto",
+  bottom: "max(10px, env(safe-area-inset-bottom))",
+  zIndex: 160,
+  width: "min(calc(100vw - 22px), 520px)",
+  minHeight: 78,
+  transform: "translateX(-50%)",
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  alignItems: "center",
+  justifyItems: "center",
+  gap: 2,
+  padding: "8px 8px 10px",
+  borderRadius: 28,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "linear-gradient(180deg, rgba(9,11,20,0.96), rgba(5,7,13,0.965))",
+  backdropFilter: "blur(20px)",
+  boxShadow: "0 22px 60px rgba(0,0,0,0.62), 0 0 34px color-mix(in srgb, var(--parapost-accent-2) 16%, transparent)",
+};
+const mobileNavItemStyle: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  height: 58,
+  color: "#dbe4f0",
+  textDecoration: "none",
+  display: "grid",
+  gridTemplateRows: "26px auto",
+  placeItems: "center",
+  alignContent: "center",
+  gap: 3,
+  fontSize: 10.5,
+  lineHeight: 1.05,
+  fontWeight: 850,
+  textAlign: "center",
+  borderRadius: 18,
+};
+const mobileNavItemActiveStyle: CSSProperties = {
+  ...mobileNavItemStyle,
+  color: "#ffffff",
+  background: "radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--parapost-accent-2) 34%, transparent), transparent 58%)",
+  textShadow: "0 0 16px color-mix(in srgb, var(--parapost-accent-2) 58%, transparent)",
+};
+const mobileNavIconSlotStyle: CSSProperties = {
+  width: 28,
+  height: 28,
+  display: "grid",
+  placeItems: "center",
+};
+const mobileNavLabelStyle: CSSProperties = {
+  maxWidth: "100%",
+  display: "block",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const mobileCenterPlusStyle: CSSProperties = {
+  width: 58,
+  height: 58,
+  margin: 0,
+  transform: "translateY(-18px)",
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  color: "#0b1020",
+  background: "#fff",
+  border: "4px solid var(--parapost-accent-1)",
+  boxShadow: "0 0 0 4px color-mix(in srgb, var(--parapost-accent-3) 32%, transparent), 0 16px 38px var(--parapost-accent-strong-glow)",
+  cursor: "pointer",
+  textDecoration: "none",
+  padding: 0,
+  font: "inherit",
+  justifySelf: "center",
+};
+const mobileNavBadgeStyle: CSSProperties = { position: "absolute", right: -9, top: -8, minWidth: 20, height: 20, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--parapost-accent-1)", color: "#fff", fontSize: 10.5, fontWeight: 950, padding: "0 5px", border: "1px solid rgba(255,255,255,0.26)" };

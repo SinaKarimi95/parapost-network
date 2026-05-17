@@ -60,6 +60,37 @@ function isAdminRole(role: string) {
   return ["owner", "admin", "support", "moderator"].includes(role);
 }
 
+
+function BackToPrevious({
+  label = "← Back",
+  fallbackHref = "/settings",
+}: {
+  label?: string;
+  fallbackHref?: string;
+}) {
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = fallbackHref;
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleBack}
+      className="text-sm font-bold no-underline transition hover:text-white"
+      style={{ color: "var(--parapost-accent-text)" }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function ProfileVisibilitySettingsPage() {
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -170,7 +201,7 @@ export default function ProfileVisibilitySettingsPage() {
   };
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
       <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/25 blur-3xl" />
       <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-indigo-500/12 blur-3xl" />
@@ -178,9 +209,7 @@ export default function ProfileVisibilitySettingsPage() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/settings" className="text-sm font-bold text-purple-200 no-underline hover:text-white">
-              ← Back to Settings
-            </Link>
+            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
             <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
               Dashboard
@@ -239,7 +268,7 @@ export default function ProfileVisibilitySettingsPage() {
             <div className="flex items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
                 {currentProfile?.avatar_url ? (
-                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
                 ) : (
                   getInitial(currentProfile)
                 )}

@@ -92,6 +92,37 @@ const quickLinks = [
   },
 ];
 
+
+function BackToPrevious({
+  label = "← Back",
+  fallbackHref = "/settings",
+}: {
+  label?: string;
+  fallbackHref?: string;
+}) {
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = fallbackHref;
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleBack}
+      className="text-sm font-bold no-underline transition hover:text-white"
+      style={{ color: "var(--parapost-accent-text)" }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function AccountSecuritySettingsPage() {
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
   const [userEmail, setUserEmail] = useState("");
@@ -220,7 +251,7 @@ export default function AccountSecuritySettingsPage() {
   };
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
       <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl" style={{ background: "var(--parapost-accent-soft)" }} />
       <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl" style={{ background: "var(--parapost-accent-muted-bg)" }} />
       <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl" style={{ background: "var(--parapost-accent-soft)" }} />
@@ -228,9 +259,7 @@ export default function AccountSecuritySettingsPage() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/settings" className="text-sm font-bold no-underline hover:text-white" style={{ color: "var(--parapost-accent-text)" }}>
-              ← Back to Settings
-            </Link>
+            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
             <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
               Dashboard
@@ -295,7 +324,7 @@ export default function AccountSecuritySettingsPage() {
             <div className="flex items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15" style={{ background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))" }}>
                 {currentProfile?.avatar_url ? (
-                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
                 ) : (
                   getInitial(currentProfile)
                 )}

@@ -28,6 +28,37 @@ const emptyForm: ProfileSettingsForm = {
   is_private: false,
 };
 
+
+function BackToPrevious({
+  label = "← Back",
+  fallbackHref = "/settings",
+}: {
+  label?: string;
+  fallbackHref?: string;
+}) {
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = fallbackHref;
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleBack}
+      className="text-sm font-bold no-underline transition hover:text-white"
+      style={{ color: "var(--parapost-accent-text)" }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function ProfileSettingsPage() {
   const router = useRouter();
 
@@ -137,7 +168,7 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#05050b] px-4 py-8 text-white">
+      <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-28 text-white">
         <div className="mx-auto max-w-3xl">
           <div className="animate-pulse rounded-[32px] border border-white/10 bg-white/[0.055] p-6 shadow-2xl">
             <div className="mb-5 h-8 w-48 rounded bg-white/10" />
@@ -152,15 +183,13 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-8 text-white sm:px-6">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-28 text-white sm:px-6">
       <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
       <section className="relative z-10 mx-auto max-w-3xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/settings" className="text-sm font-bold text-purple-200 no-underline hover:text-white">
-            ← Back to Settings
-          </Link>
+          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           {userId ? (
             <Link

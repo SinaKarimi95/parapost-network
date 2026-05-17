@@ -5918,6 +5918,20 @@ function MobileDashboardMenuDrawer({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     menuScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [activeSection]);
 
@@ -5993,7 +6007,16 @@ function MobileDashboardMenuDrawer({
       <div className="dashboard-mobile-menu-backdrop" style={mobileMenuBackdropStyle} onClick={onClose} />
       <aside className="dashboard-mobile-menu-drawer" style={mobileMenuDrawerStyle} role="dialog" aria-modal="true" aria-label="Dashboard menu">
         <div style={mobileMenuTopBarStyle}>
-          <button type="button" onClick={goBack} style={mobileMenuBackButtonStyle} aria-label={activeSection === "main" ? "Close dashboard menu" : "Back"}>‹</button>
+          <button type="button" onClick={goBack} style={mobileMenuBackButtonStyle} aria-label={activeSection === "main" ? "Close dashboard menu" : "Back to previous menu"}>
+            {activeSection === "main" ? (
+              <span style={mobileMenuBackTextStyle}>Close</span>
+            ) : (
+              <>
+                <span style={mobileMenuBackArrowStyle}>‹</span>
+                <span style={mobileMenuBackTextStyle}>Back</span>
+              </>
+            )}
+          </button>
           <h2 style={mobileMenuTitleStyle}>{sectionTitle}</h2>
           <button type="button" onClick={onClose} style={mobileMenuCloseButtonStyle} aria-label="Close dashboard menu">×</button>
         </div>
@@ -6132,8 +6155,6 @@ function MobileDashboardMenuDrawer({
             <MobileMenuLink href="/settings/account" label="Delete account" />
             <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
             <MobileMenuLink href="/settings/personalization" label="Personalization" />
-            <MobileMenuLink href="/settings/personalization" label="Accent color" />
-            <MobileMenuLink href="/settings/personalization" label="Theme and appearance" />
             <MobileMenuLink href="/settings/payments" label="Payments" />
             <MobileMenuLink href="/settings/account" label="Data and account files" />
             <MobileMenuInfoCardText text="Account tools are grouped here so mobile users can move through settings without returning to the dashboard." />
@@ -6249,7 +6270,7 @@ function MobileMenuProfileLinkRow({ profile }: { profile: ProfilePreview }) {
 
   return (
     <Link href={`/profile/${profile.id}`} style={mobileMenuProfileLinkRowStyle}>
-      <Avatar profile={profile} size={42} />
+      <Avatar profile={profile} size={46} />
       <span style={mobileMenuProfileTextStyle}>
         <span style={mobileMenuProfileNameStyle}>{displayName}</span>
         <span style={mobileMenuProfileMetaStyle}>{subline}</span>
@@ -6369,7 +6390,7 @@ function MobileDashboardUtilityRail({
           <div style={mobileProfileRailStyle}>
             {recentlyViewed.slice(0, 5).map((profile) => (
               <Link key={profile.id} href={`/profile/${profile.id}`} style={mobileProfileBubbleStyle}>
-                <Avatar profile={profile} size={42} />
+                <Avatar profile={profile} size={46} />
                 <span>{profile.full_name?.split(" ")[0] || profile.username || "User"}</span>
               </Link>
             ))}
@@ -6389,7 +6410,7 @@ function MobileDashboardUtilityRail({
           <div style={mobileProfileRailStyle}>
             {peopleToDiscover.slice(0, 5).map((profile) => (
               <Link key={profile.id} href={`/profile/${profile.id}`} style={mobileProfileBubbleStyle}>
-                <Avatar profile={profile} size={42} />
+                <Avatar profile={profile} size={46} />
                 <span>{profile.full_name?.split(" ")[0] || profile.username || "User"}</span>
               </Link>
             ))}
@@ -7170,32 +7191,50 @@ function MobileBottomNav({
 
 const mobileMenuTopBarStyle: CSSProperties = {
   flexShrink: 0,
-  position: "sticky",
-  top: 0,
+  position: "relative",
   zIndex: 5,
   display: "grid",
-  gridTemplateColumns: "42px minmax(0, 1fr) 42px",
+  gridTemplateColumns: "96px minmax(0, 1fr) 42px",
   alignItems: "center",
   gap: 10,
-  padding: "max(12px, env(safe-area-inset-top)) 0 14px",
-  borderBottom: "1px solid rgba(255,255,255,0.08)",
-  background: "linear-gradient(180deg, rgba(10,12,22,0.995), rgba(10,12,22,0.92))",
-  backdropFilter: "blur(16px)",
+  width: "calc(100% + 32px)",
+  marginLeft: -16,
+  marginRight: -16,
+  padding: "max(12px, env(safe-area-inset-top)) 16px 14px",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  background: "transparent",
+  backdropFilter: "none",
 };
 
 const mobileMenuBackButtonStyle: CSSProperties = {
-  width: 42,
+  minWidth: 88,
   height: 42,
   border: "none",
   background: "transparent",
   color: "#fff",
-  fontSize: 42,
-  lineHeight: 0.7,
-  display: "grid",
-  placeItems: "center",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 5,
   cursor: "pointer",
   padding: 0,
 };
+const mobileMenuBackArrowOnlyStyle: CSSProperties = {
+  fontSize: 42,
+  lineHeight: 0.7,
+};
+
+const mobileMenuBackArrowStyle: CSSProperties = {
+  fontSize: 34,
+  lineHeight: 0.8,
+};
+
+const mobileMenuBackTextStyle: CSSProperties = {
+  fontSize: 14,
+  fontWeight: 850,
+  letterSpacing: "-0.02em",
+};
+
 
 const mobileMenuTitleStyle: CSSProperties = {
   margin: 0,
@@ -7213,23 +7252,21 @@ const mobileMenuListWrapStyle: CSSProperties = {
   display: "grid",
   gap: 0,
   paddingTop: 8,
-  paddingBottom: "calc(160px + env(safe-area-inset-bottom))",
+  paddingBottom: "calc(180px + env(safe-area-inset-bottom))",
 };
 
 const mobileMenuScrollAreaStyle: CSSProperties = {
   flex: "1 1 auto",
   minHeight: 0,
-  height: "calc(100vh - 78px)",
-  maxHeight: "calc(100vh - 78px)",
-  overflowY: "scroll",
+  height: "auto",
+  overflowY: "auto",
   overflowX: "hidden",
+  paddingRight: 2,
+  paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
   WebkitOverflowScrolling: "touch",
   overscrollBehaviorY: "contain",
   overscrollBehaviorX: "none",
-  paddingRight: 2,
-  paddingBottom: "calc(72px + env(safe-area-inset-bottom))",
   touchAction: "pan-y",
-  scrollbarGutter: "stable",
 };
 
 const mobileMenuSectionHeadingStyle: CSSProperties = {
@@ -7260,6 +7297,7 @@ const mobileMenuListRowStyle: CSSProperties = {
   justifyContent: "space-between",
   gap: 14,
   cursor: "pointer",
+  overflow: "visible",
 };
 
 const mobileMenuListRowButtonStyle: CSSProperties = {
@@ -7335,8 +7373,11 @@ const mobileMenuComingSoonStyle: CSSProperties = {
 
 const mobileMenuProfileLinkRowStyle: CSSProperties = {
   ...mobileMenuListRowStyle,
-  minHeight: 68,
+  minHeight: 82,
   justifyContent: "flex-start",
+  alignItems: "center",
+  padding: "12px 4px",
+  overflow: "visible",
 };
 
 const mobileMenuProfileTextStyle: CSSProperties = {
@@ -7398,19 +7439,18 @@ const mobileMenuDrawerStyle: CSSProperties = {
   inset: 0,
   zIndex: 220,
   width: "100vw",
-  height: "100vh",
-  maxHeight: "100vh",
+  height: "100dvh",
+  minHeight: "100dvh",
+  maxHeight: "100dvh",
   background:
     "radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--parapost-accent-2) 22%, transparent), transparent 34%), linear-gradient(180deg, rgba(10,12,22,0.995), rgba(5,7,13,0.995))",
   border: "none",
   boxShadow: "none",
-  padding: "0 16px 0",
+  padding: "0 16px",
   overflow: "hidden",
-  WebkitOverflowScrolling: "touch",
-  overscrollBehavior: "contain",
   display: "flex",
   flexDirection: "column",
-  gap: 0,
+  touchAction: "pan-y",
 };
 
 const mobileMenuHandleStyle: CSSProperties = {
@@ -7519,7 +7559,9 @@ const mobileMenuHorizontalProfilesStyle: CSSProperties = {
   display: "flex",
   gap: 10,
   overflowX: "auto",
-  paddingBottom: 4,
+  overflowY: "visible",
+  paddingTop: 4,
+  paddingBottom: 8,
 };
 
 const mobileMenuPersonRowStyle: CSSProperties = {
@@ -7527,11 +7569,13 @@ const mobileMenuPersonRowStyle: CSSProperties = {
   alignItems: "center",
   gap: 10,
   padding: 10,
+  minHeight: 64,
   borderRadius: 16,
   border: "1px solid rgba(255,255,255,0.08)",
   background: "rgba(255,255,255,0.035)",
   textDecoration: "none",
   color: "#fff",
+  overflow: "visible",
 };
 
 const mobileMenuTrendRowStyle: CSSProperties = {
@@ -7769,15 +7813,18 @@ const mobileProfileRailStyle: CSSProperties = {
 };
 
 const mobileProfileBubbleStyle: CSSProperties = {
-  minWidth: 64,
+  minWidth: 68,
+  minHeight: 70,
   display: "grid",
   justifyItems: "center",
-  gap: 6,
+  alignContent: "start",
+  gap: 7,
   color: "#e5e7eb",
   textDecoration: "none",
   fontSize: 11,
   fontWeight: 850,
   textAlign: "center",
+  overflow: "visible",
 };
 
 const mobileProfileSummaryStyle: CSSProperties = {

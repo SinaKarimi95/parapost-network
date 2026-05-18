@@ -30,6 +30,8 @@ type NotificationCard = NotificationRow & {
   actor: ProfilePreview | null;
 };
 
+type FilterKey = "all" | "unread" | "friends" | "activity";
+
 function getDisplayName(profile: ProfilePreview | null) {
   return profile?.full_name || profile?.username || "Parapost Member";
 }
@@ -106,6 +108,10 @@ function getNotificationHref(notification: NotificationCard) {
     return "/friends/requests";
   }
 
+  if ((type === "reel_like" || type === "reel_comment") && notification.actor_id) {
+    return `/profile/${notification.actor_id}/reels`;
+  }
+
   if (notification.post_id) {
     return `/dashboard#post-${notification.post_id}`;
   }
@@ -117,13 +123,58 @@ function getNotificationHref(notification: NotificationCard) {
   return "/dashboard";
 }
 
+function getFilterLabel(filter: FilterKey) {
+  if (filter === "all") return "All";
+  if (filter === "unread") return "Unread";
+  if (filter === "friends") return "Friends";
+  return "Activity";
+}
+
+function NotificationTypeIcon({ type }: { type: string | null }) {
+  const normalizedType = type || "";
+
+  if (normalizedType.includes("friend")) return <span style={notificationTypeIconTextStyle}>👥</span>;
+  if (normalizedType.includes("comment")) return <span style={notificationTypeIconTextStyle}>💬</span>;
+  if (normalizedType.includes("like")) return <span style={notificationTypeIconTextStyle}>♥</span>;
+  if (normalizedType.includes("reel")) return <span style={notificationTypeIconTextStyle}>▶</span>;
+  if (normalizedType.includes("badge")) return <span style={notificationTypeIconTextStyle}>★</span>;
+  if (normalizedType.includes("share")) return <span style={notificationTypeIconTextStyle}>↗</span>;
+
+  return <span style={notificationTypeIconTextStyle}>N</span>;
+}
+
+function BackToPrevious({
+  label = "Back",
+  fallbackHref = "/dashboard",
+}: {
+  label?: string;
+  fallbackHref?: string;
+}) {
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = fallbackHref;
+    }
+  };
+
+  return (
+    <button type="button" onClick={handleBack} style={ghostButtonStyle}>
+      ← {label}
+    </button>
+  );
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
 
   const [currentUserId, setCurrentUserId] = useState("");
   const [notifications, setNotifications] = useState<NotificationCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "friends" | "activity">("all");
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [statusMessage, setStatusMessage] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -137,6 +188,11 @@ export default function NotificationsPage() {
 
   const activityCount = useMemo(() => {
     return notifications.filter((notification) => !(notification.type || "").includes("friend")).length;
+  }, [notifications]);
+
+  const latestNotificationTime = useMemo(() => {
+    const first = notifications[0];
+    return first?.created_at ? formatRelativeTime(first.created_at) : "No activity yet";
   }, [notifications]);
 
   const filteredNotifications = useMemo(() => {
@@ -154,50 +210,55 @@ export default function NotificationsPage() {
   const loadNotifications = useCallback(async (userId: string) => {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("id, user_id, actor_id, type, post_id, comment_id, friend_request_id, message, is_read, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("id, user_id, actor_id, type, post_id, comment_id, friend_request_id, message, is_read, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100);
 
-    if (error) {
-      console.error("Notifications load error:", error.message);
-      setNotifications([]);
-      setLoading(false);
-      return;
-    }
-
-    const rows = (data || []) as NotificationRow[];
-    const actorIds = [
-      ...new Set(rows.map((notification) => notification.actor_id).filter(Boolean) as string[]),
-    ];
-
-    let profilesMap: Record<string, ProfilePreview> = {};
-
-    if (actorIds.length > 0) {
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, avatar_url, is_online")
-        .in("id", actorIds);
-
-      if (profilesError) {
-        console.error("Notification profile load error:", profilesError.message);
-      } else {
-        profilesMap = Object.fromEntries(
-          ((profilesData || []) as ProfilePreview[]).map((profile) => [profile.id, profile])
-        );
+      if (error) {
+        console.error("Notifications load error:", error.message);
+        setNotifications([]);
+        setLoading(false);
+        return;
       }
+
+      const rows = (data || []) as NotificationRow[];
+      const actorIds = [
+        ...new Set(rows.map((notification) => notification.actor_id).filter(Boolean) as string[]),
+      ];
+
+      let profilesMap: Record<string, ProfilePreview> = {};
+
+      if (actorIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url, is_online")
+          .in("id", actorIds);
+
+        if (profilesError) {
+          console.error("Notification profile load error:", profilesError.message);
+        } else {
+          profilesMap = Object.fromEntries(
+            ((profilesData || []) as ProfilePreview[]).map((profile) => [profile.id, profile])
+          );
+        }
+      }
+
+      setNotifications(
+        rows.map((notification) => ({
+          ...notification,
+          actor: notification.actor_id ? profilesMap[notification.actor_id] || null : null,
+        }))
+      );
+    } catch (error) {
+      console.warn("Notifications request failed:", error);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
     }
-
-    setNotifications(
-      rows.map((notification) => ({
-        ...notification,
-        actor: notification.actor_id ? profilesMap[notification.actor_id] || null : null,
-      }))
-    );
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -249,7 +310,7 @@ export default function NotificationsPage() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [currentUserId, loadNotifications]);
 
@@ -279,10 +340,7 @@ export default function NotificationsPage() {
         prev.map((item) => (item.id === notification.id ? { ...item, is_read: true } : item))
       );
 
-      await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("id", notification.id);
+      await supabase.from("notifications").update({ is_read: true }).eq("id", notification.id);
     }
 
     router.push(href);
@@ -294,10 +352,7 @@ export default function NotificationsPage() {
 
     setProcessingId(notification.id);
 
-    const { error } = await supabase
-      .from("notifications")
-      .delete()
-      .eq("id", notification.id);
+    const { error } = await supabase.from("notifications").delete().eq("id", notification.id);
 
     if (error) {
       alert(`Could not delete notification: ${error.message}`);
@@ -311,14 +366,13 @@ export default function NotificationsPage() {
   };
 
   const filterButtons: Array<{
-    key: "all" | "unread" | "friends" | "activity";
-    label: string;
+    key: FilterKey;
     count: number;
   }> = [
-    { key: "all", label: "All", count: notifications.length },
-    { key: "unread", label: "Unread", count: unreadCount },
-    { key: "friends", label: "Friends", count: friendsCount },
-    { key: "activity", label: "Activity", count: activityCount },
+    { key: "all", count: notifications.length },
+    { key: "unread", count: unreadCount },
+    { key: "friends", count: friendsCount },
+    { key: "activity", count: activityCount },
   ];
 
   return (
@@ -329,8 +383,19 @@ export default function NotificationsPage() {
 
       <div style={pageInnerStyle}>
         <section style={heroStyle}>
-          <div style={heroTopStyle}>
-            <div>
+          <div style={topBarStyle}>
+            <div style={topBarLeftStyle}>
+              <BackToPrevious label="Back" fallbackHref="/dashboard" />
+              <Link href="/dashboard" style={topBarLinkStyle}>
+                Dashboard
+              </Link>
+            </div>
+
+            <span style={settingsPillStyle}>Notifications</span>
+          </div>
+
+          <div style={heroGridStyle}>
+            <div style={heroCopyStyle}>
               <div style={eyebrowStyle}>Parapost Network</div>
               <h1 style={titleStyle}>Notifications</h1>
               <p style={subtitleStyle}>
@@ -338,30 +403,48 @@ export default function NotificationsPage() {
               </p>
             </div>
 
-            <div style={heroActionsStyle}>
-              <Link href="/dashboard" style={secondaryButtonStyle}>
-                Back to Dashboard
-              </Link>
+            <div style={summaryGridStyle}>
+              <div style={summaryCardStyle}>
+                <span style={summaryLabelStyle}>Total</span>
+                <strong style={summaryValueStyle}>{notifications.length}</strong>
+              </div>
 
-              <span style={countPillStyle}>{notifications.length} total</span>
-              <span style={unreadPillStyle}>{unreadCount} unread</span>
+              <div style={summaryCardStyle}>
+                <span style={summaryLabelStyle}>Unread</span>
+                <strong style={summaryValueStyle}>{unreadCount}</strong>
+              </div>
 
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                disabled={unreadCount === 0}
-                style={{
-                  ...secondaryButtonStyle,
-                  opacity: unreadCount === 0 ? 0.55 : 1,
-                  cursor: unreadCount === 0 ? "not-allowed" : "pointer",
-                }}
-              >
-                Mark all read
-              </button>
+              <div style={summaryCardStyle}>
+                <span style={summaryLabelStyle}>Latest</span>
+                <strong style={summarySmallValueStyle}>{latestNotificationTime}</strong>
+              </div>
             </div>
           </div>
 
-          <div style={filterRowStyle}>
+          <div style={heroActionsRowStyle}>
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={unreadCount === 0}
+              style={{
+                ...primaryActionStyle,
+                opacity: unreadCount === 0 ? 0.58 : 1,
+                cursor: unreadCount === 0 ? "not-allowed" : "pointer",
+              }}
+            >
+              Mark all read
+            </button>
+
+            <Link href="/friends/requests" style={secondaryActionStyle}>
+              Friend requests
+            </Link>
+
+            <Link href="/settings/notifications" style={secondaryActionStyle}>
+              Notification settings
+            </Link>
+          </div>
+
+          <div style={filterScrollerStyle} aria-label="Notification filters">
             {filterButtons.map((filter) => {
               const isActive = activeFilter === filter.key;
 
@@ -375,7 +458,7 @@ export default function NotificationsPage() {
                     ...(isActive ? activeFilterButtonStyle : {}),
                   }}
                 >
-                  {filter.label}
+                  <span>{getFilterLabel(filter.key)}</span>
                   <span style={filterCountStyle}>{filter.count}</span>
                 </button>
               );
@@ -439,6 +522,10 @@ export default function NotificationsPage() {
                         )}
 
                         {notification.actor?.is_online ? <span style={onlineDotStyle} /> : null}
+
+                        <span style={typeBadgeStyle}>
+                          <NotificationTypeIcon type={notification.type} />
+                        </span>
                       </div>
 
                       <div style={notificationTextStyle}>
@@ -482,9 +569,12 @@ export default function NotificationsPage() {
 }
 
 const pageStyle: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
+  height: "100dvh",
   position: "relative",
-  overflow: "hidden",
+  overflowY: "auto",
+  overflowX: "hidden",
+  overscrollBehaviorY: "contain",
   background:
     "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 34%), radial-gradient(circle at 88% 16%, var(--parapost-accent-muted-bg), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 48%, #05050b 100%)",
   color: "#ffffff",
@@ -530,15 +620,15 @@ const pageInnerStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
   width: "100%",
-  maxWidth: "1120px",
+  maxWidth: "1180px",
   margin: "0 auto",
-  padding: "28px 16px 44px",
+  padding: "max(18px, env(safe-area-inset-top)) 12px calc(38px + env(safe-area-inset-bottom))",
 };
 
 const heroStyle: CSSProperties = {
   border: "1px solid var(--parapost-accent-border)",
-  borderRadius: "32px",
-  padding: "22px",
+  borderRadius: "clamp(22px, 4vw, 34px)",
+  padding: "clamp(16px, 3vw, 26px)",
   background:
     "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.60))",
   boxShadow: "0 26px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
@@ -547,12 +637,62 @@ const heroStyle: CSSProperties = {
   marginBottom: "16px",
 };
 
-const heroTopStyle: CSSProperties = {
+const topBarStyle: CSSProperties = {
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   justifyContent: "space-between",
-  gap: "18px",
+  gap: "12px",
+  marginBottom: "18px",
+};
+
+const topBarLeftStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  minWidth: 0,
   flexWrap: "wrap",
+};
+
+const ghostButtonStyle: CSSProperties = {
+  appearance: "none",
+  border: 0,
+  background: "transparent",
+  color: "var(--parapost-accent-text)",
+  fontWeight: 950,
+  fontSize: "13px",
+  padding: 0,
+  cursor: "pointer",
+};
+
+const topBarLinkStyle: CSSProperties = {
+  color: "#e5e7eb",
+  fontWeight: 900,
+  fontSize: "13px",
+  textDecoration: "none",
+};
+
+const settingsPillStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-border)",
+  background: "var(--parapost-accent-muted-bg)",
+  color: "var(--parapost-accent-readable-text)",
+  borderRadius: "999px",
+  padding: "9px 12px",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+};
+
+const heroGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+  gap: "18px",
+  alignItems: "end",
+};
+
+const heroCopyStyle: CSSProperties = {
+  minWidth: 0,
 };
 
 const eyebrowStyle: CSSProperties = {
@@ -566,7 +706,7 @@ const eyebrowStyle: CSSProperties = {
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(34px, 5vw, 62px)",
+  fontSize: "clamp(32px, 8vw, 64px)",
   lineHeight: 0.95,
   letterSpacing: "-0.06em",
   fontWeight: 950,
@@ -576,73 +716,119 @@ const titleStyle: CSSProperties = {
 const subtitleStyle: CSSProperties = {
   margin: "12px 0 0",
   color: "#cbd5e1",
-  fontSize: "15px",
-  lineHeight: 1.6,
+  fontSize: "clamp(13px, 2.3vw, 15px)",
+  lineHeight: 1.58,
   maxWidth: "680px",
 };
 
-const heroActionsStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  justifyContent: "flex-end",
+const summaryGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))",
   gap: "10px",
 };
 
-const secondaryButtonStyle: CSSProperties = {
+const summaryCardStyle: CSSProperties = {
+  minWidth: 0,
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "18px",
+  background: "rgba(0,0,0,0.24)",
+  padding: "12px",
+  display: "grid",
+  gap: "5px",
+};
+
+const summaryLabelStyle: CSSProperties = {
+  color: "#94a3b8",
+  fontSize: "10px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.11em",
+};
+
+const summaryValueStyle: CSSProperties = {
+  color: "#ffffff",
+  fontSize: "clamp(22px, 5vw, 34px)",
+  lineHeight: 1,
+  fontWeight: 950,
+};
+
+const summarySmallValueStyle: CSSProperties = {
+  color: "#ffffff",
+  fontSize: "clamp(13px, 3vw, 16px)",
+  lineHeight: 1.2,
+  fontWeight: 950,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const heroActionsRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: "10px",
+  marginTop: "18px",
+  width: "100%",
+};
+
+const primaryActionStyle: CSSProperties = {
   minHeight: "42px",
+  width: "100%",
+  borderRadius: "999px",
+  border: "1px solid var(--parapost-accent-active-border)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+  color: "var(--parapost-accent-button-text)",
+  padding: "0 14px",
+  fontWeight: 950,
+  fontSize: "13px",
+  boxShadow: "0 0 18px var(--parapost-accent-glow)",
+  textDecoration: "none",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
+  textAlign: "center",
+};
+
+const secondaryActionStyle: CSSProperties = {
+  minHeight: "42px",
+  width: "100%",
   borderRadius: "999px",
   border: "1px solid var(--parapost-accent-border)",
   background: "rgba(255,255,255,0.06)",
   color: "#f9fafb",
-  padding: "0 15px",
-  textDecoration: "none",
+  padding: "0 14px",
   fontWeight: 900,
   fontSize: "13px",
-};
-
-const countPillStyle: CSSProperties = {
-  minHeight: "42px",
+  textDecoration: "none",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  borderRadius: "999px",
-  border: "1px solid var(--parapost-accent-border)",
-  background: "var(--parapost-accent-muted-bg)",
-  color: "var(--parapost-accent-readable-text)",
-  padding: "0 15px",
-  fontWeight: 950,
-  fontSize: "13px",
+  textAlign: "center",
 };
 
-const unreadPillStyle: CSSProperties = {
-  ...countPillStyle,
-  background: "var(--parapost-accent-active-bg)",
-  border: "1px solid var(--parapost-accent-active-border)",
-  boxShadow: "0 0 20px var(--parapost-accent-glow)",
-};
-
-const filterRowStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
+const filterScrollerStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))",
   gap: "10px",
   marginTop: "18px",
+  width: "100%",
 };
 
 const filterButtonStyle: CSSProperties = {
   minHeight: "40px",
+  width: "100%",
   borderRadius: "999px",
   border: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(255,255,255,0.045)",
   color: "#cbd5e1",
-  padding: "0 13px",
+  padding: "0 12px",
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "space-between",
   gap: "8px",
   fontWeight: 900,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 };
 
 const activeFilterButtonStyle: CSSProperties = {
@@ -688,17 +874,17 @@ const statusDotStyle: CSSProperties = {
 
 const contentShellStyle: CSSProperties = {
   border: "1px solid var(--parapost-accent-border)",
-  borderRadius: "32px",
+  borderRadius: "clamp(22px, 4vw, 32px)",
   background:
     "linear-gradient(135deg, rgba(255,255,255,0.045), var(--parapost-accent-muted-bg), rgba(15,23,42,0.52))",
   boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
-  padding: "16px",
+  padding: "clamp(10px, 2.4vw, 16px)",
 };
 
 const emptyStateStyle: CSSProperties = {
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: "26px",
-  padding: "34px 18px",
+  padding: "clamp(28px, 7vw, 44px) 18px",
   textAlign: "center",
   background: "rgba(0,0,0,0.22)",
 };
@@ -740,13 +926,13 @@ const notificationListStyle: CSSProperties = {
 };
 
 const notificationCardStyle: CSSProperties = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
-  justifyContent: "space-between",
   gap: "12px",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: "24px",
-  padding: "12px",
+  padding: "clamp(10px, 2.5vw, 14px)",
   background: "rgba(0,0,0,0.24)",
 };
 
@@ -763,13 +949,13 @@ const notificationMainButtonStyle: CSSProperties = {
   background: "transparent",
   color: "inherit",
   padding: 0,
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "54px minmax(0, 1fr)",
   alignItems: "center",
   gap: "12px",
   textAlign: "left",
   cursor: "pointer",
   minWidth: 0,
-  flex: 1,
 };
 
 const avatarShellStyle: CSSProperties = {
@@ -818,6 +1004,27 @@ const onlineDotStyle: CSSProperties = {
   boxShadow: "0 0 10px rgba(34,197,94,0.8)",
 };
 
+const typeBadgeStyle: CSSProperties = {
+  position: "absolute",
+  right: "-3px",
+  top: "-4px",
+  width: "23px",
+  height: "23px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  background: "#090b12",
+  color: "var(--parapost-accent-text)",
+  border: "1px solid var(--parapost-accent-border)",
+  boxShadow: "0 0 12px var(--parapost-accent-glow)",
+};
+
+const notificationTypeIconTextStyle: CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 950,
+  lineHeight: 1,
+};
+
 const notificationTextStyle: CSSProperties = {
   minWidth: 0,
   flex: 1,
@@ -825,21 +1032,24 @@ const notificationTextStyle: CSSProperties = {
 
 const notificationTitleRowStyle: CSSProperties = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: "8px",
+  minWidth: 0,
 };
 
 const notificationTitleStyle: CSSProperties = {
   margin: 0,
   color: "#f9fafb",
-  fontSize: "15px",
+  fontSize: "clamp(13px, 2.4vw, 15px)",
   fontWeight: 950,
   lineHeight: 1.35,
+  overflowWrap: "anywhere",
 };
 
 const unreadDotStyle: CSSProperties = {
   width: "9px",
   height: "9px",
+  marginTop: "5px",
   borderRadius: "999px",
   background: "var(--parapost-accent-2)",
   boxShadow: "0 0 12px var(--parapost-accent-glow)",
@@ -857,12 +1067,12 @@ const notificationMetaStyle: CSSProperties = {
 };
 
 const deleteButtonStyle: CSSProperties = {
-  minHeight: "36px",
+  minHeight: "34px",
   borderRadius: "999px",
-  border: "1px solid rgba(248,113,113,0.25)",
-  background: "rgba(248,113,113,0.10)",
-  color: "#fecaca",
-  padding: "0 12px",
-  fontWeight: 850,
+  border: "1px solid rgba(248,113,113,0.22)",
+  background: "rgba(0,0,0,0.26)",
+  color: "#fca5a5",
+  padding: "0 11px",
+  fontWeight: 900,
   fontSize: "12px",
 };

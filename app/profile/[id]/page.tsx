@@ -916,6 +916,62 @@ function formatTimeAgo(dateString: string) {
 }
 
 
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} aria-hidden="true">
+      <path
+        d="M12 20.35C11.736 20.35 11.482 20.256 11.282 20.084C9.47 18.526 7.97 17.165 6.78 15.999C5.59 14.834 4.699 13.742 4.108 12.724C3.516 11.707 3.22 10.666 3.22 9.602C3.22 8.211 3.689 7.046 4.626 6.108C5.564 5.169 6.728 4.7 8.12 4.7C8.912 4.7 9.662 4.879 10.369 5.238C11.076 5.597 11.62 6.081 12 6.69C12.38 6.081 12.924 5.597 13.631 5.238C14.338 4.879 15.088 4.7 15.88 4.7C17.272 4.7 18.436 5.169 19.374 6.108C20.311 7.046 20.78 8.211 20.78 9.602C20.78 10.666 20.484 11.707 19.892 12.724C19.301 13.742 18.41 14.834 17.22 15.999C16.03 17.165 14.53 18.526 12.718 20.084C12.518 20.256 12.264 20.35 12 20.35Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 17L4 20V6C4 4.895 4.895 4 6 4H18C19.105 4 20 4.895 20 6V15C20 16.105 19.105 17 18 17H7Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M14 5L20 5L20 11" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 14L20 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path
+        d="M20 14V18C20 19.105 19.105 20 18 20H6C4.895 20 4 19.105 4 18V6C4 4.895 4.895 4 6 4H10"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BookmarkIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 4.75C7 3.784 7.784 3 8.75 3H15.25C16.216 3 17 3.784 17 4.75V20.25L12 17.25L7 20.25V4.75Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function isLikelyShortenedLink(hostname: string) {
   const shortenerDomains = [
     "bit.ly",
@@ -1393,6 +1449,23 @@ export default function ProfilePage() {
   const [profileSearchOpen, setProfileSearchOpen] = useState(false);
   const [profileMobileSearchOpen, setProfileMobileSearchOpen] = useState(false);
   const [profileSearchMessage, setProfileSearchMessage] = useState("");
+
+  useEffect(() => {
+    document.documentElement.style.overflowY = "auto";
+    document.documentElement.style.overflowX = "hidden";
+    document.body.style.overflowY = "auto";
+    document.body.style.overflowX = "hidden";
+    document.body.style.height = "auto";
+
+    return () => {
+      document.documentElement.style.overflowY = "";
+      document.documentElement.style.overflowX = "";
+      document.body.style.overflowY = "";
+      document.body.style.overflowX = "";
+      document.body.style.height = "";
+    };
+  }, []);
+
   const [activeProfileBadge, setActiveProfileBadge] = useState<ProfileBadge | null>(null);
 
   const profilePostFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1883,25 +1956,29 @@ const closeProfileMobileSearch = useCallback(() => {
         .from("posts")
         .select("id, content, image_url, created_at, user_id")
         .eq("user_id", profileId)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
       supabase
         .from("shares")
         .select("id, post_id, user_id, caption, created_at, share_destination, deleted_at")
         .eq("user_id", profileId)
-        .eq("share_destination", "feed")
+        .or("share_destination.eq.feed,share_destination.is.null")
         .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
       supabase.from("likes").select("post_id, user_id"),
       supabase
         .from("reels")
         .select("id, video_url, user_id, created_at")
         .eq("user_id", profileId)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
       supabase
         .from("reel_shares")
         .select("id, reel_id, user_id, caption, created_at")
         .eq("user_id", profileId)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
       supabase.from("followers").select("follower_id, following_id"),
       nextViewerId && profileId && nextViewerId !== profileId
         ? supabase
@@ -2665,6 +2742,57 @@ useEffect(() => {
 
     setUserLikes((prev) => ({ ...prev, [postId]: true }));
     setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+  };
+
+  const handleProfileCommentAction = (postId: string) => {
+    const postElement =
+      typeof document !== "undefined" ? document.getElementById(`profile-post-${postId}`) : null;
+
+    if (postElement) {
+      postElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    alert("Comments for profile posts will open in a polished comment panel in the next pass.");
+  };
+
+  const handleProfileShareAction = async (postId: string) => {
+    const profilePostUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/profile/${profileId}?post=${postId}`
+        : `/profile/${profileId}?post=${postId}`;
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: "Parapost Network post",
+          url: profilePostUrl,
+        });
+        return;
+      }
+
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(profilePostUrl);
+        alert("Profile post link copied.");
+        return;
+      }
+    } catch (error) {
+      console.warn("Profile post share cancelled or failed:", error);
+    }
+
+    alert(profilePostUrl);
+  };
+
+  const handleProfileSaveAction = (postId: string) => {
+    try {
+      const storageKey = "parapost_saved_profile_posts";
+      const existing = JSON.parse(localStorage.getItem(storageKey) || "[]") as string[];
+      const next = Array.from(new Set([...existing, postId]));
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      alert("Post saved.");
+    } catch (error) {
+      console.warn("Could not save profile post locally:", error);
+      alert("Save is ready visually. Saved-post storage will be connected in a later pass.");
+    }
   };
 
   const handleFollowToggle = async () => {
@@ -4114,14 +4242,14 @@ useEffect(() => {
 
 return (
   <div
-    className={`min-h-screen text-white profile-polish-surface profile-mobile-first-polish profile-batch2-flow-polish profile-tabs-polish-v21 profile-tabs-mobile-cutoff-v22 ${profileSmoothLoadClass}`}
+    className={`min-h-screen text-white profile-polish-surface profile-mobile-scroll-root profile-mobile-first-polish profile-batch2-flow-polish profile-tabs-polish-v21 profile-tabs-mobile-cutoff-v22 ${profileSmoothLoadClass}`}
    style={{
      ...profilePageBackgroundStyle,
      backgroundColor: "#07090d",
-     minHeight: "100vh",
+     minHeight: "100dvh",
      height: "auto",
      overflowX: "hidden",
-     overflowY: "auto",
+     overflowY: "visible",
      WebkitOverflowScrolling: "touch",
      overscrollBehaviorY: "auto",
      animation: "profileFadeIn 220ms ease-out",
@@ -9573,6 +9701,248 @@ return (
           overflow: visible !important;
         }
 
+      /* Profile mobile scroll + clean post action row */
+      html:has(.profile-mobile-scroll-root),
+      body:has(.profile-mobile-scroll-root) {
+        overscroll-behavior-y: contain;
+      }
+
+      .profile-mobile-scroll-root {
+        min-height: 100dvh !important;
+        height: 100dvh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
+        touch-action: pan-y !important;
+      }
+
+      .profile-post-actions {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+
+      .profile-post-action-button,
+      .profile-post-like-button,
+      .profile-post-like-button-active {
+        min-width: 0 !important;
+        min-height: 34px !important;
+        border-radius: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 4px !important;
+        color: #f9fafb !important;
+        white-space: nowrap !important;
+      }
+
+      .profile-post-like-button-active {
+        color: var(--parapost-accent-readable-text) !important;
+        text-shadow: 0 0 14px var(--parapost-accent-glow) !important;
+      }
+
+      .profile-post-action-button:hover,
+      .profile-post-like-button:hover {
+        transform: translateY(-1px);
+        color: var(--parapost-accent-text) !important;
+        text-shadow: 0 0 14px var(--parapost-accent-glow) !important;
+      }
+
+      @media (max-width: 720px) {
+        .profile-mobile-scroll-root {
+          min-height: 100dvh !important;
+          height: 100dvh !important;
+          padding-bottom: calc(98px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-post-actions {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 3px !important;
+          margin-top: 9px !important;
+          padding-top: 9px !important;
+        }
+
+        .profile-post-action-button,
+        .profile-post-like-button,
+        .profile-post-like-button-active {
+          min-height: 31px !important;
+          font-size: 11px !important;
+          gap: 3px !important;
+          padding: 0 1px !important;
+        }
+      }
+
+      @media (max-width: 360px) {
+        .profile-post-actions {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 7px !important;
+        }
+
+        .profile-post-action-button,
+        .profile-post-like-button,
+        .profile-post-like-button-active {
+          min-height: 34px !important;
+          font-size: 11.5px !important;
+        }
+      }
+
+        /* Match profile post action icons to dashboard action icons */
+        .profile-post-actions svg,
+        .profile-post-action-button svg,
+        .profile-post-like-button svg,
+        .profile-post-like-button-active svg {
+          width: 13px !important;
+          height: 13px !important;
+          flex-shrink: 0 !important;
+          stroke-width: 1.75 !important;
+        }
+
+        .profile-post-actions .profile-post-action-button,
+        .profile-post-actions .profile-post-like-button,
+        .profile-post-actions .profile-post-like-button-active {
+          gap: 5px !important;
+        }
+
+        @media (min-width: 761px) {
+          .profile-post-actions svg,
+          .profile-post-action-button svg,
+          .profile-post-like-button svg,
+          .profile-post-like-button-active svg {
+            width: 15px !important;
+            height: 15px !important;
+          }
+        }
+        /* Final profile feed visibility + clean end-of-feed spacing */
+        html:has(.profile-mobile-scroll-root),
+        body:has(.profile-mobile-scroll-root) {
+          height: auto !important;
+          min-height: 100dvh !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          overscroll-behavior-y: auto !important;
+        }
+
+        .profile-mobile-scroll-root {
+          min-height: 100dvh !important;
+          height: auto !important;
+          overflow-x: hidden !important;
+          overflow-y: visible !important;
+          -webkit-overflow-scrolling: touch !important;
+          overscroll-behavior-y: auto !important;
+          touch-action: pan-y !important;
+          padding-bottom: 0 !important;
+        }
+
+        .profile-page-shell,
+        .profile-layout-grid,
+        .profile-center-column,
+        .profile-stream-stack,
+        .profile-content-card,
+        .profile-feed-section-card,
+        .profile-feed-list-all-posts {
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+          contain: none !important;
+          content-visibility: visible !important;
+        }
+
+        .profile-page-shell {
+          padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-stream-stack {
+          padding-bottom: 0 !important;
+        }
+
+        .profile-feed-list-all-posts {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          gap: 13px !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding-bottom: 18px !important;
+        }
+
+        .profile-feed-list-all-posts > article,
+        .profile-feed-card,
+        .profile-shared-post-feed-card,
+        .profile-shared-reel-post-card,
+        .profile-achievement-feed-card,
+        .profile-feed-post-card {
+          display: block !important;
+          position: relative !important;
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        .profile-feed-list-all-posts > :not([hidden]) ~ :not([hidden]),
+        .profile-mobile-first-polish .profile-stream-stack > :not([hidden]) ~ :not([hidden]) {
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+        }
+
+        .profile-feed-section-card {
+          padding-bottom: 10px !important;
+        }
+
+        @media (max-width: 720px) {
+          html:has(.profile-mobile-scroll-root),
+          body:has(.profile-mobile-scroll-root) {
+            height: auto !important;
+            min-height: 100dvh !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+          }
+
+          .profile-mobile-scroll-root {
+            height: auto !important;
+            min-height: 100dvh !important;
+            overflow-y: visible !important;
+            overflow-x: hidden !important;
+            padding-bottom: 0 !important;
+          }
+
+          .profile-page-shell {
+            padding-bottom: calc(98px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .profile-stream-stack {
+            padding-bottom: 0 !important;
+          }
+
+          .profile-feed-section-card {
+            overflow: visible !important;
+            padding-bottom: 8px !important;
+          }
+
+          .profile-feed-list-all-posts {
+            gap: 12px !important;
+            padding-bottom: 16px !important;
+          }
+
+          .profile-feed-list-all-posts > article {
+            border-radius: 18px !important;
+          }
+
+          .profile-shared-post-feed-card,
+          .profile-shared-reel-post-card,
+          .profile-feed-post-card {
+            margin-bottom: 0 !important;
+          }
+        }
+
 `}
 </style>
 
@@ -11752,7 +12122,7 @@ return (
                       </div>
                     </div>
                   ) : (
-                    <div style={feedStackStyle}>
+                    <div className="profile-feed-stack profile-feed-list-all-posts" style={feedStackStyle}>
                       {profileFeedItems.map((item) => {
                         if (item.feedKind === "reel_share") {
                           const creatorName =
@@ -11764,6 +12134,7 @@ return (
                           return (
                             <article
                               key={item.id}
+                              className="profile-feed-card profile-shared-reel-post-card"
                               style={{ ...postCardStyle, position: "relative" }}
                               onMouseEnter={(event) => {
                                 event.currentTarget.style.transform = "translateY(-1px)";
@@ -11953,6 +12324,7 @@ return (
                           return (
                             <article
                               key={item.id}
+                              className="profile-feed-card profile-shared-post-feed-card"
                               style={{ ...postCardStyle, position: "relative" }}
                               onMouseEnter={(event) => {
                                 event.currentTarget.style.transform = "translateY(-1px)";
@@ -12040,6 +12412,7 @@ return (
                         return (
                           <article
                             key={post.id}
+                            id={`profile-post-${post.id}`}
                             className="profile-feed-card profile-feed-post-card"
                             style={{ ...profileNormalPostCardStyle, position: "relative" }}
                             onMouseEnter={(event) => {
@@ -12146,17 +12519,47 @@ return (
 
                             <ProfilePostImageGrid imageUrls={getPostImageUrls(post)} alt="Post image" />
 
-                            <div style={postActionsRowStyle}>
+                            <div className="profile-post-actions" style={postActionsRowStyle}>
                               <button
-                                className={`profile-post-like-button ${liked ? "profile-post-like-button-active" : ""}`}
+                                className={`profile-post-action-button profile-post-like-button ${liked ? "profile-post-like-button-active" : ""}`}
                                 onClick={() => handleLikeToggle(post.id)}
                                 style={liked ? postLikeButtonActiveStyle : actionButtonStyle}
                                 aria-pressed={liked}
+                                type="button"
                               >
-                                <span>{liked ? "♥" : "♡"}</span>
-                                <span>{likeCount}</span>
+                                <HeartIcon filled={liked} />
+                                <span>{likeCount > 0 ? `Like ${likeCount}` : "Like"}</span>
                               </button>
 
+                              <button
+                                className="profile-post-action-button"
+                                onClick={() => handleProfileCommentAction(post.id)}
+                                style={actionButtonStyle}
+                                type="button"
+                              >
+                                <CommentIcon />
+                                <span>Comment</span>
+                              </button>
+
+                              <button
+                                className="profile-post-action-button"
+                                onClick={() => handleProfileShareAction(post.id)}
+                                style={actionButtonStyle}
+                                type="button"
+                              >
+                                <ShareIcon />
+                                <span>Share</span>
+                              </button>
+
+                              <button
+                                className="profile-post-action-button"
+                                onClick={() => handleProfileSaveAction(post.id)}
+                                style={actionButtonStyle}
+                                type="button"
+                              >
+                                <BookmarkIcon />
+                                <span>Save</span>
+                              </button>
                             </div>
                           </article>
                         );
@@ -13392,9 +13795,11 @@ const feedCountPillStyle: CSSProperties = {
 };
 
 const feedStackStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
   gap: "13px",
+  width: "100%",
+  overflow: "visible",
 };
 
 const feedEmptyStateStyle: CSSProperties = {
@@ -13599,31 +14004,30 @@ const profilePostImageGridOverlayStyle: CSSProperties = {
 
 
 const postActionsRowStyle: CSSProperties = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
   alignItems: "center",
-  justifyContent: "flex-start",
-  gap: "10px",
-  marginTop: "14px",
-  paddingTop: "12px",
+  gap: "6px",
+  marginTop: "12px",
+  paddingTop: "10px",
   borderTop: "1px solid rgba(255,255,255,0.055)",
-  flexWrap: "wrap",
 };
 
 const postLikeButtonActiveStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "7px",
-  borderRadius: "12px",
-  border: "1px solid var(--parapost-accent-active-bg)",
-  background: "linear-gradient(135deg, var(--parapost-accent-soft), var(--parapost-accent-soft))",
-  color: "#fbcfe8",
-  padding: "8px 12px",
+  gap: "6px",
+  borderRadius: 0,
+  border: 0,
+  background: "transparent",
+  color: "var(--parapost-accent-readable-text)",
+  padding: "0 4px",
   cursor: "pointer",
-  minHeight: "36px",
-  fontWeight: 850,
-  boxShadow: "0 8px 18px var(--parapost-accent-soft)",
-  transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease",
+  minHeight: "34px",
+  fontWeight: 900,
+  boxShadow: "none",
+  transition: "transform 160ms ease, color 160ms ease, text-shadow 160ms ease",
 };
 
 const postSubtleMetaPillStyle: CSSProperties = {
@@ -13743,17 +14147,17 @@ const actionButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "7px",
-  borderRadius: "12px",
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.040)",
+  gap: "6px",
+  borderRadius: 0,
+  border: 0,
+  background: "transparent",
   color: "#f9fafb",
-  padding: "8px 12px",
+  padding: "0 4px",
   cursor: "pointer",
-  minHeight: "36px",
-  fontWeight: 850,
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.028)",
-  transition: "transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease",
+  minHeight: "34px",
+  fontWeight: 900,
+  boxShadow: "none",
+  transition: "transform 160ms ease, color 160ms ease, text-shadow 160ms ease",
 };
 
 const statPillStyle: CSSProperties = {

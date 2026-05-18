@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type AccentKey =
@@ -88,6 +88,47 @@ function applyPreferenceAttributes(accent: AccentKey, font: FontKey) {
   else root.classList.add("parapost-font-default");
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isSupabaseLockError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const lowered = message.toLowerCase();
+
+  return (
+    lowered.includes("lock") ||
+    lowered.includes("aborterror") ||
+    lowered.includes("lockmanager") ||
+    lowered.includes("navigator.locks")
+  );
+}
+
+async function getSessionUserIdSafely() {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.warn("Parapost preferences session warning:", error.message);
+        return null;
+      }
+
+      return data.session?.user?.id || null;
+    } catch (error) {
+      if (attempt < 2 && isSupabaseLockError(error)) {
+        await delay(140 + attempt * 180);
+        continue;
+      }
+
+      console.warn("Parapost preferences session lock skipped:", error);
+      return null;
+    }
+  }
+
+  return null;
+}
+
 export default function ParapostPreferencesProvider({
   children,
 }: {
@@ -96,56 +137,109 @@ export default function ParapostPreferencesProvider({
   const [accent, setAccent] = useState<AccentKey>(DEFAULT_ACCENT);
   const [font, setFont] = useState<FontKey>(DEFAULT_FONT);
 
+  const latestRequestRef = useRef(0);
+  const mountedRef = useRef(false);
+  const loadTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+
   const storageKey = useMemo(() => "parapost-active-preferences", []);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
 
-    async function loadPreferences() {
-      if (typeof window !== "undefined") {
-        try {
-          const cached = window.localStorage.getItem(storageKey);
-          if (cached) {
-            const parsed = JSON.parse(cached) as {
-              accent_color?: string;
-              font_style?: string;
-            };
+    function applyCachedPreferences() {
+      if (typeof window === "undefined") return;
 
-            const cachedAccent = normalizeAccent(parsed.accent_color);
-            const cachedFont = normalizeFont(parsed.font_style);
+      try {
+        const cached = window.localStorage.getItem(storageKey);
 
-            setAccent(cachedAccent);
-            setFont(cachedFont);
-            applyPreferenceAttributes(cachedAccent, cachedFont);
-          } else {
-            applyPreferenceAttributes(DEFAULT_ACCENT, DEFAULT_FONT);
-          }
-        } catch {
+        if (!cached) {
           applyPreferenceAttributes(DEFAULT_ACCENT, DEFAULT_FONT);
+          return;
         }
+
+        const parsed = JSON.parse(cached) as {
+          accent_color?: string;
+          font_style?: string;
+        };
+
+        const cachedAccent = normalizeAccent(parsed.accent_color);
+        const cachedFont = normalizeFont(parsed.font_style);
+
+        setAccent(cachedAccent);
+        setFont(cachedFont);
+        applyPreferenceAttributes(cachedAccent, cachedFont);
+      } catch {
+        applyPreferenceAttributes(DEFAULT_ACCENT, DEFAULT_FONT);
       }
+    }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    async function loadPreferences(preloadedUserId?: string | null) {
+      const requestId = latestRequestRef.current + 1;
+      latestRequestRef.current = requestId;
 
-      if (cancelled || !user) {
+      applyCachedPreferences();
+
+      const userId = preloadedUserId === undefined ? await getSessionUserIdSafely() : preloadedUserId;
+
+      if (!mountedRef.current || latestRequestRef.current !== requestId || !userId) {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("user_preferences")
-        .select("user_id, accent_color, font_style")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("user_preferences")
+          .select("user_id, accent_color, font_style")
+          .eq("user_id", userId)
+          .maybeSingle();
 
-      if (cancelled || error) {
-        return;
+        if (!mountedRef.current || latestRequestRef.current !== requestId || error) {
+          if (error) console.warn("Parapost preferences load warning:", error.message);
+          return;
+        }
+
+        const preferences = data as UserPreferenceRow | null;
+        const nextAccent = normalizeAccent(preferences?.accent_color);
+        const nextFont = normalizeFont(preferences?.font_style);
+
+        setAccent(nextAccent);
+        setFont(nextFont);
+        applyPreferenceAttributes(nextAccent, nextFont);
+
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            storageKey,
+            JSON.stringify({
+              accent_color: nextAccent,
+              font_style: nextFont,
+            })
+          );
+        }
+      } catch (error) {
+        console.warn("Parapost preferences request skipped:", error);
+      }
+    }
+
+    function schedulePreferenceLoad(userId?: string | null) {
+      if (loadTimerRef.current) {
+        window.clearTimeout(loadTimerRef.current);
       }
 
-      const preferences = data as UserPreferenceRow | null;
-      const nextAccent = normalizeAccent(preferences?.accent_color);
-      const nextFont = normalizeFont(preferences?.font_style);
+      loadTimerRef.current = window.setTimeout(() => {
+        void loadPreferences(userId);
+      }, 80);
+    }
+
+    applyCachedPreferences();
+    schedulePreferenceLoad();
+
+    const handlePreferenceUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        accent_color?: string;
+        font_style?: string;
+      }>;
+
+      const nextAccent = normalizeAccent(customEvent.detail?.accent_color);
+      const nextFont = normalizeFont(customEvent.detail?.font_style);
 
       setAccent(nextAccent);
       setFont(nextFont);
@@ -160,34 +254,26 @@ export default function ParapostPreferencesProvider({
           })
         );
       }
-    }
-
-    void loadPreferences();
-
-    const handlePreferenceUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        accent_color?: string;
-        font_style?: string;
-      }>;
-
-      const nextAccent = normalizeAccent(customEvent.detail?.accent_color);
-      const nextFont = normalizeFont(customEvent.detail?.font_style);
-
-      setAccent(nextAccent);
-      setFont(nextFont);
-      applyPreferenceAttributes(nextAccent, nextFont);
     };
 
     window.addEventListener("parapost-preferences-updated", handlePreferenceUpdate);
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      void loadPreferences();
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Do not call Supabase auth methods directly inside this callback.
+      // Use the session Supabase already provides, then debounce the DB preference load.
+      schedulePreferenceLoad(session?.user?.id || null);
     });
 
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
+
+      if (loadTimerRef.current) {
+        window.clearTimeout(loadTimerRef.current);
+        loadTimerRef.current = null;
+      }
+
       window.removeEventListener("parapost-preferences-updated", handlePreferenceUpdate);
       subscription.unsubscribe();
     };

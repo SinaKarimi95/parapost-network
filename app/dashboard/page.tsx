@@ -3,6 +3,7 @@
 import {
   ChangeEvent,
   CSSProperties,
+  SyntheticEvent,
   ReactNode,
   RefObject,
   DragEvent as ReactDragEvent,
@@ -155,6 +156,9 @@ type FollowMap = Record<string, boolean>;
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
 const POST_CHARACTER_LIMIT = 63206;
 const MAX_POST_IMAGES = 10;
+const MAX_POST_VIDEO_SECONDS = 60;
+const MAX_POST_IMAGE_MB = 12;
+const MAX_POST_VIDEO_MB = 100;
 const FEED_INITIAL_BATCH_SIZE = 14;
 const FEED_BATCH_INCREMENT = 10;
 
@@ -206,6 +210,59 @@ function isBlockedLinkProtocol(href: string) {
     normalized.startsWith("vbscript:") ||
     normalized.startsWith("file:")
   );
+}
+
+function isVideoMediaUrl(url?: string | null) {
+  if (!url) return false;
+  const cleanUrl = url.split("?")[0].split("#")[0].toLowerCase();
+  return /\.(mp4|webm|mov|m4v|ogg)$/i.test(cleanUrl);
+}
+
+function getVideoDurationFromFile(file: File) {
+  return new Promise<number>((resolve) => {
+    if (typeof document === "undefined") {
+      resolve(0);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    let settled = false;
+
+    const finish = (duration: number) => {
+      if (settled) return;
+      settled = true;
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+      resolve(Number.isFinite(duration) ? duration : 0);
+    };
+
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadedmetadata = () => finish(video.duration || 0);
+    video.onerror = () => finish(0);
+    video.src = objectUrl;
+    video.load();
+
+    window.setTimeout(() => finish(0), 4500);
+  });
+}
+
+function primeVideoPreview(event: SyntheticEvent<HTMLVideoElement>) {
+  const video = event.currentTarget;
+  const duration = Number.isFinite(video.duration) ? video.duration : 0;
+  const previewTime = duration > 0.5 ? Math.min(0.35, Math.max(0.1, duration / 8)) : 0;
+
+  if (previewTime <= 0 || video.currentTime >= previewTime) return;
+
+  try {
+    video.currentTime = previewTime;
+  } catch {
+    // Some mobile browsers may block seeking before enough metadata is ready.
+  }
 }
 
 function handleSafeExternalLinkClick(
@@ -341,7 +398,7 @@ function LinkPreviewCard({ text }: { text: string }) {
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(preview.hostname)}&sz=64`;
 
   return (
-    <a href={preview.href} onClick={(event) => handleSafeExternalLinkClick(event, preview.href)} style={linkPreviewCardStyle}>
+    <a href={preview.href} onClick={(event) => handleSafeExternalLinkClick(event, preview.href)} className="dashboard-link-preview-card" style={linkPreviewCardStyle}>
       <div style={linkPreviewMediaStyle}>
         {preview.type === "youtube" && preview.youtubeVideoId ? (
           <>
@@ -417,15 +474,53 @@ function PostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string })
   const safeUrls = imageUrls.filter(Boolean).slice(0, MAX_POST_IMAGES);
   if (safeUrls.length === 0) return null;
 
+  const renderMedia = (url: string, index: number) => {
+    const isVideo = isVideoMediaUrl(url);
+
+    if (isVideo) {
+      return (
+        <video
+          src={url}
+          controls
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={primeVideoPreview}
+          onLoadedData={primeVideoPreview}
+          className="dashboard-post-media-item"
+          style={postImageGridImageStyle}
+          aria-label={`${alt} video ${index + 1}`}
+        />
+      );
+    }
+
+    return <img src={url} alt={`${alt} ${index + 1}`} className="dashboard-post-media-item" style={postImageGridImageStyle} />;
+  };
+
   if (safeUrls.length === 1) {
-    return <img src={safeUrls[0]} alt={alt} style={postImageStyle} />;
+    const isVideo = isVideoMediaUrl(safeUrls[0]);
+
+    return isVideo ? (
+      <video
+        src={safeUrls[0]}
+        controls
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={primeVideoPreview}
+        onLoadedData={primeVideoPreview}
+        className="dashboard-post-single-media"
+        style={postImageStyle}
+        aria-label={`${alt} video`}
+      />
+    ) : (
+      <img src={safeUrls[0]} alt={alt} className="dashboard-post-single-media" style={postImageStyle} />
+    );
   }
 
   const visibleUrls = safeUrls.slice(0, 4);
   const extraCount = safeUrls.length - visibleUrls.length;
 
   return (
-    <div style={postImageGridStyle}>
+    <div className="dashboard-post-media-grid" style={postImageGridStyle}>
       {visibleUrls.map((url, index) => {
         const isFirstInThreeGrid = safeUrls.length === 3 && index === 0;
         const showOverlay = index === 3 && extraCount > 0;
@@ -433,12 +528,14 @@ function PostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string })
         return (
           <div
             key={`${url}-${index}`}
+            className="dashboard-post-media-tile"
             style={{
               ...postImageGridTileStyle,
               ...(isFirstInThreeGrid ? postImageGridLargeTileStyle : {}),
             }}
           >
-            <img src={url} alt={`${alt} ${index + 1}`} style={postImageGridImageStyle} />
+            {renderMedia(url, index)}
+            {isVideoMediaUrl(url) ? <div style={postVideoBadgeStyle}>Video</div> : null}
             {showOverlay ? <div style={postImageGridOverlayStyle}>+{extraCount}</div> : null}
           </div>
         );
@@ -908,6 +1005,19 @@ function ShareIcon() {
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BookmarkIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 4.75C7 3.784 7.784 3 8.75 3H15.25C16.216 3 17 3.784 17 4.75V20.25L12 17.25L7 20.25V4.75Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -2029,24 +2139,91 @@ export default function DashboardPage() {
     handleCloseDashboardShowcaseComposer();
   };
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files || []).filter((file) =>
-      file.type.startsWith("image/")
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const incomingFiles = Array.from(event.target.files || []);
+    const selectedFiles = incomingFiles.filter(
+      (file) => file.type.startsWith("image/") || file.type.startsWith("video/")
     );
 
+    const rejectedFiles = incomingFiles.length - selectedFiles.length;
+
     if (selectedFiles.length === 0) {
+      if (rejectedFiles > 0) alert("Please choose photo or video files only.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    setPostImages((prev) => {
-      const remainingSlots = Math.max(MAX_POST_IMAGES - prev.length, 0);
-      const acceptedFiles = selectedFiles.slice(0, remainingSlots);
+    const oversizedFile = selectedFiles.find((file) => {
+      const isVideo = file.type.startsWith("video/");
+      const maxMb = isVideo ? MAX_POST_VIDEO_MB : MAX_POST_IMAGE_MB;
+      return file.size > maxMb * 1024 * 1024;
+    });
 
-      if (selectedFiles.length > remainingSlots) {
-        alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
+    if (oversizedFile) {
+      const isVideo = oversizedFile.type.startsWith("video/");
+      alert(
+        `Please choose ${isVideo ? "videos" : "photos"} under ${
+          isVideo ? MAX_POST_VIDEO_MB : MAX_POST_IMAGE_MB
+        }MB for dashboard posts.`
+      );
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const selectedVideoFiles = selectedFiles.filter((file) => file.type.startsWith("video/"));
+
+    if (selectedVideoFiles.length > 0) {
+      for (const videoFile of selectedVideoFiles) {
+        const durationSeconds = await getVideoDurationFromFile(videoFile);
+
+        if (durationSeconds > MAX_POST_VIDEO_SECONDS + 0.25) {
+          alert(
+            `Dashboard post videos can be up to ${MAX_POST_VIDEO_SECONDS} seconds for launch. Please trim this video and try again.`
+          );
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+      }
+    }
+
+    setPostImages((prev) => {
+      const existingVideo = prev.some((file) => file.type.startsWith("video/"));
+      const remainingSlots = Math.max(MAX_POST_IMAGES - prev.length, 0);
+
+      if (remainingSlots <= 0) {
+        alert(`You can add up to ${MAX_POST_IMAGES} photos/videos in one post.`);
+        return prev;
       }
 
+      let acceptedFiles = selectedFiles.slice(0, remainingSlots);
+      const selectedHasVideo = selectedVideoFiles.length > 0;
+
+      if (existingVideo || selectedHasVideo) {
+        const videoFiles = acceptedFiles.filter((file) => file.type.startsWith("video/"));
+        const imageFiles = acceptedFiles.filter((file) => file.type.startsWith("image/"));
+
+        if (existingVideo) {
+          acceptedFiles = imageFiles;
+        } else if (videoFiles.length > 0) {
+          acceptedFiles = [videoFiles[0], ...imageFiles].slice(0, MAX_POST_IMAGES);
+        }
+
+        if (videoFiles.length > 1 || (existingVideo && videoFiles.length > 0)) {
+          alert(
+            `You can add one video per dashboard post for launch. You can still add photos with it, up to ${MAX_POST_IMAGES} total media items.`
+          );
+        }
+      }
+
+      if (selectedFiles.length > remainingSlots) {
+        alert(`You can add up to ${MAX_POST_IMAGES} photos/videos in one post.`);
+      }
+
+      if (rejectedFiles > 0) {
+        alert("Some files were skipped because they were not photos or videos.");
+      }
+
+      if (acceptedFiles.length === 0) return prev;
       return [...prev, ...acceptedFiles];
     });
 
@@ -2066,13 +2243,27 @@ export default function DashboardPage() {
 
   const handlePost = async () => {
     if (!content.trim() && postImages.length === 0 && !selectedFeelingActivity) {
-      alert("Please add text, choose photos, or select a Feeling / Activity.");
+      alert("Please add text, choose photos/videos, or select a Feeling / Activity.");
       return;
     }
 
     if (postImages.length > MAX_POST_IMAGES) {
-      alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
+      alert(`You can add up to ${MAX_POST_IMAGES} photos/videos in one post.`);
       return;
+    }
+
+    const postVideos = postImages.filter((file) => file.type.startsWith("video/"));
+    if (postVideos.length > 1) {
+      alert("You can add one video per dashboard post for launch.");
+      return;
+    }
+
+    for (const videoFile of postVideos) {
+      const durationSeconds = await getVideoDurationFromFile(videoFile);
+      if (durationSeconds > MAX_POST_VIDEO_SECONDS + 0.25) {
+        alert(`Dashboard post videos can be up to ${MAX_POST_VIDEO_SECONDS} seconds for launch.`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -4892,6 +5083,891 @@ export default function DashboardPage() {
             line-height: 1.05 !important;
           }
         }
+
+
+        /* === Launch-ready dashboard media/composer polish === */
+        .dashboard-composer-media-preview-wrap,
+        .dashboard-composer-media-preview-grid,
+        .dashboard-composer-media-preview-tile,
+        .dashboard-shared-reel-card,
+        .dashboard-shared-reel-frame {
+          box-sizing: border-box;
+        }
+
+        .dashboard-composer-media-preview-tile video,
+        .dashboard-composer-media-preview-tile img {
+          -webkit-user-drag: none;
+        }
+
+        @media (min-width: 761px) {
+          .dashboard-composer-media-preview-counter {
+            opacity: 0.92;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-showcase-row {
+            padding: 10px 12px 11px !important;
+            margin-bottom: 10px !important;
+            border-radius: 22px !important;
+          }
+
+          .dashboard-showcase-row h3 {
+            font-size: 14px !important;
+            line-height: 1.1 !important;
+          }
+
+          .dashboard-showcase-scroller {
+            gap: 12px !important;
+            min-height: 76px !important;
+            padding: 0 4px 6px !important;
+          }
+
+          .dashboard-composer-card {
+            padding: 12px !important;
+            border-radius: 22px !important;
+            margin-bottom: 10px !important;
+          }
+
+          .dashboard-composer-top-row {
+            align-items: start !important;
+            gap: 9px !important;
+          }
+
+          .dashboard-composer-top-row textarea {
+            min-height: 64px !important;
+            padding: 13px 14px !important;
+            font-size: 14px !important;
+          }
+
+          .dashboard-composer-actions {
+            margin-top: 10px !important;
+            gap: 8px !important;
+          }
+
+          .dashboard-composer-footer {
+            margin-top: 10px !important;
+          }
+
+          .dashboard-composer-media-preview-wrap {
+            width: 100% !important;
+            margin: 10px 0 0 !important;
+            border-radius: 22px !important;
+            overflow: hidden !important;
+          }
+
+          .dashboard-composer-media-preview-grid {
+            display: flex !important;
+            grid-template-columns: none !important;
+            gap: 10px !important;
+            max-height: none !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            padding: 10px !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+
+          .dashboard-composer-media-preview-grid::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-composer-media-preview-tile {
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            height: min(64vw, 292px) !important;
+            min-height: 220px !important;
+            scroll-snap-align: center !important;
+            border-radius: 18px !important;
+          }
+
+          .dashboard-composer-media-preview-grid-single .dashboard-composer-media-preview-tile {
+            height: min(62vw, 285px) !important;
+          }
+
+          .dashboard-composer-media-preview-counter {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          .dashboard-shared-reel-card {
+            overflow: hidden !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 104px minmax(0, 1fr) !important;
+            gap: 11px !important;
+            align-items: stretch !important;
+            padding: 10px !important;
+            border-radius: 20px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 104px !important;
+            min-height: 184px !important;
+            max-height: 210px !important;
+            margin: 0 !important;
+            border-radius: 16px !important;
+          }
+
+          .dashboard-shared-reel-copy {
+            justify-content: center !important;
+            gap: 7px !important;
+          }
+
+          .dashboard-shared-reel-copy h3 {
+            font-size: 16px !important;
+            line-height: 1.14 !important;
+            margin: 0 !important;
+          }
+
+          .dashboard-shared-reel-copy p {
+            font-size: 12px !important;
+          }
+
+          .dashboard-shared-reel-copy a {
+            min-height: 34px !important;
+            padding: 0 12px !important;
+            font-size: 12px !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 92px minmax(0, 1fr) !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 92px !important;
+            min-height: 164px !important;
+          }
+        }
+
+
+        /* === Dashboard visual polish pass: mobile/tablet/desktop flow === */
+        .dashboard-main-column {
+          min-width: 0;
+        }
+
+        .dashboard-card {
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+        }
+
+        .dashboard-feed-card {
+          overflow: visible;
+        }
+
+        .dashboard-post-header {
+          min-width: 0;
+        }
+
+        .dashboard-post-actions button {
+          min-width: 0;
+        }
+
+        @media (min-width: 1181px) {
+          .dashboard-main-column {
+            gap: 14px !important;
+          }
+
+          .dashboard-showcase-row,
+          .dashboard-composer-card,
+          .dashboard-feed-pulse,
+          .dashboard-feed-card {
+            box-shadow:
+              0 18px 48px rgba(0,0,0,0.28),
+              inset 0 1px 0 rgba(255,255,255,0.045) !important;
+          }
+
+          .dashboard-composer-card {
+            margin-bottom: 14px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .dashboard-shell-pad {
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+          }
+
+          .dashboard-grid-desktop-safe {
+            gap: 16px !important;
+          }
+
+          .dashboard-main-column {
+            max-width: 760px !important;
+            margin-inline: auto !important;
+          }
+
+          .dashboard-showcase-row {
+            padding: 12px 14px 12px !important;
+            border-radius: 24px !important;
+          }
+
+          .dashboard-showcase-scroller {
+            min-height: 82px !important;
+            gap: 14px !important;
+            padding-bottom: 6px !important;
+          }
+
+          .dashboard-composer-card {
+            padding: 16px !important;
+            border-radius: 24px !important;
+          }
+
+          .dashboard-composer-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 9px !important;
+          }
+
+          .dashboard-feed-card {
+            padding: 17px !important;
+            border-radius: 24px !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 150px minmax(0, 1fr) !important;
+          }
+
+          .dashboard-shared-reel-media {
+            min-height: 240px !important;
+            max-height: 300px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shell-pad {
+            padding-top: 10px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .dashboard-mobile-header {
+            margin-bottom: 10px !important;
+          }
+
+          .dashboard-main-column {
+            gap: 10px !important;
+          }
+
+          .dashboard-showcase-row {
+            padding: 10px 10px 9px !important;
+            margin-bottom: 10px !important;
+            border-radius: 22px !important;
+          }
+
+          .dashboard-showcase-row h3 {
+            font-size: 13.5px !important;
+            letter-spacing: -0.01em !important;
+          }
+
+          .dashboard-showcase-scroller {
+            min-height: 72px !important;
+            gap: 11px !important;
+            padding: 0 2px 5px !important;
+            scrollbar-width: none !important;
+          }
+
+          .dashboard-showcase-scroller::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-showcase-scroller button {
+            min-width: 62px !important;
+            width: 62px !important;
+          }
+
+          .dashboard-composer-card {
+            padding: 11px !important;
+            border-radius: 22px !important;
+            margin-bottom: 10px !important;
+          }
+
+          .dashboard-composer-top-row {
+            grid-template-columns: auto minmax(0, 1fr) !important;
+            gap: 9px !important;
+            align-items: start !important;
+          }
+
+          .dashboard-composer-top-row > button {
+            display: none !important;
+          }
+
+          .dashboard-composer-top-row textarea {
+            min-height: 58px !important;
+            padding: 12px 13px !important;
+            border-radius: 17px !important;
+            font-size: 13.5px !important;
+          }
+
+          .dashboard-composer-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-top: 10px !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            min-height: 40px !important;
+            border-radius: 14px !important;
+            font-size: 12px !important;
+            justify-content: center !important;
+          }
+
+          .dashboard-composer-footer {
+            margin-top: 9px !important;
+          }
+
+          .dashboard-composer-footer button {
+            width: 100% !important;
+            min-height: 41px !important;
+            border-radius: 15px !important;
+          }
+
+          .dashboard-composer-media-preview-wrap {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 10px !important;
+            border-radius: 20px !important;
+            background: rgba(0,0,0,0.28) !important;
+          }
+
+          .dashboard-composer-media-preview-grid {
+            padding: 9px !important;
+            gap: 9px !important;
+          }
+
+          .dashboard-composer-media-preview-tile {
+            min-height: 214px !important;
+            height: min(62vw, 286px) !important;
+            border-radius: 17px !important;
+          }
+
+          .dashboard-composer-media-preview-counter {
+            right: 9px !important;
+            top: 9px !important;
+            font-size: 11.5px !important;
+          }
+
+          .dashboard-composer-media-preview-wrap button[aria-label^="Remove selected media"]::after {
+            content: "Tap to remove";
+            position: absolute;
+            left: 9px;
+            bottom: 9px;
+            border-radius: 999px;
+            padding: 5px 8px;
+            background: rgba(0,0,0,0.66);
+            border: 1px solid rgba(255,255,255,0.14);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 900;
+          }
+
+          .dashboard-feed-pulse {
+            padding: 12px !important;
+            border-radius: 20px !important;
+          }
+
+          .dashboard-feed-pulse-stats {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+
+          .dashboard-feed-card {
+            padding: 13px !important;
+            border-radius: 22px !important;
+          }
+
+          .dashboard-post-header {
+            align-items: flex-start !important;
+            gap: 10px !important;
+            margin-bottom: 11px !important;
+          }
+
+          .dashboard-post-actions {
+            gap: 7px !important;
+            margin-top: 10px !important;
+          }
+
+          .dashboard-post-actions button {
+            min-height: 38px !important;
+            border-radius: 14px !important;
+            font-size: 12px !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+          }
+
+          .dashboard-feed-card p {
+            font-size: 14.5px !important;
+            line-height: 1.52 !important;
+          }
+
+          .dashboard-feed-card img,
+          .dashboard-feed-card video {
+            max-height: 470px !important;
+          }
+
+          .dashboard-shared-reel-card {
+            padding: 12px !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 98px minmax(0, 1fr) !important;
+            gap: 10px !important;
+            padding: 9px !important;
+            border-radius: 18px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 98px !important;
+            min-height: 174px !important;
+            max-height: 202px !important;
+            border-radius: 15px !important;
+          }
+
+          .dashboard-shared-reel-copy h3 {
+            font-size: 15.5px !important;
+          }
+
+          .dashboard-bottom-nav {
+            left: 10px !important;
+            right: 10px !important;
+            width: auto !important;
+            max-width: none !important;
+            transform: none !important;
+            bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+            border-radius: 24px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          nav.dashboard-bottom-nav {
+            left: 10px !important;
+            right: 10px !important;
+            width: auto !important;
+            max-width: none !important;
+            transform: none !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+        }
+
+        @media (max-width: 410px) {
+          .dashboard-composer-actions {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            font-size: 11.5px !important;
+            gap: 6px !important;
+          }
+
+          .dashboard-feed-pulse-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-post-actions button {
+            font-size: 11.5px !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 88px minmax(0, 1fr) !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 88px !important;
+            min-height: 158px !important;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .dashboard-post-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+
+          .dashboard-post-actions button {
+            min-height: 32px !important;
+            font-size: 11.2px !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+
+
+        /* === Dashboard clean action row polish: no pill boxes === */
+        .dashboard-post-actions {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 4px !important;
+          margin-top: 11px !important;
+          padding: 0 !important;
+          background: transparent !important;
+          border-radius: 0 !important;
+          border: 0 !important;
+          box-shadow: none !important;
+        }
+
+        .dashboard-post-actions button,
+        .dashboard-post-actions button:nth-child(4) {
+          display: inline-flex !important;
+          min-width: 0 !important;
+          min-height: 34px !important;
+          border-radius: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          white-space: nowrap !important;
+          color: #e5e7eb !important;
+          padding-left: 4px !important;
+          padding-right: 4px !important;
+        }
+
+        .dashboard-post-actions button:hover {
+          transform: translateY(-1px);
+          background: transparent !important;
+          border-color: transparent !important;
+          color: var(--parapost-accent-text) !important;
+          text-shadow: 0 0 14px var(--parapost-accent-glow);
+        }
+
+        .dashboard-post-actions button svg {
+          opacity: 0.92;
+        }
+
+
+
+        /* === Dashboard feed card polish pass === */
+        .dashboard-feed-card {
+          transition:
+            border-color 180ms ease,
+            background 180ms ease,
+            box-shadow 180ms ease,
+            transform 180ms ease;
+        }
+
+        .dashboard-feed-card:hover {
+          border-color: color-mix(in srgb, var(--parapost-accent-2) 22%, rgba(255,255,255,0.12)) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.072), rgba(255,255,255,0.038)) !important;
+        }
+
+        .dashboard-link-preview-card {
+          transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .dashboard-link-preview-card:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in srgb, var(--parapost-accent-2) 24%, rgba(255,255,255,0.12)) !important;
+          background: linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(0,0,0,0.26)) !important;
+        }
+
+        .dashboard-post-media-grid,
+        .dashboard-post-single-media {
+          transition: border-color 180ms ease, box-shadow 180ms ease;
+        }
+
+        .dashboard-post-media-item {
+          background: #05070d !important;
+        }
+
+        .dashboard-mobile-sponsored-placement {
+          border-style: solid !important;
+          border-color: color-mix(in srgb, var(--parapost-accent-2) 18%, rgba(255,255,255,0.10)) !important;
+        }
+
+        @media (min-width: 1181px) {
+          .dashboard-feed-card {
+            margin-bottom: 2px !important;
+          }
+
+          .dashboard-post-actions button:hover {
+            background: transparent !important;
+            border-color: transparent !important;
+            color: var(--parapost-accent-text) !important;
+          }
+
+          .dashboard-post-media-grid {
+            gap: 9px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .dashboard-feed-card {
+            padding: 16px !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-link-preview-card {
+            border-radius: 19px !important;
+          }
+
+          .dashboard-post-media-grid {
+            gap: 8px !important;
+          }
+
+          .dashboard-post-media-tile {
+            min-height: 210px !important;
+          }
+
+          .dashboard-post-media-grid .dashboard-post-media-tile:first-child:nth-last-child(3) {
+            min-height: 420px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-feed-card {
+            padding: 12px !important;
+            margin-bottom: 10px !important;
+            border-radius: 21px !important;
+            box-shadow:
+              0 16px 34px rgba(0,0,0,0.24),
+              inset 0 1px 0 rgba(255,255,255,0.04) !important;
+          }
+
+          .dashboard-post-header {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: start !important;
+            gap: 10px !important;
+          }
+
+          .dashboard-post-header > div:first-child {
+            min-width: 0 !important;
+          }
+
+          .dashboard-post-header a,
+          .dashboard-post-header span {
+            min-width: 0 !important;
+          }
+
+          .dashboard-feed-card p {
+            margin-top: 9px !important;
+          }
+
+          .dashboard-link-preview-card {
+            display: grid !important;
+            grid-template-columns: 92px minmax(0, 1fr) !important;
+            gap: 10px !important;
+            padding: 9px !important;
+            border-radius: 18px !important;
+            margin-top: 11px !important;
+          }
+
+          .dashboard-link-preview-card > div:first-child {
+            width: 92px !important;
+            height: 64px !important;
+            border-radius: 14px !important;
+          }
+
+          .dashboard-post-single-media {
+            max-height: 510px !important;
+            border-radius: 18px !important;
+            margin-top: 11px !important;
+          }
+
+          .dashboard-post-media-grid {
+            display: flex !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+            gap: 9px !important;
+            padding: 9px !important;
+            border-radius: 19px !important;
+            scrollbar-width: none !important;
+          }
+
+          .dashboard-post-media-grid::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-post-media-tile {
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            min-height: 270px !important;
+            height: min(72vw, 360px) !important;
+            border-radius: 16px !important;
+            scroll-snap-align: center !important;
+          }
+
+          .dashboard-post-media-grid .dashboard-post-media-tile {
+            grid-row: auto !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 4px !important;
+            margin-top: 9px !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+
+          .dashboard-post-actions button {
+            min-height: 32px !important;
+            border-radius: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-size: 11.5px !important;
+            gap: 4px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+          }
+
+          .dashboard-post-actions svg {
+            width: 14px !important;
+            height: 14px !important;
+          }
+
+          .dashboard-shared-reel-card {
+            overflow: hidden !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 104px minmax(0, 1fr) !important;
+            gap: 10px !important;
+            padding: 9px !important;
+            border-radius: 18px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 104px !important;
+            min-height: 184px !important;
+            max-height: 206px !important;
+            border-radius: 15px !important;
+          }
+
+          .dashboard-shared-reel-copy {
+            gap: 6px !important;
+          }
+
+          .dashboard-shared-reel-copy h3 {
+            font-size: 15.5px !important;
+            line-height: 1.12 !important;
+          }
+
+          .dashboard-shared-reel-copy p {
+            font-size: 12px !important;
+            line-height: 1.35 !important;
+          }
+
+          .dashboard-shared-reel-copy a {
+            min-height: 33px !important;
+            font-size: 12px !important;
+            padding: 0 11px !important;
+          }
+
+          .dashboard-mobile-sponsored-placement {
+            margin-block: 12px !important;
+            border-radius: 20px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-post-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 4px !important;
+            margin-top: 9px !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions button:nth-child(4) {
+            display: inline-flex !important;
+            min-height: 32px !important;
+            border-radius: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-size: 11.5px !important;
+            gap: 4px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+          }
+
+          .dashboard-post-actions svg {
+            width: 13px !important;
+            height: 13px !important;
+          }
+        }
+
+        @media (max-width: 410px) {
+          .dashboard-link-preview-card {
+            grid-template-columns: 82px minmax(0, 1fr) !important;
+          }
+
+          .dashboard-link-preview-card > div:first-child {
+            width: 82px !important;
+            height: 58px !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 2px !important;
+          }
+
+          .dashboard-post-actions button {
+            min-height: 31px !important;
+            font-size: 10.8px !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 88px minmax(0, 1fr) !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 88px !important;
+            min-height: 158px !important;
+          }
+        }
+
+
+
+        /* Final hard override: action row stays text/icon only on every device */
+        .dashboard-post-actions,
+        .dashboard-post-actions * {
+          box-sizing: border-box;
+        }
+
+        .dashboard-post-actions {
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+
+        .dashboard-post-actions button {
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+
       ` }} />
     </div>
   );
@@ -5119,7 +6195,7 @@ function ComposerCard({
           maxLength={POST_CHARACTER_LIMIT}
           style={composerInputStyle}
         />
-        <button type="button" onClick={() => fileInputRef.current?.click()} style={composerImageButtonStyle} aria-label="Upload image">
+        <button type="button" onClick={() => fileInputRef.current?.click()} style={composerImageButtonStyle} aria-label="Upload photo or video">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 17L8.5 12.5L11 15L15.5 10.5L20 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" strokeWidth="2" />
@@ -5127,42 +6203,59 @@ function ComposerCard({
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onImageChange} style={{ display: "none" }} />
+      <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={onImageChange} style={{ display: "none" }} />
 
       {imagePreviewUrls.length > 0 ? (
-        <div style={imagePreviewWrapStyle}>
+        <div className="dashboard-composer-media-preview-wrap" style={imagePreviewWrapStyle}>
           <div
+            className={`dashboard-composer-media-preview-grid ${imagePreviewUrls.length === 1 ? "dashboard-composer-media-preview-grid-single" : ""}`}
             style={{
               ...composerPreviewGridStyle,
               ...(imagePreviewUrls.length === 1 ? composerPreviewSingleGridStyle : null),
             }}
           >
-            {imagePreviewUrls.slice(0, 4).map((previewUrl, index) => {
-              const extraCount = imagePreviewUrls.length - 4;
-              const showOverlay = index === 3 && extraCount > 0;
+            {imagePreviewUrls.slice(0, MAX_POST_IMAGES).map((previewUrl, index) => {
+              const selectedFile = images[index];
+              const isVideo = selectedFile?.type.startsWith("video/") || isVideoMediaUrl(previewUrl);
 
               return (
                 <button
                   key={`${previewUrl}-${index}`}
                   type="button"
                   onClick={() => onRemoveImage(index)}
+                  className="dashboard-composer-media-preview-tile"
                   style={{
                     ...composerPreviewTileStyle,
                     ...(imagePreviewUrls.length === 1 ? composerPreviewSingleTileStyle : null),
                   }}
-                  aria-label={`Remove selected image ${index + 1}`}
+                  aria-label={`Remove selected media ${index + 1}`}
                 >
-                  <img src={previewUrl} alt={`Selected preview ${index + 1}`} style={composerPreviewImageStyle} />
-                  {showOverlay ? <span style={composerPreviewOverlayStyle}>+{extraCount}</span> : null}
+                  {isVideo ? (
+                    <video
+                        src={previewUrl}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        onLoadedMetadata={primeVideoPreview}
+                        onLoadedData={primeVideoPreview}
+                        style={composerPreviewImageStyle}
+                      />
+                  ) : (
+                    <img src={previewUrl} alt={`Selected preview ${index + 1}`} style={composerPreviewImageStyle} />
+                  )}
+                  <span className="dashboard-composer-media-preview-counter" style={composerPreviewCounterStyle}>
+                    {index + 1} of {imagePreviewUrls.length}
+                  </span>
+                  {isVideo ? <span style={composerPreviewTypeBadgeStyle}>Video</span> : null}
                 </button>
               );
             })}
           </div>
           <div style={imagePreviewMetaRowStyle}>
             <span style={selectedImageNameStyle}>
-              {images.length} photo{images.length === 1 ? "" : "s"} selected · up to {MAX_POST_IMAGES}
+              {images.length} file{images.length === 1 ? "" : "s"} selected · up to {MAX_POST_IMAGES} · 1 video max · {MAX_POST_VIDEO_SECONDS}s video limit
             </span>
-            <button type="button" onClick={() => onRemoveImage()} style={removeImageButtonStyle}>Remove photos</button>
+            <button type="button" onClick={() => onRemoveImage()} style={removeImageButtonStyle}>Remove media</button>
           </div>
         </div>
       ) : null}
@@ -5467,7 +6560,7 @@ function PostCard({
         <ActionButton onClick={onLike} active={isLiked}><HeartIcon filled={isLiked} /> Like</ActionButton>
         <ActionButton onClick={onToggleComments} active={commentsOpen}><CommentIcon /> Comment</ActionButton>
         <ActionButton onClick={onShare}><ShareIcon /> Share</ActionButton>
-        <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}>Save</ActionButton>
+        <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}><BookmarkIcon /> Save</ActionButton>
       </div>
 
       {commentsOpen ? (
@@ -5791,7 +6884,7 @@ function SharedPostCard({
         <ActionButton onClick={onLikeOriginal} active={isLiked}><HeartIcon filled={isLiked} /> Like</ActionButton>
         <ActionButton onClick={onToggleComments} active={commentsOpen}><CommentIcon /> Comment</ActionButton>
         <ActionButton onClick={onShareOriginal}><ShareIcon /> Share</ActionButton>
-        <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}>Save</ActionButton>
+        <ActionButton onClick={() => alert("Save/bookmarks will be connected in a later pass.")}><BookmarkIcon /> Save</ActionButton>
       </div>
 
       {commentsOpen ? (
@@ -5826,14 +6919,17 @@ function SharedReelCard({
   currentUserId: string;
   onDelete: () => void;
 }) {
+  const sharerName = sharerProfile?.full_name || sharerProfile?.username || "Parapost user";
+  const creatorName = creatorProfile?.full_name || creatorProfile?.username || "Parapost creator";
+
   return (
-    <article className="dashboard-card dashboard-feed-card" style={postCardStyle}>
+    <article className="dashboard-card dashboard-feed-card dashboard-shared-reel-card" style={postCardStyle}>
       <div style={postHeaderStyle}>
         <div style={postAuthorStyle}>
           <Avatar profile={sharerProfile} size={54} href={`/profile/${shared.user_id}`} />
           <div style={{ minWidth: 0 }}>
             <Link href={`/profile/${shared.user_id}`} style={postAuthorNameStyle}>
-              {sharerProfile?.full_name || sharerProfile?.username || "Parapost user"}
+              {sharerName}
             </Link>
             <div style={postMetaStyle}>shared a Parapost Reel · {formatRelativeTime(shared.created_at)}</div>
           </div>
@@ -5841,25 +6937,35 @@ function SharedReelCard({
         {shared.user_id === currentUserId ? <button type="button" onClick={onDelete} style={softDangerButtonStyle}>Remove</button> : null}
       </div>
 
-      {shared.caption ? <p style={postContentStyle}>{shared.caption}</p> : null}
+      {shared.caption ? <p style={postContentStyle}>{renderLinkedText(shared.caption)}</p> : null}
 
       <div className="dashboard-shared-reel-frame" style={sharedReelFrameStyle}>
-        <Link href={`/reels?reel=${shared.reel_id}`} style={sharedReelVideoStyle}>
-          <video src={shared.reel_video_url} poster={shared.reel_poster_url || undefined} muted playsInline preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        <Link href={`/reels?reel=${shared.reel_id}`} className="dashboard-shared-reel-media" style={sharedReelVideoStyle}>
+          <video
+            src={shared.reel_video_url}
+            poster={shared.reel_poster_url || undefined}
+            muted
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={primeVideoPreview}
+            onLoadedData={primeVideoPreview}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
           <div style={sharedReelOverlayStyle}>▶</div>
+          <div style={sharedReelMediaBadgeStyle}>Parapost Reel</div>
         </Link>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={sharedReelBadgeStyle}>Parapost Reel</div>
-          <h3 style={{ margin: "10px 0 6px", fontSize: 19 }}>{shared.reel_title}</h3>
-          <p style={mutedTextStyle}>Original by {creatorProfile?.full_name || creatorProfile?.username || "Parapost creator"}</p>
-          {shared.reel_caption ? <p style={sharedCaptionStyle}>{shared.reel_caption}</p> : null}
-          <Link href={`/reels?reel=${shared.reel_id}`} style={watchReelButtonStyle}>View Reel</Link>
+
+        <div className="dashboard-shared-reel-copy" style={sharedReelCopyStyle}>
+          <div style={sharedReelBadgeStyle}>Shared Reel</div>
+          <h3 style={sharedReelTitleStyle}>{shared.reel_title || "Untitled Reel"}</h3>
+          <p style={mutedTextStyle}>Original by {creatorName}</p>
+          {shared.reel_caption ? <p style={sharedCaptionStyle}>{renderLinkedText(shared.reel_caption)}</p> : null}
+          <Link href={`/reels?reel=${shared.reel_id}`} style={watchReelButtonStyle}>Open Explore Reels</Link>
         </div>
       </div>
     </article>
   );
 }
-
 
 
 function MobileDashboardMenuDrawer({
@@ -8270,9 +9376,9 @@ const quickActionLabelStyle: CSSProperties = { display: "block", color: "#fff", 
 const quickActionTextStyle: CSSProperties = { display: "block", color: "#9ca3af", fontSize: 11.5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 const dashboardProfileShowcasesPanelStyle: CSSProperties = {
-  marginBottom: 18,
-  padding: "12px 0 16px",
-  borderRadius: 18,
+  marginBottom: 12,
+  padding: "10px 0 12px",
+  borderRadius: 22,
   borderTop: "1px solid rgba(255,255,255,0.08)",
   borderRight: "1px solid rgba(255,255,255,0.06)",
   borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -8311,11 +9417,11 @@ const dashboardProfileShowcasesRowStyle: CSSProperties = {
   zIndex: 3,
   display: "flex",
   alignItems: "flex-start",
-  gap: 16,
-  minHeight: 92,
+  gap: 13,
+  minHeight: 82,
   overflowX: "auto",
   overflowY: "visible",
-  padding: "0 14px 12px",
+  padding: "0 14px 8px",
   scrollbarWidth: "thin",
   scrollbarColor: "color-mix(in srgb, var(--parapost-accent-2) 42%, transparent) rgba(255,255,255,0.04)",
 };
@@ -8326,8 +9432,8 @@ const dashboardProfileShowcaseNewItemStyle: CSSProperties = {
   display: "grid",
   justifyItems: "center",
   gap: 6,
-  minWidth: 78,
-  width: 78,
+  minWidth: 70,
+  width: 70,
   border: 0,
   background: "transparent",
   padding: "0 0 4px",
@@ -8336,8 +9442,8 @@ const dashboardProfileShowcaseNewItemStyle: CSSProperties = {
 };
 
 const dashboardProfileShowcasePlusCircleStyle: CSSProperties = {
-  width: 62,
-  height: 62,
+  width: 56,
+  height: 56,
   borderRadius: 999,
   display: "grid",
   placeItems: "center",
@@ -8345,7 +9451,7 @@ const dashboardProfileShowcasePlusCircleStyle: CSSProperties = {
   background:
     "radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), transparent 23%), linear-gradient(135deg, var(--parapost-accent-2), var(--parapost-accent-1) 58%, #4f46e5)",
   color: "#ffffff",
-  fontSize: 40,
+  fontSize: 34,
   fontWeight: 950,
   lineHeight: 0.86,
   paddingBottom: 4,
@@ -8375,8 +9481,8 @@ const dashboardProfileShowcaseItemStyle: CSSProperties = {
   display: "grid",
   justifyItems: "center",
   gap: 6,
-  minWidth: 78,
-  width: 78,
+  minWidth: 70,
+  width: 70,
   border: 0,
   background: "transparent",
   padding: "0 0 4px",
@@ -9146,7 +10252,7 @@ const composerHelperTextStyle: CSSProperties = { color: "#6b7280", fontSize: 11.
 const publishButtonStyle: CSSProperties = { marginLeft: "auto", minHeight: 35, borderRadius: 14, border: 0, background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))", color: "#111827", fontWeight: 900, padding: "0 15px", cursor: "pointer", boxShadow: "0 10px 20px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)", whiteSpace: "nowrap", fontSize: 12.5 };
 
 const imagePreviewWrapStyle: CSSProperties = {
-  width: "min(100%, 430px)",
+  width: "min(100%, 560px)",
   margin: "12px auto 0",
   borderRadius: 20,
   border: "1px solid rgba(255,255,255,0.10)",
@@ -9183,10 +10289,12 @@ const composerPreviewSingleTileStyle: CSSProperties = {
   height: 246,
 };
 const composerPreviewImageStyle: CSSProperties = { width: "100%", height: "100%", minHeight: "100%", objectFit: "cover", display: "block" };
+const composerPreviewCounterStyle: CSSProperties = { position: "absolute", right: 10, top: 10, borderRadius: 999, padding: "5px 9px", background: "rgba(0,0,0,0.72)", color: "#fff", fontSize: 12, fontWeight: 950, lineHeight: 1, border: "1px solid rgba(255,255,255,0.16)", boxShadow: "0 8px 18px rgba(0,0,0,0.28)" };
+const composerPreviewTypeBadgeStyle: CSSProperties = { position: "absolute", left: 10, top: 10, borderRadius: 999, padding: "5px 9px", background: "var(--parapost-accent-active-bg)", color: "var(--parapost-accent-readable-text)", fontSize: 12, fontWeight: 950, lineHeight: 1, border: "1px solid var(--parapost-accent-active-border)" };
 const composerPreviewOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.55)", color: "#ffffff", fontWeight: 950, fontSize: 30 };
 const imagePreviewMetaRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: 12, flexWrap: "wrap" };
-const removeImageButtonStyle: CSSProperties = { border: "1px solid rgba(248,113,113,0.3)", background: "rgba(127,29,29,0.82)", color: "#fff", borderRadius: 999, padding: "8px 12px", fontWeight: 900, cursor: "pointer" };
-const selectedImageNameStyle: CSSProperties = { maxWidth: "70%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", borderRadius: 999, padding: "7px 10px", background: "rgba(0,0,0,0.62)", color: "#e5e7eb", fontSize: 12 };
+const removeImageButtonStyle: CSSProperties = { border: "1px solid rgba(248,113,113,0.22)", background: "linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))", color: "#fca5a5", borderRadius: 999, padding: "8px 12px", fontWeight: 950, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 10px 20px rgba(0,0,0,0.18)" };
+const selectedImageNameStyle: CSSProperties = { maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", borderRadius: 999, padding: "7px 10px", background: "rgba(0,0,0,0.62)", color: "#e5e7eb", fontSize: 12, fontWeight: 850 };
 
 const feedTabsStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 8, margin: "16px 0", overflowX: "auto" };
 const feedTabStyle: CSSProperties = { border: 0, background: "transparent", color: "#d1d5db", padding: "12px 18px", borderRadius: 18, cursor: "pointer", fontSize: 16, whiteSpace: "nowrap" };
@@ -9214,38 +10322,40 @@ const miniFeedStatValueStyle: CSSProperties = { display: "block", color: "#fff",
 const miniFeedStatLabelStyle: CSSProperties = { display: "block", color: "#9ca3af", fontSize: 11, marginTop: 4 };
 
 const linkPreviewCardStyle: CSSProperties = {
-  marginTop: 12,
+  marginTop: 13,
   display: "flex",
   gap: 12,
   alignItems: "center",
   borderRadius: 20,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(0,0,0,0.24)",
+  border: "1px solid rgba(255,255,255,0.11)",
+  background:
+    "linear-gradient(135deg, rgba(255,255,255,0.058), rgba(0,0,0,0.26))",
   padding: 10,
   textDecoration: "none",
   color: "#fff",
-  boxShadow: "0 10px 26px rgba(0,0,0,0.18)",
+  boxShadow: "0 12px 28px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.045)",
 };
-const linkPreviewMediaStyle: CSSProperties = { width: 112, height: 72, borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", flexShrink: 0, position: "relative" };
+const linkPreviewMediaStyle: CSSProperties = { width: 112, height: 72, borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", flexShrink: 0, position: "relative", boxShadow: "0 10px 22px rgba(0,0,0,0.20)" };
 const linkPreviewPlayOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff", fontSize: 24, textShadow: "0 6px 18px rgba(0,0,0,0.65)", background: "rgba(0,0,0,0.10)" };
 const linkPreviewFaviconWrapStyle: CSSProperties = { width: "100%", height: "100%", display: "grid", placeItems: "center", background: "linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025))" };
 const linkPreviewEyebrowStyle: CSSProperties = { color: "#9ca3af", fontSize: 11, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 };
 const linkPreviewTitleStyle: CSSProperties = { color: "#fff", fontSize: 15, fontWeight: 950, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const linkPreviewDomainStyle: CSSProperties = { color: "#93c5fd", fontSize: 13, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
-const postCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(255,255,255,0.062), rgba(255,255,255,0.035))", padding: 18, boxShadow: "0 18px 44px rgba(0,0,0,0.24)" };
-const postHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 14 };
+const postCardStyle: CSSProperties = { borderRadius: 26, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(255,255,255,0.066), rgba(255,255,255,0.034))", padding: 18, boxShadow: "0 18px 46px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.045)" };
+const postHeaderStyle: CSSProperties = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 13 };
 const postAuthorStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
 const postAuthorNameLineStyle: CSSProperties = { display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap", minWidth: 0 };
 const postAuthorNameStyle: CSSProperties = { display: "block", color: "#fff", textDecoration: "none", fontWeight: 950, fontSize: 16, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const postAuthorActivityTextStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontWeight: 900, fontSize: 16, lineHeight: 1.25 };
 const postMetaStyle: CSSProperties = { color: "#a1a1aa", fontSize: 13, marginTop: 3 };
-const postContentStyle: CSSProperties = { color: "#f9fafb", lineHeight: 1.58, fontSize: 16, whiteSpace: "pre-wrap", margin: "10px 0 0" };
-const postImageStyle: CSSProperties = { width: "100%", maxHeight: 680, objectFit: "cover", display: "block", borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", marginTop: 14, boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
-const postImageGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 14, borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
+const postContentStyle: CSSProperties = { color: "#f9fafb", lineHeight: 1.56, fontSize: 15.8, whiteSpace: "pre-wrap", margin: "10px 0 0", overflowWrap: "anywhere" };
+const postImageStyle: CSSProperties = { width: "100%", maxHeight: 680, objectFit: "cover", display: "block", borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", marginTop: 14, background: "#05070d", boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
+const postImageGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 14, borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.26)", boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
 const postImageGridTileStyle: CSSProperties = { position: "relative", minHeight: 230, overflow: "hidden", background: "rgba(255,255,255,0.04)" };
 const postImageGridLargeTileStyle: CSSProperties = { gridRow: "span 2", minHeight: 468 };
-const postImageGridImageStyle: CSSProperties = { width: "100%", height: "100%", minHeight: "inherit", objectFit: "cover", display: "block" };
+const postImageGridImageStyle: CSSProperties = { width: "100%", height: "100%", minHeight: "inherit", objectFit: "cover", display: "block", background: "#000" };
+const postVideoBadgeStyle: CSSProperties = { position: "absolute", left: 10, top: 10, borderRadius: 999, padding: "6px 9px", background: "rgba(0,0,0,0.70)", color: "#fff", fontSize: 12, fontWeight: 950, border: "1px solid rgba(255,255,255,0.18)" };
 const postImageGridOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.58)", color: "#ffffff", fontSize: 42, fontWeight: 950, letterSpacing: "-0.04em" };
 const dotsButtonStyle: CSSProperties = { width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" };
 const postMenuStyle: CSSProperties = { position: "absolute", right: 0, top: 45, minWidth: 170, borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.96)", zIndex: 30, boxShadow: "0 20px 50px rgba(0,0,0,0.5)" };
@@ -9255,9 +10365,9 @@ const followingButtonStyle: CSSProperties = { ...followButtonStyle, background: 
 const editTextareaStyle: CSSProperties = { width: "100%", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, background: "rgba(255,255,255,0.04)", color: "#fff", outline: 0, padding: 14, resize: "vertical" };
 const softButtonStyle: CSSProperties = { border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#fff", minHeight: 38, padding: "0 16px", fontWeight: 850, cursor: "pointer" };
 const softDangerButtonStyle: CSSProperties = { ...softButtonStyle, color: "#fecaca", border: "1px solid rgba(248,113,113,0.24)" };
-const postStatsSummaryStyle: CSSProperties = { display: "flex", justifyContent: "flex-end", gap: 9, alignItems: "center", color: "#d1d5db", fontSize: 13, borderBottom: "1px solid rgba(255,255,255,0.10)", paddingBottom: 12, marginTop: 14 };
+const postStatsSummaryStyle: CSSProperties = { display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 9, alignItems: "center", color: "#d1d5db", fontSize: 13, borderBottom: "1px solid rgba(255,255,255,0.10)", paddingBottom: 11, marginTop: 13 };
 const postStatusLinkStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontWeight: 900, textDecoration: "none" };
-const postActionsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 10 };
+const postActionsStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginTop: 12, padding: 0, background: "transparent" };
 
 const dashboardCommentsPanelStyle: CSSProperties = {
   marginTop: "12px",
@@ -9389,8 +10499,28 @@ const dashboardCommentDeleteButtonStyle: CSSProperties = {
   padding: 0,
 };
 
-const actionButtonStyle: CSSProperties = { minHeight: 42, borderRadius: 14, border: "1px solid transparent", background: "transparent", color: "#e5e7eb", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 850, cursor: "pointer" };
-const activeActionButtonStyle: CSSProperties = { ...actionButtonStyle, color: "var(--parapost-accent-text)", background: "var(--parapost-accent-muted-bg)", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)" };
+const actionButtonStyle: CSSProperties = {
+  minHeight: 34,
+  borderRadius: 0,
+  border: "0",
+  background: "transparent",
+  color: "#e5e7eb",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  fontWeight: 900,
+  cursor: "pointer",
+  boxShadow: "none",
+  padding: "0 6px",
+};
+const activeActionButtonStyle: CSSProperties = {
+  ...actionButtonStyle,
+  color: "var(--parapost-accent-readable-text)",
+  background: "transparent",
+  border: "0",
+  boxShadow: "none",
+};
 
 
 const sharedPostFrameStyle: CSSProperties = {
@@ -9414,12 +10544,15 @@ const sharedPostOriginalContentStyle: CSSProperties = {
   marginTop: "10px",
 };
 
-const sharedReelFrameStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(150px, 220px) 1fr", gap: 14, alignItems: "center", marginTop: 14, border: "1px solid rgba(255,255,255,0.10)", borderRadius: 22, padding: 12, background: "rgba(0,0,0,0.24)" };
-const sharedReelVideoStyle: CSSProperties = { position: "relative", display: "block", aspectRatio: "9 / 16", maxHeight: 360, borderRadius: 18, overflow: "hidden", background: "#000", textDecoration: "none" };
+const sharedReelFrameStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(138px, 190px) 1fr", gap: 14, alignItems: "stretch", marginTop: 14, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", borderRadius: 23, padding: 12, background: "linear-gradient(135deg, rgba(0,0,0,0.34), var(--parapost-accent-soft))", overflow: "hidden", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045)" };
+const sharedReelVideoStyle: CSSProperties = { position: "relative", display: "block", aspectRatio: "9 / 16", minHeight: 230, maxHeight: 340, borderRadius: 18, overflow: "hidden", background: "#000", textDecoration: "none", boxShadow: "0 18px 34px rgba(0,0,0,0.34)" };
 const sharedReelOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff", fontSize: 34, background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.38))" };
-const sharedReelBadgeStyle: CSSProperties = { display: "inline-flex", borderRadius: 999, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 26%, transparent)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)", padding: "7px 10px", fontSize: 12, fontWeight: 950 };
+const sharedReelMediaBadgeStyle: CSSProperties = { position: "absolute", left: 10, bottom: 10, borderRadius: 999, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(0,0,0,0.64)", color: "#fff", padding: "6px 9px", fontSize: 11.5, fontWeight: 950 };
+const sharedReelCopyStyle: CSSProperties = { minWidth: 0, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 };
+const sharedReelBadgeStyle: CSSProperties = { display: "inline-flex", width: "fit-content", borderRadius: 999, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 26%, transparent)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)", padding: "7px 10px", fontSize: 12, fontWeight: 950 };
+const sharedReelTitleStyle: CSSProperties = { margin: "0", color: "#fff", fontSize: 20, lineHeight: 1.1, letterSpacing: "-0.03em", fontWeight: 950 };
 const sharedCaptionStyle: CSSProperties = { color: "#d1d5db", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" };
-const watchReelButtonStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, minHeight: 38, padding: "0 14px", background: "#fff", color: "#0b1020", textDecoration: "none", fontWeight: 950 };
+const watchReelButtonStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: "fit-content", borderRadius: 999, minHeight: 38, padding: "0 14px", background: "#fff", color: "#0b1020", textDecoration: "none", fontWeight: 950, boxShadow: "0 12px 24px rgba(0,0,0,0.22)" };
 
 const railCardStyle: CSSProperties = { borderRadius: 22, border: "1px solid var(--parapost-accent-border)", background: "radial-gradient(circle at 18% 0%, var(--parapost-accent-muted-bg), transparent 40%), rgba(255,255,255,0.045)", padding: 18, boxShadow: "0 18px 42px rgba(0,0,0,0.22), 0 0 20px var(--parapost-accent-glow)" };
 const railCardHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 };

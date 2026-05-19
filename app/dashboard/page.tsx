@@ -212,6 +212,57 @@ function isBlockedLinkProtocol(href: string) {
   );
 }
 
+function getDashboardErrorMessage(error: unknown) {
+  if (error instanceof Error && typeof error.message === "string") {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error && "message" in error) {
+    const message = String((error as { message?: unknown }).message || "").trim();
+    if (message) return message;
+  }
+
+  if (typeof error === "string") return error;
+
+  return "Unknown dashboard network error";
+}
+
+function isDashboardFetchFailure(error: unknown) {
+  const message = getDashboardErrorMessage(error).toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("load failed") ||
+    message.includes("fetch failed") ||
+    message.includes("the user aborted a request") ||
+    message.includes("aborted")
+  );
+}
+
+function shouldRunDashboardNetworkRefresh() {
+  if (typeof window === "undefined") return false;
+
+  if (typeof window.navigator !== "undefined" && window.navigator && !window.navigator.onLine) {
+    return false;
+  }
+
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    return false;
+  }
+
+  return true;
+}
+
+function logDashboardNetworkIssue(label: string, error: unknown) {
+  const message = getDashboardErrorMessage(error);
+
+  // Do not log raw TypeError objects for normal fetch/network hiccups.
+  // Next.js dev overlay treats raw console TypeErrors as big red errors.
+  if (isDashboardFetchFailure(error)) return;
+
+  console.warn(`${label}: ${message}`);
+}
+
 function isVideoMediaUrl(url?: string | null) {
   if (!url) return false;
   const cleanUrl = url.split("?")[0].split("#")[0].toLowerCase();
@@ -1768,9 +1819,9 @@ export default function DashboardPage() {
 
     await Promise.all([fetchProfileMap(profileIds), fetchCounts(userId || undefined, countPostIds)]);
     } catch (error) {
-      // Important: Supabase/network hiccups can throw TypeError: Failed to fetch.
-      // Keep the current timeline on screen instead of letting the dashboard crash or blink.
-      console.warn("Dashboard refresh skipped because the network request failed.", error);
+      // Supabase/network hiccups can throw TypeError: Failed to fetch.
+      // Keep the current timeline on screen and avoid logging raw TypeError objects.
+      logDashboardNetworkIssue("Dashboard refresh skipped", error);
     } finally {
       hasLoadedDashboardOnceRef.current = true;
       dashboardRefreshInFlightRef.current = false;
@@ -1819,17 +1870,20 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!currentUserId) return;
 
-   let refreshTimer: number | null = null; 
+    let refreshTimer: number | null = null;
+
+    const requestDashboardRefresh = () => {
+      if (!shouldRunDashboardNetworkRefresh()) return;
+      void fetchDashboardData(false);
+    };
 
     const schedulePulseRefresh = () => {
-  if (refreshTimer) {
-    window.clearTimeout(refreshTimer);
-  }
+      if (refreshTimer) {
+        window.clearTimeout(refreshTimer);
+      }
 
-  refreshTimer = window.setTimeout(() => {
-    void fetchDashboardData(false);
-  }, 350);
-};
+      refreshTimer = window.setTimeout(requestDashboardRefresh, 650);
+    };
 
     const channel = supabase
       .channel(`dashboard-network-pulse-${currentUserId}`)
@@ -1837,7 +1891,6 @@ export default function DashboardPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "shares" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, schedulePulseRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shares" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "followers" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, schedulePulseRefresh)
@@ -1846,17 +1899,15 @@ export default function DashboardPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "recently_viewed_profiles" }, schedulePulseRefresh)
       .subscribe();
 
-    const intervalId = window.setInterval(() => {
-      void fetchDashboardData(false);
-    }, 30000);
+    const intervalId = window.setInterval(requestDashboardRefresh, 60000);
 
     const handleFocusRefresh = () => {
-      void fetchDashboardData(false);
+      requestDashboardRefresh();
     };
 
     const handleVisibilityRefresh = () => {
       if (document.visibilityState === "visible") {
-        void fetchDashboardData(false);
+        requestDashboardRefresh();
       }
     };
 
@@ -1959,20 +2010,26 @@ export default function DashboardPage() {
       setSearchLoading(true);
       const safeQuery = query.replace(/[,%]/g, "").slice(0, 40);
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, avatar_url, bio, location, is_online")
-        .or(`username.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`)
-        .limit(8);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url, bio, location, is_online")
+          .or(`username.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`)
+          .limit(8);
 
-      if (error) {
-        console.error("Search error:", error.message);
-        setSearchResults([]);
-      } else {
+        if (error) {
+          logDashboardNetworkIssue("Dashboard search skipped", error);
+          setSearchResults([]);
+          return;
+        }
+
         setSearchResults((data || []) as ProfilePreview[]);
+      } catch (error) {
+        logDashboardNetworkIssue("Dashboard search skipped", error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
       }
-
-      setSearchLoading(false);
     }, 240);
 
     return () => window.clearTimeout(timeout);
@@ -1981,27 +2038,32 @@ export default function DashboardPage() {
   const getActiveDashboardUserId = useCallback(async () => {
     if (currentUserId) return currentUserId;
 
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
 
-    if (error || !user) return "";
+      if (error || !user) return "";
 
-    setCurrentUserId(user.id);
-    setUserEmail(user.email || "");
+      setCurrentUserId(user.id);
+      setUserEmail(user.email || "");
 
-    if (!currentProfile) {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, avatar_url, bio, location, is_online")
-        .eq("id", user.id)
-        .maybeSingle();
+      if (!currentProfile) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url, bio, location, is_online")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      setCurrentProfile((profileData as ProfilePreview | null) || null);
+        setCurrentProfile((profileData as ProfilePreview | null) || null);
+      }
+
+      return user.id;
+    } catch (error) {
+      logDashboardNetworkIssue("Dashboard auth check skipped", error);
+      return "";
     }
-
-    return user.id;
   }, [currentProfile, currentUserId]);
 
   const handleOpenDashboardShowcaseComposer = async () => {

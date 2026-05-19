@@ -6049,38 +6049,40 @@ export default function DashboardPage() {
         }
 
 
-        /* === Desktop top bar alignment polish === */
-        .dashboard-desktop-topbar {
-          display: grid !important;
-          grid-template-columns: minmax(0, 1fr) auto !important;
-          align-items: center !important;
-          gap: 14px !important;
-          width: 100% !important;
-          margin-bottom: 18px !important;
-        }
+        /* === Desktop/tablet top bar alignment polish === */
+        @media (min-width: 761px) {
+          .dashboard-desktop-topbar {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 14px !important;
+            width: 100% !important;
+            margin-bottom: 18px !important;
+          }
 
-        .dashboard-search-parapost {
-          width: 100% !important;
-          max-width: none !important;
-          min-width: 0 !important;
-          height: 48px !important;
-          box-sizing: border-box !important;
-        }
+          .dashboard-search-parapost {
+            width: 100% !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            height: 48px !important;
+            box-sizing: border-box !important;
+          }
 
-        .dashboard-top-icons {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: flex-end !important;
-          gap: 10px !important;
-          height: 48px !important;
-          flex-shrink: 0 !important;
-        }
+          .dashboard-top-icons {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            gap: 10px !important;
+            height: 48px !important;
+            flex-shrink: 0 !important;
+          }
 
-        .dashboard-top-icons a,
-        .dashboard-top-icons button {
-          width: 42px !important;
-          height: 42px !important;
-          flex: 0 0 42px !important;
+          .dashboard-top-icons a,
+          .dashboard-top-icons button {
+            width: 42px !important;
+            height: 42px !important;
+            flex: 0 0 42px !important;
+          }
         }
 
         @media (min-width: 761px) and (max-width: 1180px) {
@@ -6090,6 +6092,12 @@ export default function DashboardPage() {
 
           .dashboard-top-icons {
             gap: 8px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-desktop-topbar {
+            display: none !important;
           }
         }
 
@@ -6116,6 +6124,26 @@ export default function DashboardPage() {
         @media (max-width: 760px) {
           .dashboard-feed-pulse {
             margin-bottom: 14px !important;
+          }
+        }
+
+
+        /* === Mobile header single-row safety === */
+        @media (max-width: 760px) {
+          main .dashboard-desktop-topbar,
+          .dashboard-main-column > .dashboard-desktop-topbar {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+          }
+
+          .dashboard-mobile-header {
+            display: flex !important;
           }
         }
 

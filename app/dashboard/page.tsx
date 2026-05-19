@@ -19,7 +19,7 @@ import Link from "next/link";
 import DashboardReelsSection from "./DashboardReelsSection";
 import { supabase } from "@/lib/supabase";
 
-// Dashboard personalization phase 3.2: key dashboard accent colors now use global Parapost CSS variables.
+// Dashboard launch polish: original layout preserved with cleaner professional Parapost surfaces.
 
 type ProfilePreview = {
   id: string;
@@ -5968,6 +5968,157 @@ export default function DashboardPage() {
         }
 
 
+
+        /* === Dashboard final polish: original layout preserved, clean professional surfaces === */
+        .dashboard-card,
+        .dashboard-feed-card,
+        .dashboard-composer-card,
+        .dashboard-right-card,
+        .dashboard-mobile-insights {
+          border-color: rgba(255,255,255,0.105) !important;
+          box-shadow: 0 15px 34px rgba(0,0,0,0.23), inset 0 1px 0 rgba(255,255,255,0.030) !important;
+        }
+
+        .dashboard-feed-card,
+        .dashboard-composer-card,
+        .dashboard-card {
+          background: linear-gradient(180deg, rgba(255,255,255,0.058), rgba(255,255,255,0.030)) !important;
+        }
+
+        .dashboard-feed-card,
+        .dashboard-composer-card {
+          border-radius: 22px !important;
+        }
+
+        .dashboard-right-card {
+          border-radius: 22px !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.028)) !important;
+        }
+
+        .dashboard-post-actions button,
+        .dashboard-composer-actions button,
+        .dashboard-composer-actions a {
+          border-radius: 13px !important;
+          border-color: rgba(255,255,255,0.085) !important;
+        }
+
+        .dashboard-desktop-topbar {
+          border-color: rgba(255,255,255,0.100) !important;
+          box-shadow: 0 12px 28px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.030) !important;
+        }
+
+        .dashboard-search-parapost {
+          border-color: rgba(255,255,255,0.105) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.032)) !important;
+        }
+
+        .dashboard-showcase-row {
+          border-color: rgba(255,255,255,0.095) !important;
+        }
+
+        .dashboard-post-media-grid,
+        .dashboard-post-single-media,
+        .dashboard-link-preview-card {
+          border-radius: 16px !important;
+        }
+
+        .dashboard-bottom-nav {
+          border-color: rgba(255,255,255,0.105) !important;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-feed-card,
+          .dashboard-composer-card,
+          .dashboard-card,
+          .dashboard-right-card {
+            border-radius: 19px !important;
+          }
+
+          .dashboard-feed-card,
+          .dashboard-composer-card {
+            padding: 14px !important;
+          }
+
+          .dashboard-post-actions {
+            gap: 7px !important;
+          }
+
+          .dashboard-post-actions button {
+            min-height: 38px !important;
+          }
+        }
+
+
+        /* === Desktop top bar alignment polish === */
+        .dashboard-desktop-topbar {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) auto !important;
+          align-items: center !important;
+          gap: 14px !important;
+          width: 100% !important;
+          margin-bottom: 18px !important;
+        }
+
+        .dashboard-search-parapost {
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          height: 48px !important;
+          box-sizing: border-box !important;
+        }
+
+        .dashboard-top-icons {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          height: 48px !important;
+          flex-shrink: 0 !important;
+        }
+
+        .dashboard-top-icons a,
+        .dashboard-top-icons button {
+          width: 42px !important;
+          height: 42px !important;
+          flex: 0 0 42px !important;
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .dashboard-desktop-topbar {
+            gap: 12px !important;
+          }
+
+          .dashboard-top-icons {
+            gap: 8px !important;
+          }
+        }
+
+
+        /* === Feed pulse separation fix === */
+        .dashboard-feed-pulse {
+          margin-bottom: 16px !important;
+          overflow: hidden !important;
+          position: relative !important;
+          z-index: 1 !important;
+        }
+
+        .dashboard-feed-pulse + section {
+          margin-top: 0 !important;
+          position: relative !important;
+          z-index: 0 !important;
+        }
+
+        .dashboard-feed-card {
+          position: relative !important;
+          z-index: 0 !important;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-feed-pulse {
+            margin-bottom: 14px !important;
+          }
+        }
+
       ` }} />
     </div>
   );
@@ -7103,10 +7254,10 @@ function MobileDashboardMenuDrawer({
                       : activeSection === "settingsAccount"
                         ? "Your Account"
                         : activeSection === "settingsPrivacy"
-                          ? "Privacy and Safety"
+                          ? "Privacy & Safety"
                           : activeSection === "settingsHelp"
-                            ? "Help"
-                            : "Settings and Support";
+                            ? "Help & Legal"
+                            : "Settings & Support";
 
   return (
     <>
@@ -7130,12 +7281,13 @@ function MobileDashboardMenuDrawer({
         <div ref={menuScrollRef} className="dashboard-mobile-menu-scroll-area" style={mobileMenuScrollAreaStyle}>
         {activeSection === "main" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Dashboard extras</div>
+            <div style={mobileMenuSectionHeadingStyle}>Dashboard Extras</div>
             <MobileMenuButton label="Discover" onClick={() => setActiveSection("discover")} />
             <MobileMenuButton label="Parapost Hub" onClick={() => setActiveSection("hub")} />
-            <MobileMenuButton label="Creator tools" onClick={() => setActiveSection("creator")} />
+            <MobileMenuButton label="Creator Tools" onClick={() => setActiveSection("creator")} />
             <MobileMenuButton label="Ads & Sponsors" onClick={() => setActiveSection("ads")} />
-            <MobileMenuButton label="Settings and support" onClick={() => setActiveSection("settings")} />
+            <MobileMenuButton label="Settings & Support" onClick={() => setActiveSection("settings")} />
+            <MobileMenuInfoCardText text="Quick access to extra dashboard areas without crowding the main mobile feed." />
             <div style={mobileMenuDividerStyle} />
             <MobileMenuLogoutButton label="Log out" onClick={handleLogout} />
           </div>
@@ -7143,7 +7295,7 @@ function MobileDashboardMenuDrawer({
 
         {activeSection === "discover" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Private and suggested</div>
+            <div style={mobileMenuSectionHeadingStyle}>Private & Suggested</div>
             <MobileMenuButton label={`Recently viewed${recentlyViewed.length ? ` (${recentlyViewed.length})` : ""}`} onClick={() => setActiveSection("discoverRecentlyViewed")} />
             <MobileMenuButton label={`People to discover${peopleToDiscover.length ? ` (${Math.min(peopleToDiscover.length, 4)})` : ""}`} onClick={() => setActiveSection("discoverPeople")} />
             <MobileMenuButton label="Trending in Parapost" onClick={() => setActiveSection("discoverTrending")} />
@@ -7156,7 +7308,7 @@ function MobileDashboardMenuDrawer({
 
         {activeSection === "discoverRecentlyViewed" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Profiles you recently viewed</div>
+            <div style={mobileMenuSectionHeadingStyle}>Recently Viewed Profiles</div>
             {recentlyViewed.length > 0 ? (
               recentlyViewed.map((profile) => <MobileMenuProfileLinkRow key={profile.id} profile={profile} />)
             ) : (
@@ -7167,7 +7319,7 @@ function MobileDashboardMenuDrawer({
 
         {activeSection === "discoverPeople" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Suggested people</div>
+            <div style={mobileMenuSectionHeadingStyle}>People to Discover</div>
             {peopleToDiscover.length > 0 ? (
               peopleToDiscover.map((profile) => <MobileMenuProfileLinkRow key={profile.id} profile={profile} />)
             ) : (
@@ -7178,7 +7330,7 @@ function MobileDashboardMenuDrawer({
 
         {activeSection === "discoverTrending" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Active topics</div>
+            <div style={mobileMenuSectionHeadingStyle}>Active Topics</div>
             {trendingTopics.map((topic) => (
               <MobileMenuTrendDetailRow key={`${topic.title}-${topic.meta}`} title={topic.title} meta={topic.meta} />
             ))}
@@ -7187,7 +7339,7 @@ function MobileDashboardMenuDrawer({
 
         {activeSection === "discoverActivity" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Your dashboard activity</div>
+            <div style={mobileMenuSectionHeadingStyle}>Timeline Activity</div>
             <MobileMenuStatRow label="Following" value={followedCount} />
             <MobileMenuStatRow label="Feed items" value={feedItems} />
             <MobileMenuStatRow label="Likes" value={totalLikes} />
@@ -7213,15 +7365,15 @@ function MobileDashboardMenuDrawer({
 
         {activeSection === "ads" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Ads and sponsors</div>
-            <MobileMenuLink href="/settings/payments" label="Payments and promotions" />
-            <MobileMenuLink href="/settings/payments" label="Sponsor placements" />
+            <div style={mobileMenuSectionHeadingStyle}>Ads & Sponsors</div>
+            <MobileMenuLink href="/settings/payments" label="Payments & Promotions" />
+            <MobileMenuLink href="/settings/payments" label="Sponsor Placements" />
             <MobileMenuLink href="/settings/payments" label="Advertise with Parapost Network" />
-            <MobileMenuMutedRow label="Boosted posts" />
+            <MobileMenuMutedRow label="Boosted Posts" />
             <MobileMenuMutedRow label="Sponsored Reels" />
 
             <div style={mobileMenuInfoCardStyle}>
-              Payments and promotion tools are coming soon. Sponsored placements will also appear naturally in the timeline without crowding the mobile dashboard.
+              Payment tools are coming soon. Sponsor and ad placements will stay organized here and can also appear naturally inside the timeline later.
             </div>
           </div>
         ) : null}
@@ -7237,58 +7389,56 @@ function MobileDashboardMenuDrawer({
             <MobileMenuMutedRow label="Groups" />
 
             <div style={mobileMenuInfoCardStyle}>
-              Parapost Hub will hold deeper community areas and future feature shortcuts without overcrowding the main mobile dashboard.
+              Future community areas will live here so the mobile dashboard stays clean and focused.
             </div>
           </div>
         ) : null}
 
         {activeSection === "settings" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Settings and support</div>
-            <MobileMenuButton label="Your account" onClick={() => setActiveSection("settingsAccount")} />
-            <MobileMenuButton label="Privacy and safety" onClick={() => setActiveSection("settingsPrivacy")} />
-            <MobileMenuButton label="Help and legal" onClick={() => setActiveSection("settingsHelp")} />
+            <div style={mobileMenuSectionHeadingStyle}>Settings & Support</div>
+            <MobileMenuButton label="Your Account" onClick={() => setActiveSection("settingsAccount")} />
+            <MobileMenuButton label="Privacy & Safety" onClick={() => setActiveSection("settingsPrivacy")} />
+            <MobileMenuButton label="Help & Legal" onClick={() => setActiveSection("settingsHelp")} />
           </div>
         ) : null}
 
         {activeSection === "settingsAccount" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Your account</div>
-            <MobileMenuLink href="/settings" label="Settings home" />
-            <MobileMenuLink href="/settings/profile" label="Profile settings" />
-            <MobileMenuLink href="/settings/account" label="Account and security" />
-            <MobileMenuLink href="/settings/profile-visibility" label="Profile visibility" />
-            <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
+            <div style={mobileMenuSectionHeadingStyle}>Your Account</div>
+            <MobileMenuLink href="/settings" label="Settings Home" />
+            <MobileMenuLink href="/settings/profile" label="Profile Settings" />
+            <MobileMenuLink href="/settings/account" label="Account & Security" />
             <MobileMenuLink href="/settings/personalization" label="Personalization" />
+            <MobileMenuLink href="/settings/data" label="Data & Account Files" />
             <MobileMenuLink href="/settings/payments" label="Payments" />
-            <MobileMenuLink href="/settings/account" label="Data and account requests" />
-            <MobileMenuInfoCardText text="Manage your account, profile controls, personalization, blocked users, and data-related settings from one clean area." />
+            <MobileMenuInfoCardText text="Manage your profile, sign-in security, personalization, account files, and future payment settings from one clean area." />
           </div>
         ) : null}
 
         {activeSection === "settingsPrivacy" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Privacy and safety</div>
-            <MobileMenuLink href="/settings/profile-visibility" label="Profile visibility" />
-            <MobileMenuLink href="/settings/privacy-safety" label="Privacy and safety center" />
-            <MobileMenuLink href="/settings/blocked-users" label="Blocked users" />
+            <div style={mobileMenuSectionHeadingStyle}>Privacy & Safety</div>
+            <MobileMenuLink href="/settings/profile-visibility" label="Profile Visibility" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Privacy & Safety Center" />
+            <MobileMenuLink href="/settings/blocked-users" label="Blocked Users" />
             <MobileMenuLink href="/settings/notifications" label="Notifications" badge={notificationsCount || undefined} />
-            <MobileMenuLink href="/settings/content-feed" label="Posts, comments, and feed" />
-            <MobileMenuLink href="/settings/content-feed" label="Reels preferences" />
-            <MobileMenuLink href="/settings/privacy-safety" label="Message requests" />
-            <MobileMenuLink href="/settings/privacy-safety" label="Reporting and moderation" />
+            <MobileMenuLink href="/settings/content-feed" label="Posts, Comments & Feed" />
+            <MobileMenuLink href="/settings/content-feed" label="Reels Preferences" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Message Requests" />
+            <MobileMenuLink href="/settings/privacy-safety" label="Reporting & Moderation" />
             <MobileMenuInfoCardText text="Control visibility, blocked accounts, notifications, reports, feed preferences, and who can interact with you." />
           </div>
         ) : null}
 
         {activeSection === "settingsHelp" ? (
           <div style={mobileMenuListWrapStyle}>
-            <div style={mobileMenuSectionHeadingStyle}>Help and legal</div>
+            <div style={mobileMenuSectionHeadingStyle}>Help & Legal</div>
             <MobileMenuLink href="/settings/help-support" label="Contact Parapost Network" />
-            <MobileMenuLink href="/settings/help-support" label="Report a problem" />
-            <MobileMenuLink href="/settings/help-support" label="Account help" />
-            <MobileMenuLink href="/settings/help-support" label="Safety resources" />
-            <MobileMenuLink href="/settings/legal" label="Legal center" />
+            <MobileMenuLink href="/settings/help-support" label="Report a Problem" />
+            <MobileMenuLink href="/settings/help-support" label="Account Help" />
+            <MobileMenuLink href="/settings/help-support" label="Safety Resources" />
+            <MobileMenuLink href="/settings/legal" label="Legal Center" />
             <MobileMenuLink href="/settings/legal" label="Terms of Service" />
             <MobileMenuLink href="/settings/legal" label="Privacy Policy" />
             <MobileMenuLink href="/settings/legal" label="Community Guidelines" />
@@ -8385,9 +8535,9 @@ const mobileMenuDividerStyle: CSSProperties = {
 
 const mobileMenuListRowStyle: CSSProperties = {
   minHeight: 58,
-  padding: "0 4px",
+  padding: "0 2px",
   border: "none",
-  borderBottom: "1px solid rgba(255,255,255,0.055)",
+  borderBottom: "1px solid rgba(255,255,255,0.060)",
   background: "transparent",
   color: "#fff",
   textDecoration: "none",
@@ -8417,8 +8567,8 @@ const mobileMenuRowLabelStyle: CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
-  fontSize: 20,
-  fontWeight: 650,
+  fontSize: 19,
+  fontWeight: 630,
   letterSpacing: "-0.025em",
 };
 
@@ -9237,24 +9387,25 @@ const logoNetworkStyle: CSSProperties = { color: "var(--parapost-accent-text)", 
 const sidebarNavStyle: CSSProperties = { display: "grid", gap: 8 };
 
 const sidebarItemStyle: CSSProperties = {
-  minHeight: 52,
-  borderRadius: 16,
+  minHeight: 48,
+  borderRadius: 14,
   color: "#d1d5db",
   textDecoration: "none",
   display: "grid",
-  gridTemplateColumns: "28px 1fr auto",
+  gridTemplateColumns: "26px 1fr auto",
   alignItems: "center",
   gap: 10,
-  padding: "0 16px",
+  padding: "0 14px",
   border: "1px solid transparent",
 };
 
 const activeSidebarItemStyle: CSSProperties = {
   ...sidebarItemStyle,
   color: "#fff",
-  background: "linear-gradient(90deg, var(--parapost-accent-active-bg), color-mix(in srgb, var(--parapost-accent-1) 22%, transparent))",
-  border: "1px solid var(--parapost-accent-active-border)",
-  boxShadow: "0 0 24px var(--parapost-accent-glow)",
+  background:
+    "linear-gradient(90deg, color-mix(in srgb, var(--parapost-accent-2) 18%, transparent), rgba(255,255,255,0.040))",
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-text) 22%, transparent)",
+  boxShadow: "inset 3px 0 0 var(--parapost-accent-2), 0 10px 24px rgba(0,0,0,0.16)",
 };
 
 const mutedSidebarItemStyle: CSSProperties = {
@@ -9310,37 +9461,74 @@ const goLiveSoonBadgeStyle: CSSProperties = { marginLeft: "auto", borderRadius: 
 const sidebarProfileStyle: CSSProperties = { marginTop: 22, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, padding: 10, background: "rgba(255,255,255,0.04)" };
 
 const desktopTopBarStyle: CSSProperties = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: 18,
-  marginBottom: 22,
+  gap: 14,
+  marginBottom: 18,
+  width: "100%",
 };
 
 const searchWrapStyle: CSSProperties = {
   position: "relative",
-  height: 54,
-  borderRadius: 22,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.055)",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 14px 36px rgba(0,0,0,0.18)",
+  height: 48,
+  borderRadius: 18,
+  border: "1px solid rgba(255,255,255,0.105)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.032))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.030), 0 12px 26px rgba(0,0,0,0.18)",
   display: "flex",
   alignItems: "center",
   gap: 12,
-  padding: "0 18px",
+  padding: "0 16px",
   color: "#d1d5db",
-  flex: 1,
-  maxWidth: 620,
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
 };
 
 const searchInputStyle: CSSProperties = { flex: 1, minWidth: 0, height: "100%", background: "transparent", color: "#fff", border: 0, outline: 0, fontSize: 15, fontWeight: 750 };
-const searchFilterButtonStyle: CSSProperties = { width: 36, height: 36, borderRadius: 14, border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.045)", color: "#d1d5db", cursor: "pointer", display: "grid", placeItems: "center", gap: 4 };
+const searchFilterButtonStyle: CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.09)",
+  background: "rgba(255,255,255,0.035)",
+  color: "#d1d5db",
+  cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+  gap: 4,
+};
 const searchDropdownStyle: CSSProperties = { position: "absolute", left: 0, right: 0, top: "calc(100% + 10px)", borderRadius: 20, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(8,10,18,0.96)", backdropFilter: "blur(18px)", padding: 12, zIndex: 80, boxShadow: "0 22px 60px rgba(0,0,0,0.5)" };
 
 const topActionRowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 14 };
 const squarePurpleButtonStyle: CSSProperties = { width: 54, height: 54, borderRadius: 16, display: "grid", placeItems: "center", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 55%, transparent)", background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-3))", color: "#fff", boxShadow: "0 0 26px var(--parapost-accent-strong-glow)", cursor: "pointer" };
-const topIconButtonStyle: CSSProperties = { position: "relative", width: 44, height: 44, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", textDecoration: "none", border: "1px solid var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" };
-const topProfileButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 16, display: "grid", placeItems: "center", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", overflow: "visible" };
+const topIconButtonStyle: CSSProperties = {
+  position: "relative",
+  width: 42,
+  height: 42,
+  borderRadius: 14,
+  display: "grid",
+  placeItems: "center",
+  color: "#fff",
+  textDecoration: "none",
+  border: "1px solid rgba(255,255,255,0.105)",
+  background: "rgba(255,255,255,0.045)",
+  flexShrink: 0,
+};
+const topProfileButtonStyle: CSSProperties = {
+  width: 42,
+  height: 42,
+  borderRadius: 14,
+  display: "grid",
+  placeItems: "center",
+  textDecoration: "none",
+  border: "1px solid rgba(255,255,255,0.105)",
+  background: "rgba(255,255,255,0.040)",
+  overflow: "visible",
+  flexShrink: 0,
+};
 const topBadgeStyle: CSSProperties = { position: "absolute", top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 999, background: "var(--parapost-accent-1)", color: "#fff", fontSize: 12, fontWeight: 950, display: "grid", placeItems: "center", padding: "0 6px" };
 
 const showcaseCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 14, marginBottom: 18, overflow: "hidden" };
@@ -10226,18 +10414,75 @@ const profileShowcaseCreateButtonStyle: CSSProperties = {
   boxShadow: "0 20px 38px color-mix(in srgb, var(--parapost-accent-1) 34%, transparent)",
 };
 
-const composerCardStyle: CSSProperties = { borderRadius: 24, border: "1px solid var(--parapost-accent-border)", background: "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 36%), linear-gradient(180deg, rgba(20,26,43,0.90), rgba(9,12,21,0.92))", padding: 16, marginBottom: 16, boxShadow: "0 18px 46px rgba(0,0,0,0.30), 0 0 28px var(--parapost-accent-glow), inset 0 1px 0 rgba(255,255,255,0.045)", overflow: "hidden", scrollMarginTop: 96 };
+const composerCardStyle: CSSProperties = {
+  borderRadius: 22,
+  border: "1px solid rgba(255,255,255,0.105)",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.032))",
+  padding: 16,
+  marginBottom: 16,
+  boxShadow: "0 16px 34px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)",
+  overflow: "hidden",
+  scrollMarginTop: 96,
+};
 const composerHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 14 };
 const composerIdentityStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
 const composerTitleStyle: CSSProperties = { margin: 0, color: "#fff", fontSize: 17, fontWeight: 950, letterSpacing: "-0.02em" };
 const composerSubtitleStyle: CSSProperties = { margin: "3px 0 0", color: "#9ca3af", fontSize: 12.5, lineHeight: 1.35 };
 const composerDestinationBadgeStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 30, borderRadius: 999, padding: "0 11px", color: "var(--parapost-accent-readable-text)", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap", background: "var(--parapost-accent-active-bg)", border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 35%, transparent)", boxShadow: "0 10px 24px var(--parapost-accent-active-bg)" };
 const composerTopRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", gap: 12, alignItems: "center" };
-const composerInputStyle: CSSProperties = { width: "100%", minHeight: 58, maxHeight: 190, resize: "none", overflowY: "auto", border: "1px solid rgba(255,255,255,0.11)", borderRadius: 18, background: "rgba(255,255,255,0.04)", color: "#fff", outline: 0, padding: "16px 18px", fontSize: 15.5, lineHeight: 1.45, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" };
-const composerImageButtonStyle: CSSProperties = { width: 46, height: 46, borderRadius: 15, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0 };
+const composerInputStyle: CSSProperties = {
+  width: "100%",
+  minHeight: 60,
+  maxHeight: 190,
+  resize: "none",
+  overflowY: "auto",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 18,
+  background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.032))",
+  color: "#fff",
+  outline: 0,
+  padding: "15px 17px",
+  fontSize: 15,
+  lineHeight: 1.45,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.030)",
+};
+const composerImageButtonStyle: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.040)",
+  color: "#fff",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  flexShrink: 0,
+};
 const composerActionGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 9, alignItems: "center", marginTop: 13 };
-const composerActionPillStyle: CSSProperties = { minHeight: 39, borderRadius: 14, border: "1px solid rgba(255,255,255,0.085)", background: "rgba(255,255,255,0.038)", color: "#fff", padding: "0 12px", fontWeight: 850, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", whiteSpace: "nowrap", fontSize: 12.5, transition: "border-color 160ms ease, background 160ms ease, transform 160ms ease" };
-const composerActionPillActiveStyle: CSSProperties = { border: "1px solid var(--parapost-accent-active-border)", background: "linear-gradient(135deg, var(--parapost-accent-soft), color-mix(in srgb, var(--parapost-accent-2) 12%, transparent))", boxShadow: "0 0 18px var(--parapost-accent-glow)" };
+const composerActionPillStyle: CSSProperties = {
+  minHeight: 38,
+  borderRadius: 13,
+  border: "1px solid rgba(255,255,255,0.085)",
+  background: "rgba(255,255,255,0.035)",
+  color: "#fff",
+  padding: "0 12px",
+  fontWeight: 850,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  textDecoration: "none",
+  whiteSpace: "nowrap",
+  fontSize: 12.5,
+  transition: "border-color 160ms ease, background 160ms ease, transform 160ms ease",
+};
+const composerActionPillActiveStyle: CSSProperties = {
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-text) 26%, transparent)",
+  background: "color-mix(in srgb, var(--parapost-accent-2) 10%, transparent)",
+  boxShadow: "inset 0 -2px 0 var(--parapost-accent-2)",
+};
 const composerActionDisabledStyle: CSSProperties = { opacity: 0.46, background: "rgba(255,255,255,0.018)", border: "1px dashed rgba(255,255,255,0.11)", cursor: "not-allowed", color: "#9ca3af" };
 const composerActionNoteStyle: CSSProperties = { borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", color: "#a1a1aa", padding: "2px 6px", fontSize: 10, fontWeight: 900, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 };
 const composerActionIconStyle: CSSProperties = { width: 24, height: 24, borderRadius: 8, display: "grid", placeItems: "center", color: "#fff", fontSize: 13, fontWeight: 950, lineHeight: 1 };
@@ -10302,27 +10547,28 @@ const feedTabsStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
   alignItems: "center",
-  gap: 6,
-  borderRadius: 24,
-  border: "1px solid rgba(255,255,255,0.11)",
-  background: "rgba(255,255,255,0.045)",
-  padding: 8,
-  margin: "16px 0",
+  gap: 4,
+  borderRadius: 20,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.025))",
+  padding: 6,
+  margin: "14px 0",
   overflow: "hidden",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.025)",
 };
 
 const feedTabStyle: CSSProperties = {
   minWidth: 0,
   width: "100%",
-  height: 48,
+  height: 44,
   border: 0,
   background: "transparent",
-  color: "#d1d5db",
+  color: "#cbd5e1",
   padding: "0 6px",
-  borderRadius: 18,
+  borderRadius: 14,
   cursor: "pointer",
-  fontSize: "clamp(12px, 3.15vw, 16px)",
-  fontWeight: 750,
+  fontSize: "clamp(12px, 3.15vw, 15px)",
+  fontWeight: 760,
   letterSpacing: "-0.02em",
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -10334,9 +10580,10 @@ const feedTabStyle: CSSProperties = {
 
 const activeFeedTabStyle: CSSProperties = {
   ...feedTabStyle,
-  color: "var(--parapost-accent-text)",
-  background: "var(--parapost-accent-active-bg)",
-  boxShadow: "inset 0 -3px 0 var(--parapost-accent-2)",
+  color: "#fff",
+  background:
+    "linear-gradient(180deg, color-mix(in srgb, var(--parapost-accent-2) 16%, rgba(255,255,255,0.055)), rgba(255,255,255,0.035))",
+  boxShadow: "inset 0 -2px 0 var(--parapost-accent-2), 0 8px 18px rgba(0,0,0,0.18)",
   fontWeight: 900,
 };
 
@@ -10349,7 +10596,11 @@ const disabledFeedTabStyle: CSSProperties = {
   opacity: 0.55,
 };
 
-const feedStackStyle: CSSProperties = { display: "grid", gap: 16 };
+const feedStackStyle: CSSProperties = {
+  display: "grid",
+  gap: 16,
+  marginTop: 16,
+};
 const emptyStateStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", padding: 22 };
 const feedPulseStyle: CSSProperties = {
   display: "grid",
@@ -10360,6 +10611,10 @@ const feedPulseStyle: CSSProperties = {
   border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
   background: "linear-gradient(135deg, var(--parapost-accent-active-bg), rgba(15,23,42,0.72))",
   padding: 16,
+  marginBottom: 0,
+  overflow: "hidden",
+  position: "relative",
+  zIndex: 1,
   boxShadow: "0 18px 42px rgba(0,0,0,0.22)",
 };
 const feedPulseEyebrowStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 11, fontWeight: 950, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 };
@@ -10390,7 +10645,16 @@ const linkPreviewEyebrowStyle: CSSProperties = { color: "#9ca3af", fontSize: 11,
 const linkPreviewTitleStyle: CSSProperties = { color: "#fff", fontSize: 15, fontWeight: 950, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const linkPreviewDomainStyle: CSSProperties = { color: "#93c5fd", fontSize: 13, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
-const postCardStyle: CSSProperties = { borderRadius: 26, border: "1px solid rgba(255,255,255,0.12)", background: "linear-gradient(180deg, rgba(255,255,255,0.066), rgba(255,255,255,0.034))", padding: 18, boxShadow: "0 18px 46px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.045)" };
+const postCardStyle: CSSProperties = {
+  borderRadius: 22,
+  border: "1px solid rgba(255,255,255,0.105)",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.058), rgba(255,255,255,0.030))",
+  padding: 18,
+  position: "relative",
+  zIndex: 0,
+  boxShadow: "0 15px 34px rgba(0,0,0,0.23), inset 0 1px 0 rgba(255,255,255,0.030)",
+};
 const postHeaderStyle: CSSProperties = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 13 };
 const postAuthorStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 12, minWidth: 0 };
 const postAuthorNameLineStyle: CSSProperties = { display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap", minWidth: 0 };
@@ -10649,7 +10913,7 @@ const mobileBottomNavStyle: CSSProperties = {
   bottom: "max(10px, env(safe-area-inset-bottom))",
   zIndex: 160,
   width: "min(calc(100vw - 22px), 520px)",
-  minHeight: 78,
+  minHeight: 76,
   transform: "translateX(-50%)",
   display: "grid",
   gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
@@ -10657,16 +10921,16 @@ const mobileBottomNavStyle: CSSProperties = {
   justifyItems: "center",
   gap: 2,
   padding: "8px 8px 10px",
-  borderRadius: 28,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "linear-gradient(180deg, rgba(9,11,20,0.96), rgba(5,7,13,0.965))",
+  borderRadius: 24,
+  border: "1px solid rgba(255,255,255,0.105)",
+  background: "linear-gradient(180deg, rgba(9,11,20,0.965), rgba(5,7,13,0.975))",
   backdropFilter: "blur(20px)",
-  boxShadow: "0 22px 60px rgba(0,0,0,0.62), 0 0 34px color-mix(in srgb, var(--parapost-accent-2) 16%, transparent)",
+  boxShadow: "0 18px 44px rgba(0,0,0,0.56)",
 };
 const mobileNavItemStyle: CSSProperties = {
   width: "100%",
   minWidth: 0,
-  height: 58,
+  height: 56,
   color: "#dbe4f0",
   textDecoration: "none",
   display: "grid",
@@ -10678,13 +10942,13 @@ const mobileNavItemStyle: CSSProperties = {
   lineHeight: 1.05,
   fontWeight: 850,
   textAlign: "center",
-  borderRadius: 18,
+  borderRadius: 16,
 };
 const mobileNavItemActiveStyle: CSSProperties = {
   ...mobileNavItemStyle,
   color: "#ffffff",
-  background: "radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--parapost-accent-2) 34%, transparent), transparent 58%)",
-  textShadow: "0 0 16px color-mix(in srgb, var(--parapost-accent-2) 58%, transparent)",
+  background: "rgba(255,255,255,0.045)",
+  boxShadow: "inset 0 -2px 0 var(--parapost-accent-2)",
 };
 const mobileNavIconSlotStyle: CSSProperties = {
   width: 28,

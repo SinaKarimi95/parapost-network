@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type ProfileSettingsRow = {
@@ -30,17 +29,12 @@ const emptyForm: ProfileSettingsForm = {
 
 function BackToPrevious({
   label = "← Back",
-  fallbackHref = "/settings",
+  fallbackHref = "/settings/account",
 }: {
   label?: string;
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -68,8 +62,6 @@ function getDisplayName(form: ProfileSettingsForm, username: string) {
 }
 
 export default function ProfileSettingsPage() {
-  const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -99,7 +91,11 @@ export default function ProfileSettingsPage() {
         if (cancelled) return;
 
         if (userError || !user) {
-          router.push("/");
+          setUserId(null);
+          setUsername("");
+          setForm(emptyForm);
+          setErrorMessage("Please sign in to edit your profile settings.");
+          setLoading(false);
           return;
         }
 
@@ -139,7 +135,7 @@ export default function ProfileSettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, []);
 
   const handleSave = async () => {
     if (!userId || saving) return;
@@ -159,7 +155,6 @@ export default function ProfileSettingsPage() {
           full_name: cleanFullName || null,
           bio: cleanBio || null,
           avatar_url: cleanAvatarUrl || null,
-          is_private: form.is_private,
         })
         .eq("id", userId);
 
@@ -176,7 +171,7 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-28 text-white sm:px-6 lg:px-8">
+      <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
           <div className="animate-pulse rounded-[32px] border border-white/10 bg-white/[0.055] p-6 shadow-2xl">
             <div className="mb-5 h-8 w-48 rounded bg-white/10" />
@@ -191,7 +186,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -208,9 +203,9 @@ export default function ProfileSettingsPage() {
       <section className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
+            <BackToPrevious label="← Back to Your Account" fallbackHref="/settings/account" />
+            <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
+              Settings
             </Link>
           </div>
 
@@ -242,8 +237,8 @@ export default function ProfileSettingsPage() {
               Update how your profile appears.
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Manage your display name, bio, avatar preview, and profile visibility from one clean settings page.
-              These controls are designed to work smoothly across desktop, tablet, and mobile.
+              Manage your display name, bio, and avatar preview from one clean settings page.
+              Profile visibility has its own dedicated control so privacy changes stay clear and easy to review.
             </p>
           </div>
 
@@ -377,36 +372,31 @@ export default function ProfileSettingsPage() {
               <div className="rounded-[24px] border border-white/10 bg-black/25 p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-base font-black text-white">Private Profile</p>
+                    <p className="text-base font-black text-white">Profile Visibility</p>
                     <p className="mt-1 text-sm leading-6 text-slate-400">
-                      When this is on, your profile shell can remain visible while protected profile content is hidden from people who should not have access.
+                      Your current visibility is shown here. Use the dedicated Profile Visibility page to switch your profile between public and private.
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    aria-pressed={form.is_private}
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        is_private: !prev.is_private,
-                      }))
-                    }
-                    className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
-                      form.is_private ? "border-purple-300/40 bg-purple-400" : "border-white/10 bg-white/15"
-                    }`}
+                  <span
+                    className="rounded-full border px-3 py-1.5 text-xs font-black"
+                    style={{
+                      borderColor: "var(--parapost-accent-border)",
+                      background: "var(--parapost-accent-muted-bg)",
+                      color: "var(--parapost-accent-readable-text)",
+                    }}
                   >
-                    <span
-                      className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
-                        form.is_private ? "translate-x-8" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
+                    {form.is_private ? "Private" : "Public"}
+                  </span>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm leading-6 text-slate-300">
-                  Current setting: <span className="font-black text-white">{form.is_private ? "Private" : "Public"}</span>
-                </div>
+                <Link
+                  href="/settings/profile-visibility"
+                  className="mt-4 inline-flex rounded-full border px-4 py-2 text-sm font-black text-white no-underline transition hover:bg-white/10"
+                  style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
+                >
+                  Manage Profile Visibility
+                </Link>
               </div>
 
               {statusMessage ? (
@@ -425,7 +415,7 @@ export default function ProfileSettingsPage() {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || !userId}
                   className="rounded-2xl px-5 py-3 text-sm font-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{
                     background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -438,10 +428,14 @@ export default function ProfileSettingsPage() {
 
                 <button
                   type="button"
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.location.href = "/settings/account";
+                    }
+                  }}
                   className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
                 >
-                  Cancel
+                  Back to Your Account
                 </button>
               </div>
             </div>

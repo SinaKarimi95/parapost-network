@@ -225,11 +225,6 @@ function BackToPrevious({
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -450,29 +445,48 @@ export default function PersonalizationSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/25 blur-3xl" />
-      <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-indigo-500/12 blur-3xl" />
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+      <div
+        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
+      <div
+        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-muted-bg)" }}
+      />
+      <div
+        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
+          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
-            </Link>
-          </div>
-
-          <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
+          <span
+            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background: "var(--parapost-accent-muted-bg)",
+              color: "var(--parapost-accent-readable-text)",
+              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
+            }}
+          >
             Personalization
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/14 via-white/[0.065] to-slate-950/70 p-5 shadow-2xl shadow-purple-950/20 ring-1 ring-white/[0.035] sm:p-7">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+          <div
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.06), rgba(15,23,42,0.70))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+            }}
+          >
+            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
               Personalization
             </p>
 
@@ -481,7 +495,7 @@ export default function PersonalizationSettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Choose account-based accent colors, appearance preferences, and font styles while keeping the main
+              Choose account-based accent colors, theme appearance, and font styles while keeping the main
               Parapost Network identity purple, black, glassy, and premium by default.
             </p>
 
@@ -518,7 +532,15 @@ export default function PersonalizationSettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035]">
+          <aside
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.56))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
+            }}
+          >
             <div className="flex items-center gap-4">
               <div className={`grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br ${selectedAccent.gradient} text-2xl font-black ring-1 ring-white/15`}>
                 {currentProfile?.avatar_url ? (
@@ -657,8 +679,8 @@ export default function PersonalizationSettingsPage() {
                   },
                   {
                     title: "System Appearance",
-                    status: "Prepared",
-                    description: "A future system setting can follow device appearance once light mode is added.",
+                    status: "Planned",
+                    description: "A future system setting can follow device appearance when additional modes are ready.",
                   },
                   {
                     title: "Readable Layout",

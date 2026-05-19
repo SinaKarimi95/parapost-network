@@ -75,11 +75,6 @@ function BackToPrevious({
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -157,7 +152,7 @@ export default function PaymentsSettingsPage() {
   }, []);
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -173,13 +168,7 @@ export default function PaymentsSettingsPage() {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
-
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
-            </Link>
-          </div>
+          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           <span
             className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
@@ -216,7 +205,7 @@ export default function PaymentsSettingsPage() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Payments are not live yet on Parapost Network. This page gives users a clear place to understand upcoming promoted posts, sponsored content, billing history, creator tools, and payment support before those features are available.
+              Payments are not live yet on Parapost Network. This page gives users a clear place to understand upcoming promoted posts, sponsored content, creator tools, billing history, and payment support before those features are available.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -237,7 +226,15 @@ export default function PaymentsSettingsPage() {
                 className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
-                Back to Settings
+                Settings Center
+              </Link>
+
+              <Link
+                href="/settings/help-support"
+                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
+              >
+                Help & Support
               </Link>
 
               {canSeeAdminSupport ? (
@@ -368,7 +365,7 @@ export default function PaymentsSettingsPage() {
                 Payment Safety
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em] text-white">
-                Payments should stay controlled before launch.
+                Payments stay controlled before launch.
               </h2>
 
               <div className="mt-5 grid gap-3">
@@ -440,6 +437,37 @@ export default function PaymentsSettingsPage() {
                 <h3 className="text-lg font-black tracking-[-0.02em]">Data & Account</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-400">
                   Request data help, account deletion, data deletion, correction, or access support.
+                </p>
+              </section>
+            </Link>
+
+            <Link href="/settings/help-support" className="block text-white no-underline">
+              <section
+                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                style={{
+                  borderColor: "var(--parapost-accent-border)",
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
+                }}
+              >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span
+                    className="text-[11px] font-black uppercase tracking-[0.16em]"
+                    style={{ color: "var(--parapost-accent-text)" }}
+                  >
+                    Help
+                  </span>
+                  <span
+                    className="rounded-full border px-2.5 py-1 text-[11px] font-black text-slate-300"
+                    style={{ borderColor: "var(--parapost-accent-border)", background: "var(--parapost-accent-muted-bg)" }}
+                  >
+                    Open
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-black tracking-[-0.02em]">Help & Support</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Contact Parapost Network support about future payment, sponsorship, promotion, or billing questions.
                 </p>
               </section>
             </Link>

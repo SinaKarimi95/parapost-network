@@ -84,19 +84,19 @@ const preferenceItems: FeedPreferenceItem[] = [
 const contentControlCards = [
   {
     title: "Muted Words",
-    description: "A future control for hiding words, topics, or phrases you do not want to see often.",
+    description: "Prepared control for hiding words, topics, or phrases you do not want to see often.",
   },
   {
     title: "Hidden Hashtags",
-    description: "A future control for reducing hashtags or topics that are not relevant to your feed.",
+    description: "Prepared control for reducing hashtags or topics that are not relevant to your feed.",
   },
   {
     title: "Reels Preferences",
-    description: "A future control for shaping the types of Parapost Reels shown in discovery and timelines.",
+    description: "Prepared control for shaping the types of Parapost Reels shown in discovery and timelines.",
   },
   {
     title: "Discovery Filters",
-    description: "A future control for refining people, posts, Reels, and topics recommended to you.",
+    description: "Prepared control for refining people, posts, Reels, and topics recommended to you.",
   },
 ];
 
@@ -177,17 +177,12 @@ function safeReadStoredPreferences(userId: string): FeedPreferences {
 
 function BackToPrevious({
   label = "← Back",
-  fallbackHref = "/settings",
+  fallbackHref = "/settings/privacy-safety",
 }: {
   label?: string;
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -333,7 +328,7 @@ export default function ContentFeedSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -350,10 +345,10 @@ export default function ContentFeedSettingsPage() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
+            <BackToPrevious label="← Back to Privacy & Safety" fallbackHref="/settings/privacy-safety" />
 
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
+            <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
+              Settings
             </Link>
           </div>
 
@@ -411,11 +406,11 @@ export default function ContentFeedSettingsPage() {
               </a>
 
               <Link
-                href="/dashboard"
+                href="/settings/privacy-safety"
                 className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
-                Open Dashboard
+                Privacy & Safety
               </Link>
 
               {canSeeAdminSupport ? (
@@ -567,10 +562,17 @@ export default function ContentFeedSettingsPage() {
 
                         <span
                           className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
-                            enabled
-                              ? "border-purple-300/40 bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                              : "border-white/10 bg-white/15"
+                            enabled ? "" : "border-white/10 bg-white/15"
                           }`}
+                          style={
+                            enabled
+                              ? {
+                                  borderColor: "var(--parapost-accent-border)",
+                                  background:
+                                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                                }
+                              : undefined
+                          }
                         >
                           <span
                             className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
@@ -603,7 +605,13 @@ export default function ContentFeedSettingsPage() {
                     type="button"
                     onClick={handleSavePreferences}
                     disabled={saving || pageLoading || !currentUserId}
-                    className="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-2xl px-5 py-3 text-sm font-black shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                      color: "var(--parapost-accent-button-text)",
+                      boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+                    }}
                   >
                     {saving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}
                   </button>
@@ -628,11 +636,11 @@ export default function ContentFeedSettingsPage() {
                 Advanced Content Controls
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em]">
-                More filtering tools can be added as the platform grows.
+                More filtering tools are prepared for future expansion.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
                 Parapost Network can expand this area with muted words, hidden hashtags, discovery filters,
-                Reels content preferences, and stronger feed controls after the core launch features are stable.
+                Reels content preferences, and stronger feed controls as the platform grows.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">

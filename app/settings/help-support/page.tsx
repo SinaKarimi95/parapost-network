@@ -50,7 +50,7 @@ const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string
   {
     value: "payments",
     label: "Payments",
-    helper: "Payment questions, promoted posts, sponsorships, billing, or business tools once payments are available.",
+    helper: "Future payment questions, promoted posts, sponsorships, billing, or business tools once payments are available.",
   },
   {
     value: "bug_report",
@@ -90,13 +90,18 @@ const quickHelpCards = [
     description: "Terms, Privacy Policy, Community Guidelines, and Data Deletion Policy.",
     href: "/settings/legal",
   },
+  {
+    title: "Payments",
+    description: "Coming-soon payment, promotion, sponsorship, and business-tool support.",
+    href: "/settings/payments",
+  },
 ];
 
 const supportExpectations = [
   "Do not share passwords or sensitive payment details in support messages.",
   "Use the right topic so support can sort messages faster.",
-  "Safety, privacy, and data deletion requests should be treated as higher priority.",
-  "Bug reports should include what page you were on and what you clicked.",
+  "Safety, privacy, and data deletion requests are reviewed with higher priority.",
+  "Bug reports are easier to review when you include the page and what you clicked.",
 ];
 
 function getInitial(profile: ProfilePreview | null) {
@@ -125,11 +130,6 @@ function BackToPrevious({
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -269,7 +269,7 @@ export default function HelpSupportSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -285,13 +285,7 @@ export default function HelpSupportSettingsPage() {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
-
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
-            </Link>
-          </div>
+          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           <span
             className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"

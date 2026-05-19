@@ -49,26 +49,14 @@ function BackToPrevious({
   label?: string;
   fallbackHref?: string;
 }) {
-  const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      window.location.href = fallbackHref;
-    }
-  };
-
   return (
-    <button
-      type="button"
-      onClick={handleBack}
+    <Link
+      href={fallbackHref}
       className="text-sm font-bold no-underline transition hover:text-white"
       style={{ color: "var(--parapost-accent-text)" }}
     >
       {label}
-    </button>
+    </Link>
   );
 }
 
@@ -234,7 +222,10 @@ export default function AccountSecuritySettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main
+      className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8"
+      style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
+    >
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -252,10 +243,6 @@ export default function AccountSecuritySettingsPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
-
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
-            </Link>
           </div>
 
           <span
@@ -479,9 +466,9 @@ export default function AccountSecuritySettingsPage() {
                 Account deletion stays controlled.
               </h2>
               <p className="mt-4 text-sm leading-7 text-amber-50/85">
-                Parapost Network should not use a casual one-tap delete flow. Account and data deletion requests
-                should stay inside a careful process so users understand what happens to their profile, posts,
-                media, messages, comments, reports, and safety records.
+                Account and data deletion requests use a careful review process so users understand what happens
+                to their profile, posts, media, messages, comments, reports, and safety records before anything is
+                removed.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -545,7 +532,7 @@ export default function AccountSecuritySettingsPage() {
               <p className="mb-2 text-xs font-black uppercase tracking-[0.16em]" style={{ color: "var(--parapost-accent-text)" }}>
                 Related Account Areas
               </p>
-              <h3 className="text-lg font-black tracking-[-0.02em]">Only account-related shortcuts</h3>
+              <h3 className="text-lg font-black tracking-[-0.02em]">Account help and data tools</h3>
 
               <div className="mt-4 grid gap-3">
                 <Link

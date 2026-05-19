@@ -89,7 +89,7 @@ const accountDataCards = [
     eyebrow: "Account",
     title: "Account Deletion",
     description:
-      "Start a careful account deletion request so support can review the request, confirm details, and explain what happens next.",
+      "Start a careful account deletion request so support can review details, confirm ownership, and explain what happens next.",
     items: ["Confirm request", "Review account data", "Support follow-up", "Final confirmation"],
     active: true,
   },
@@ -140,17 +140,12 @@ function getRequestLabel(value: RequestType) {
 
 function BackToPrevious({
   label = "← Back",
-  fallbackHref = "/settings",
+  fallbackHref = "/settings/account",
 }: {
   label?: string;
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -302,28 +297,54 @@ export default function DataAccountSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+      <div
+        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
+      <div
+        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-muted-bg)" }}
+      />
+      <div
+        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
+            <BackToPrevious label="← Back to Your Account" fallbackHref="/settings/account" />
 
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
+            <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
+              Settings
             </Link>
           </div>
 
-          <span className="rounded-full border border-purple-400/30 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100">
+          <span
+            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background: "var(--parapost-accent-muted-bg)",
+              color: "var(--parapost-accent-readable-text)",
+              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
+            }}
+          >
             Data & Account
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-white/[0.075] via-purple-900/20 to-slate-950/60 p-5 shadow-2xl sm:p-7">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+          <div
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.06), rgba(15,23,42,0.70))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+            }}
+          >
+            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
               Data & Account
             </p>
 
@@ -339,14 +360,29 @@ export default function DataAccountSettingsPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#data-request"
-                className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/30"
+                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                  color: "var(--parapost-accent-button-text)",
+                  boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+                }}
               >
                 Start Request
               </a>
 
               <Link
+                href="/settings/account"
+                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
+              >
+                Your Account
+              </Link>
+
+              <Link
                 href="/settings/privacy-safety"
-                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
                 Privacy & Safety
               </Link>
@@ -362,9 +398,23 @@ export default function DataAccountSettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[30px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl">
+          <aside
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.56))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
+            }}
+          >
             <div className="flex items-center gap-4">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
+              <div
+                className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                }}
+              >
                 {currentProfile?.avatar_url ? (
                   <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
                 ) : (
@@ -381,7 +431,7 @@ export default function DataAccountSettingsPage() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
-              <div className="text-xs font-black uppercase tracking-[0.14em] text-purple-200">
+              <div className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: "var(--parapost-accent-text)" }}>
                 Account Status
               </div>
               <div className="mt-2 text-2xl font-black">
@@ -402,10 +452,18 @@ export default function DataAccountSettingsPage() {
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
-            <section id="data-request" className="rounded-[28px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+            <section
+              id="data-request"
+              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              style={{
+                borderColor: "var(--parapost-accent-border)",
+                background:
+                  "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.55))",
+              }}
+            >
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+                  <p className="mb-2 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
                     Request Form
                   </p>
                   <h2 className="text-2xl font-black tracking-[-0.03em]">
@@ -431,7 +489,8 @@ export default function DataAccountSettingsPage() {
                     onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                       setRequestType(event.target.value as RequestType)
                     }
-                    className="w-full rounded-2xl border border-purple-200/15 bg-black/35 px-4 py-3 text-white outline-none focus:border-purple-300/50"
+                    className="w-full rounded-2xl border bg-black/35 px-4 py-3 text-white outline-none"
+                    style={{ borderColor: "var(--parapost-accent-border)" }}
                   >
                     {requestTypes.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -468,7 +527,8 @@ export default function DataAccountSettingsPage() {
                     placeholder="Describe what you need help with..."
                     rows={7}
                     maxLength={5000}
-                    className="min-h-[170px] w-full resize-y rounded-2xl border border-purple-200/15 bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-purple-300/50"
+                    className="min-h-[170px] w-full resize-y rounded-2xl border bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35"
+                    style={{ borderColor: "var(--parapost-accent-border)" }}
                   />
                 </label>
 
@@ -476,8 +536,14 @@ export default function DataAccountSettingsPage() {
                   <span className="text-xs font-bold text-slate-500">{message.trim().length}/5000</span>
                   <button
                     type="submit"
-                    disabled={submitting}
-                    className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-black text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    disabled={submitting || !currentUserId}
+                    className="w-full rounded-2xl px-5 py-3 text-sm font-black shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                      color: "var(--parapost-accent-button-text)",
+                      boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+                    }}
                   >
                     {submitting ? "Sending..." : "Send Request"}
                   </button>
@@ -497,8 +563,15 @@ export default function DataAccountSettingsPage() {
               </form>
             </section>
 
-            <section className="rounded-[28px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+            <section
+              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              style={{
+                borderColor: "var(--parapost-accent-border)",
+                background:
+                  "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.55))",
+              }}
+            >
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
                 What happens next
               </p>
               <h2 className="text-2xl font-black tracking-[-0.03em]">Requests are reviewed before action.</h2>
@@ -531,12 +604,17 @@ export default function DataAccountSettingsPage() {
             {accountDataCards.map((card) => {
               const content = (
                 <section
-                  className={`rounded-[26px] border border-purple-200/15 bg-white/[0.045] p-5 shadow-xl ${
+                  className={`rounded-[26px] border p-5 shadow-xl ${
                     card.active ? "" : "opacity-70"
                   }`}
+                  style={{
+                    borderColor: "var(--parapost-accent-border)",
+                    background:
+                      "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
+                  }}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
+                    <span className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: "var(--parapost-accent-text)" }}>
                       {card.eyebrow}
                     </span>
                     {!card.active ? (

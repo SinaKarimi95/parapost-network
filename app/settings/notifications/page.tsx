@@ -152,11 +152,6 @@ function BackToPrevious({
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -303,29 +298,48 @@ export default function NotificationSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/25 blur-3xl" />
-      <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-indigo-500/12 blur-3xl" />
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+      <div
+        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
+      <div
+        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-muted-bg)" }}
+      />
+      <div
+        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
+          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
-            </Link>
-          </div>
-
-          <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
+          <span
+            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background: "var(--parapost-accent-muted-bg)",
+              color: "var(--parapost-accent-readable-text)",
+              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
+            }}
+          >
             Notifications
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/14 via-white/[0.065] to-slate-950/70 p-5 shadow-2xl shadow-purple-950/20 ring-1 ring-white/[0.035] sm:p-7">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
+          <div
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.06), rgba(15,23,42,0.70))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+            }}
+          >
+            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
               Notifications
             </p>
 
@@ -341,7 +355,13 @@ export default function NotificationSettingsPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#notification-preferences"
-                className="rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110"
+                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                  color: "var(--parapost-accent-button-text)",
+                  boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+                }}
               >
                 Notification Controls
               </a>
@@ -364,9 +384,23 @@ export default function NotificationSettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035]">
+          <aside
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.56))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
+            }}
+          >
             <div className="flex items-center gap-4">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
+              <div
+                className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                }}
+              >
                 {currentProfile?.avatar_url ? (
                   <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
                 ) : (
@@ -382,8 +416,8 @@ export default function NotificationSettingsPage() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-purple-200/15 bg-black/30 p-4 shadow-inner shadow-purple-950/10">
-              <div className="text-xs font-black uppercase tracking-[0.14em] text-purple-200">
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-4 shadow-inner shadow-black/20">
+              <div className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: "var(--parapost-accent-text)" }}>
                 Current Preference
               </div>
               <div className="mt-2 text-2xl font-black">{enabledCount}/6 On</div>
@@ -475,10 +509,17 @@ export default function NotificationSettingsPage() {
                           aria-pressed={enabled}
                           onClick={() => handleToggle(item.key)}
                           className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
-                            enabled
-                              ? "border-purple-300/40 bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                              : "border-white/10 bg-white/15"
+                            enabled ? "" : "border-white/10 bg-white/15"
                           }`}
+                          style={
+                            enabled
+                              ? {
+                                  borderColor: "var(--parapost-accent-border)",
+                                  background:
+                                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                                }
+                              : undefined
+                          }
                         >
                           <span
                             className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition ${
@@ -511,7 +552,13 @@ export default function NotificationSettingsPage() {
                     type="button"
                     onClick={handleSavePreferences}
                     disabled={saving || pageLoading || !currentUserId}
-                    className="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-2xl px-5 py-3 text-sm font-black shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                      color: "var(--parapost-accent-button-text)",
+                      boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+                    }}
                   >
                     {saving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}
                   </button>
@@ -566,7 +613,14 @@ export default function NotificationSettingsPage() {
           <aside className="space-y-4">
             {notificationInfoCards.map((card) => (
               <Link key={card.title} href={card.href} className="block text-white no-underline">
-                <section className="rounded-[26px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.045] to-slate-950/55 p-5 shadow-xl shadow-purple-950/10 transition hover:bg-purple-400/10">
+                <section
+                  className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.065]"
+                  style={{
+                    borderColor: "var(--parapost-accent-border)",
+                    background:
+                      "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.045), rgba(15,23,42,0.52))",
+                  }}
+                >
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
                       Notifications

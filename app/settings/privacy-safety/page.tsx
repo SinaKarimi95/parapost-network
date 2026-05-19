@@ -41,7 +41,7 @@ const primarySafetyActions = [
       "Choose whether your profile content is public or protected while keeping your basic profile shell visible.",
     href: "/settings/profile-visibility",
     status: "Privacy control",
-    items: ["Public profile", "Private profile", "Protected profile content"],
+    items: ["Public profile", "Private profile", "Protected content"],
   },
   {
     title: "Blocked Users",
@@ -52,20 +52,20 @@ const primarySafetyActions = [
     items: ["Blocked list", "Unblock users", "Reduce unwanted contact"],
   },
   {
-    title: "Content & Feed Controls",
+    title: "Content & Feed",
     description:
-      "Review prepared controls for feed preferences, hidden content, discovery, and future content filters.",
+      "Manage feed preferences, hidden content, muted words, discovery, and Parapost Reels content controls.",
     href: "/settings/content-feed",
     status: "Content control",
-    items: ["Feed preferences", "Hidden posts", "Reels filters"],
+    items: ["Feed preferences", "Hidden posts", "Muted words", "Reels controls"],
   },
   {
-    title: "Legal & Guidelines",
+    title: "Help & Support",
     description:
-      "Review the community rules, privacy policy areas, and launch-ready policy sections.",
-    href: "/settings/legal",
-    status: "Guidelines",
-    items: ["Community rules", "Privacy policy", "Data deletion policy"],
+      "Contact Parapost Network about privacy concerns, safety issues, reports, account access, or data help.",
+    href: "/settings/help-support",
+    status: "Support",
+    items: ["Contact support", "Report a problem", "Safety help", "Data help"],
   },
 ];
 
@@ -73,7 +73,7 @@ const trustChecklist = [
   "Private profile controls",
   "Blocked user management",
   "Support and report forms",
-  "No public support email exposed",
+  "Content and feed controls",
   "Community guidelines access",
   "Data and account request path",
 ];
@@ -103,11 +103,6 @@ function BackToPrevious({
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -248,28 +243,43 @@ export default function PrivacySafetySettingsPage() {
 
   return (
     <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-fuchsia-500/10 blur-3xl" />
+      <div
+        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-soft)" }}
+      />
+      <div
+        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "var(--parapost-accent-muted-bg)" }}
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
+          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
-            </Link>
-          </div>
-
-          <span className="rounded-full border border-purple-400/30 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100">
+          <span className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background: "var(--parapost-accent-muted-bg)",
+              color: "var(--parapost-accent-readable-text)",
+              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
+            }}
+          >
             Privacy & Safety
           </span>
         </div>
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-white/[0.075] via-purple-900/20 to-slate-950/60 p-5 shadow-2xl sm:p-7">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-              Safety Center
+          <div
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.06), rgba(15,23,42,0.70))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.38), 0 0 38px var(--parapost-accent-glow)",
+            }}
+          >
+            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
+              Privacy & Safety Center
             </p>
 
             <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
@@ -284,7 +294,13 @@ export default function PrivacySafetySettingsPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#safety-contact"
-                className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/30 transition hover:brightness-110"
+                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                  color: "var(--parapost-accent-button-text)",
+                  boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+                }}
               >
                 Send Safety Message
               </a>
@@ -303,6 +319,13 @@ export default function PrivacySafetySettingsPage() {
                 Blocked Users
               </Link>
 
+              <Link
+                href="/settings/content-feed"
+                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+              >
+                Content & Feed
+              </Link>
+
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
@@ -314,9 +337,23 @@ export default function PrivacySafetySettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[30px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl">
+          <aside
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            style={{
+              borderColor: "var(--parapost-accent-border)",
+              background:
+                "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.56))",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
+            }}
+          >
             <div className="flex items-center gap-4">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
+              <div
+                className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
+                }}
+              >
                 {currentProfile?.avatar_url ? (
                   <img
                     src={currentProfile.avatar_url}
@@ -438,12 +475,12 @@ export default function PrivacySafetySettingsPage() {
 
             <section className="rounded-[28px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-                Trust & Safety
+                Privacy Tools
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em]">Core protections before launch.</h2>
+              <h2 className="text-2xl font-black tracking-[-0.03em]">Core protections</h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                Parapost Network should give users clear ways to control privacy, contact support, report issues,
-                request account or data help, and understand community rules before public launch.
+                Parapost Network gives users clear ways to control privacy, contact support, report issues,
+                request account or data help, and understand community rules.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">

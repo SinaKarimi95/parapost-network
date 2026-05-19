@@ -16,14 +16,12 @@ type BlockRow = {
   id: string;
   blocker_id: string;
   blocked_id: string;
-  reason: string | null;
   created_at: string;
 };
 
 type BlockedUserCard = {
   blockId: string;
   blockedId: string;
-  reason: string | null;
   createdAt: string;
   profile: ProfilePreview | null;
 };
@@ -67,17 +65,12 @@ function formatRelativeTime(value?: string | null) {
 
 function BackToPrevious({
   label = "← Back",
-  fallbackHref = "/settings",
+  fallbackHref = "/settings/privacy-safety",
 }: {
   label?: string;
   fallbackHref?: string;
 }) {
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
     if (typeof window !== "undefined") {
       window.location.href = fallbackHref;
     }
@@ -110,7 +103,7 @@ export default function BlockedUsersSettingsPage() {
 
     const { data, error } = await supabase
       .from("user_blocks")
-      .select("id, blocker_id, blocked_id, reason, created_at")
+      .select("id, blocker_id, blocked_id, created_at")
       .eq("blocker_id", userId)
       .order("created_at", { ascending: false });
 
@@ -145,7 +138,6 @@ export default function BlockedUsersSettingsPage() {
       rows.map((row) => ({
         blockId: row.id,
         blockedId: row.blocked_id,
-        reason: row.reason,
         createdAt: row.created_at,
         profile: profilesMap[row.blocked_id] || null,
       }))
@@ -226,7 +218,7 @@ export default function BlockedUsersSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -243,14 +235,10 @@ export default function BlockedUsersSettingsPage() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
+            <BackToPrevious label="← Back to Privacy & Safety" fallbackHref="/settings/privacy-safety" />
 
-            <Link href="/settings/privacy-safety" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Privacy & Safety
-            </Link>
-
-            <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Dashboard
+            <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
+              Settings
             </Link>
           </div>
 
@@ -263,7 +251,7 @@ export default function BlockedUsersSettingsPage() {
               boxShadow: "0 12px 28px var(--parapost-accent-glow)",
             }}
           >
-            Privacy Control
+            Blocked Users
           </span>
         </div>
 
@@ -432,9 +420,6 @@ export default function BlockedUsersSettingsPage() {
                               Blocked {formatRelativeTime(item.createdAt)}
                             </div>
 
-                            {item.reason ? (
-                              <p className="mt-2 text-sm leading-6 text-slate-300">{item.reason}</p>
-                            ) : null}
                           </div>
                         </div>
 
@@ -469,14 +454,14 @@ export default function BlockedUsersSettingsPage() {
               >
                 How blocking helps
               </p>
-              <h3 className="text-lg font-black tracking-[-0.02em]">Safer interactions</h3>
+              <h3 className="text-lg font-black tracking-[-0.02em]">Block controls</h3>
 
               <div className="mt-4 space-y-3">
                 {[
-                  "Blocked users are kept away from unwanted interactions.",
+                  "Blocked users are listed here for review and management.",
                   "Blocking helps reduce unwanted contact across the platform.",
                   "You can return here anytime to review your blocked list.",
-                  "Unblocking is controlled and asks for confirmation first.",
+                  "Unblocking asks for confirmation before changes are made.",
                 ].map((item) => (
                   <div key={item} className="rounded-2xl border border-white/10 bg-black/25 p-3 text-sm leading-6 text-slate-300">
                     {item}

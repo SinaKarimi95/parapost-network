@@ -69,12 +69,22 @@ const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string
   },
 ];
 
-const SETTINGS_CARDS = [
+type SettingsCard = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  items: string[];
+  href: string;
+  active: boolean;
+  comingSoon?: boolean;
+};
+
+const SETTINGS_CARDS: SettingsCard[] = [
   {
     eyebrow: "Account",
     title: "Account & Security",
     description:
-      "Manage sign-in status, email, password reset, account access, sign out, and account security tools.",
+      "Manage your signed-in account, email and password help, account access, sign out, and account security tools.",
     items: ["Signed-in account", "Email & password", "Password reset", "Sign out"],
     href: "/settings/account",
     active: true,
@@ -82,32 +92,32 @@ const SETTINGS_CARDS = [
   {
     eyebrow: "Profile",
     title: "Profile Settings",
-    description: "Edit your profile details, avatar, bio, and public/private profile controls.",
-    items: ["Profile info", "Avatar", "Bio", "Profile controls"],
+    description: "Edit your profile details, avatar, bio, public information, and profile presentation.",
+    items: ["Profile info", "Avatar", "Bio", "Profile details"],
     href: "/settings/profile",
     active: true,
   },
   {
     eyebrow: "Privacy",
     title: "Privacy & Safety",
-    description: "Control profile visibility, blocking, reports, safety support, and community protection tools.",
-    items: ["Profile visibility", "Blocked users", "Report support", "Safety tools"],
+    description: "Control privacy, safety, blocking, reporting, profile visibility, and community protection tools.",
+    items: ["Profile visibility", "Blocked users", "Reports", "Safety tools"],
     href: "/settings/privacy-safety",
     active: true,
   },
   {
     eyebrow: "Safety",
     title: "Blocked Users",
-    description: "Review accounts you have blocked and safely unblock them later when needed.",
-    items: ["Blocked accounts", "Search list", "Unblock users", "Safety control"],
+    description: "Review accounts you have blocked and safely unblock them later if needed.",
+    items: ["Blocked accounts", "Safety list", "Unblock users", "User control"],
     href: "/settings/blocked-users",
     active: true,
   },
   {
     eyebrow: "Personalization",
     title: "Personalization",
-    description: "Customize Parapost Network with accent colors, theme appearance, and font style options.",
-    items: ["Accent color", "Theme appearance", "Font style", "Saved preferences"],
+    description: "Customize Parapost Network with accent colors, theme appearance, and future font style options.",
+    items: ["Accent color", "Theme appearance", "Font style", "Preferences"],
     href: "/settings/personalization",
     active: true,
   },
@@ -129,7 +139,7 @@ const SETTINGS_CARDS = [
   },
   {
     eyebrow: "Data",
-    title: "Data & Account",
+    title: "Data & Account Files",
     description: "Request account data, correct information, ask for data deletion, or start account deletion support.",
     items: ["Request my data", "Correct data", "Data deletion", "Account deletion"],
     href: "/settings/data",
@@ -145,9 +155,9 @@ const SETTINGS_CARDS = [
   },
   {
     eyebrow: "Legal",
-    title: "Legal",
+    title: "Legal & Policies",
     description: "Review Parapost Network policies for trust, safety, app-store readiness, and user protection.",
-    items: ["Terms of Service", "Privacy Policy", "Community Guidelines", "Data Deletion Policy"],
+    items: ["Terms", "Privacy Policy", "Community Guidelines", "Data Policy"],
     href: "/settings/legal",
     active: true,
   },
@@ -155,10 +165,11 @@ const SETTINGS_CARDS = [
     eyebrow: "Coming Soon",
     title: "Payments",
     description:
-      "A polished coming-soon area for promoted posts, sponsored content, billing history, and business tools.",
+      "Coming soon for promoted posts, sponsored content, billing history, business tools, and future payment settings.",
     items: ["Promotions", "Sponsored posts", "Billing history", "Not live yet"],
     href: "/settings/payments",
     active: true,
+    comingSoon: true,
   },
 ];
 
@@ -382,7 +393,7 @@ export default function SettingsPage() {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <BackToPrevious label="← Back to Dashboard" fallbackHref="/dashboard" />
+          <BackToPrevious label="← Back" fallbackHref="/dashboard" />
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
             Settings Center
@@ -395,10 +406,10 @@ export default function SettingsPage() {
               Parapost Network Settings
             </p>
             <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
-              Control your account, privacy, safety, and support.
+              Manage your account, privacy, safety, and support.
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Manage your Parapost Network account, privacy, safety, support, personalization, notifications, data requests, legal policies, and coming-soon payment tools from one polished settings center.
+              Use this settings center to manage your Parapost Network account, profile, privacy, safety, support, personalization, notifications, data requests, legal policies, and coming-soon payment tools.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -475,8 +486,8 @@ export default function SettingsPage() {
               </div>
 
               <p className="mb-5 text-sm leading-7 text-slate-300">
-                Users will not see a public support email address. Instead, they can send a message here,
-                and it saves privately into the Parapost Network support system.
+                Send a private message to Parapost Network support for account help, privacy and safety questions,
+                bug reports, data requests, legal questions, or general support.
               </p>
 
               <form onSubmit={handleSupportSubmit} className="space-y-4">
@@ -552,11 +563,11 @@ export default function SettingsPage() {
               </div>
 
               <p className="mb-5 text-sm leading-7 text-slate-300">
-                This starts the account or data deletion request flow. The full Data & Account request area also lives at{" "}
+                Use this form to start an account or data deletion request. You can also manage these requests in{" "}
                 <Link href="/settings/data" className="font-black text-purple-200 no-underline hover:text-white">
-                  /settings/data
+                  Data & Account Files
                 </Link>
-                . This sends a private support request so Parapost Network can review the request safely and clearly.
+                . Parapost Network will review these requests carefully before account or data changes are made.
               </p>
 
               <form onSubmit={handleDeleteRequestSubmit} className="space-y-4">
@@ -654,7 +665,11 @@ export default function SettingsPage() {
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
                       {card.eyebrow}
                     </span>
-                    {!card.active ? (
+                    {card.comingSoon ? (
+                      <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2.5 py-1 text-[11px] font-black text-amber-100">
+                        Coming soon
+                      </span>
+                    ) : !card.active ? (
                       <span className="rounded-full border border-purple-200/15 bg-purple-400/10 px-2.5 py-1 text-[11px] font-black text-slate-300">
                         Coming soon
                       </span>

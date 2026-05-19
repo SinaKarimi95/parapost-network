@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, CSSProperties, FormEvent, ReactNode, SyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -136,6 +136,13 @@ type FriendRequestStatus =
   | "outgoing_request"
   | "incoming_request"
   | "friends";
+
+type FeelingActivityOption = {
+  id: string;
+  label: string;
+  category: "Feeling" | "Activity";
+  helper: string;
+};
 
 type ShowcaseDuration = "24h" | "30d" | "permanent";
 type ShowcaseCreatorMode = "media" | "text";
@@ -1217,7 +1224,125 @@ function LinkPreviewCard({ text }: { text: string }) {
 }
 
 
+const POST_CHARACTER_LIMIT = 63206;
 const MAX_POST_IMAGES = 10;
+
+const MAX_POST_VIDEO_SECONDS = 60;
+const MAX_POST_IMAGE_MB = 12;
+const MAX_POST_VIDEO_MB = 100;
+
+const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
+  { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood" },
+  { id: "grateful", label: "Feeling grateful", category: "Feeling", helper: "Appreciation or good news" },
+  { id: "excited", label: "Feeling excited", category: "Feeling", helper: "Something new is happening" },
+  { id: "relaxed", label: "Feeling relaxed", category: "Feeling", helper: "A calm update" },
+  { id: "focused", label: "Feeling focused", category: "Feeling", helper: "Working on something important" },
+  { id: "creative", label: "Feeling creative", category: "Feeling", helper: "Ideas, art, projects, or content" },
+  { id: "working", label: "Working", category: "Activity", helper: "Share what you are building" },
+  { id: "watching", label: "Watching", category: "Activity", helper: "Shows, videos, events, or streams" },
+  { id: "listening", label: "Listening", category: "Activity", helper: "Music, podcasts, or audio" },
+  { id: "traveling", label: "Traveling", category: "Activity", helper: "Trips, places, and movement" },
+  { id: "exploring", label: "Exploring", category: "Activity", helper: "Adventures, events, or locations" },
+  { id: "celebrating", label: "Celebrating", category: "Activity", helper: "Milestones and special moments" },
+];
+
+function isVideoMediaUrl(url?: string | null) {
+  if (!url) return false;
+  const cleanUrl = url.split("?")[0].split("#")[0].toLowerCase();
+  return /\.(mp4|webm|mov|m4v|ogg)$/i.test(cleanUrl);
+}
+
+function getVideoDurationFromFile(file: File) {
+  return new Promise<number>((resolve) => {
+    if (typeof document === "undefined") {
+      resolve(0);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    let settled = false;
+
+    const finish = (duration: number) => {
+      if (settled) return;
+      settled = true;
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+      resolve(Number.isFinite(duration) ? duration : 0);
+    };
+
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadedmetadata = () => finish(video.duration || 0);
+    video.onerror = () => finish(0);
+    video.src = objectUrl;
+    video.load();
+
+    window.setTimeout(() => finish(0), 4500);
+  });
+}
+
+function primeVideoPreview(event: SyntheticEvent<HTMLVideoElement>) {
+  const video = event.currentTarget;
+  const duration = Number.isFinite(video.duration) ? video.duration : 0;
+  const previewTime = duration > 0.5 ? Math.min(0.35, Math.max(0.1, duration / 8)) : 0;
+
+  if (previewTime <= 0 || video.currentTime >= previewTime) return;
+
+  try {
+    video.currentTime = previewTime;
+  } catch {
+    // Some mobile browsers may block seeking before enough metadata is ready.
+  }
+}
+
+function buildPostContentWithFeelingActivity(content: string, feelingActivity: FeelingActivityOption | null) {
+  const cleanContent = content.trim();
+  const activityLine = feelingActivity ? feelingActivity.label : "";
+  return [activityLine, cleanContent].filter(Boolean).join("\n\n");
+}
+
+function getPostFeelingActivityHeaderText(label: string) {
+  const cleanLabel = label.trim();
+  if (!cleanLabel) return "";
+
+  const matchedOption = FEELING_ACTIVITY_OPTIONS.find(
+    (option) => option.label.toLowerCase() === cleanLabel.toLowerCase()
+  );
+
+  if (!matchedOption) return "";
+  return `is ${matchedOption.label.toLowerCase()}`;
+}
+
+function splitPostFeelingActivityContent(content: string) {
+  const lines = content.split(/\r?\n/);
+  const firstContentIndex = lines.findIndex((line) => line.trim().length > 0);
+
+  if (firstContentIndex === -1) {
+    return { headerActivityText: "", bodyContent: "" };
+  }
+
+  const firstContentLine = lines[firstContentIndex].trim();
+  const headerActivityText = getPostFeelingActivityHeaderText(firstContentLine);
+
+  if (!headerActivityText) {
+    return { headerActivityText: "", bodyContent: content };
+  }
+
+  const bodyLines = lines.slice(firstContentIndex + 1);
+
+  while (bodyLines.length > 0 && bodyLines[0].trim().length === 0) {
+    bodyLines.shift();
+  }
+
+  return {
+    headerActivityText,
+    bodyContent: bodyLines.join("\n").trimStart(),
+  };
+}
 
 async function fetchPostImagesMap(postIds: string[]) {
   const uniquePostIds = [...new Set(postIds.filter(Boolean))];
@@ -1268,8 +1393,37 @@ function ProfilePostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: st
   const safeUrls = imageUrls.filter(Boolean).slice(0, MAX_POST_IMAGES);
   if (safeUrls.length === 0) return null;
 
+  const renderMedia = (url: string, index: number, single = false) => {
+    const isVideo = isVideoMediaUrl(url);
+
+    if (isVideo) {
+      return (
+        <video
+          src={url}
+          controls
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={primeVideoPreview}
+          onLoadedData={primeVideoPreview}
+          className={single ? "profile-post-image" : "profile-post-media-item"}
+          style={single ? postImageStyle : profilePostImageGridImageStyle}
+          aria-label={`${alt} video ${index + 1}`}
+        />
+      );
+    }
+
+    return (
+      <img
+        src={url}
+        alt={single ? alt : `${alt} ${index + 1}`}
+        className={single ? "profile-post-image" : "profile-post-media-item"}
+        style={single ? postImageStyle : profilePostImageGridImageStyle}
+      />
+    );
+  };
+
   if (safeUrls.length === 1) {
-    return <img src={safeUrls[0]} alt={alt} className="profile-post-image" style={postImageStyle} />;
+    return renderMedia(safeUrls[0], 0, true);
   }
 
   const visibleUrls = safeUrls.slice(0, 4);
@@ -1289,7 +1443,8 @@ function ProfilePostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: st
               ...(isFirstInThreeGrid ? profilePostImageGridLargeTileStyle : {}),
             }}
           >
-            <img src={url} alt={`${alt} ${index + 1}`} style={profilePostImageGridImageStyle} />
+            {renderMedia(url, index)}
+            {isVideoMediaUrl(url) ? <div style={profilePostVideoBadgeStyle}>Video</div> : null}
             {showOverlay ? <div style={profilePostImageGridOverlayStyle}>+{extraCount}</div> : null}
           </div>
         );
@@ -1298,36 +1453,223 @@ function ProfilePostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: st
   );
 }
 
-function ProfileComposerImagePreviewGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string }) {
+function ProfileComposerMediaPreviewGrid({
+  imageUrls,
+  files,
+  alt,
+  onRemove,
+}: {
+  imageUrls: string[];
+  files: File[];
+  alt: string;
+  onRemove: (index?: number) => void;
+}) {
   const safeUrls = imageUrls.filter(Boolean).slice(0, MAX_POST_IMAGES);
   if (safeUrls.length === 0) return null;
 
-  const visibleUrls = safeUrls.slice(0, 4);
-  const extraCount = safeUrls.length - visibleUrls.length;
+  return (
+    <div className="profile-dashboard-composer-media-preview-wrap" style={profileDashboardPreviewWrapStyle}>
+      <div
+        className={`profile-dashboard-composer-media-preview-grid ${safeUrls.length === 1 ? "profile-dashboard-composer-media-preview-grid-single" : ""}`}
+        style={{
+          ...profileDashboardPreviewGridStyle,
+          ...(safeUrls.length === 1 ? profileDashboardPreviewSingleGridStyle : {}),
+        }}
+      >
+        {safeUrls.map((previewUrl, index) => {
+          const selectedFile = files[index];
+          const isVideo = selectedFile?.type.startsWith("video/") || isVideoMediaUrl(previewUrl);
+
+          return (
+            <button
+              key={`${previewUrl}-${index}`}
+              type="button"
+              onClick={() => onRemove(index)}
+              className="profile-dashboard-composer-media-preview-tile"
+              style={{
+                ...profileDashboardPreviewTileStyle,
+                ...(safeUrls.length === 1 ? profileDashboardPreviewSingleTileStyle : {}),
+              }}
+              aria-label={`Remove selected media ${index + 1}`}
+            >
+              {isVideo ? (
+                <video
+                  src={previewUrl}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onLoadedMetadata={primeVideoPreview}
+                  onLoadedData={primeVideoPreview}
+                  style={profileDashboardPreviewMediaStyle}
+                />
+              ) : (
+                <img src={previewUrl} alt={`${alt} ${index + 1}`} style={profileDashboardPreviewMediaStyle} />
+              )}
+
+              <span className="profile-dashboard-composer-media-preview-counter" style={profileDashboardPreviewCounterStyle}>
+                {index + 1} of {safeUrls.length}
+              </span>
+              {isVideo ? <span style={profileDashboardPreviewTypeBadgeStyle}>Video</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={profileDashboardPreviewMetaRowStyle}>
+        <span style={profileDashboardSelectedMediaNameStyle}>
+          {files.length} file{files.length === 1 ? "" : "s"} selected · up to {MAX_POST_IMAGES} · 1 video max · {MAX_POST_VIDEO_SECONDS}s video limit
+        </span>
+        <button type="button" onClick={() => onRemove()} style={profileDashboardRemoveMediaButtonStyle}>
+          Remove media
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProfileDashboardComposerActionPill({
+  label,
+  icon,
+  tone,
+  href,
+  onClick,
+  disabled = false,
+  active = false,
+  note,
+}: {
+  label: string;
+  icon: string;
+  tone: "green" | "pink" | "red" | "gold";
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  note?: string;
+}) {
+  const toneStyle = profileDashboardComposerActionToneStyles[tone];
+  const content = (
+    <>
+      <span style={{ ...profileDashboardComposerActionIconStyle, ...toneStyle }}>{icon}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        {note ? <span style={profileDashboardComposerActionNoteStyle}>{note}</span> : null}
+      </span>
+    </>
+  );
+
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Live Stream is coming soon."
+        style={{ ...profileDashboardComposerActionPillStyle, ...profileDashboardComposerActionDisabledStyle }}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        style={active ? { ...profileDashboardComposerActionPillStyle, ...profileDashboardComposerActionPillActiveStyle } : profileDashboardComposerActionPillStyle}
+      >
+        {content}
+      </Link>
+    );
+  }
 
   return (
-    <div
-      style={{
-        ...profileComposerPreviewGridStyle,
-        ...(safeUrls.length === 1 ? profileComposerPreviewSingleGridStyle : {}),
-      }}
+    <button
+      type="button"
+      onClick={onClick}
+      style={active ? { ...profileDashboardComposerActionPillStyle, ...profileDashboardComposerActionPillActiveStyle } : profileDashboardComposerActionPillStyle}
     >
-      {visibleUrls.map((url, index) => {
-        const showOverlay = index === 3 && extraCount > 0;
+      {content}
+    </button>
+  );
+}
 
-        return (
-          <div
-            key={`${url}-${index}`}
-            style={{
-              ...profileComposerPreviewTileStyle,
-              ...(safeUrls.length === 1 ? profileComposerPreviewSingleTileStyle : {}),
-            }}
-          >
-            <img src={url} alt={`${alt} ${index + 1}`} style={profileComposerPreviewImageStyle} />
-            {showOverlay ? <div style={profileComposerPreviewOverlayStyle}>+{extraCount}</div> : null}
+function ProfileComposerFeelingActivityPanel({
+  selectedFeelingActivity,
+  onSelect,
+  onClear,
+}: {
+  selectedFeelingActivity: FeelingActivityOption | null;
+  onSelect: (option: FeelingActivityOption) => void;
+  onClear: () => void;
+}) {
+  const feelingOptions = FEELING_ACTIVITY_OPTIONS.filter((option) => option.category === "Feeling");
+  const activityOptions = FEELING_ACTIVITY_OPTIONS.filter((option) => option.category === "Activity");
+
+  return (
+    <div className="profile-dashboard-feeling-panel" style={profileDashboardFeelingPanelStyle}>
+      <div style={profileDashboardFeelingHeaderStyle}>
+        <div>
+          <strong style={profileDashboardFeelingTitleStyle}>Feeling / Activity</strong>
+          <p style={profileDashboardFeelingIntroStyle}>
+            Add one context label to your profile and dashboard post.
+          </p>
+        </div>
+
+        {selectedFeelingActivity ? (
+          <button type="button" onClick={onClear} style={profileDashboardFeelingClearStyle}>
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      <div style={profileDashboardFeelingColumnsStyle}>
+        <div style={profileDashboardFeelingSectionStyle}>
+          <h4 style={profileDashboardFeelingSectionTitleStyle}>Feelings</h4>
+          <div style={profileDashboardFeelingGridStyle}>
+            {feelingOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onSelect(option)}
+                style={
+                  selectedFeelingActivity?.id === option.id
+                    ? { ...profileDashboardFeelingOptionStyle, ...profileDashboardFeelingOptionActiveStyle }
+                    : profileDashboardFeelingOptionStyle
+                }
+              >
+                <span style={profileDashboardFeelingOptionDotStyle} />
+                <span style={{ minWidth: 0 }}>
+                  <strong style={profileDashboardFeelingOptionLabelStyle}>{option.label}</strong>
+                  <span style={profileDashboardFeelingOptionHelperStyle}>{option.helper}</span>
+                </span>
+              </button>
+            ))}
           </div>
-        );
-      })}
+        </div>
+
+        <div style={profileDashboardFeelingSectionStyle}>
+          <h4 style={profileDashboardFeelingSectionTitleStyle}>Activities</h4>
+          <div style={profileDashboardFeelingGridStyle}>
+            {activityOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onSelect(option)}
+                style={
+                  selectedFeelingActivity?.id === option.id
+                    ? { ...profileDashboardFeelingOptionStyle, ...profileDashboardFeelingOptionActiveStyle }
+                    : profileDashboardFeelingOptionStyle
+                }
+              >
+                <span style={profileDashboardFeelingOptionDotStyle} />
+                <span style={{ minWidth: 0 }}>
+                  <strong style={profileDashboardFeelingOptionLabelStyle}>{option.label}</strong>
+                  <span style={profileDashboardFeelingOptionHelperStyle}>{option.helper}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1389,6 +1731,8 @@ export default function ProfilePage() {
   const [profilePostContent, setProfilePostContent] = useState("");
   const [profilePostImages, setProfilePostImages] = useState<File[]>([]);
   const [profilePostImagePreviewUrls, setProfilePostImagePreviewUrls] = useState<string[]>([]);
+  const [selectedProfileFeelingActivity, setSelectedProfileFeelingActivity] = useState<FeelingActivityOption | null>(null);
+  const [profileFeelingActivityOpen, setProfileFeelingActivityOpen] = useState(false);
   const [profilePostLoading, setProfilePostLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [sharedPostPosts, setSharedPostPosts] = useState<SharedProfilePost[]>([]);
@@ -1443,6 +1787,7 @@ export default function ProfilePage() {
   const [recentlyViewedProfiles, setRecentlyViewedProfiles] = useState<RecentlyViewedProfile[]>([]);
   const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(false);
   const [recentlyViewedViewerOpen, setRecentlyViewedViewerOpen] = useState(false);
+  const [profileActivityViewerOpen, setProfileActivityViewerOpen] = useState(false);
   const [profileSearchQuery, setProfileSearchQuery] = useState("");
   const [profileSearchResults, setProfileSearchResults] = useState<ProfileSearchResult[]>([]);
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
@@ -2269,7 +2614,7 @@ useEffect(() => {
 }, [profileActionsOpen]);
 
 useEffect(() => {
-  if ((!profileBadgesViewerOpen && !profileAchievementsViewerOpen && !profileStrengthViewerOpen && !recentlyViewedViewerOpen) || typeof window === "undefined") return;
+  if ((!profileBadgesViewerOpen && !profileAchievementsViewerOpen && !profileStrengthViewerOpen && !recentlyViewedViewerOpen && !profileActivityViewerOpen) || typeof window === "undefined") return;
 
   const scrollY = window.scrollY;
   const body = document.body;
@@ -2302,7 +2647,7 @@ useEffect(() => {
 
     window.scrollTo(0, scrollY);
   };
-}, [profileBadgesViewerOpen, profileAchievementsViewerOpen, profileStrengthViewerOpen, recentlyViewedViewerOpen]);
+}, [profileBadgesViewerOpen, profileAchievementsViewerOpen, profileStrengthViewerOpen, recentlyViewedViewerOpen, profileActivityViewerOpen]);
 
 useEffect(() => {
   const targetIsInsideProfileActions = (event: Event) => {
@@ -2333,11 +2678,15 @@ useEffect(() => {
     if (event.key === "Escape") {
       setOpenPostMenuId(null);
       setProfileActionsOpen(false);
+      setProfileFeelingActivityOpen(false);
       setActiveProfileShowcase(null);
       setProfileBadgesViewerOpen(false);
+      setProfileAchievementsViewerOpen(false);
       setProfileStrengthViewerOpen(false);
       setRecentlyViewedViewerOpen(false);
+      setProfileActivityViewerOpen(false);
       setActiveProfileBadge(null);
+      setActiveProfileAchievement(null);
     }
   };
 
@@ -2481,30 +2830,95 @@ useEffect(() => {
     showFriendStatus("Shared post removed.");
   };
 
-  const handleProfilePostImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files || []).filter((file) =>
-      file.type.startsWith("image/")
+  const handleProfilePostImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const incomingFiles = Array.from(event.target.files || []);
+    const selectedFiles = incomingFiles.filter(
+      (file) => file.type.startsWith("image/") || file.type.startsWith("video/")
     );
 
+    const rejectedFiles = incomingFiles.length - selectedFiles.length;
+
     if (selectedFiles.length === 0) {
+      if (rejectedFiles > 0) alert("Please choose photo or video files only.");
       if (profilePostFileInputRef.current) profilePostFileInputRef.current.value = "";
       return;
     }
 
-    setProfilePostImages((prev) => {
-      const remainingSlots = Math.max(MAX_POST_IMAGES - prev.length, 0);
-      const acceptedFiles = selectedFiles.slice(0, remainingSlots);
+    const oversizedFile = selectedFiles.find((file) => {
+      const isVideo = file.type.startsWith("video/");
+      const maxMb = isVideo ? MAX_POST_VIDEO_MB : MAX_POST_IMAGE_MB;
+      return file.size > maxMb * 1024 * 1024;
+    });
 
-      if (selectedFiles.length > remainingSlots) {
-        alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
+    if (oversizedFile) {
+      const isVideo = oversizedFile.type.startsWith("video/");
+      alert(
+        `Please choose ${isVideo ? "videos" : "photos"} under ${
+          isVideo ? MAX_POST_VIDEO_MB : MAX_POST_IMAGE_MB
+        }MB for profile posts.`
+      );
+      if (profilePostFileInputRef.current) profilePostFileInputRef.current.value = "";
+      return;
+    }
+
+    const selectedVideoFiles = selectedFiles.filter((file) => file.type.startsWith("video/"));
+
+    if (selectedVideoFiles.length > 0) {
+      for (const videoFile of selectedVideoFiles) {
+        const durationSeconds = await getVideoDurationFromFile(videoFile);
+
+        if (durationSeconds > MAX_POST_VIDEO_SECONDS + 0.25) {
+          alert(
+            `Profile post videos can be up to ${MAX_POST_VIDEO_SECONDS} seconds for launch. Please trim this video and try again.`
+          );
+          if (profilePostFileInputRef.current) profilePostFileInputRef.current.value = "";
+          return;
+        }
+      }
+    }
+
+    setProfilePostImages((prev) => {
+      const existingVideo = prev.some((file) => file.type.startsWith("video/"));
+      const remainingSlots = Math.max(MAX_POST_IMAGES - prev.length, 0);
+
+      if (remainingSlots <= 0) {
+        alert(`You can add up to ${MAX_POST_IMAGES} photos/videos in one post.`);
+        return prev;
       }
 
+      let acceptedFiles = selectedFiles.slice(0, remainingSlots);
+      const selectedHasVideo = selectedVideoFiles.length > 0;
+
+      if (existingVideo || selectedHasVideo) {
+        const videoFiles = acceptedFiles.filter((file) => file.type.startsWith("video/"));
+        const imageFiles = acceptedFiles.filter((file) => file.type.startsWith("image/"));
+
+        if (existingVideo) {
+          acceptedFiles = imageFiles;
+        } else if (videoFiles.length > 0) {
+          acceptedFiles = [videoFiles[0], ...imageFiles].slice(0, MAX_POST_IMAGES);
+        }
+
+        if (videoFiles.length > 1 || (existingVideo && videoFiles.length > 0)) {
+          alert(
+            `You can add one video per profile post for launch. You can still add photos with it, up to ${MAX_POST_IMAGES} total media items.`
+          );
+        }
+      }
+
+      if (selectedFiles.length > remainingSlots) {
+        alert(`You can add up to ${MAX_POST_IMAGES} photos/videos in one post.`);
+      }
+
+      if (rejectedFiles > 0) {
+        alert("Some files were skipped because they were not photos or videos.");
+      }
+
+      if (acceptedFiles.length === 0) return prev;
       return [...prev, ...acceptedFiles];
     });
 
-    if (profilePostFileInputRef.current) {
-      profilePostFileInputRef.current.value = "";
-    }
+    if (profilePostFileInputRef.current) profilePostFileInputRef.current.value = "";
   };
 
   const handleRemoveProfilePostImage = (index?: number) => {
@@ -2523,14 +2937,28 @@ useEffect(() => {
   const handleCreateProfilePost = async () => {
     if (!isOwnProfile || !viewerId) return;
 
-    if (!profilePostContent.trim() && profilePostImages.length === 0) {
-      alert("Please add text or choose photos.");
+    if (!profilePostContent.trim() && profilePostImages.length === 0 && !selectedProfileFeelingActivity) {
+      alert("Please add text, choose photos/videos, or select a Feeling / Activity.");
       return;
     }
 
     if (profilePostImages.length > MAX_POST_IMAGES) {
-      alert(`You can add up to ${MAX_POST_IMAGES} photos in one post.`);
+      alert(`You can add up to ${MAX_POST_IMAGES} photos/videos in one post.`);
       return;
+    }
+
+    const postVideos = profilePostImages.filter((file) => file.type.startsWith("video/"));
+    if (postVideos.length > 1) {
+      alert("You can add one video per post for launch.");
+      return;
+    }
+
+    for (const videoFile of postVideos) {
+      const durationSeconds = await getVideoDurationFromFile(videoFile);
+      if (durationSeconds > MAX_POST_VIDEO_SECONDS + 0.25) {
+        alert(`Profile post videos can be up to ${MAX_POST_VIDEO_SECONDS} seconds for launch.`);
+        return;
+      }
     }
 
     setProfilePostLoading(true);
@@ -2566,11 +2994,13 @@ useEffect(() => {
       });
     }
 
+    const finalContent = buildPostContentWithFeelingActivity(profilePostContent, selectedProfileFeelingActivity);
+
     const { data: insertedPost, error: insertError } = await supabase
       .from("posts")
       .insert([
         {
-          content: profilePostContent.trim(),
+          content: finalContent,
           user_id: viewerId,
           image_url: uploadedImages[0]?.image_url || null,
         },
@@ -2603,6 +3033,8 @@ useEffect(() => {
     }
 
     setProfilePostContent("");
+    setSelectedProfileFeelingActivity(null);
+    setProfileFeelingActivityOpen(false);
     handleRemoveProfilePostImage();
     await loadPage();
     setProfilePostLoading(false);
@@ -3844,15 +4276,26 @@ useEffect(() => {
     ? profileBadges.filter((badge) => badge.awardId !== highlightedProfileBadge.awardId)
     : profileBadges;
 
+  const shouldReturnToProfileOptionsList = useCallback(() => {
+    if (!profileActionsOpen || typeof window === "undefined") return false;
+
+    return window.matchMedia("(max-width: 720px)").matches;
+  }, [profileActionsOpen]);
+
   const openProfileBadgesViewer = useCallback(
     (badge?: ProfileBadge | null) => {
       if (profileBadgesLoading) return;
 
+      const returnToOptionsList = shouldReturnToProfileOptionsList();
+
       setActiveProfileBadge(badge || profileBadges[0] || null);
       setProfileBadgesViewerOpen(true);
-      setProfileActionsOpen(false);
+
+      if (!returnToOptionsList) {
+        setProfileActionsOpen(false);
+      }
     },
-    [profileBadges, profileBadgesLoading]
+    [profileBadges, profileBadgesLoading, shouldReturnToProfileOptionsList]
   );
 
   const closeProfileBadgesViewer = useCallback(() => {
@@ -3864,11 +4307,16 @@ useEffect(() => {
     (achievement?: ProfileAchievement | null) => {
       if (profileAchievementsLoading) return;
 
+      const returnToOptionsList = shouldReturnToProfileOptionsList();
+
       setActiveProfileAchievement(achievement || featuredProfileAchievement || null);
       setProfileAchievementsViewerOpen(true);
-      setProfileActionsOpen(false);
+
+      if (!returnToOptionsList) {
+        setProfileActionsOpen(false);
+      }
     },
-    [featuredProfileAchievement, profileAchievementsLoading]
+    [featuredProfileAchievement, profileAchievementsLoading, shouldReturnToProfileOptionsList]
   );
 
   const closeProfileAchievementsViewer = useCallback(() => {
@@ -3877,21 +4325,45 @@ useEffect(() => {
   }, []);
 
   const openProfileStrengthViewer = useCallback(() => {
+    const returnToOptionsList = shouldReturnToProfileOptionsList();
+
     setProfileStrengthViewerOpen(true);
-    setProfileActionsOpen(false);
-  }, []);
+
+    if (!returnToOptionsList) {
+      setProfileActionsOpen(false);
+    }
+  }, [shouldReturnToProfileOptionsList]);
 
   const closeProfileStrengthViewer = useCallback(() => {
     setProfileStrengthViewerOpen(false);
   }, []);
 
   const openRecentlyViewedViewer = useCallback(() => {
+    const returnToOptionsList = shouldReturnToProfileOptionsList();
+
     setRecentlyViewedViewerOpen(true);
-    setProfileActionsOpen(false);
-  }, []);
+
+    if (!returnToOptionsList) {
+      setProfileActionsOpen(false);
+    }
+  }, [shouldReturnToProfileOptionsList]);
 
   const closeRecentlyViewedViewer = useCallback(() => {
     setRecentlyViewedViewerOpen(false);
+  }, []);
+
+  const openProfileActivityViewer = useCallback(() => {
+    const returnToOptionsList = shouldReturnToProfileOptionsList();
+
+    setProfileActivityViewerOpen(true);
+
+    if (!returnToOptionsList) {
+      setProfileActionsOpen(false);
+    }
+  }, [shouldReturnToProfileOptionsList]);
+
+  const closeProfileActivityViewer = useCallback(() => {
+    setProfileActivityViewerOpen(false);
   }, []);
 
   const activeProfileTabItem =
@@ -9816,7 +10288,7 @@ return (
             height: 15px !important;
           }
         }
-        /* Final profile feed visibility + clean end-of-feed spacing */
+        /* Final profile feed visibility + tight mobile end spacing */
         html:has(.profile-mobile-scroll-root),
         body:has(.profile-mobile-scroll-root) {
           height: auto !important;
@@ -9853,11 +10325,16 @@ return (
         }
 
         .profile-page-shell {
-          padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+          padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
         }
 
-        .profile-stream-stack {
+        .profile-layout-grid,
+        .profile-center-column,
+        .profile-stream-stack,
+        .profile-content-card,
+        .profile-feed-section-card {
           padding-bottom: 0 !important;
+          margin-bottom: 0 !important;
         }
 
         .profile-feed-list-all-posts {
@@ -9866,7 +10343,7 @@ return (
           gap: 13px !important;
           width: 100% !important;
           margin: 0 !important;
-          padding-bottom: 18px !important;
+          padding-bottom: 0 !important;
         }
 
         .profile-feed-list-all-posts > article,
@@ -9893,10 +10370,6 @@ return (
           margin-bottom: 0 !important;
         }
 
-        .profile-feed-section-card {
-          padding-bottom: 10px !important;
-        }
-
         @media (max-width: 720px) {
           html:has(.profile-mobile-scroll-root),
           body:has(.profile-mobile-scroll-root) {
@@ -9915,21 +10388,22 @@ return (
           }
 
           .profile-page-shell {
-            padding-bottom: calc(98px + env(safe-area-inset-bottom)) !important;
+            padding-bottom: calc(78px + env(safe-area-inset-bottom)) !important;
           }
 
-          .profile-stream-stack {
-            padding-bottom: 0 !important;
-          }
-
+          .profile-layout-grid,
+          .profile-center-column,
+          .profile-stream-stack,
+          .profile-content-card,
           .profile-feed-section-card {
-            overflow: visible !important;
-            padding-bottom: 8px !important;
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
           }
 
           .profile-feed-list-all-posts {
             gap: 12px !important;
-            padding-bottom: 16px !important;
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
           }
 
           .profile-feed-list-all-posts > article {
@@ -9940,6 +10414,528 @@ return (
           .profile-shared-reel-post-card,
           .profile-feed-post-card {
             margin-bottom: 0 !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .profile-page-shell {
+            padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+          }
+        }
+
+
+        /* Profile composer now matches dashboard composer across desktop, tablet, and mobile */
+        .profile-dashboard-composer-card {
+          width: 100%;
+        }
+
+        .profile-dashboard-composer-actions a:hover,
+        .profile-dashboard-composer-actions button:not(:disabled):hover {
+          transform: translateY(-1px);
+          border-color: var(--parapost-accent-active-border) !important;
+          background: linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.042)) !important;
+        }
+
+        .profile-dashboard-composer-input::placeholder {
+          color: rgba(226,232,240,0.56);
+        }
+
+        .profile-dashboard-composer-media-preview-wrap button[aria-label^="Remove selected media"]::after {
+          content: "Tap to remove";
+          position: absolute;
+          left: 9px;
+          bottom: 9px;
+          border-radius: 999px;
+          padding: 5px 8px;
+          background: rgba(0,0,0,0.66);
+          border: 1px solid rgba(255,255,255,0.14);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 900;
+          opacity: 0;
+          transform: translateY(4px);
+          transition: opacity 160ms ease, transform 160ms ease;
+        }
+
+        .profile-dashboard-composer-media-preview-wrap button[aria-label^="Remove selected media"]:hover::after {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @media (max-width: 960px) {
+          .profile-dashboard-feeling-panel > div:last-child {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 720px) {
+          .profile-dashboard-composer-card {
+            padding: 11px !important;
+            border-radius: 22px !important;
+            margin-bottom: 10px !important;
+          }
+
+          .profile-dashboard-composer-top-row {
+            grid-template-columns: auto minmax(0, 1fr) !important;
+            gap: 9px !important;
+            align-items: start !important;
+          }
+
+          .profile-dashboard-composer-top-row > button {
+            display: none !important;
+          }
+
+          .profile-dashboard-composer-top-row textarea {
+            min-height: 58px !important;
+            padding: 12px 13px !important;
+            border-radius: 17px !important;
+            font-size: 13.5px !important;
+          }
+
+          .profile-dashboard-composer-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-top: 10px !important;
+          }
+
+          .profile-dashboard-composer-actions a,
+          .profile-dashboard-composer-actions button {
+            min-height: 40px !important;
+            border-radius: 14px !important;
+            font-size: 12px !important;
+            justify-content: center !important;
+          }
+
+          .profile-dashboard-composer-footer {
+            margin-top: 9px !important;
+          }
+
+          .profile-dashboard-composer-footer button {
+            width: 100% !important;
+            min-height: 41px !important;
+            border-radius: 15px !important;
+          }
+
+          .profile-dashboard-composer-media-preview-wrap {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 10px !important;
+            border-radius: 20px !important;
+            background: rgba(0,0,0,0.28) !important;
+          }
+
+          .profile-dashboard-composer-media-preview-grid {
+            padding: 9px !important;
+            gap: 9px !important;
+          }
+
+          .profile-dashboard-composer-media-preview-tile {
+            min-height: 214px !important;
+            height: min(62vw, 286px) !important;
+            border-radius: 17px !important;
+          }
+
+          .profile-dashboard-composer-media-preview-grid-single .profile-dashboard-composer-media-preview-tile {
+            min-height: 214px !important;
+            height: min(62vw, 286px) !important;
+          }
+
+          .profile-dashboard-composer-media-preview-counter {
+            right: 9px !important;
+            top: 9px !important;
+            font-size: 11.5px !important;
+          }
+
+          .profile-dashboard-feeling-panel {
+            padding: 10px !important;
+            border-radius: 18px !important;
+          }
+        }
+
+        @media (max-width: 410px) {
+          .profile-dashboard-composer-actions {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .profile-dashboard-composer-actions a,
+          .profile-dashboard-composer-actions button {
+            font-size: 11.5px !important;
+            gap: 6px !important;
+          }
+
+          .profile-dashboard-feeling-panel button {
+            font-size: 11px !important;
+          }
+        }
+
+
+
+        /* Profile composer mobile gap fix: keep dashboard-style composer, remove old extra spacer */
+        @media (max-width: 720px) {
+          .profile-tabs-mobile-cutoff-v22 #profile-composer,
+          #profile-composer.profile-dashboard-composer-card,
+          #profile-composer.profile-composer-card {
+            padding-top: 11px !important;
+            padding-right: 11px !important;
+            padding-bottom: 11px !important;
+            padding-left: 11px !important;
+            margin-top: 8px !important;
+            margin-bottom: 8px !important;
+            min-height: 0 !important;
+          }
+
+          .profile-mobile-first-polish .profile-composer-card,
+          .profile-mobile-first-polish .profile-feed-section-card {
+            margin-top: 8px !important;
+          }
+
+          .profile-mobile-first-polish .profile-stream-stack {
+            gap: 8px !important;
+            padding-bottom: 86px !important;
+          }
+
+          .profile-content-card.profile-feed-section-card {
+            margin-top: 0 !important;
+          }
+
+          .profile-feed-section-card > div:first-child {
+            margin-bottom: 10px !important;
+          }
+
+          .profile-dashboard-composer-card + .profile-feed-section-card,
+          #profile-composer + .profile-feed-section-card {
+            margin-top: 0 !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .profile-tabs-mobile-cutoff-v22 #profile-composer,
+          #profile-composer.profile-dashboard-composer-card,
+          #profile-composer.profile-composer-card {
+            margin-bottom: 7px !important;
+            padding-bottom: 10px !important;
+          }
+
+          .profile-mobile-first-polish .profile-stream-stack {
+            gap: 7px !important;
+            padding-bottom: 84px !important;
+          }
+        }
+
+
+        /* Profile composer functionality match: dashboard media preview behavior */
+        .profile-dashboard-composer-card input[type="file"] {
+          display: none !important;
+        }
+
+        @media (max-width: 720px) {
+          .profile-dashboard-composer-media-preview-wrap {
+            overflow: hidden !important;
+          }
+
+          .profile-dashboard-composer-media-preview-grid {
+            display: flex !important;
+            grid-template-columns: none !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 9px !important;
+          }
+
+          .profile-dashboard-composer-media-preview-grid::-webkit-scrollbar {
+            height: 0 !important;
+          }
+
+          .profile-dashboard-composer-media-preview-tile {
+            flex: 0 0 86% !important;
+            scroll-snap-align: center !important;
+            min-height: 214px !important;
+            height: min(62vw, 286px) !important;
+          }
+
+          .profile-dashboard-composer-media-preview-grid-single .profile-dashboard-composer-media-preview-tile {
+            flex-basis: 100% !important;
+          }
+
+          .profile-dashboard-composer-media-preview-tile img,
+          .profile-dashboard-composer-media-preview-tile video {
+            object-fit: cover !important;
+            background: #000 !important;
+          }
+        }
+        /* Profile mobile 3-dot menu v16: full-screen touch-scroll overlay */
+        @media (max-width: 720px) {
+          .profile-desktop-action-menu-fixed,
+          .profile-desktop-action-menu {
+            display: none !important;
+            pointer-events: none !important;
+          }
+
+          .profile-mobile-action-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 2147483647 !important;
+            display: flex !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            padding-top: env(safe-area-inset-top) !important;
+            padding-bottom: env(safe-area-inset-bottom) !important;
+            background:
+              radial-gradient(circle at 14% 0%, var(--parapost-accent-soft), transparent 34%),
+              radial-gradient(circle at 100% 12%, var(--parapost-accent-muted-bg), transparent 32%),
+              linear-gradient(180deg, rgba(5,5,12,0.985), rgba(7,9,14,0.995)) !important;
+            backdrop-filter: blur(22px) !important;
+            -webkit-backdrop-filter: blur(22px) !important;
+            touch-action: none !important;
+            pointer-events: auto !important;
+          }
+
+          .profile-mobile-action-sheet {
+            width: 100% !important;
+            max-width: none !important;
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            max-height: 100dvh !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 14px 14px 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-y !important;
+            transform: none !important;
+          }
+
+          .profile-mobile-action-sheet > div:first-child {
+            display: none !important;
+          }
+
+          .profile-mobile-action-sheet > div:nth-child(2) {
+            flex: 0 0 auto !important;
+            min-height: 58px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 12px !important;
+            margin: 0 0 10px !important;
+            padding: 0 0 12px !important;
+            border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+          }
+
+          .profile-mobile-action-sheet > div:nth-child(2) p {
+            margin: 0 0 4px !important;
+            color: var(--parapost-accent-text) !important;
+            font-size: 10px !important;
+            line-height: 1 !important;
+            font-weight: 950 !important;
+            letter-spacing: 0.16em !important;
+            text-transform: uppercase !important;
+          }
+
+          .profile-mobile-action-sheet > div:nth-child(2) h3 {
+            margin: 0 !important;
+            color: #ffffff !important;
+            font-size: 24px !important;
+            line-height: 1.05 !important;
+            font-weight: 950 !important;
+            letter-spacing: -0.045em !important;
+          }
+
+          .profile-mobile-action-sheet > div:nth-child(2) button {
+            width: 42px !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            border-radius: 15px !important;
+            display: grid !important;
+            place-items: center !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            background: rgba(255,255,255,0.070) !important;
+            color: #ffffff !important;
+            font-size: 26px !important;
+            line-height: 1 !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.055) !important;
+          }
+
+          .profile-mobile-action-list {
+            flex: 1 1 auto !important;
+            display: block !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            height: auto !important;
+            max-height: none !important;
+            min-height: 0 !important;
+            padding: 0 0 calc(118px + env(safe-area-inset-bottom)) !important;
+            margin: 0 !important;
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-y !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: rgba(168,85,247,0.6) rgba(255,255,255,0.06) !important;
+          }
+
+          .profile-mobile-action-list::-webkit-scrollbar {
+            width: 4px !important;
+          }
+
+          .profile-mobile-action-list::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.06) !important;
+            border-radius: 999px !important;
+          }
+
+          .profile-mobile-action-list::-webkit-scrollbar-thumb {
+            background: rgba(168,85,247,0.72) !important;
+            border-radius: 999px !important;
+          }
+
+          .profile-mobile-action-list button {
+            width: 100% !important;
+            min-height: 58px !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: #ffffff !important;
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 15px 2px !important;
+            text-align: left !important;
+            font-family: inherit !important;
+            border-bottom: 1px solid rgba(255,255,255,0.085) !important;
+            position: relative !important;
+            cursor: pointer !important;
+          }
+
+          .profile-mobile-action-list button::after {
+            content: "›" !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 24px !important;
+            height: 24px !important;
+            color: rgba(255,255,255,0.62) !important;
+            font-size: 28px !important;
+            line-height: 1 !important;
+            font-weight: 500 !important;
+          }
+
+          .profile-mobile-action-list button span:first-child {
+            display: none !important;
+          }
+
+          .profile-mobile-action-list button span:nth-child(2),
+          .profile-mobile-action-list button > span:last-child {
+            min-width: 0 !important;
+            display: grid !important;
+            gap: 4px !important;
+          }
+
+          .profile-mobile-action-list button strong {
+            display: block !important;
+            color: #ffffff !important;
+            font-size: 17px !important;
+            line-height: 1.15 !important;
+            font-weight: 900 !important;
+            letter-spacing: -0.02em !important;
+          }
+
+          .profile-mobile-action-list button small {
+            display: block !important;
+            color: #9ca3af !important;
+            font-size: 12px !important;
+            line-height: 1.32 !important;
+            font-weight: 750 !important;
+          }
+
+          .profile-mobile-action-list button:active {
+            background: rgba(255,255,255,0.045) !important;
+          }
+
+          .profile-mobile-action-list button[style*="248,113,113"],
+          .profile-mobile-action-list button[style*="fecaca"] {
+            color: #fecaca !important;
+          }
+        }
+
+
+        
+        @media (max-width: 720px) {
+          .profile-mobile-action-overlay .profile-mobile-action-sheet {
+            overflow: hidden !important;
+          }
+
+          .profile-mobile-action-overlay .profile-mobile-action-list {
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-y !important;
+          }
+        }
+
+@media (min-width: 721px) {
+          .profile-mobile-action-overlay {
+            display: none !important;
+          }
+        }
+
+        /* Profile mobile 3-dot menu v17: title-only header and achievements item */
+        @media (max-width: 720px) {
+          .profile-mobile-action-sheet > div:nth-child(2) p {
+            display: none !important;
+          }
+
+          .profile-mobile-action-sheet > div:nth-child(2) h3 {
+            font-size: 25px !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.045em !important;
+          }
+        }
+
+
+        /* Profile mobile viewer back flow v18: return to full options list */
+        @media (max-width: 720px) {
+          .profile-viewer-back-to-options {
+            display: block !important;
+          }
+
+          .profile-badges-viewer-overlay {
+            z-index: 2147483647 !important;
+          }
+
+          .profile-badges-viewer-shell {
+            max-height: calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-y !important;
+            padding-bottom: calc(22px + env(safe-area-inset-bottom)) !important;
+          }
+        }
+
+        @media (min-width: 721px) {
+          .profile-viewer-back-to-options {
+            display: none !important;
+          }
+        }
+
+
+        /* Mobile profile extras cleanup: keep extra summary cards in Profile Options on mobile */
+        @media (max-width: 1279px) {
+          .profile-strength-right-card,
+          .recently-viewed-right-card,
+          .profile-activity-right-card,
+          .profile-achievements-right-card,
+          .profile-badges-right-card {
+            display: none !important;
           }
         }
 
@@ -11270,6 +12266,17 @@ return (
                             </button>
                           </div>
 
+                            {profileActionsOpen ? (
+                              <button
+                                type="button"
+                                className="profile-viewer-back-to-options"
+                                onClick={closeProfileAchievementsViewer}
+                                style={profileViewerBackToOptionsStyle}
+                              >
+                                ← Back to Profile Options
+                              </button>
+                            ) : null}
+
                           {highlightedProfileAchievement ? (
                             <div
                               className="profile-badges-viewer-hero profile-achievements-viewer-hero"
@@ -11459,6 +12466,17 @@ return (
                               </button>
                             </div>
 
+                            {profileActionsOpen ? (
+                              <button
+                                type="button"
+                                className="profile-viewer-back-to-options"
+                                onClick={closeProfileBadgesViewer}
+                                style={profileViewerBackToOptionsStyle}
+                              >
+                                ← Back to Profile Options
+                              </button>
+                            ) : null}
+
                             {highlightedProfileBadge ? (
                               <div
                                 className="profile-badges-viewer-hero"
@@ -11572,6 +12590,17 @@ return (
                               </button>
                             </div>
 
+                            {profileActionsOpen ? (
+                              <button
+                                type="button"
+                                className="profile-viewer-back-to-options"
+                                onClick={closeProfileStrengthViewer}
+                                style={profileViewerBackToOptionsStyle}
+                              >
+                                ← Back to Profile Options
+                              </button>
+                            ) : null}
+
                             {renderProfileStrengthCard(
                               "profile-strength-viewer-card",
                               {
@@ -11624,6 +12653,17 @@ return (
                               </button>
                             </div>
 
+                            {profileActionsOpen ? (
+                              <button
+                                type="button"
+                                className="profile-viewer-back-to-options"
+                                onClick={closeRecentlyViewedViewer}
+                                style={profileViewerBackToOptionsStyle}
+                              >
+                                ← Back to Profile Options
+                              </button>
+                            ) : null}
+
                             {recentlyViewedLoading ? (
                               <div style={recentlyViewedViewerEmptyStyle}>Loading recently viewed profiles...</div>
                             ) : recentlyViewedProfiles.length === 0 ? (
@@ -11669,6 +12709,94 @@ return (
                                 })}
                               </div>
                             )}
+                          </div>
+                        </div>
+                      ),
+                      document.body
+                    )
+                  : null}
+
+                {isClientMounted && profileActivityViewerOpen
+                  ? createPortal(
+                      (
+                        <div
+                          className="profile-badges-viewer-overlay profile-activity-viewer-overlay"
+                          style={profileBadgesViewerOverlayStyle}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="Profile Activity viewer"
+                          onClick={closeProfileActivityViewer}
+                        >
+                          <div
+                            className="profile-badges-viewer-shell profile-activity-viewer-shell"
+                            style={{ ...profileBadgesViewerShellStyle, maxWidth: "560px" }}
+                            onClick={(event) => event.stopPropagation()}
+                            onWheel={(event) => event.stopPropagation()}
+                            onTouchMove={(event) => event.stopPropagation()}
+                          >
+                            <div className="profile-badges-viewer-header" style={profileBadgesViewerHeaderStyle}>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={profileBadgesViewerEyebrowStyle}>Profile overview</p>
+                                <h3 className="profile-badges-viewer-title" style={profileBadgesViewerTitleStyle}>Profile Activity</h3>
+                                <p style={profileBadgesViewerSubtextStyle}>
+                                  Quick activity details for this profile without crowding the mobile profile page.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={closeProfileActivityViewer}
+                                style={profileBadgesViewerCloseStyle}
+                                aria-label="Close profile activity viewer"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            {profileActionsOpen ? (
+                              <button
+                                type="button"
+                                className="profile-viewer-back-to-options"
+                                onClick={closeProfileActivityViewer}
+                                style={profileViewerBackToOptionsStyle}
+                              >
+                                ← Back to Profile Options
+                              </button>
+                            ) : null}
+
+                            <div style={{ display: "grid", gap: "10px" }}>
+                              <div style={activityRowStyle}>
+                                <span>Status</span>
+                                <strong>{profile?.is_online ? "Online" : "Offline"}</strong>
+                              </div>
+
+                              <div style={activityRowStyle}>
+                                <span>Posts</span>
+                                <strong>{posts.length}</strong>
+                              </div>
+
+                              <div style={activityRowStyle}>
+                                <span>Reels</span>
+                                <strong>{reels.length}</strong>
+                              </div>
+
+                              <div style={activityRowStyle}>
+                                <span>Followers</span>
+                                <strong>{followersCount}</strong>
+                              </div>
+
+                              <div style={activityRowStyle}>
+                                <span>Following</span>
+                                <strong>{followingCount}</strong>
+                              </div>
+
+                              {!isOwnProfile && viewerId ? (
+                                <div style={activityRowStyle}>
+                                  <span>Friend Status</span>
+                                  <strong>{getFriendStatusLabel()}</strong>
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       ),
@@ -11914,151 +13042,153 @@ return (
               ) : null}
 
               {!isProfileContentLocked && activeProfileTab === "Posts" && isOwnProfile ? (
-                <div id="profile-composer" className="profile-content-card profile-composer-card profile-composer-smooth" style={mainCardStyle}>
-                  <div style={profileComposerHeaderStyle}>
-                    <div style={profileComposerIconStyle}>✦</div>
-
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h3 style={{ margin: 0, color: "#ffffff", fontSize: "20px", letterSpacing: "-0.04em" }}>
-                        Create a Post
-                      </h3>
-                      <p style={{ margin: "6px 0 0", color: "#9ca3af", fontSize: "13px", lineHeight: 1.55 }}>
-                        Post to your profile and the homepage feed in one clean update.
-                      </p>
-                    </div>
-
-                    <span style={profileComposerBadgeStyle}>Profile + Feed</span>
-                  </div>
-
-                  <textarea
-                    className="profile-composer-textarea"
-                    value={profilePostContent}
-                    onChange={(event) => setProfilePostContent(event.target.value)}
-                    placeholder="Share an update, photo, link, thought, or moment..."
-                    rows={4}
-                    style={profilePostTextAreaStyle}
-                  />
-
-                  <div className="profile-composer-media-box" style={profilePostMediaBoxStyle}>
+                <section
+                  id="profile-composer"
+                  className="profile-content-card profile-composer-card profile-composer-smooth profile-dashboard-composer-card"
+                  style={profileDashboardComposerCardStyle}
+                >
+                  <div className="profile-dashboard-composer-top-row" style={profileDashboardComposerTopRowStyle}>
                     <div
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                        marginBottom: profilePostImagePreviewUrls.length > 0 ? "14px" : "0px",
+                        ...profileComposerAvatarStyle,
+                        ...(profile?.is_online ? profileComposerAvatarOnlineStyle : {}),
                       }}
                     >
-                      <div>
-                        <div style={{ fontSize: "14px", fontWeight: 950, color: "#f9fafb", marginBottom: "4px" }}>
-                          Add image
-                        </div>
-                        <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", lineHeight: 1.45 }}>
-                          Optional. Keep images light while we are watching storage egress.
-                        </p>
-                      </div>
-
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                        <button
-                          type="button"
-                          onClick={() => profilePostFileInputRef.current?.click()}
-                          style={profileCompactSecondaryButtonStyle}
-                        >
-                          {profilePostImages.length > 0 ? "Add more photos" : "Upload photos"}
-                        </button>
-
-                        {profilePostImages.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveProfilePostImage()}
-                            style={profilePostDangerButtonStyle}
-                          >
-                            Remove
-                          </button>
-                        ) : null}
-                      </div>
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <span style={postAuthorFallbackStyle}>{profileDisplayInitial || "P"}</span>
+                      )}
                     </div>
 
-                    <input
-                      ref={profilePostFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleProfilePostImageChange}
-                      style={{ display: "none" }}
+                    <textarea
+                      className="profile-dashboard-composer-input profile-composer-textarea"
+                      value={profilePostContent}
+                      onChange={(event) => setProfilePostContent(event.target.value.slice(0, POST_CHARACTER_LIMIT))}
+                      placeholder={`What's on your mind, ${profileDisplayName?.split(" ")[0] || "there"}?`}
+                      rows={2}
+                      maxLength={POST_CHARACTER_LIMIT}
+                      style={profileDashboardComposerInputStyle}
                     />
 
-                    {profilePostImagePreviewUrls.length > 0 ? (
-                      <div style={{ display: "grid", gap: "10px" }}>
-                        <ProfileComposerImagePreviewGrid
-                          imageUrls={profilePostImagePreviewUrls}
-                          alt="Selected preview"
-                        />
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-                          <span style={{ color: "#cbd5e1", fontSize: "12px", fontWeight: 850 }}>
-                            {profilePostImages.length} photo{profilePostImages.length === 1 ? "" : "s"} selected · up to {MAX_POST_IMAGES}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveProfilePostImage()}
-                            style={profilePostDangerButtonStyle}
-                          >
-                            Remove photos
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div style={profileComposerFooterStyle}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, color: "#8b93a4", fontSize: "13px", lineHeight: 1.55, fontWeight: 700 }}>
-                        Appears on your profile and the homepage feed.
-                      </p>
-                      <p style={{ margin: "4px 0 0", color: "#626b7c", fontSize: "12px", lineHeight: 1.4 }}>
-                        {profilePostContent.length} characters
-                      </p>
-                    </div>
-
                     <button
-                      onClick={handleCreateProfilePost}
-                      disabled={profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)}
-                      style={{
-                        ...profileCompactPrimaryButtonStyle,
-                        minWidth: "118px",
-                        height: "34px",
-                        color:
-                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
-                            ? "#cbd5e1"
-                            : "var(--parapost-accent-button-text, #ffffff)",
-                        background:
-                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
-                            ? "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.07))"
-                            : "linear-gradient(135deg, var(--parapost-accent-1, #a855f7), var(--parapost-accent-2, #7c3aed), var(--parapost-accent-3, #ec4899))",
-                        border:
-                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
-                            ? "1px solid rgba(255,255,255,0.14)"
-                            : "1px solid var(--parapost-accent-active-border, rgba(168,85,247,0.42))",
-                        boxShadow:
-                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
-                            ? "inset 0 1px 0 rgba(255,255,255,0.05)"
-                            : "0 12px 28px var(--parapost-accent-active-border, rgba(168,85,247,0.28))",
-                        opacity: 1,
-                        cursor:
-                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
-                            ? "not-allowed"
-                            : "pointer",
-                        filter:
-                          profilePostLoading || (!profilePostContent.trim() && profilePostImages.length === 0)
-                            ? "none"
-                            : "brightness(1.04)",
-                      }}
+                      type="button"
+                      onClick={() => profilePostFileInputRef.current?.click()}
+                      style={profileDashboardComposerImageButtonStyle}
+                      aria-label="Upload photo or video"
                     >
-                      {profilePostLoading ? "Posting..." : "Publish post"}
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 17L8.5 12.5L11 15L15.5 10.5L20 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" strokeWidth="2" />
+                      </svg>
                     </button>
                   </div>
-                </div>
+
+                  <input
+                    ref={profilePostFileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleProfilePostImageChange}
+                    style={{ display: "none" }}
+                  />
+
+                  {profilePostImagePreviewUrls.length > 0 ? (
+                    <ProfileComposerMediaPreviewGrid
+                      imageUrls={profilePostImagePreviewUrls}
+                      files={profilePostImages}
+                      alt="Selected profile post preview"
+                      onRemove={handleRemoveProfilePostImage}
+                    />
+                  ) : null}
+
+                  {selectedProfileFeelingActivity ? (
+                    <div style={profileDashboardSelectedFeelingActivityStyle}>
+                      <span style={profileDashboardSelectedFeelingCategoryStyle}>{selectedProfileFeelingActivity.category}</span>
+                      <strong style={profileDashboardSelectedFeelingLabelStyle}>{selectedProfileFeelingActivity.label}</strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedProfileFeelingActivity(null);
+                          setProfileFeelingActivityOpen(false);
+                        }}
+                        style={profileDashboardSelectedFeelingRemoveStyle}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {profileFeelingActivityOpen ? (
+                    <ProfileComposerFeelingActivityPanel
+                      selectedFeelingActivity={selectedProfileFeelingActivity}
+                      onSelect={(option) => {
+                        setSelectedProfileFeelingActivity(option);
+                        setProfileFeelingActivityOpen(false);
+                      }}
+                      onClear={() => {
+                        setSelectedProfileFeelingActivity(null);
+                        setProfileFeelingActivityOpen(false);
+                      }}
+                    />
+                  ) : null}
+
+                  <div className="profile-dashboard-composer-actions" style={profileDashboardComposerActionGridStyle}>
+                    <ProfileDashboardComposerActionPill
+                      label="Photo / Video"
+                      icon="▣"
+                      tone="green"
+                      onClick={() => profilePostFileInputRef.current?.click()}
+                    />
+                    <ProfileDashboardComposerActionPill
+                      label="Parapost Reel"
+                      icon="▶"
+                      tone="pink"
+                      href="/reels"
+                    />
+                    <ProfileDashboardComposerActionPill
+                      label="Live Stream"
+                      icon="◎"
+                      tone="red"
+                      disabled
+                      note="Coming soon"
+                    />
+                    <ProfileDashboardComposerActionPill
+                      label="Feeling / Activity"
+                      icon="●"
+                      tone="gold"
+                      active={!!selectedProfileFeelingActivity}
+                      onClick={() => setProfileFeelingActivityOpen((current) => !current)}
+                    />
+                  </div>
+
+                  <div className="profile-dashboard-composer-footer" style={profileDashboardComposerFooterStyle}>
+                    <span aria-hidden="true" style={{ display: "none" }} />
+                    <button
+                      type="button"
+                      disabled={
+                        profilePostLoading ||
+                        (!profilePostContent.trim() && profilePostImages.length === 0 && !selectedProfileFeelingActivity)
+                      }
+                      onClick={handleCreateProfilePost}
+                      style={{
+                        ...profileDashboardPublishButtonStyle,
+                        opacity:
+                          profilePostLoading ||
+                          (!profilePostContent.trim() && profilePostImages.length === 0 && !selectedProfileFeelingActivity)
+                            ? 0.58
+                            : 1,
+                        cursor:
+                          profilePostLoading ||
+                          (!profilePostContent.trim() && profilePostImages.length === 0 && !selectedProfileFeelingActivity)
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      {profilePostLoading ? "Publishing..." : "Publish post"}
+                    </button>
+                  </div>
+                </section>
               ) : null}
 
               {!isProfileContentLocked && activeProfileTab === "Posts" ? (
@@ -12408,6 +13538,7 @@ return (
                         const likeCount = likeCounts[post.id] || 0;
                         const isPostOwner = canManageProfilePost(post);
                         const isEditingPost = editingPostId === post.id;
+                        const { headerActivityText, bodyContent } = splitPostFeelingActivityContent(post.content || "");
 
                         return (
                           <article
@@ -12441,6 +13572,7 @@ return (
                                 </strong>
                                 <span style={postMetaStyle}>
                                   @{profileDisplayUsername || "new-member"} · {formatTimeAgo(post.created_at)}
+                                  {headerActivityText ? ` · ${headerActivityText}` : ""}
                                 </span>
                               </div>
 
@@ -12510,10 +13642,10 @@ return (
                                   </button>
                                 </div>
                               </div>
-                            ) : post.content ? (
+                            ) : bodyContent ? (
                               <>
-                                <p style={postContentStyle}>{renderLinkedText(post.content)}</p>
-                                <LinkPreviewCard text={post.content} />
+                                <p style={postContentStyle}>{renderLinkedText(bodyContent)}</p>
+                                <LinkPreviewCard text={bodyContent} />
                               </>
                             ) : null}
 
@@ -12798,7 +13930,7 @@ return (
 
             {viewerId ? renderRecentlyViewedCard("recently-viewed-right-card", rightPanelCardStyle) : null}
 
-            <div style={rightPanelCardStyle}>
+            <div className="profile-activity-right-card" style={rightPanelCardStyle}>
               <div style={rightPanelHeaderStyle}>
                 <h3 style={rightPanelTitleStyle}>Profile Activity</h3>
                 <span style={profile?.is_online ? onlineStatusPillStyle : offlineStatusPillStyle}>
@@ -12923,6 +14055,18 @@ return (
 
           <button
             type="button"
+            onClick={() => openProfileAchievementsViewer()}
+            style={profileDesktopActionItemStyle}
+          >
+            <span style={profileActionIconStyle}>✦</span>
+            <span>
+              <strong>{isOwnProfile ? "My Achievements" : "View achievements"}</strong>
+              <small>{isOwnProfile ? "View your achievement progress" : "See this member’s milestones"}</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleCopyProfileLink}
             style={profileDesktopActionItemStyle}
           >
@@ -13021,9 +14165,9 @@ return (
 
             <div style={profileActionHeaderStyle}>
               <div>
-                <p style={profileActionEyebrowStyle}>Profile options</p>
+                <p style={profileActionEyebrowStyle}>Profile menu</p>
                 <h3 style={profileActionTitleStyle}>
-                  {profileDisplayName || "\u00A0"}
+                  Profile Options
                 </h3>
               </div>
 
@@ -13108,6 +14252,18 @@ return (
 
               <button
                 type="button"
+                onClick={() => openProfileAchievementsViewer()}
+                style={profileActionItemStyle}
+              >
+                <span style={profileActionIconStyle}>✦</span>
+                <span>
+                  <strong>{isOwnProfile ? "My Achievements" : "View achievements"}</strong>
+                  <small>{isOwnProfile ? "View your achievement progress" : "See this member’s milestones"}</small>
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={openProfileStrengthViewer}
                 style={profileActionItemStyle}
               >
@@ -13131,6 +14287,18 @@ return (
                   </span>
                 </button>
               ) : null}
+
+              <button
+                type="button"
+                onClick={openProfileActivityViewer}
+                style={profileActionItemStyle}
+              >
+                <span style={profileActionIconStyle}>◎</span>
+                <span>
+                  <strong>Profile Activity</strong>
+                  <small>Posts, Reels, followers, and connection status</small>
+                </span>
+              </button>
 
               <button
                 type="button"
@@ -13228,6 +14396,22 @@ return (
   );
 }   
 
+
+const profileViewerBackToOptionsStyle: CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.065)",
+  color: "#fff",
+  padding: "11px 13px",
+  margin: "0 0 12px",
+  fontSize: "12px",
+  fontWeight: 950,
+  letterSpacing: "-0.01em",
+  textAlign: "left",
+  cursor: "pointer",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.055)",
+};
 
 const profileMobileBadgesPanelStyle: CSSProperties = {
   margin: "0 14px 14px",
@@ -13892,6 +15076,459 @@ const postContentStyle: CSSProperties = {
   fontWeight: 500,
   letterSpacing: "-0.006em",
 };
+
+const profileDashboardComposerCardStyle: CSSProperties = {
+  borderRadius: 24,
+  border: "1px solid var(--parapost-accent-border)",
+  background:
+    "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 36%), linear-gradient(180deg, rgba(20,26,43,0.90), rgba(9,12,21,0.92))",
+  padding: 16,
+  marginBottom: 16,
+  boxShadow:
+    "0 18px 46px rgba(0,0,0,0.30), 0 0 28px var(--parapost-accent-glow), inset 0 1px 0 rgba(255,255,255,0.045)",
+  overflow: "hidden",
+  scrollMarginTop: 96,
+};
+
+const profileDashboardComposerTopRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0,1fr) auto",
+  gap: 12,
+  alignItems: "center",
+};
+
+const profileComposerAvatarStyle: CSSProperties = {
+  width: 48,
+  height: 48,
+  borderRadius: 999,
+  overflow: "hidden",
+  display: "grid",
+  placeItems: "center",
+  border: "2px solid color-mix(in srgb, var(--parapost-accent-2) 70%, rgba(255,255,255,0.22))",
+  background: "radial-gradient(circle at 35% 20%, var(--parapost-accent-soft), rgba(15,23,42,0.98))",
+  boxShadow: "0 0 0 4px rgba(0,0,0,0.30), 0 0 18px var(--parapost-accent-glow)",
+  position: "relative",
+  flexShrink: 0,
+};
+
+const profileComposerAvatarOnlineStyle: CSSProperties = {
+  boxShadow:
+    "0 0 0 4px rgba(0,0,0,0.30), 0 0 18px var(--parapost-accent-glow), 0 0 0 1px rgba(34,197,94,0.55)",
+};
+
+const profileDashboardComposerInputStyle: CSSProperties = {
+  width: "100%",
+  minHeight: 58,
+  maxHeight: 190,
+  resize: "none",
+  overflowY: "auto",
+  border: "1px solid rgba(255,255,255,0.11)",
+  borderRadius: 18,
+  background: "rgba(255,255,255,0.04)",
+  color: "#fff",
+  outline: 0,
+  padding: "16px 18px",
+  fontSize: 15.5,
+  lineHeight: 1.45,
+  fontFamily: "inherit",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+};
+
+const profileDashboardComposerImageButtonStyle: CSSProperties = {
+  width: 46,
+  height: 46,
+  borderRadius: 15,
+  border: "1px solid rgba(255,255,255,0.11)",
+  background: "rgba(255,255,255,0.045)",
+  color: "#fff",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+const profileDashboardPreviewWrapStyle: CSSProperties = {
+  width: "min(100%, 560px)",
+  margin: "12px auto 0",
+  borderRadius: 20,
+  border: "1px solid rgba(255,255,255,0.10)",
+  overflow: "hidden",
+  background: "rgba(0,0,0,0.22)",
+  position: "relative",
+};
+
+const profileDashboardPreviewGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 6,
+  padding: 8,
+  maxHeight: 292,
+  overflow: "hidden",
+};
+
+const profileDashboardPreviewSingleGridStyle: CSSProperties = {
+  gridTemplateColumns: "1fr",
+  maxHeight: 260,
+};
+
+const profileDashboardPreviewTileStyle: CSSProperties = {
+  position: "relative",
+  minHeight: 132,
+  height: 132,
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 16,
+  overflow: "hidden",
+  padding: 0,
+  background: "rgba(255,255,255,0.04)",
+  cursor: "pointer",
+};
+
+const profileDashboardPreviewSingleTileStyle: CSSProperties = {
+  minHeight: 246,
+  height: 246,
+};
+
+const profileDashboardPreviewMediaStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  minHeight: "100%",
+  objectFit: "cover",
+  display: "block",
+};
+
+const profileDashboardPreviewCounterStyle: CSSProperties = {
+  position: "absolute",
+  right: 10,
+  top: 10,
+  borderRadius: 999,
+  padding: "5px 9px",
+  background: "rgba(0,0,0,0.72)",
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 950,
+  lineHeight: 1,
+  border: "1px solid rgba(255,255,255,0.16)",
+  boxShadow: "0 8px 18px rgba(0,0,0,0.28)",
+};
+
+const profileDashboardPreviewTypeBadgeStyle: CSSProperties = {
+  position: "absolute",
+  left: 10,
+  top: 10,
+  borderRadius: 999,
+  padding: "5px 9px",
+  background: "var(--parapost-accent-active-bg)",
+  color: "var(--parapost-accent-readable-text)",
+  fontSize: 12,
+  fontWeight: 950,
+  lineHeight: 1,
+  border: "1px solid var(--parapost-accent-active-border)",
+};
+
+const profileDashboardPreviewMetaRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  padding: 12,
+  flexWrap: "wrap",
+};
+
+const profileDashboardSelectedMediaNameStyle: CSSProperties = {
+  maxWidth: "100%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  borderRadius: 999,
+  padding: "7px 10px",
+  background: "rgba(0,0,0,0.62)",
+  color: "#e5e7eb",
+  fontSize: 12,
+  fontWeight: 850,
+};
+
+const profileDashboardRemoveMediaButtonStyle: CSSProperties = {
+  border: "1px solid rgba(248,113,113,0.22)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))",
+  color: "#fca5a5",
+  borderRadius: 999,
+  padding: "8px 12px",
+  fontWeight: 950,
+  cursor: "pointer",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 10px 20px rgba(0,0,0,0.18)",
+};
+
+const profileDashboardSelectedFeelingActivityStyle: CSSProperties = {
+  marginTop: 12,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  maxWidth: "100%",
+  borderRadius: 14,
+  border: "1px solid var(--parapost-accent-border)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-soft), color-mix(in srgb, var(--parapost-accent-2) 8%, transparent))",
+  color: "#fff",
+  padding: "8px 10px",
+};
+
+const profileDashboardSelectedFeelingCategoryStyle: CSSProperties = {
+  color: "var(--parapost-accent-readable-text)",
+  fontSize: 11,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const profileDashboardSelectedFeelingLabelStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 950,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const profileDashboardSelectedFeelingRemoveStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.055)",
+  color: "#e5e7eb",
+  padding: "5px 8px",
+  fontSize: 11,
+  fontWeight: 900,
+  cursor: "pointer",
+  marginLeft: "auto",
+};
+
+const profileDashboardComposerActionGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 9,
+  alignItems: "center",
+  marginTop: 13,
+};
+
+const profileDashboardComposerActionPillStyle: CSSProperties = {
+  minHeight: 39,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.085)",
+  background: "rgba(255,255,255,0.038)",
+  color: "#fff",
+  padding: "0 12px",
+  fontWeight: 850,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  textDecoration: "none",
+  whiteSpace: "nowrap",
+  fontSize: 12.5,
+  transition: "border-color 160ms ease, background 160ms ease, transform 160ms ease",
+};
+
+const profileDashboardComposerActionPillActiveStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-active-border)",
+  background:
+    "linear-gradient(135deg, var(--parapost-accent-soft), color-mix(in srgb, var(--parapost-accent-2) 12%, transparent))",
+  boxShadow: "0 0 18px var(--parapost-accent-glow)",
+};
+
+const profileDashboardComposerActionDisabledStyle: CSSProperties = {
+  opacity: 0.46,
+  background: "rgba(255,255,255,0.018)",
+  border: "1px dashed rgba(255,255,255,0.11)",
+  cursor: "not-allowed",
+  color: "#9ca3af",
+};
+
+const profileDashboardComposerActionNoteStyle: CSSProperties = {
+  borderRadius: 999,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  color: "#a1a1aa",
+  padding: "2px 6px",
+  fontSize: 10,
+  fontWeight: 900,
+  lineHeight: 1,
+  textTransform: "uppercase",
+  letterSpacing: "0.03em",
+  flexShrink: 0,
+};
+
+const profileDashboardComposerActionIconStyle: CSSProperties = {
+  width: 24,
+  height: 24,
+  borderRadius: 8,
+  display: "grid",
+  placeItems: "center",
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 950,
+  lineHeight: 1,
+};
+
+const profileDashboardComposerActionToneStyles: Record<"green" | "pink" | "red" | "gold", CSSProperties> = {
+  green: { background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)" },
+  pink: { background: "color-mix(in srgb, var(--parapost-accent-3) 18%, transparent)", color: "var(--parapost-accent-readable-text)" },
+  red: { background: "rgba(239,68,68,0.18)", color: "#fca5a5" },
+  gold: { background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)" },
+};
+
+const profileDashboardComposerFooterStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  marginTop: 13,
+  flexWrap: "wrap",
+};
+
+const profileDashboardPublishButtonStyle: CSSProperties = {
+  marginLeft: "auto",
+  minHeight: 35,
+  borderRadius: 14,
+  border: 0,
+  background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))",
+  color: "#111827",
+  fontWeight: 900,
+  padding: "0 15px",
+  cursor: "pointer",
+  boxShadow: "0 10px 20px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
+  whiteSpace: "nowrap",
+  fontSize: 12.5,
+};
+
+const profileDashboardFeelingPanelStyle: CSSProperties = {
+  marginTop: 12,
+  borderRadius: 20,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))",
+  padding: 12,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 12px 28px rgba(0,0,0,0.22)",
+};
+
+const profileDashboardFeelingHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 12,
+};
+
+const profileDashboardFeelingTitleStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 14,
+  fontWeight: 950,
+};
+
+const profileDashboardFeelingIntroStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "#a1a1aa",
+  fontSize: 12,
+  lineHeight: 1.4,
+};
+
+const profileDashboardFeelingClearStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.055)",
+  color: "#e5e7eb",
+  padding: "7px 10px",
+  fontSize: 11,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const profileDashboardFeelingColumnsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const profileDashboardFeelingSectionStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+};
+
+const profileDashboardFeelingSectionTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#e5e7eb",
+  fontSize: 12,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const profileDashboardFeelingGridStyle: CSSProperties = {
+  display: "grid",
+  gap: 7,
+};
+
+const profileDashboardFeelingOptionStyle: CSSProperties = {
+  minHeight: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.085)",
+  background: "rgba(255,255,255,0.035)",
+  color: "#fff",
+  padding: "8px 10px",
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0,1fr)",
+  gap: 8,
+  alignItems: "center",
+  textAlign: "left",
+  cursor: "pointer",
+};
+
+const profileDashboardFeelingOptionActiveStyle: CSSProperties = {
+  border: "1px solid var(--parapost-accent-active-border)",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.035))",
+  boxShadow: "0 0 16px var(--parapost-accent-glow)",
+};
+
+const profileDashboardFeelingOptionDotStyle: CSSProperties = {
+  width: 9,
+  height: 9,
+  borderRadius: 999,
+  background: "var(--parapost-accent-2)",
+  boxShadow: "0 0 12px var(--parapost-accent-glow)",
+};
+
+const profileDashboardFeelingOptionLabelStyle: CSSProperties = {
+  display: "block",
+  color: "#fff",
+  fontSize: 12.5,
+  fontWeight: 950,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profileDashboardFeelingOptionHelperStyle: CSSProperties = {
+  display: "block",
+  color: "#9ca3af",
+  fontSize: 11,
+  lineHeight: 1.25,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profilePostVideoBadgeStyle: CSSProperties = {
+  position: "absolute",
+  left: 10,
+  top: 10,
+  borderRadius: 999,
+  padding: "5px 9px",
+  background: "rgba(0,0,0,0.68)",
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 950,
+  lineHeight: 1,
+  border: "1px solid rgba(255,255,255,0.16)",
+};
+
 
 const profileComposerPreviewGridStyle: CSSProperties = {
   display: "grid",

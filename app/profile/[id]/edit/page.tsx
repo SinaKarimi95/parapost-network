@@ -24,7 +24,12 @@ const COVER_MAX_SIZE_MB = 10;
 type StatusKind = "success" | "error" | "info";
 
 const pageShellStyle: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
+  height: "100dvh",
+  overflowX: "hidden",
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehaviorY: "contain",
   background: "#07090d",
   color: "white",
 };
@@ -479,8 +484,29 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div style={pageShellStyle}>
+    <div className="edit-profile-scroll-root" style={pageShellStyle}>
       <style>{`
+        html:has(.edit-profile-scroll-root),
+        body:has(.edit-profile-scroll-root) {
+          height: 100% !important;
+          overflow: hidden !important;
+          overscroll-behavior-y: contain !important;
+        }
+
+        .edit-profile-scroll-root {
+          min-height: 100dvh !important;
+          height: 100dvh !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          overscroll-behavior-y: contain !important;
+          touch-action: pan-y !important;
+        }
+
+        .edit-profile-page-container {
+          padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+        }
+
         .cover-editor-block {
           scroll-margin-top: 18px;
         }
@@ -519,6 +545,19 @@ export default function EditProfilePage() {
         }
 
         @media (max-width: 720px) {
+          .edit-profile-scroll-root {
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-y !important;
+          }
+
+          .edit-profile-page-container {
+            padding: 14px 10px calc(118px + env(safe-area-inset-bottom)) !important;
+          }
+
           .cover-editor-block {
             gap: 16px !important;
           }
@@ -559,8 +598,20 @@ export default function EditProfilePage() {
             padding-top: 24px !important;
           }
         }
+
+        @media (min-width: 721px) and (max-width: 1024px) {
+          .edit-profile-scroll-root {
+            height: 100dvh !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+
+          .edit-profile-page-container {
+            padding: 22px 18px calc(92px + env(safe-area-inset-bottom)) !important;
+          }
+        }
       `}</style>
-      <div style={containerStyle}>
+      <div className="edit-profile-page-container" style={containerStyle}>
         <div style={{ display: "grid", gap: "20px" }}>
           <div style={cardStyle}>
             <div

@@ -10296,10 +10296,58 @@ const imagePreviewMetaRowStyle: CSSProperties = { display: "flex", alignItems: "
 const removeImageButtonStyle: CSSProperties = { border: "1px solid rgba(248,113,113,0.22)", background: "linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))", color: "#fca5a5", borderRadius: 999, padding: "8px 12px", fontWeight: 950, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 10px 20px rgba(0,0,0,0.18)" };
 const selectedImageNameStyle: CSSProperties = { maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", borderRadius: 999, padding: "7px 10px", background: "rgba(0,0,0,0.62)", color: "#e5e7eb", fontSize: 12, fontWeight: 850 };
 
-const feedTabsStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, borderRadius: 24, border: "1px solid rgba(255,255,255,0.11)", background: "rgba(255,255,255,0.045)", padding: 8, margin: "16px 0", overflowX: "auto" };
-const feedTabStyle: CSSProperties = { border: 0, background: "transparent", color: "#d1d5db", padding: "12px 18px", borderRadius: 18, cursor: "pointer", fontSize: 16, whiteSpace: "nowrap" };
-const activeFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "var(--parapost-accent-text)", background: "var(--parapost-accent-active-bg)", boxShadow: "inset 0 -3px 0 var(--parapost-accent-2)", fontWeight: 900 };
-const disabledFeedTabStyle: CSSProperties = { ...feedTabStyle, color: "rgba(229,231,235,0.42)", background: "transparent", border: "1px solid transparent", cursor: "default", opacity: 0.55 };
+const feedTabsStyle: CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 24,
+  border: "1px solid rgba(255,255,255,0.11)",
+  background: "rgba(255,255,255,0.045)",
+  padding: 8,
+  margin: "16px 0",
+  overflow: "hidden",
+};
+
+const feedTabStyle: CSSProperties = {
+  minWidth: 0,
+  width: "100%",
+  height: 48,
+  border: 0,
+  background: "transparent",
+  color: "#d1d5db",
+  padding: "0 6px",
+  borderRadius: 18,
+  cursor: "pointer",
+  fontSize: "clamp(12px, 3.15vw, 16px)",
+  fontWeight: 750,
+  letterSpacing: "-0.02em",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const activeFeedTabStyle: CSSProperties = {
+  ...feedTabStyle,
+  color: "var(--parapost-accent-text)",
+  background: "var(--parapost-accent-active-bg)",
+  boxShadow: "inset 0 -3px 0 var(--parapost-accent-2)",
+  fontWeight: 900,
+};
+
+const disabledFeedTabStyle: CSSProperties = {
+  ...feedTabStyle,
+  color: "rgba(229,231,235,0.42)",
+  background: "transparent",
+  border: "1px solid transparent",
+  cursor: "default",
+  opacity: 0.55,
+};
 
 const feedStackStyle: CSSProperties = { display: "grid", gap: 16 };
 const emptyStateStyle: CSSProperties = { borderRadius: 24, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.045)", padding: 22 };

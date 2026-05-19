@@ -1821,6 +1821,8 @@ export default function ProfilePage() {
   const showcaseMediaInputRef = useRef<HTMLInputElement | null>(null);
   const profileActionSheetRef = useRef<HTMLDivElement | null>(null);
   const profileActionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const openPostMenuIdRef = useRef<string | null>(null);
+  const profileActionsOpenRef = useRef(false);
   const [profileActionMenuPosition, setProfileActionMenuPosition] = useState({
     top: 0,
     left: 0,
@@ -2650,34 +2652,61 @@ useEffect(() => {
 }, [profileBadgesViewerOpen, profileAchievementsViewerOpen, profileStrengthViewerOpen, recentlyViewedViewerOpen, profileActivityViewerOpen]);
 
 useEffect(() => {
+  openPostMenuIdRef.current = openPostMenuId;
+}, [openPostMenuId]);
+
+useEffect(() => {
+  profileActionsOpenRef.current = profileActionsOpen;
+}, [profileActionsOpen]);
+
+useEffect(() => {
+  const profileActionSelector =
+    ".profile-desktop-action-menu-fixed, .profile-desktop-action-menu-wrap, .profile-mobile-action-overlay";
+
   const targetIsInsideProfileActions = (event: Event) => {
-    const target = event.target as HTMLElement | null;
+    const target = event.target;
 
-    return Boolean(
-      target?.closest(
-        ".profile-desktop-action-menu-fixed, .profile-desktop-action-menu-wrap, .profile-mobile-action-overlay"
-      )
-    );
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    return Boolean(target.closest(profileActionSelector));
   };
 
-  const closePostMenusOnly = () => {
-    setOpenPostMenuId(null);
+  const closePostMenuIfOpen = () => {
+    if (openPostMenuIdRef.current !== null) {
+      openPostMenuIdRef.current = null;
+      setOpenPostMenuId(null);
+    }
   };
 
-  const closeDesktopFloatingMenus = (event: Event) => {
-    setOpenPostMenuId(null);
-
-    if (targetIsInsideProfileActions(event)) return;
-
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 721px)").matches) {
+  const closeProfileActionsIfOpen = () => {
+    if (profileActionsOpenRef.current) {
+      profileActionsOpenRef.current = false;
       setProfileActionsOpen(false);
     }
   };
 
+  const closeFloatingMenus = (event: Event) => {
+    closePostMenuIfOpen();
+
+    if (!targetIsInsideProfileActions(event)) {
+      closeProfileActionsIfOpen();
+    }
+  };
+
+  const closeFloatingMenusOnScroll = (event: Event) => {
+    if (openPostMenuIdRef.current === null && !profileActionsOpenRef.current) return;
+    if (targetIsInsideProfileActions(event)) return;
+
+    closePostMenuIfOpen();
+    closeProfileActionsIfOpen();
+  };
+
   const handleEscapeKey = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
-      setOpenPostMenuId(null);
-      setProfileActionsOpen(false);
+      closePostMenuIfOpen();
+      closeProfileActionsIfOpen();
       setProfileFeelingActivityOpen(false);
       setActiveProfileShowcase(null);
       setProfileBadgesViewerOpen(false);
@@ -2690,13 +2719,24 @@ useEffect(() => {
     }
   };
 
-  window.addEventListener("click", closeDesktopFloatingMenus);
-  window.addEventListener("touchmove", closePostMenusOnly, { passive: true });
+  const scrollListenerOptions: AddEventListenerOptions = {
+    capture: true,
+    passive: true,
+  };
+
+  window.addEventListener("click", closeFloatingMenus);
+  window.addEventListener("wheel", closeFloatingMenusOnScroll, { passive: true });
+  window.addEventListener("touchmove", closeFloatingMenusOnScroll, { passive: true });
+  window.addEventListener("scroll", closeFloatingMenusOnScroll, scrollListenerOptions);
+  document.addEventListener("scroll", closeFloatingMenusOnScroll, scrollListenerOptions);
   window.addEventListener("keydown", handleEscapeKey);
 
   return () => {
-    window.removeEventListener("click", closeDesktopFloatingMenus);
-    window.removeEventListener("touchmove", closePostMenusOnly);
+    window.removeEventListener("click", closeFloatingMenus);
+    window.removeEventListener("wheel", closeFloatingMenusOnScroll);
+    window.removeEventListener("touchmove", closeFloatingMenusOnScroll);
+    window.removeEventListener("scroll", closeFloatingMenusOnScroll, scrollListenerOptions);
+    document.removeEventListener("scroll", closeFloatingMenusOnScroll, scrollListenerOptions);
     window.removeEventListener("keydown", handleEscapeKey);
   };
 }, []);
@@ -2719,7 +2759,13 @@ useEffect(() => {
     let cancelled = false;
 
     const loadProfileShowcases = async () => {
-      if (!profileId) {
+      const safeProfileId = typeof profileId === "string" ? profileId.trim() : "";
+      const isValidProfileId =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          safeProfileId
+        );
+
+      if (!safeProfileId || !isValidProfileId) {
         setProfileShowcases([]);
         setShowcasesLoaded(true);
         return;
@@ -2732,13 +2778,18 @@ useEffect(() => {
         .select(
           "id,user_id,title,cover_text,media_url,media_type,media_filename,font_key,text_position_x,text_position_y,overlay_font_size,duration,visibility,expires_at,created_at"
         )
-        .eq("user_id", profileId)
+        .eq("user_id", safeProfileId)
         .order("created_at", { ascending: false });
 
       if (cancelled) return;
 
       if (error) {
-        console.error("Could not load profile Showcases:", error);
+        const showcaseErrorMessage =
+          typeof error.message === "string" && error.message.trim()
+            ? error.message
+            : "Showcases could not be loaded from Supabase.";
+
+        console.warn("Profile Showcases unavailable:", showcaseErrorMessage);
         setProfileShowcases([]);
         setShowcasesLoaded(true);
         return;
@@ -3839,9 +3890,13 @@ useEffect(() => {
 
     updateProfileActionMenuPosition();
 
-    window.addEventListener("resize", updateProfileActionMenuPosition);
+    const closeProfileActionsOnResize = () => {
+      setProfileActionsOpen(false);
+    };
+
+    window.addEventListener("resize", closeProfileActionsOnResize);
     return () => {
-      window.removeEventListener("resize", updateProfileActionMenuPosition);
+      window.removeEventListener("resize", closeProfileActionsOnResize);
     };
   }, [profileActionsOpen, updateProfileActionMenuPosition]);
 
@@ -11071,7 +11126,9 @@ return (
             Parachat
            </Link>
 
-           <div style={navItemStyle}>Settings</div>
+           <Link href="/settings" style={navItemLinkStyle}>
+            Settings
+           </Link>
            </div>
            </aside>   
 

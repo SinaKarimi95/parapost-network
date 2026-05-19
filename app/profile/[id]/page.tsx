@@ -1755,6 +1755,7 @@ export default function ProfilePage() {
 
   const [activeProfileTab, setActiveProfileTab] = useState("Posts");
   const [profileActionsOpen, setProfileActionsOpen] = useState(false);
+  const [profileMainMenuOpen, setProfileMainMenuOpen] = useState(false);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
   const [activeProfileShowcase, setActiveProfileShowcase] = useState<ProfileShowcase | null>(null);
@@ -11034,24 +11035,183 @@ return (
           </svg>
         </button>
 
-        <div style={profileTopBrandMarkStyle}>
-          <div style={{ fontWeight: 950, letterSpacing: "0.04em" }}>
-            PARAPOST
-          </div>
-          <div
-            style={{
-              color: "var(--parapost-accent-2)",
-              fontSize: "11px",
-              letterSpacing: "0.32em",
-              fontWeight: 900,
-            }}
-          >
-            NETWORK
-          </div>
-        </div>
+        <Link
+          href="/notifications"
+          className="profile-top-search-icon-button"
+          style={{ ...profileTopSearchIconButtonStyle, textDecoration: "none" }}
+          aria-label="Notifications"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+            <path
+              d="M18 8.7a6 6 0 0 0-12 0c0 7-3 7.8-3 7.8h18s-3-.8-3-7.8Z"
+              stroke="currentColor"
+              strokeWidth="2.15"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M9.8 19a2.3 2.3 0 0 0 4.4 0"
+              stroke="currentColor"
+              strokeWidth="2.15"
+              strokeLinecap="round"
+            />
+          </svg>
+        </Link>
+
+        <button
+          type="button"
+          className="profile-top-search-icon-button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            closeProfileMobileSearch();
+            setProfileActionsOpen(false);
+            setProfileMainMenuOpen((value) => !value);
+          }}
+          style={profileTopSearchIconButtonStyle}
+          aria-label="Open menu"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </div>
 
     </div>
+
+    {isClientMounted && profileMainMenuOpen
+      ? createPortal(
+          (
+            <div
+              className="profile-mobile-main-menu-overlay"
+              style={profileMobileMainMenuOverlayStyle}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Profile mobile menu"
+              onClick={() => setProfileMainMenuOpen(false)}
+            >
+              <div
+                className="profile-mobile-main-menu-sheet"
+                style={profileMobileMainMenuSheetStyle}
+                onClick={(event) => event.stopPropagation()}
+                onWheel={(event) => event.stopPropagation()}
+              >
+                <div style={profileMobileMainMenuTopBarStyle}>
+                  <button
+                    type="button"
+                    onClick={() => setProfileMainMenuOpen(false)}
+                    style={profileMobileMainMenuTextButtonStyle}
+                    aria-label="Close menu"
+                  >
+                    Close
+                  </button>
+
+                  <h2 style={profileMobileMainMenuTitleStyle}>Menu</h2>
+
+                  <button
+                    type="button"
+                    onClick={() => setProfileMainMenuOpen(false)}
+                    style={profileMobileMainMenuCloseButtonStyle}
+                    aria-label="Close menu"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="profile-mobile-main-menu-scroll" style={profileMobileMainMenuScrollStyle}>
+                  <div style={profileMobileMainMenuSectionStyle}>Dashboard Extras</div>
+
+                  <button
+                    type="button"
+                    style={profileMobileMainMenuRowStyle}
+                    onClick={() => {
+                      setProfileMainMenuOpen(false);
+                      router.push("/dashboard");
+                    }}
+                  >
+                    <span style={profileMobileMainMenuLabelStyle}>Discover</span>
+                    <span style={profileMobileMainMenuArrowStyle}>›</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={profileMobileMainMenuRowStyle}
+                    onClick={() => {
+                      setProfileMainMenuOpen(false);
+                      router.push("/dashboard");
+                    }}
+                  >
+                    <span style={profileMobileMainMenuLabelStyle}>Parapost Hub</span>
+                    <span style={profileMobileMainMenuArrowStyle}>›</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={profileMobileMainMenuRowStyle}
+                    onClick={() => {
+                      setProfileMainMenuOpen(false);
+                      router.push(isOwnProfile && viewerId ? `/profile/${viewerId}` : "/dashboard");
+                    }}
+                  >
+                    <span style={profileMobileMainMenuLabelStyle}>Creator Tools</span>
+                    <span style={profileMobileMainMenuArrowStyle}>›</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={profileMobileMainMenuRowStyle}
+                    onClick={() => {
+                      setProfileMainMenuOpen(false);
+                      router.push("/settings/payments");
+                    }}
+                  >
+                    <span style={profileMobileMainMenuLabelStyle}>Ads & Sponsors</span>
+                    <span style={profileMobileMainMenuArrowStyle}>›</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={profileMobileMainMenuRowStyle}
+                    onClick={() => {
+                      setProfileMainMenuOpen(false);
+                      router.push("/settings");
+                    }}
+                  >
+                    <span style={profileMobileMainMenuLabelStyle}>Settings & Support</span>
+                    <span style={profileMobileMainMenuArrowStyle}>›</span>
+                  </button>
+
+                  <p style={profileMobileMainMenuInfoStyle}>
+                    Quick access to extra dashboard areas without crowding the main mobile feed.
+                  </p>
+
+                  {viewerId ? (
+                    <>
+                      <div style={profileMobileMainMenuDividerStyle} />
+                      <button
+                        type="button"
+                        style={profileMobileMainMenuLogoutStyle}
+                        onClick={() => {
+                          setProfileMainMenuOpen(false);
+                          handleProfileLogout();
+                        }}
+                      >
+                        <span style={profileMobileMainMenuLabelStyle}>Log out</span>
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ),
+          document.body
+        )
+      : null}
 
     {isClientMounted && profileMobileSearchOpen
       ? createPortal(
@@ -19112,26 +19272,189 @@ const offlineStatusPillStyle: CSSProperties = {
 
 
 
+const profileMobileMainMenuOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0,
+  zIndex: 2147483647,
+  width: "100vw",
+  height: "100dvh",
+  minHeight: "100dvh",
+  maxHeight: "100dvh",
+  overflow: "hidden",
+  background: "rgba(2,4,10,0.72)",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  display: "block",
+  padding: 0,
+  margin: 0,
+};
+
+const profileMobileMainMenuSheetStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0,
+  width: "100vw",
+  maxWidth: "100vw",
+  height: "100dvh",
+  minHeight: "100dvh",
+  maxHeight: "100dvh",
+  overflow: "hidden",
+  background:
+    "linear-gradient(180deg, rgba(13,10,25,0.995), rgba(5,7,13,0.998))",
+  border: "none",
+  boxShadow: "none",
+  display: "flex",
+  flexDirection: "column",
+  color: "#fff",
+};
+
+const profileMobileMainMenuTopBarStyle: CSSProperties = {
+  flexShrink: 0,
+  display: "grid",
+  gridTemplateColumns: "76px minmax(0, 1fr) 38px",
+  alignItems: "center",
+  gap: "10px",
+  padding: "max(14px, env(safe-area-inset-top)) 14px 14px",
+  borderBottom: "1px solid rgba(255,255,255,0.075)",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.018))",
+};
+
+const profileMobileMainMenuTextButtonStyle: CSSProperties = {
+  border: 0,
+  background: "transparent",
+  color: "#f8fafc",
+  fontSize: "13px",
+  fontWeight: 900,
+  textAlign: "left",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const profileMobileMainMenuTitleStyle: CSSProperties = {
+  margin: 0,
+  textAlign: "left",
+  color: "#fff",
+  fontSize: "21px",
+  lineHeight: 1,
+  fontWeight: 950,
+  letterSpacing: "-0.04em",
+};
+
+const profileMobileMainMenuCloseButtonStyle: CSSProperties = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.080)",
+  color: "#fff",
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+  fontSize: "19px",
+  fontWeight: 900,
+  lineHeight: 1,
+};
+
+const profileMobileMainMenuScrollStyle: CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  width: "100%",
+  overflowY: "auto",
+  overflowX: "hidden",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehavior: "contain",
+  padding: "14px 18px calc(132px + env(safe-area-inset-bottom))",
+};
+
+const profileMobileMainMenuSectionStyle: CSSProperties = {
+  padding: "16px 0 8px",
+  color: "#a7b0c2",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const profileMobileMainMenuRowStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "54px",
+  padding: "0 0",
+  border: 0,
+  borderBottom: "1px solid rgba(255,255,255,0.070)",
+  background: "transparent",
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "14px",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const profileMobileMainMenuLabelStyle: CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: "16px",
+  fontWeight: 850,
+  letterSpacing: "-0.02em",
+};
+
+const profileMobileMainMenuArrowStyle: CSSProperties = {
+  color: "rgba(203,213,225,0.64)",
+  fontSize: "22px",
+  lineHeight: 1,
+  fontWeight: 600,
+};
+
+const profileMobileMainMenuInfoStyle: CSSProperties = {
+  margin: "24px 0 18px",
+  padding: "0 2px",
+  color: "#aeb7c8",
+  fontSize: "13px",
+  lineHeight: 1.55,
+  fontWeight: 500,
+};
+
+const profileMobileMainMenuDividerStyle: CSSProperties = {
+  height: "1px",
+  background: "rgba(255,255,255,0.080)",
+  margin: "18px 0 8px",
+};
+
+const profileMobileMainMenuLogoutStyle: CSSProperties = {
+  ...profileMobileMainMenuRowStyle,
+  color: "#fecaca",
+  borderBottom: "1px solid rgba(248,113,113,0.16)",
+};
+
 const profileTopBrandActionsStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "flex-end",
-  gap: "10px",
+  gap: "8px",
   minWidth: 0,
   flex: 1,
 };
 
 const profileTopBrandMarkStyle: CSSProperties = {
-  textAlign: "right",
-  minWidth: "82px",
-  color: "#f8fafc",
-  lineHeight: 1.05,
+  display: "none",
 };
 
 const profileTopSearchIconButtonStyle: CSSProperties = {
   width: "36px",
   height: "34px",
   minWidth: "36px",
+  display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   borderRadius: "999px",
@@ -19790,4 +20113,5 @@ const profileAchievementViewerSmallIconShellStyle: CSSProperties = {
   flexShrink: 0,
   padding: "4px",
 };
+
 

@@ -432,6 +432,7 @@ function MessagesPage() {
   const [imageError, setImageError] = useState("");
   const [compressingImage, setCompressingImage] = useState(false);
 
+  const messagesAreaRef = useRef<HTMLElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -528,9 +529,26 @@ function MessagesPage() {
   }, [messages]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    window.setTimeout(() => {
+    if (typeof window === "undefined") return;
+
+    const scrollNow = () => {
+      const messagesArea = messagesAreaRef.current;
+
+      if (messagesArea) {
+        messagesArea.scrollTo({
+          top: messagesArea.scrollHeight,
+          behavior,
+        });
+      }
+
       messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
-    }, 70);
+    };
+
+    // Run more than once because image messages can change height after the first render.
+    window.setTimeout(scrollNow, 0);
+    window.setTimeout(scrollNow, 90);
+    window.setTimeout(scrollNow, 260);
+    window.setTimeout(scrollNow, 650);
   }, []);
 
   const markConversationRead = useCallback(
@@ -905,6 +923,12 @@ function MessagesPage() {
   }, [activeConversationId, viewerId, loadMessages]);
 
   useEffect(() => {
+    if (!activeConversationId || loadingMessages) return;
+
+    scrollToBottom("auto");
+  }, [activeConversationId, loadingMessages, messages.length, scrollToBottom]);
+
+  useEffect(() => {
     const closeConversationMenu = () => setOpenConversationMenuId(null);
     window.addEventListener("click", closeConversationMenu);
 
@@ -1064,6 +1088,7 @@ function MessagesPage() {
       setOpenConversationMenuId(null);
       setMobileChatOpen(true);
       updateConversationUrl(conversationId);
+      scrollToBottom("smooth");
       return;
     }
 
@@ -1076,11 +1101,28 @@ function MessagesPage() {
     if (viewerId) {
       void markConversationRead(conversationId, viewerId);
     }
+
+    scrollToBottom("auto");
   };
 
   const handleMobileBackToInbox = () => {
     setOpenConversationMenuId(null);
     setMobileChatOpen(false);
+  };
+
+  const handleCloseActiveConversation = () => {
+    setOpenConversationMenuId(null);
+    setActiveConversationId("");
+    activeConversationIdRef.current = "";
+    setMessages([]);
+    setMessageText("");
+    clearSelectedImage();
+    setMobileChatOpen(false);
+    clearConversationUrl();
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "44px";
+    }
   };
 
   const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -1349,9 +1391,26 @@ function MessagesPage() {
             bottom: 0 !important;
             z-index: 80 !important;
             flex-shrink: 0 !important;
-            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
-            background: rgba(3,7,18,0.98) !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 9px 10px calc(18px + env(safe-area-inset-bottom)) !important;
+            background: rgba(3,7,18,0.99) !important;
             box-shadow: 0 -18px 34px rgba(0,0,0,0.42) !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer-row {
+            align-items: center !important;
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer textarea {
+            height: 46px !important;
+            min-height: 46px !important;
+            max-height: 92px !important;
+            box-sizing: border-box !important;
+            line-height: 1.25 !important;
+            overflow-y: auto !important;
           }
 
           .parachat-desktop-only {
@@ -1401,17 +1460,18 @@ function MessagesPage() {
 
           .parachat-composer {
             gap: 8px !important;
-            padding: 10px !important;
-            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+            padding: 9px 10px calc(18px + env(safe-area-inset-bottom)) !important;
           }
 
           .parachat-composer-row {
             gap: 8px !important;
+            align-items: center !important;
           }
 
           .parachat-image-button {
             width: 44px !important;
             min-width: 44px !important;
+            height: 44px !important;
             padding: 0 !important;
           }
 
@@ -1420,8 +1480,22 @@ function MessagesPage() {
           }
 
           .parachat-composer textarea {
-            min-height: 44px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            height: 46px !important;
+            min-height: 46px !important;
+            max-height: 92px !important;
             font-size: 16px !important;
+            line-height: 1.25 !important;
+            padding: 12px 13px !important;
+          }
+
+          .parachat-composer button[type="submit"] {
+            min-width: 74px !important;
+            min-height: 46px !important;
+            padding: 0 14px !important;
+            font-size: 14px !important;
+            white-space: nowrap !important;
           }
         }
       `}</style>
@@ -1640,10 +1714,20 @@ function MessagesPage() {
                       Profile
                     </Link>
                   ) : null}
+
+                  <button
+                    type="button"
+                    onClick={handleCloseActiveConversation}
+                    style={closeChatButtonStyle}
+                    aria-label="Close this Parachat"
+                    title="Close Parachat"
+                  >
+                    ×
+                  </button>
                 </div>
               </header>
 
-              <section className="parachat-messages" style={messagesAreaStyle}>
+              <section ref={messagesAreaRef} className="parachat-messages" style={messagesAreaStyle}>
                 {errorMessage ? (
                   <div style={errorBoxStyle}>
                     <strong>Parachat needs attention</strong>
@@ -1717,6 +1801,7 @@ function MessagesPage() {
                                           src={message.signedImageUrl}
                                           alt={message.body || "Parachat image"}
                                           style={messageImageStyle}
+                                          onLoad={() => scrollToBottom("auto")}
                                         />
                                       ) : (
                                         <div style={messageImageMissingStyle}>
@@ -1816,9 +1901,9 @@ function MessagesPage() {
                     placeholder={
                       activeConversationIsAcceptedFriend
                         ? selectedImage
-                          ? "Add an optional caption..."
-                          : `Send a Parachat to ${activeName}...`
-                        : "Parachat is only available between accepted friends."
+                          ? "Add a caption..."
+                          : "Message..."
+                        : "Friends only"
                     }
                     rows={1}
                     style={composerInputStyle}
@@ -2356,6 +2441,23 @@ const profileButtonStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
+const closeChatButtonStyle: React.CSSProperties = {
+  width: "38px",
+  height: "38px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.075)",
+  color: "#ffffff",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "22px",
+  lineHeight: 1,
+  fontWeight: 950,
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
 const messagesAreaStyle: React.CSSProperties = {
   minHeight: 0,
   overflowY: "auto",
@@ -2509,6 +2611,8 @@ const messageTimeStyle: React.CSSProperties = {
 const composerShellStyle: React.CSSProperties = {
   display: "grid",
   gap: "10px",
+  width: "100%",
+  boxSizing: "border-box",
   padding: "14px",
   borderTop: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(3,7,18,0.92)",
@@ -2516,9 +2620,10 @@ const composerShellStyle: React.CSSProperties = {
 
 const composerRowStyle: React.CSSProperties = {
   display: "flex",
-  alignItems: "flex-end",
+  alignItems: "center",
   gap: "10px",
   width: "100%",
+  minWidth: 0,
 };
 
 const imageButtonStyle: React.CSSProperties = {
@@ -2593,6 +2698,8 @@ const imageErrorTextStyle: React.CSSProperties = {
 
 const composerInputStyle: React.CSSProperties = {
   flex: 1,
+  minWidth: 0,
+  boxSizing: "border-box",
   minHeight: "44px",
   maxHeight: "130px",
   resize: "none",
@@ -2607,6 +2714,7 @@ const composerInputStyle: React.CSSProperties = {
 };
 
 const sendButtonStyle: React.CSSProperties = {
+  flexShrink: 0,
   minHeight: "44px",
   borderRadius: "999px",
   border: "1px solid rgba(168,85,247,0.55)",

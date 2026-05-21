@@ -45,6 +45,23 @@ type MessageRow = {
   body: string | null;
   created_at: string;
   is_read?: boolean | null;
+  message_type?: "text" | "image" | null;
+  image_path?: string | null;
+  image_mime_type?: string | null;
+  image_size_bytes?: number | null;
+  image_width?: number | null;
+  image_height?: number | null;
+  signedImageUrl?: string | null;
+};
+
+type ParachatImageDraft = {
+  blob: Blob;
+  previewUrl: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
 };
 
 type ConversationItem = ConversationRow & {
@@ -117,6 +134,158 @@ function getProfileName(profile?: ProfileRow | null) {
 }
 
 const PARACHAT_ONLINE_TIMEOUT_MS = 3 * 60 * 1000;
+
+const PARACHAT_IMAGE_BUCKET = "parachat-images";
+const PARACHAT_MAX_IMAGE_DIMENSION = 1600;
+const PARACHAT_TARGET_IMAGE_BYTES = 1_200_000;
+const PARACHAT_ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+const DIRECT_MESSAGE_SELECT =
+  "id, conversation_id, sender_id, body, created_at, is_read, message_type, image_path, image_mime_type, image_size_bytes, image_width, image_height";
+
+function isImageMessage(message?: MessageRow | null) {
+  return Boolean(message?.message_type === "image" || message?.image_path);
+}
+
+function getConversationPreviewText(conversation: ConversationItem) {
+  if (conversation.isNewFriend) return "New friend · Start a Parachat";
+
+  if (isImageMessage(conversation.lastMessage)) {
+    const caption = conversation.lastMessage?.body?.trim();
+    return caption ? `Photo · ${caption}` : "Photo message";
+  }
+
+  return conversation.lastMessage?.body || "No messages yet";
+}
+
+function buildParachatImagePath(
+  conversationId: string,
+  viewerId: string,
+  fileName: string
+) {
+  const cleanBaseName =
+    fileName
+      .toLowerCase()
+      .replace(/\.[a-z0-9]+$/i, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 36) || "parachat-image";
+
+  const randomPart =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+
+  return `${viewerId}/${conversationId}/${Date.now()}-${randomPart}-${cleanBaseName}.jpg`;
+}
+
+function loadImageFromUrl(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not read this image. Please try another photo."));
+    image.src = url;
+  });
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Could not compress this image."));
+          return;
+        }
+
+        resolve(blob);
+      },
+      mimeType,
+      quality
+    );
+  });
+}
+
+async function compressParachatImage(file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please choose an image file.");
+  }
+
+  if (!PARACHAT_ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error("Please use a JPG, PNG, or WebP image for Parachat.");
+  }
+
+  const originalUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await loadImageFromUrl(originalUrl);
+
+    const originalWidth = image.naturalWidth || image.width;
+    const originalHeight = image.naturalHeight || image.height;
+
+    if (!originalWidth || !originalHeight) {
+      throw new Error("This image could not be prepared.");
+    }
+
+    const largestSide = Math.max(originalWidth, originalHeight);
+    const scale =
+      largestSide > PARACHAT_MAX_IMAGE_DIMENSION
+        ? PARACHAT_MAX_IMAGE_DIMENSION / largestSide
+        : 1;
+
+    const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+    const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("This browser could not prepare the image.");
+    }
+
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    let quality = 0.84;
+    let blob = await canvasToBlob(canvas, "image/jpeg", quality);
+
+    while (blob.size > PARACHAT_TARGET_IMAGE_BYTES && quality > 0.58) {
+      quality -= 0.08;
+      blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    }
+
+    return {
+      blob,
+      fileName: `${file.name.replace(/\.[^.]+$/i, "") || "parachat-image"}.jpg`,
+      mimeType: "image/jpeg",
+      sizeBytes: blob.size,
+      width: targetWidth,
+      height: targetHeight,
+    };
+  } finally {
+    URL.revokeObjectURL(originalUrl);
+  }
+}
+
+async function attachSignedImageUrlToMessage(message: MessageRow) {
+  if (!message.image_path) return message;
+
+  const { data, error } = await supabase.storage
+    .from(PARACHAT_IMAGE_BUCKET)
+    .createSignedUrl(message.image_path, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    console.warn("Could not create Parachat image URL:", error?.message);
+    return { ...message, signedImageUrl: null };
+  }
+
+  return { ...message, signedImageUrl: data.signedUrl };
+}
+
+async function attachSignedImageUrls(messages: MessageRow[]) {
+  return Promise.all(messages.map((message) => attachSignedImageUrlToMessage(message)));
+}
 
 function isRecentParachatOnlineTimestamp(value?: string | null) {
   if (!value) return false;
@@ -259,9 +428,14 @@ function MessagesPage() {
   const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(!!selectedConversationFromUrl);
+  const [selectedImage, setSelectedImage] = useState<ParachatImageDraft | null>(null);
+  const [imageError, setImageError] = useState("");
+  const [compressingImage, setCompressingImage] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedImagePreviewUrlRef = useRef<string | null>(null);
   const activeConversationIdRef = useRef(selectedConversationFromUrl);
   const conversationsRef = useRef<ConversationItem[]>([]);
 
@@ -273,9 +447,43 @@ function MessagesPage() {
     conversationsRef.current = conversations;
   }, [conversations]);
 
+  useEffect(() => {
+    selectedImagePreviewUrlRef.current = selectedImage?.previewUrl || null;
+  }, [selectedImage?.previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (selectedImagePreviewUrlRef.current) {
+        URL.revokeObjectURL(selectedImagePreviewUrlRef.current);
+      }
+    };
+  }, []);
+
+  const clearSelectedImage = useCallback(() => {
+    setSelectedImage((currentImage) => {
+      if (currentImage?.previewUrl) {
+        URL.revokeObjectURL(currentImage.previewUrl);
+      }
+
+      return null;
+    });
+
+    setImageError("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
+
   const activeConversation = useMemo(() => {
     return conversations.find((conversation) => conversation.id === activeConversationId) || null;
   }, [conversations, activeConversationId]);
+
+  const activeConversationIsAcceptedFriend = useMemo(() => {
+    return Boolean(
+      activeConversation?.otherUserId && acceptedFriendIds.includes(activeConversation.otherUserId)
+    );
+  }, [acceptedFriendIds, activeConversation?.otherUserId]);
 
   const totalUnreadCount = useMemo(() => {
     return conversations.reduce((total, conversation) => total + conversation.unreadCount, 0);
@@ -290,7 +498,7 @@ function MessagesPage() {
       const profile = conversation.otherProfile;
       const name = getProfileName(profile).toLowerCase();
       const username = profile?.username?.toLowerCase() || "";
-      const lastMessage = conversation.lastMessage?.body?.toLowerCase() || "";
+      const lastMessage = getConversationPreviewText(conversation).toLowerCase();
       const newFriendLabel = conversation.isNewFriend ? "new friend start parachat" : "";
 
       return (
@@ -512,7 +720,7 @@ function MessagesPage() {
           : Promise.resolve({ data: [] }),
         supabase
           .from("direct_messages")
-          .select("id, conversation_id, sender_id, body, created_at, is_read")
+          .select(DIRECT_MESSAGE_SELECT)
           .in("conversation_id", conversationIds)
           .order("created_at", { ascending: false }),
       ]);
@@ -615,7 +823,7 @@ function MessagesPage() {
 
       const { data, error } = await supabase
         .from("direct_messages")
-        .select("id, conversation_id, sender_id, body, created_at, is_read")
+        .select(DIRECT_MESSAGE_SELECT)
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -626,7 +834,8 @@ function MessagesPage() {
         return;
       }
 
-      setMessages((data as MessageRow[]) || []);
+      const preparedMessages = await attachSignedImageUrls((data as MessageRow[]) || []);
+      setMessages(preparedMessages);
       await markConversationRead(conversationId, currentViewerId);
       setLoadingMessages(false);
       scrollToBottom("auto");
@@ -717,7 +926,7 @@ function MessagesPage() {
           table: "direct_messages",
         },
         async (payload) => {
-          const nextMessage = payload.new as MessageRow;
+          const nextMessage = await attachSignedImageUrlToMessage(payload.new as MessageRow);
 
           const belongsToUser = conversationsRef.current.some(
             (conversation) => conversation.id === nextMessage.conversation_id
@@ -739,6 +948,7 @@ function MessagesPage() {
                 return {
                   ...conversation,
                   lastMessage: nextMessage,
+                  isNewFriend: false,
                   unreadCount:
                     !isActive && !isMine
                       ? conversation.unreadCount + 1
@@ -881,15 +1091,48 @@ function MessagesPage() {
     textarea.style.height = `${Math.min(textarea.scrollHeight, 130)}px`;
   };
 
+  const handleSelectImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!activeConversationIsAcceptedFriend) {
+      setImageError("Parachat photos are only available between accepted friends.");
+      event.currentTarget.value = "";
+      return;
+    }
+
+    setImageError("");
+    setCompressingImage(true);
+
+    try {
+      const compressedImage = await compressParachatImage(file);
+      const previewUrl = URL.createObjectURL(compressedImage.blob);
+
+      setSelectedImage((currentImage) => {
+        if (currentImage?.previewUrl) {
+          URL.revokeObjectURL(currentImage.previewUrl);
+        }
+
+        return {
+          previewUrl,
+          ...compressedImage,
+        };
+      });
+    } catch (error) {
+      setSelectedImage(null);
+      setImageError(error instanceof Error ? error.message : "Could not prepare this photo.");
+      event.currentTarget.value = "";
+    } finally {
+      setCompressingImage(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     const trimmed = messageText.trim();
+    const imageDraft = selectedImage;
 
-    if (!trimmed || sending || !viewerId || !activeConversationId) return;
-
-    const activeOtherUserId = activeConversation?.otherUserId || "";
-    const activeConversationIsAcceptedFriend = Boolean(
-      activeOtherUserId && acceptedFriendIds.includes(activeOtherUserId)
-    );
+    if ((!trimmed && !imageDraft) || sending || compressingImage || !viewerId || !activeConversationId) return;
 
     if (!activeConversationIsAcceptedFriend) {
       setErrorMessage("Parachat is only available between accepted friends.");
@@ -898,6 +1141,31 @@ function MessagesPage() {
 
     setSending(true);
     setErrorMessage("");
+    setImageError("");
+
+    let uploadedImagePath: string | null = null;
+
+    if (imageDraft) {
+      uploadedImagePath = buildParachatImagePath(
+        activeConversationId,
+        viewerId,
+        imageDraft.fileName
+      );
+
+      const { error: uploadError } = await supabase.storage
+        .from(PARACHAT_IMAGE_BUCKET)
+        .upload(uploadedImagePath, imageDraft.blob, {
+          cacheControl: "3600",
+          contentType: imageDraft.mimeType,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setErrorMessage(getParachatErrorMessage(uploadError.message || "Photo could not be uploaded."));
+        setSending(false);
+        return;
+      }
+    }
 
     const { data, error } = await supabase
       .from("direct_messages")
@@ -905,21 +1173,31 @@ function MessagesPage() {
         {
           conversation_id: activeConversationId,
           sender_id: viewerId,
-          body: trimmed,
+          body: trimmed || null,
           is_read: false,
+          message_type: imageDraft ? "image" : "text",
+          image_path: uploadedImagePath,
+          image_mime_type: imageDraft?.mimeType || null,
+          image_size_bytes: imageDraft?.sizeBytes || null,
+          image_width: imageDraft?.width || null,
+          image_height: imageDraft?.height || null,
         },
       ])
-      .select("id, conversation_id, sender_id, body, created_at, is_read")
+      .select(DIRECT_MESSAGE_SELECT)
       .single();
 
     if (error) {
+      if (uploadedImagePath) {
+        await supabase.storage.from(PARACHAT_IMAGE_BUCKET).remove([uploadedImagePath]);
+      }
+
       setErrorMessage(getParachatErrorMessage(error.message || "Message could not be sent."));
       setSending(false);
       return;
     }
 
     if (data) {
-      const sentMessage = data as MessageRow;
+      const sentMessage = await attachSignedImageUrlToMessage(data as MessageRow);
 
       setMessages((prev) => {
         if (prev.some((message) => message.id === sentMessage.id)) return prev;
@@ -933,6 +1211,7 @@ function MessagesPage() {
               ? {
                   ...conversation,
                   lastMessage: sentMessage,
+                  isNewFriend: false,
                   updated_at: sentMessage.created_at,
                 }
               : conversation
@@ -955,6 +1234,7 @@ function MessagesPage() {
       .eq("id", activeConversationId);
 
     setMessageText("");
+    clearSelectedImage();
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "44px";
@@ -980,34 +1260,64 @@ function MessagesPage() {
   const activeProfile = activeConversation?.otherProfile || null;
   const activeName = getProfileName(activeProfile);
   const activeHandle = activeProfile?.username ? `@${activeProfile.username}` : "Parapost Network member";
-  const activeConversationIsAcceptedFriend = Boolean(
-    activeConversation?.otherUserId && acceptedFriendIds.includes(activeConversation.otherUserId)
-  );
   const inputDisabled =
     loadingInbox || sending || !activeConversationId || !activeConversationIsAcceptedFriend || !!errorMessage;
+  const sendDisabled = (!messageText.trim() && !selectedImage) || inputDisabled || compressingImage;
 
   return (
-    <div style={pageStyle}>
+    <div
+      className={mobileChatOpen ? "parachat-page-root parachat-page-chat-open" : "parachat-page-root"}
+      style={pageStyle}
+    >
       <style>{`
         @media (max-width: 980px) {
+          .parachat-page-root {
+            min-height: 100svh !important;
+            min-height: 100dvh !important;
+            overflow-x: hidden !important;
+          }
+
+          .parachat-page-chat-open {
+            height: 100svh !important;
+            height: 100dvh !important;
+            max-height: 100svh !important;
+            max-height: 100dvh !important;
+            overflow: hidden !important;
+          }
+
           .parachat-shell {
             grid-template-columns: 1fr !important;
+            gap: 0 !important;
             padding: 0 !important;
-            min-height: 100vh !important;
+            min-height: 100svh !important;
+            min-height: 100dvh !important;
+            max-width: none !important;
+          }
+
+          .parachat-page-chat-open .parachat-shell {
+            height: 100svh !important;
+            height: 100dvh !important;
+            max-height: 100svh !important;
+            max-height: 100dvh !important;
+            overflow: hidden !important;
           }
 
           .parachat-inbox {
             display: block !important;
             border-radius: 0 !important;
-            min-height: 100vh !important;
+            min-height: 100svh !important;
+            min-height: 100dvh !important;
             max-height: none !important;
             border: none !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
           }
 
           .parachat-panel {
             display: none !important;
             border-radius: 0 !important;
-            min-height: 100vh !important;
+            min-height: 100svh !important;
+            min-height: 100dvh !important;
             border: none !important;
           }
 
@@ -1017,6 +1327,31 @@ function MessagesPage() {
 
           .parachat-mobile-chat-open .parachat-panel {
             display: grid !important;
+            grid-template-rows: auto minmax(0, 1fr) auto !important;
+            height: 100svh !important;
+            height: 100dvh !important;
+            min-height: 100svh !important;
+            min-height: 100dvh !important;
+            max-height: 100svh !important;
+            max-height: 100dvh !important;
+            overflow: hidden !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-messages {
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 18px !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer {
+            position: sticky !important;
+            bottom: 0 !important;
+            z-index: 80 !important;
+            flex-shrink: 0 !important;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+            background: rgba(3,7,18,0.98) !important;
+            box-shadow: 0 -18px 34px rgba(0,0,0,0.42) !important;
           }
 
           .parachat-desktop-only {
@@ -1057,7 +1392,7 @@ function MessagesPage() {
           }
 
           .parachat-panel {
-            grid-template-rows: 76px minmax(0, 1fr) auto !important;
+            grid-template-rows: auto minmax(0, 1fr) auto !important;
           }
 
           .parachat-messages {
@@ -1065,7 +1400,28 @@ function MessagesPage() {
           }
 
           .parachat-composer {
+            gap: 8px !important;
             padding: 10px !important;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .parachat-composer-row {
+            gap: 8px !important;
+          }
+
+          .parachat-image-button {
+            width: 44px !important;
+            min-width: 44px !important;
+            padding: 0 !important;
+          }
+
+          .parachat-image-preview {
+            max-width: 100% !important;
+          }
+
+          .parachat-composer textarea {
+            min-height: 44px !important;
+            font-size: 16px !important;
           }
         }
       `}</style>
@@ -1180,9 +1536,7 @@ function MessagesPage() {
                               fontWeight: conversation.unreadCount > 0 ? 850 : 500,
                             }}
                           >
-                            {conversation.isNewFriend
-                              ? "New friend · Start a Parachat"
-                              : conversation.lastMessage?.body || "No messages yet"}
+                            {getConversationPreviewText(conversation)}
                           </span>
 
                           {conversation.unreadCount > 0 ? (
@@ -1356,7 +1710,27 @@ function MessagesPage() {
                                 }}
                               >
                                 <div style={isMine ? myBubbleStyle : theirBubbleStyle}>
-                                  {message.body}
+                                  {isImageMessage(message) ? (
+                                    <div style={messageImageBlockStyle}>
+                                      {message.signedImageUrl ? (
+                                        <img
+                                          src={message.signedImageUrl}
+                                          alt={message.body || "Parachat image"}
+                                          style={messageImageStyle}
+                                        />
+                                      ) : (
+                                        <div style={messageImageMissingStyle}>
+                                          Image preview unavailable
+                                        </div>
+                                      )}
+
+                                      {message.body ? (
+                                        <div style={messageImageCaptionStyle}>{message.body}</div>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    message.body
+                                  )}
                                 </div>
 
                                 <div style={messageTimeStyle}>
@@ -1375,32 +1749,94 @@ function MessagesPage() {
               </section>
 
               <form className="parachat-composer" onSubmit={handleSubmit} style={composerShellStyle}>
-                <textarea
-                  ref={textareaRef}
-                  value={messageText}
-                  onChange={handleTextChange}
-                  onKeyDown={handleComposerKeyDown}
-                  placeholder={
-                    activeConversationIsAcceptedFriend
-                      ? `Send a Parachat to ${activeName}...`
-                      : "Parachat is only available between accepted friends."
-                  }
-                  rows={1}
-                  style={composerInputStyle}
-                  disabled={inputDisabled}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleSelectImage}
+                  style={{ display: "none" }}
                 />
 
-                <button
-                  type="submit"
-                  disabled={!messageText.trim() || inputDisabled}
-                  style={{
-                    ...sendButtonStyle,
-                    opacity: !messageText.trim() || inputDisabled ? 0.55 : 1,
-                    cursor: !messageText.trim() || inputDisabled ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {sending ? "Sending..." : "Send"}
-                </button>
+                {selectedImage || imageError || compressingImage ? (
+                  <div className="parachat-image-preview" style={imagePreviewShellStyle}>
+                    {selectedImage ? (
+                      <div style={imagePreviewContentStyle}>
+                        <img
+                          src={selectedImage.previewUrl}
+                          alt="Selected Parachat upload"
+                          style={imagePreviewStyle}
+                        />
+
+                        <div style={imagePreviewTextStyle}>
+                          <strong>Photo ready</strong>
+                          <span>
+                            Compressed to {(selectedImage.sizeBytes / 1024).toFixed(0)} KB
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={clearSelectedImage}
+                          style={imageRemoveButtonStyle}
+                          aria-label="Remove selected photo"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : compressingImage ? (
+                      <div style={imageHelperTextStyle}>Compressing photo...</div>
+                    ) : imageError ? (
+                      <div style={imageErrorTextStyle}>{imageError}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="parachat-composer-row" style={composerRowStyle}>
+                  <button
+                    type="button"
+                    className="parachat-image-button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={inputDisabled || compressingImage}
+                    style={{
+                      ...imageButtonStyle,
+                      opacity: inputDisabled || compressingImage ? 0.55 : 1,
+                      cursor: inputDisabled || compressingImage ? "not-allowed" : "pointer",
+                    }}
+                    aria-label="Add a photo to this Parachat"
+                    title="Add photo"
+                  >
+                    +
+                  </button>
+
+                  <textarea
+                    ref={textareaRef}
+                    value={messageText}
+                    onChange={handleTextChange}
+                    onKeyDown={handleComposerKeyDown}
+                    placeholder={
+                      activeConversationIsAcceptedFriend
+                        ? selectedImage
+                          ? "Add an optional caption..."
+                          : `Send a Parachat to ${activeName}...`
+                        : "Parachat is only available between accepted friends."
+                    }
+                    rows={1}
+                    style={composerInputStyle}
+                    disabled={inputDisabled}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={sendDisabled}
+                    style={{
+                      ...sendButtonStyle,
+                      opacity: sendDisabled ? 0.55 : 1,
+                      cursor: sendDisabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {sending ? "Sending..." : selectedImage ? "Send Photo" : "Send"}
+                  </button>
+                </div>
               </form>
             </>
           )}
@@ -2032,6 +2468,37 @@ const theirBubbleStyle: React.CSSProperties = {
   wordBreak: "break-word",
 };
 
+const messageImageBlockStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "8px",
+};
+
+const messageImageStyle: React.CSSProperties = {
+  display: "block",
+  width: "min(320px, 70vw)",
+  maxHeight: "420px",
+  objectFit: "cover",
+  borderRadius: "16px",
+  border: "1px solid rgba(255,255,255,0.14)",
+};
+
+const messageImageMissingStyle: React.CSSProperties = {
+  width: "min(320px, 70vw)",
+  minHeight: "170px",
+  borderRadius: "16px",
+  display: "grid",
+  placeItems: "center",
+  color: "#cbd5e1",
+  background: "rgba(15,23,42,0.72)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  fontWeight: 850,
+};
+
+const messageImageCaptionStyle: React.CSSProperties = {
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+};
+
 const messageTimeStyle: React.CSSProperties = {
   color: "#6b7280",
   fontSize: "11px",
@@ -2040,12 +2507,88 @@ const messageTimeStyle: React.CSSProperties = {
 };
 
 const composerShellStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-end",
+  display: "grid",
   gap: "10px",
   padding: "14px",
   borderTop: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(3,7,18,0.92)",
+};
+
+const composerRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-end",
+  gap: "10px",
+  width: "100%",
+};
+
+const imageButtonStyle: React.CSSProperties = {
+  width: "44px",
+  minWidth: "44px",
+  height: "44px",
+  borderRadius: "999px",
+  border: "1px solid rgba(168,85,247,0.45)",
+  background: "rgba(168,85,247,0.14)",
+  color: "#f5d0fe",
+  fontSize: "24px",
+  lineHeight: 1,
+  fontWeight: 900,
+  display: "grid",
+  placeItems: "center",
+};
+
+const imagePreviewShellStyle: React.CSSProperties = {
+  border: "1px solid rgba(168,85,247,0.24)",
+  background: "rgba(168,85,247,0.10)",
+  borderRadius: "18px",
+  padding: "9px",
+};
+
+const imagePreviewContentStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  minWidth: 0,
+};
+
+const imagePreviewStyle: React.CSSProperties = {
+  width: "56px",
+  height: "56px",
+  borderRadius: "14px",
+  objectFit: "cover",
+  flexShrink: 0,
+  border: "1px solid rgba(255,255,255,0.14)",
+};
+
+const imagePreviewTextStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "3px",
+  minWidth: 0,
+  color: "#f9fafb",
+  fontSize: "12px",
+};
+
+const imageRemoveButtonStyle: React.CSSProperties = {
+  marginLeft: "auto",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.07)",
+  color: "#ffffff",
+  borderRadius: "999px",
+  padding: "8px 10px",
+  fontWeight: 900,
+  fontSize: "12px",
+  cursor: "pointer",
+};
+
+const imageHelperTextStyle: React.CSSProperties = {
+  color: "#ddd6fe",
+  fontSize: "13px",
+  fontWeight: 850,
+};
+
+const imageErrorTextStyle: React.CSSProperties = {
+  color: "#fecaca",
+  fontSize: "13px",
+  fontWeight: 850,
 };
 
 const composerInputStyle: React.CSSProperties = {

@@ -29,6 +29,7 @@ type ProfilePreview = {
   bio?: string | null;
   location?: string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -212,6 +213,56 @@ function isBlockedLinkProtocol(href: string) {
   );
 }
 
+function normalizePostLinkToken(rawValue: string) {
+  const raw = rawValue.trim();
+  const leadingMatch = raw.match(/^[("'<\[]+/);
+  const trailingMatch = raw.match(/[)"'\].,;:!?]+$/);
+
+  const leading = leadingMatch?.[0] || "";
+  const trailing = trailingMatch?.[0] || "";
+  const cleanLabel = raw.slice(leading.length, raw.length - trailing.length);
+
+  return {
+    leading,
+    cleanLabel,
+    trailing,
+    href: cleanLabel.toLowerCase().startsWith("http://") || cleanLabel.toLowerCase().startsWith("https://")
+      ? cleanLabel
+      : `https://${cleanLabel}`,
+  };
+}
+
+function isIpAddressHost(hostname: string) {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+}
+
+function isOddOrHiddenDestinationLink(url: URL) {
+  const hostname = url.hostname.replace(/^www\./, "").toLowerCase();
+  const parts = hostname.split(".").filter(Boolean);
+  const tld = parts[parts.length - 1] || "";
+
+  if (isLikelyShortenedLink(hostname)) return true;
+  if (hostname.startsWith("xn--") || hostname.includes(".xn--")) return true;
+  if (isIpAddressHost(hostname)) return true;
+  if (hostname.length > 48) return true;
+  if ((hostname.match(/-/g) || []).length >= 4) return true;
+  if (!/^[a-z0-9.-]+$/i.test(hostname)) return true;
+  if (tld.length > 12 || tld.length < 2) return true;
+
+  return false;
+}
+
+function getExternalLinkSafetyMessage(url: URL) {
+  const hostname = url.hostname.replace(/^www\./, "");
+  const isOdd = isOddOrHiddenDestinationLink(url);
+
+  if (isOdd) {
+    return `Stronger safety warning: this link looks unusual, shortened, or may hide the final destination.\n\nLink: ${hostname}\n\nOnly continue if you recognize and trust this link. Open it anyway?`;
+  }
+
+  return `You are leaving Parapost Network and opening:\n\n${hostname}\n\nOnly continue if you trust this site.`;
+}
+
 function getDashboardErrorMessage(error: unknown) {
   if (error instanceof Error && typeof error.message === "string") {
     return error.message;
@@ -261,6 +312,21 @@ function logDashboardNetworkIssue(label: string, error: unknown) {
   if (isDashboardFetchFailure(error)) return;
 
   console.warn(`${label}: ${message}`);
+}
+
+const ONLINE_STATUS_TIMEOUT_MS = 3 * 60 * 1000;
+
+function isRecentOnlineTimestamp(value?: string | null) {
+  if (!value) return false;
+
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return false;
+
+  return Date.now() - time <= ONLINE_STATUS_TIMEOUT_MS;
+}
+
+function isProfileActuallyOnline(profile?: { is_online?: boolean | null; last_seen_at?: string | null } | null) {
+  return Boolean(profile?.is_online && isRecentOnlineTimestamp(profile.last_seen_at));
 }
 
 function isVideoMediaUrl(url?: string | null) {
@@ -337,50 +403,69 @@ function handleSafeExternalLinkClick(
     return;
   }
 
-  const hostname = parsedUrl.hostname.replace(/^www\./, "");
-  const isShortened = isLikelyShortenedLink(hostname);
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    alert("This link was blocked because it may be unsafe.");
+    return;
+  }
 
-  const message = isShortened
-    ? `Safety notice: this appears to be a shortened link (${hostname}). The final destination may be hidden. Only continue if you trust this link.\n\nOpen it anyway?`
-    : `You are leaving Parapost Network and opening:\n\n${hostname}\n\nOnly continue if you trust this site.`;
-
+  const message = getExternalLinkSafetyMessage(parsedUrl);
   if (!window.confirm(message)) return;
-  window.open(parsedUrl.toString(), "_blank", "noopener,noreferrer");
+
+  const openedWindow = window.open(parsedUrl.toString(), "_blank", "noopener,noreferrer");
+
+  if (openedWindow) {
+    openedWindow.opener = null;
+  }
 }
 
 function renderLinkedText(text: string): ReactNode {
-  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-  const parts = text.split(urlRegex);
+  const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
 
-  return parts.map((part, index) => {
-    if (!part.match(urlRegex)) return part;
+  Array.from(text.matchAll(urlRegex)).forEach((match, index) => {
+    const rawMatch = match[0];
+    const matchIndex = match.index || 0;
 
-    const rawLabel = part;
-    const cleanLabel = rawLabel.replace(/[),.;!?]+$/, "");
-    const trailing = rawLabel.slice(cleanLabel.length);
-    const href = cleanLabel.startsWith("http") ? cleanLabel : `https://${cleanLabel}`;
+    if (matchIndex > lastIndex) {
+      nodes.push(text.slice(lastIndex, matchIndex));
+    }
 
-    if (isBlockedLinkProtocol(href)) {
-      return (
-        <span key={`${part}-${index}`} style={{ color: "#fca5a5", fontWeight: 850 }}>
-          [unsafe link blocked]{trailing}
+    const { leading, cleanLabel, trailing, href } = normalizePostLinkToken(rawMatch);
+
+    if (!cleanLabel || isBlockedLinkProtocol(href)) {
+      nodes.push(
+        <span key={`unsafe-link-${matchIndex}-${index}`} style={{ color: "#fca5a5", fontWeight: 850 }}>
+          {leading}[unsafe link blocked]{trailing}
+        </span>
+      );
+    } else {
+      nodes.push(
+        <span key={`safe-link-${matchIndex}-${index}`}>
+          {leading}
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => handleSafeExternalLinkClick(event, href)}
+            className="dashboard-post-text-link"
+            style={postTextLinkStyle}
+          >
+            {cleanLabel}
+          </a>
+          {trailing}
         </span>
       );
     }
 
-    return (
-      <span key={`${part}-${index}`}>
-        <a
-          href={href}
-          onClick={(event) => handleSafeExternalLinkClick(event, href)}
-          style={{ color: "var(--parapost-accent-text)", fontWeight: 850, textDecoration: "none" }}
-        >
-          {cleanLabel}
-        </a>
-        {trailing}
-      </span>
-    );
+    lastIndex = matchIndex + rawMatch.length;
   });
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.length ? nodes : text;
 }
 
 
@@ -409,15 +494,16 @@ function getYoutubeVideoId(url: URL) {
 }
 
 function getFirstSafeLinkPreview(text: string): LinkPreviewData | null {
-  const match = text.match(/(https?:\/\/[^\s]+|www\.[^\s]+)/i);
+  const match = text.match(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/i);
   if (!match) return null;
 
-  const cleanLabel = match[0].replace(/[),.;!?]+$/, "");
-  const href = cleanLabel.startsWith("http") ? cleanLabel : `https://${cleanLabel}`;
-  if (isBlockedLinkProtocol(href)) return null;
+  const { cleanLabel, href } = normalizePostLinkToken(match[0]);
+  if (!cleanLabel || isBlockedLinkProtocol(href)) return null;
 
   try {
     const parsedUrl = new URL(href);
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) return null;
+
     const hostname = parsedUrl.hostname.replace(/^www\./, "");
     const youtubeVideoId = getYoutubeVideoId(parsedUrl);
 
@@ -449,7 +535,14 @@ function LinkPreviewCard({ text }: { text: string }) {
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(preview.hostname)}&sz=64`;
 
   return (
-    <a href={preview.href} onClick={(event) => handleSafeExternalLinkClick(event, preview.href)} className="dashboard-link-preview-card" style={linkPreviewCardStyle}>
+    <a
+      href={preview.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(event) => handleSafeExternalLinkClick(event, preview.href)}
+      className="dashboard-link-preview-card dashboard-external-link-preview"
+      style={linkPreviewCardStyle}
+    >
       <div style={linkPreviewMediaStyle}>
         {preview.type === "youtube" && preview.youtubeVideoId ? (
           <>
@@ -824,8 +917,10 @@ function Avatar({
     flexShrink: 0,
   };
 
+  const isActuallyOnline = isProfileActuallyOnline(profile);
+
   const avatar = (
-    <div style={getAvatarShellStyle(size, profile?.is_online)}>
+    <div style={getAvatarShellStyle(size, isActuallyOnline)}>
       <div style={cropStyle}>
         {profile?.avatar_url ? (
           <img
@@ -861,7 +956,7 @@ function Avatar({
           </div>
         )}
       </div>
-      {profile?.is_online ? <span style={onlineDotStyle} /> : null}
+      {isActuallyOnline ? <span style={onlineDotStyle} /> : null}
     </div>
   );
 
@@ -1316,7 +1411,7 @@ export default function DashboardPage() {
     const hiddenIds = new Set<string>([userId, ...Array.from(friendIds), ...Array.from(followingIds)]);
 
     const selectWithDates =
-      "id, username, full_name, avatar_url, bio, location, is_online, created_at, updated_at";
+      "id, username, full_name, avatar_url, bio, location, is_online, last_seen_at, created_at, updated_at";
 
     let profilesData: ProfilePreview[] = [];
 
@@ -1328,7 +1423,7 @@ export default function DashboardPage() {
     if (error) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, bio, location, is_online")
+        .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
         .limit(80);
 
       if (fallbackError) {
@@ -1360,7 +1455,7 @@ export default function DashboardPage() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, full_name, avatar_url, bio, location, is_online")
+      .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
       .in("id", uniqueIds);
 
     if (error) {
@@ -1509,7 +1604,7 @@ export default function DashboardPage() {
       await Promise.all([
         supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, bio, location, is_online")
+          .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
           .in("id", showcaseUserIds)
           .limit(36),
         supabase
@@ -1573,7 +1668,7 @@ export default function DashboardPage() {
 
     const { data, error } = await supabase
       .from("recently_viewed_profiles")
-      .select("profile_id, viewed_at, profiles:profile_id(id, username, full_name, avatar_url, bio, location, is_online)")
+      .select("profile_id, viewed_at, profiles:profile_id(id, username, full_name, avatar_url, bio, location, is_online, last_seen_at)")
       .eq("viewer_id", userId)
       .order("viewed_at", { ascending: false })
       .limit(6);
@@ -1748,11 +1843,14 @@ export default function DashboardPage() {
       setCurrentUserId(user.id);
       setUserEmail(user.email || "");
 
-      await supabase.from("profiles").update({ is_online: true }).eq("id", user.id);
+      await supabase
+        .from("profiles")
+        .update({ is_online: true, last_seen_at: new Date().toISOString() })
+        .eq("id", user.id);
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, bio, location, is_online")
+        .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -1832,6 +1930,59 @@ export default function DashboardPage() {
   useEffect(() => {
     void fetchDashboardData(true);
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (!currentUserId || typeof window === "undefined") return;
+
+    let cancelled = false;
+
+    const updatePresence = async (isOnline: boolean) => {
+      if (cancelled || !currentUserId) return;
+
+      try {
+        await supabase
+          .from("profiles")
+          .update({ is_online: isOnline, last_seen_at: new Date().toISOString() })
+          .eq("id", currentUserId);
+      } catch {
+        // Presence updates should never interrupt the dashboard.
+      }
+    };
+
+    const markOnlineIfVisible = () => {
+      if (!shouldRunDashboardNetworkRefresh()) return;
+      void updatePresence(true);
+    };
+
+    void updatePresence(true);
+
+    const heartbeatId = window.setInterval(markOnlineIfVisible, 45000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        markOnlineIfVisible();
+        return;
+      }
+
+      void updatePresence(false);
+    };
+
+    const handlePageHide = () => {
+      void updatePresence(false);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handlePageHide);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(heartbeatId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handlePageHide);
+    };
+  }, [currentUserId]);
 
 
   useEffect(() => {
@@ -2013,7 +2164,7 @@ export default function DashboardPage() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, bio, location, is_online")
+          .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
           .or(`username.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`)
           .limit(8);
 
@@ -2052,7 +2203,7 @@ export default function DashboardPage() {
       if (!currentProfile) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, bio, location, is_online")
+          .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -2537,7 +2688,7 @@ export default function DashboardPage() {
         if (commenterIds.length > 0) {
           const { data: profileRows, error: profilesError } = await supabase
             .from("profiles")
-            .select("id, username, full_name, avatar_url, bio, location, is_online")
+            .select("id, username, full_name, avatar_url, bio, location, is_online, last_seen_at")
             .in("id", commenterIds);
 
           if (!profilesError && profileRows) {
@@ -6209,6 +6360,27 @@ export default function DashboardPage() {
           }
         }
 
+
+        /* === External link safety and clickability polish === */
+        .dashboard-post-text-link,
+        .dashboard-external-link-preview {
+          position: relative !important;
+          z-index: 6 !important;
+          pointer-events: auto !important;
+          cursor: pointer !important;
+          touch-action: manipulation !important;
+        }
+
+        .dashboard-post-text-link:hover {
+          color: #ffffff !important;
+          text-decoration-color: var(--parapost-accent-text) !important;
+        }
+
+        .dashboard-feed-card p a,
+        .dashboard-feed-card div a.dashboard-post-text-link {
+          pointer-events: auto !important;
+        }
+
       ` }} />
     </div>
   );
@@ -7314,7 +7486,10 @@ function MobileDashboardMenuDrawer({
   const handleLogout = async () => {
     try {
       if (currentUserId) {
-        await supabase.from("profiles").update({ is_online: false }).eq("id", currentUserId);
+        await supabase
+          .from("profiles")
+          .update({ is_online: false, last_seen_at: new Date().toISOString() })
+          .eq("id", currentUserId);
       }
       await supabase.auth.signOut();
     } finally {
@@ -10752,6 +10927,18 @@ const postAuthorNameStyle: CSSProperties = { display: "block", color: "#fff", te
 const postAuthorActivityTextStyle: CSSProperties = { color: "var(--parapost-accent-readable-text)", fontWeight: 900, fontSize: 16, lineHeight: 1.25 };
 const postMetaStyle: CSSProperties = { color: "#a1a1aa", fontSize: 13, marginTop: 3 };
 const postContentStyle: CSSProperties = { color: "#f9fafb", lineHeight: 1.56, fontSize: 15.8, whiteSpace: "pre-wrap", margin: "10px 0 0", overflowWrap: "anywhere" };
+const postTextLinkStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 4,
+  color: "var(--parapost-accent-text)",
+  fontWeight: 900,
+  textDecoration: "underline",
+  textDecorationColor: "color-mix(in srgb, var(--parapost-accent-2) 62%, transparent)",
+  textUnderlineOffset: "3px",
+  cursor: "pointer",
+  pointerEvents: "auto",
+  touchAction: "manipulation",
+};
 const postImageStyle: CSSProperties = { width: "100%", maxHeight: 680, objectFit: "cover", display: "block", borderRadius: 20, border: "1px solid rgba(255,255,255,0.10)", marginTop: 14, background: "#05070d", boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
 const postImageGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 14, borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.26)", boxShadow: "0 18px 38px rgba(0,0,0,0.32)" };
 const postImageGridTileStyle: CSSProperties = { position: "relative", minHeight: 230, overflow: "hidden", background: "rgba(255,255,255,0.04)" };

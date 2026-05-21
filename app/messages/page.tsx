@@ -21,6 +21,7 @@ type ProfileRow = {
   full_name: string | null;
   avatar_url: string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
 };
 
 type ConversationRow = {
@@ -51,6 +52,7 @@ type ConversationItem = ConversationRow & {
   otherProfile: ProfileRow | null;
   lastMessage: MessageRow | null;
   unreadCount: number;
+  isNewFriend: boolean;
 };
 
 function formatMessageTime(value?: string | null) {
@@ -114,6 +116,79 @@ function getProfileName(profile?: ProfileRow | null) {
   return profile?.full_name || profile?.username || "Parapost Member";
 }
 
+const PARACHAT_ONLINE_TIMEOUT_MS = 3 * 60 * 1000;
+
+function isRecentParachatOnlineTimestamp(value?: string | null) {
+  if (!value) return false;
+
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return false;
+
+  return Date.now() - time <= PARACHAT_ONLINE_TIMEOUT_MS;
+}
+
+function isParachatProfileActuallyOnline(profile?: ProfileRow | null) {
+  return Boolean(profile?.is_online && isRecentParachatOnlineTimestamp(profile.last_seen_at));
+}
+
+function getConversationOtherUserId(conversation: ConversationRow, viewerId: string) {
+  return conversation.user_one_id === viewerId
+    ? conversation.user_two_id || ""
+    : conversation.user_one_id || "";
+}
+
+function buildAcceptedFriendIdSet(
+  rows: Array<{ sender_id?: string | null; receiver_id?: string | null; status?: string | null }> | null | undefined,
+  viewerId: string
+) {
+  const friendIds = new Set<string>();
+
+  for (const row of rows || []) {
+    if (row.status !== "accepted") continue;
+
+    const otherId = row.sender_id === viewerId ? row.receiver_id : row.receiver_id === viewerId ? row.sender_id : "";
+    if (otherId) friendIds.add(otherId);
+  }
+
+  return friendIds;
+}
+
+async function updateParachatPresence(viewerId: string, isOnline: boolean) {
+  if (!viewerId) return;
+
+  try {
+    await supabase
+      .from("profiles")
+      .update({ is_online: isOnline, last_seen_at: new Date().toISOString() })
+      .eq("id", viewerId);
+  } catch {
+    // Presence updates should never interrupt Parachat.
+  }
+}
+
+async function ensureParachatConversationsForFriends(viewerId: string, friendIds: string[]) {
+  const safeFriendIds = [...new Set(friendIds.filter((friendId) => friendId && friendId !== viewerId))];
+
+  if (safeFriendIds.length === 0) return;
+
+  const results = await Promise.allSettled(
+    safeFriendIds.map((friendId) =>
+      supabase.rpc("get_or_create_direct_conversation", {
+        other_user_id: friendId,
+      })
+    )
+  );
+
+  const failedCount = results.filter((result) => {
+    if (result.status === "rejected") return true;
+    return Boolean(result.value.error);
+  }).length;
+
+  if (failedCount > 0) {
+    console.warn(`Could not prepare ${failedCount} Parachat friend conversation${failedCount === 1 ? "" : "s"}.`);
+  }
+}
+
 
 function updateConversationUrl(conversationId: string) {
   if (typeof window === "undefined" || !conversationId) return;
@@ -171,6 +246,7 @@ function MessagesPage() {
 
   const [viewerId, setViewerId] = useState("");
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [activeConversationId, setActiveConversationId] = useState(selectedConversationFromUrl);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [messageText, setMessageText] = useState("");
@@ -215,8 +291,14 @@ function MessagesPage() {
       const name = getProfileName(profile).toLowerCase();
       const username = profile?.username?.toLowerCase() || "";
       const lastMessage = conversation.lastMessage?.body?.toLowerCase() || "";
+      const newFriendLabel = conversation.isNewFriend ? "new friend start parachat" : "";
 
-      return name.includes(term) || username.includes(term) || lastMessage.includes(term);
+      return (
+        name.includes(term) ||
+        username.includes(term) ||
+        lastMessage.includes(term) ||
+        newFriendLabel.includes(term)
+      );
     });
   }, [conversations, searchText]);
 
@@ -286,7 +368,41 @@ function MessagesPage() {
 
     setViewerId(user.id);
 
-    const { data: conversationData, error: conversationError } = await supabase
+    const { data: friendshipRows, error: friendshipError } = await supabase
+      .from("friend_requests")
+      .select("sender_id, receiver_id, status")
+      .eq("status", "accepted")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+    if (friendshipError) {
+      setErrorMessage(getParachatErrorMessage(friendshipError.message || "Could not verify your friends list for Parachat."));
+      setAcceptedFriendIds([]);
+      setConversations([]);
+      setActiveConversationId("");
+      activeConversationIdRef.current = "";
+      setMessages([]);
+      setMobileChatOpen(false);
+      clearConversationUrl();
+      setLoadingInbox(false);
+      return;
+    }
+
+    const acceptedFriendIdSet = buildAcceptedFriendIdSet(friendshipRows, user.id);
+    const nextAcceptedFriendIds = Array.from(acceptedFriendIdSet);
+    setAcceptedFriendIds(nextAcceptedFriendIds);
+
+    if (nextAcceptedFriendIds.length === 0) {
+      setConversations([]);
+      setActiveConversationId("");
+      activeConversationIdRef.current = "";
+      setMessages([]);
+      setMobileChatOpen(false);
+      clearConversationUrl();
+      setLoadingInbox(false);
+      return;
+    }
+
+    let { data: conversationData, error: conversationError } = await supabase
       .from("direct_conversations")
       .select("id, user_one_id, user_two_id, created_at, updated_at")
       .or(`user_one_id.eq.${user.id},user_two_id.eq.${user.id}`)
@@ -298,15 +414,35 @@ function MessagesPage() {
       return;
     }
 
-    const allRawConversations = ((conversationData as ConversationRow[]) || []).filter(Boolean);
+    let allRawConversations = ((conversationData as ConversationRow[]) || []).filter(Boolean);
 
-    if (allRawConversations.length === 0) {
-      setConversations([]);
-      setActiveConversationId("");
-      setMessages([]);
-      setMobileChatOpen(false);
-      setLoadingInbox(false);
-      return;
+    const existingConversationFriendIds = new Set(
+      allRawConversations
+        .map((conversation) => getConversationOtherUserId(conversation, user.id))
+        .filter(Boolean)
+    );
+
+    const missingFriendIds = nextAcceptedFriendIds.filter(
+      (friendId) => !existingConversationFriendIds.has(friendId)
+    );
+
+    if (missingFriendIds.length > 0) {
+      await ensureParachatConversationsForFriends(user.id, missingFriendIds);
+
+      const refreshed = await supabase
+        .from("direct_conversations")
+        .select("id, user_one_id, user_two_id, created_at, updated_at")
+        .or(`user_one_id.eq.${user.id},user_two_id.eq.${user.id}`)
+        .order("updated_at", { ascending: false });
+
+      if (refreshed.error) {
+        setErrorMessage(getParachatErrorMessage(refreshed.error.message || "Could not refresh Parachat conversations."));
+        setLoadingInbox(false);
+        return;
+      }
+
+      conversationData = refreshed.data;
+      allRawConversations = ((conversationData as ConversationRow[]) || []).filter(Boolean);
     }
 
     const { data: hiddenConversationRows, error: hiddenConversationError } = await supabase
@@ -324,7 +460,7 @@ function MessagesPage() {
         .map((row) => [row.conversation_id, row.hidden_at || ""])
     );
 
-    const rawConversations = allRawConversations.filter((conversation) => {
+    const visibleConversations = allRawConversations.filter((conversation) => {
       const hiddenAt = hiddenMap.get(conversation.id);
       if (!hiddenAt) return true;
 
@@ -340,11 +476,18 @@ function MessagesPage() {
       return conversationTime > hiddenTime;
     });
 
+    const rawConversations = visibleConversations.filter((conversation) => {
+      const otherUserId = getConversationOtherUserId(conversation, user.id);
+      return Boolean(otherUserId && acceptedFriendIdSet.has(otherUserId));
+    });
+
     if (rawConversations.length === 0) {
       setConversations([]);
       setActiveConversationId("");
+      activeConversationIdRef.current = "";
       setMessages([]);
       setMobileChatOpen(false);
+      clearConversationUrl();
       setLoadingInbox(false);
       return;
     }
@@ -352,11 +495,7 @@ function MessagesPage() {
     const otherUserIds = [
       ...new Set(
         rawConversations
-          .map((conversation) =>
-            conversation.user_one_id === user.id
-              ? conversation.user_two_id || ""
-              : conversation.user_one_id || ""
-          )
+          .map((conversation) => getConversationOtherUserId(conversation, user.id))
           .filter(Boolean)
       ),
     ];
@@ -368,7 +507,7 @@ function MessagesPage() {
         otherUserIds.length > 0
           ? supabase
               .from("profiles")
-              .select("id, username, full_name, avatar_url, is_online")
+              .select("id, username, full_name, avatar_url, is_online, last_seen_at")
               .in("id", otherUserIds)
           : Promise.resolve({ data: [] }),
         supabase
@@ -392,10 +531,7 @@ function MessagesPage() {
 
     const nextItems: ConversationItem[] = rawConversations
       .map((conversation) => {
-        const otherUserId =
-          conversation.user_one_id === user.id
-            ? conversation.user_two_id || ""
-            : conversation.user_one_id || "";
+        const otherUserId = getConversationOtherUserId(conversation, user.id);
 
         const conversationMessages = allMessages.filter(
           (message) => message.conversation_id === conversation.id
@@ -417,6 +553,7 @@ function MessagesPage() {
           otherProfile: profileMap.get(otherUserId) || null,
           lastMessage,
           unreadCount,
+          isNewFriend: !lastMessage,
         };
       })
       .sort((a, b) => {
@@ -435,22 +572,32 @@ function MessagesPage() {
       (conversation) => conversation.id === selectedConversationFromUrl
     );
 
-    const nextActiveId =
-      urlConversationValid
-        ? selectedConversationFromUrl
-        : activeConversationIdRef.current &&
-            nextItems.some((conversation) => conversation.id === activeConversationIdRef.current)
-          ? activeConversationIdRef.current
-          : nextItems[0]?.id || "";
+    const activeConversationStillValid = Boolean(
+      activeConversationIdRef.current &&
+        nextItems.some((conversation) => conversation.id === activeConversationIdRef.current)
+    );
+
+    const nextActiveId = urlConversationValid
+      ? selectedConversationFromUrl
+      : activeConversationStillValid
+        ? activeConversationIdRef.current
+        : "";
 
     setActiveConversationId(nextActiveId);
+    activeConversationIdRef.current = nextActiveId;
 
     if (selectedConversationFromUrl && urlConversationValid) {
       setMobileChatOpen(true);
     }
 
-    if (!selectedConversationFromUrl && nextActiveId) {
-      updateConversationUrl(nextActiveId);
+    if (selectedConversationFromUrl && !urlConversationValid) {
+      clearConversationUrl();
+      setMobileChatOpen(false);
+    }
+
+    if (!nextActiveId) {
+      setMessages([]);
+      setMobileChatOpen(false);
     }
 
     setLoadingInbox(false);
@@ -490,6 +637,57 @@ function MessagesPage() {
   useEffect(() => {
     loadInbox();
   }, [loadInbox]);
+
+  useEffect(() => {
+    if (!viewerId || typeof window === "undefined") return;
+
+    let cancelled = false;
+
+    const updatePresence = async (isOnline: boolean) => {
+      if (cancelled) return;
+      await updateParachatPresence(viewerId, isOnline);
+    };
+
+    const shouldMarkOnline = () => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return false;
+      return true;
+    };
+
+    const markOnlineIfVisible = () => {
+      if (!shouldMarkOnline()) return;
+      void updatePresence(true);
+    };
+
+    void updatePresence(true);
+
+    const heartbeatId = window.setInterval(markOnlineIfVisible, 45000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        markOnlineIfVisible();
+        return;
+      }
+
+      void updatePresence(false);
+    };
+
+    const handlePageHide = () => {
+      void updatePresence(false);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handlePageHide);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(heartbeatId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handlePageHide);
+    };
+  }, [viewerId]);
 
   useEffect(() => {
     if (!viewerId || !activeConversationId) return;
@@ -601,18 +799,34 @@ function MessagesPage() {
     setStatusMessage("");
     setErrorMessage("");
 
-    const { error } = await supabase
+    const hiddenAt = new Date().toISOString();
+
+    const { data: existingHide, error: existingHideError } = await supabase
       .from("direct_conversation_hides")
-      .upsert(
-        {
-          conversation_id: conversation.id,
-          user_id: viewerId,
-          hidden_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "conversation_id,user_id",
-        }
-      );
+      .select("conversation_id")
+      .eq("conversation_id", conversation.id)
+      .eq("user_id", viewerId)
+      .maybeSingle();
+
+    if (existingHideError) {
+      setErrorMessage(`Could not check this Parachat delete status: ${getParachatErrorMessage(existingHideError.message)}`);
+      setDeletingConversationId(null);
+      return;
+    }
+
+    const { error } = existingHide
+      ? await supabase
+          .from("direct_conversation_hides")
+          .update({ hidden_at: hiddenAt })
+          .eq("conversation_id", conversation.id)
+          .eq("user_id", viewerId)
+      : await supabase
+          .from("direct_conversation_hides")
+          .insert({
+            conversation_id: conversation.id,
+            user_id: viewerId,
+            hidden_at: hiddenAt,
+          });
 
     if (error) {
       setErrorMessage(`Could not delete this Parachat from your inbox: ${getParachatErrorMessage(error.message)}`);
@@ -624,18 +838,11 @@ function MessagesPage() {
     setConversations(remainingConversations);
 
     if (activeConversationId === conversation.id) {
-      const nextConversation = remainingConversations[0] || null;
       setMessages([]);
-      setActiveConversationId(nextConversation?.id || "");
-      setMobileChatOpen(Boolean(nextConversation?.id));
-
-      if (nextConversation?.id) {
-        activeConversationIdRef.current = nextConversation.id;
-        updateConversationUrl(nextConversation.id);
-      } else {
-        activeConversationIdRef.current = "";
-        clearConversationUrl();
-      }
+      setActiveConversationId("");
+      activeConversationIdRef.current = "";
+      setMobileChatOpen(false);
+      clearConversationUrl();
     }
 
     setDeletingConversationId(null);
@@ -645,6 +852,8 @@ function MessagesPage() {
   const handleSelectConversation = (conversationId: string) => {
     if (conversationId === activeConversationId) {
       setOpenConversationMenuId(null);
+      setMobileChatOpen(true);
+      updateConversationUrl(conversationId);
       return;
     }
 
@@ -676,6 +885,16 @@ function MessagesPage() {
     const trimmed = messageText.trim();
 
     if (!trimmed || sending || !viewerId || !activeConversationId) return;
+
+    const activeOtherUserId = activeConversation?.otherUserId || "";
+    const activeConversationIsAcceptedFriend = Boolean(
+      activeOtherUserId && acceptedFriendIds.includes(activeOtherUserId)
+    );
+
+    if (!activeConversationIsAcceptedFriend) {
+      setErrorMessage("Parachat is only available between accepted friends.");
+      return;
+    }
 
     setSending(true);
     setErrorMessage("");
@@ -761,8 +980,11 @@ function MessagesPage() {
   const activeProfile = activeConversation?.otherProfile || null;
   const activeName = getProfileName(activeProfile);
   const activeHandle = activeProfile?.username ? `@${activeProfile.username}` : "Parapost Network member";
+  const activeConversationIsAcceptedFriend = Boolean(
+    activeConversation?.otherUserId && acceptedFriendIds.includes(activeConversation.otherUserId)
+  );
   const inputDisabled =
-    loadingInbox || sending || !activeConversationId || !!errorMessage;
+    loadingInbox || sending || !activeConversationId || !activeConversationIsAcceptedFriend || !!errorMessage;
 
   return (
     <div style={pageStyle}>
@@ -936,7 +1158,7 @@ function MessagesPage() {
                           </div>
                         )}
 
-                        {profile?.is_online ? <span style={onlineDotStyle} /> : null}
+                        {isParachatProfileActuallyOnline(profile) ? <span style={onlineDotStyle} /> : null}
                       </div>
 
                       <div style={conversationTextStyle}>
@@ -958,11 +1180,15 @@ function MessagesPage() {
                               fontWeight: conversation.unreadCount > 0 ? 850 : 500,
                             }}
                           >
-                            {conversation.lastMessage?.body || "No messages yet"}
+                            {conversation.isNewFriend
+                              ? "New friend · Start a Parachat"
+                              : conversation.lastMessage?.body || "No messages yet"}
                           </span>
 
                           {conversation.unreadCount > 0 ? (
                             <span style={unreadBadgeStyle}>{conversation.unreadCount}</span>
+                          ) : conversation.isNewFriend ? (
+                            <span style={newFriendBadgeStyle}>New friend</span>
                           ) : null}
                         </div>
                       </div>
@@ -1036,13 +1262,17 @@ function MessagesPage() {
                       <div style={avatarFallbackStyle}>{getInitial(activeProfile)}</div>
                     )}
 
-                    {activeProfile?.is_online ? <span style={onlineDotStyle} /> : null}
+                    {isParachatProfileActuallyOnline(activeProfile) ? <span style={onlineDotStyle} /> : null}
                   </div>
 
                   <div style={{ minWidth: 0 }}>
                     <h2 style={headerTitleStyle}>{activeName}</h2>
                     <div style={headerSubtitleStyle}>
-                      {activeProfile?.is_online ? "Online now" : activeHandle}
+                      {activeConversationIsAcceptedFriend
+                        ? isParachatProfileActuallyOnline(activeProfile)
+                          ? "Online now"
+                          : activeHandle
+                        : "Parachat requires accepted friendship"}
                     </div>
                   </div>
                 </div>
@@ -1080,7 +1310,11 @@ function MessagesPage() {
                   <div style={emptyStateStyle}>
                     <div style={emptyIconStyle}>👋</div>
                     <strong>No messages yet</strong>
-                    <span>Start the Parachat with {activeName}.</span>
+                    <span>
+                      {activeConversation?.isNewFriend
+                        ? `${activeName} is now your friend. Send the first Parachat when you are ready.`
+                        : `Start the Parachat with ${activeName}.`}
+                    </span>
                   </div>
                 ) : (
                   <div style={messageStackStyle}>
@@ -1146,7 +1380,11 @@ function MessagesPage() {
                   value={messageText}
                   onChange={handleTextChange}
                   onKeyDown={handleComposerKeyDown}
-                  placeholder={`Send a Parachat to ${activeName}...`}
+                  placeholder={
+                    activeConversationIsAcceptedFriend
+                      ? `Send a Parachat to ${activeName}...`
+                      : "Parachat is only available between accepted friends."
+                  }
                   rows={1}
                   style={composerInputStyle}
                   disabled={inputDisabled}
@@ -1536,6 +1774,20 @@ const unreadBadgeStyle: React.CSSProperties = {
   color: "#ffffff",
   fontSize: "11px",
   fontWeight: 950,
+};
+
+const newFriendBadgeStyle: React.CSSProperties = {
+  minHeight: "21px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(168,85,247,0.16)",
+  border: "1px solid rgba(168,85,247,0.28)",
+  color: "#f5d0fe",
+  fontSize: "10px",
+  fontWeight: 950,
+  padding: "0 7px",
+  whiteSpace: "nowrap",
 };
 
 const chatPanelStyle: React.CSSProperties = {

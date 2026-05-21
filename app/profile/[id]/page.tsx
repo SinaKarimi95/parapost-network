@@ -26,6 +26,7 @@ type ProfileRow = {
   cover_position_x?: number | string | null;
   cover_position_y?: number | string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
   is_private?: boolean | null;
   verified?: boolean | null;
   location?: string | null;
@@ -58,6 +59,7 @@ type ProfileSearchResult = {
   occupation?: string | null;
   paranormal_focus?: string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
 };
 
 type PostImage = {
@@ -1716,6 +1718,21 @@ function ParaGhostBadgeIcon({
   );
 }
 
+const ONLINE_STATUS_TIMEOUT_MS = 3 * 60 * 1000;
+
+function isRecentOnlineTimestamp(value?: string | null) {
+  if (!value) return false;
+
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return false;
+
+  return Date.now() - time <= ONLINE_STATUS_TIMEOUT_MS;
+}
+
+function isProfileActuallyOnline(profile?: { is_online?: boolean | null; last_seen_at?: string | null } | null) {
+  return Boolean(profile?.is_online && isRecentOnlineTimestamp(profile.last_seen_at));
+}
+
 export default function ProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -1995,6 +2012,13 @@ const handleProfileLogout = async () => {
   const confirmed = window.confirm("Log out of Parapost Network?");
   if (!confirmed) return;
 
+  if (viewerId) {
+    await supabase
+      .from("profiles")
+      .update({ is_online: false, last_seen_at: new Date().toISOString() })
+      .eq("id", viewerId);
+  }
+
   const { error } = await supabase.auth.signOut();
 
   if (error) {
@@ -2131,7 +2155,7 @@ useEffect(() => {
   const timer = window.setTimeout(async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, full_name, bio, avatar_url, location, occupation, paranormal_focus, is_online")
+      .select("id, username, full_name, bio, avatar_url, location, occupation, paranormal_focus, is_online, last_seen_at")
       .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
       .limit(8);
 
@@ -2277,6 +2301,7 @@ const closeProfileMobileSearch = useCallback(() => {
   cover_position_x,
   cover_position_y,
   is_online,
+  last_seen_at,
   is_private,
   location,
   website,
@@ -2451,7 +2476,7 @@ const closeProfileMobileSearch = useCallback(() => {
       if (sharedOriginalCreatorIds.length > 0) {
         const { data: sharedCreatorData, error: sharedCreatorError } = await supabase
           .from("profiles")
-          .select("id, username, full_name, bio, avatar_url, is_online")
+          .select("id, username, full_name, bio, avatar_url, is_online, last_seen_at")
           .in("id", sharedOriginalCreatorIds);
 
         if (!sharedCreatorError) {
@@ -2519,7 +2544,7 @@ const closeProfileMobileSearch = useCallback(() => {
       if (sharedCreatorIds.length > 0) {
         const { data: sharedCreatorData, error: sharedCreatorError } = await supabase
           .from("profiles")
-          .select("id, username, full_name, bio, avatar_url, is_online")
+          .select("id, username, full_name, bio, avatar_url, is_online, last_seen_at")
           .in("id", sharedCreatorIds);
 
         if (!sharedCreatorError) {
@@ -2582,6 +2607,65 @@ const closeProfileMobileSearch = useCallback(() => {
   useEffect(() => {
   loadPage();
 }, [loadPage]);
+
+  useEffect(() => {
+    if (!viewerId || typeof window === "undefined") return;
+
+    let cancelled = false;
+
+    const updatePresence = async (isOnline: boolean) => {
+      if (cancelled || !viewerId) return;
+
+      try {
+        await supabase
+          .from("profiles")
+          .update({ is_online: isOnline, last_seen_at: new Date().toISOString() })
+          .eq("id", viewerId);
+      } catch {
+        // Presence updates should never interrupt the profile page.
+      }
+    };
+
+    const shouldMarkOnline = () => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return false;
+      return true;
+    };
+
+    const markOnlineIfVisible = () => {
+      if (!shouldMarkOnline()) return;
+      void updatePresence(true);
+    };
+
+    void updatePresence(true);
+
+    const heartbeatId = window.setInterval(markOnlineIfVisible, 45000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        markOnlineIfVisible();
+        return;
+      }
+
+      void updatePresence(false);
+    };
+
+    const handlePageHide = () => {
+      void updatePresence(false);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handlePageHide);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(heartbeatId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handlePageHide);
+    };
+  }, [viewerId]);
 
 useEffect(() => {
   if (!profileActionsOpen || typeof window === "undefined") return;
@@ -4098,6 +4182,7 @@ useEffect(() => {
     : profileMissingForOwner
       ? getInitial(profileFallbackName, profileFallbackUsername)
       : "";
+  const profileIsActuallyOnline = isProfileActuallyOnline(profile);
   const profileBioValue = (profile?.bio || "").trim();
   const profileHasUsefulBio =
     profileBioValue.length > 0 &&
@@ -11316,7 +11401,7 @@ return (
                 ) : null}
 
                 <div className="profile-mobile-header-real">
-                  <div className={`profile-mobile-avatar-shell-real ${profile?.is_online ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`}>
+                  <div className={`profile-mobile-avatar-shell-real ${profileIsActuallyOnline ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`}>
                     {profile?.avatar_url ? (
                       <img
                         src={profile?.avatar_url || ""}
@@ -11475,7 +11560,7 @@ return (
                 </div>
 
                 <div className="profile-hero-content" style={profileHeroContentStyle}>
-                  <div className={`profile-avatar-wrap ${profile?.is_online ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`} style={profileAvatarWrapStyle}>
+                  <div className={`profile-avatar-wrap ${profileIsActuallyOnline ? "profile-avatar-online-ring" : "profile-avatar-offline-ring"}`} style={profileAvatarWrapStyle}>
                     {profile?.avatar_url ? (
                       <img src={profile?.avatar_url || ""} alt="Profile" style={profileAvatarStyle} />
                     ) : (
@@ -12984,7 +13069,7 @@ return (
                             <div style={{ display: "grid", gap: "10px" }}>
                               <div style={activityRowStyle}>
                                 <span>Status</span>
-                                <strong>{profile?.is_online ? "Online" : "Offline"}</strong>
+                                <strong>{profileIsActuallyOnline ? "Online" : "Offline"}</strong>
                               </div>
 
                               <div style={activityRowStyle}>
@@ -13268,7 +13353,7 @@ return (
                     <div
                       style={{
                         ...profileComposerAvatarStyle,
-                        ...(profile?.is_online ? profileComposerAvatarOnlineStyle : {}),
+                        ...(profileIsActuallyOnline ? profileComposerAvatarOnlineStyle : {}),
                       }}
                     >
                       {profile?.avatar_url ? (
@@ -13495,7 +13580,7 @@ return (
                               }}
                             >
                               <header style={postHeaderStyle}>
-                                <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
+                                <div style={{ ...postAuthorAvatarStyle, ...(profileIsActuallyOnline ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
                                   {profile?.avatar_url ? (
                                     <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                   ) : (
@@ -13613,7 +13698,7 @@ return (
                               style={profileAchievementTimelineCardStyle}
                             >
                               <header style={postHeaderStyle}>
-                                <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
+                                <div style={{ ...postAuthorAvatarStyle, ...(profileIsActuallyOnline ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
                                   {profile?.avatar_url ? (
                                     <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                   ) : (
@@ -13685,7 +13770,7 @@ return (
                               }}
                             >
                               <header style={postHeaderStyle}>
-                                <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
+                                <div style={{ ...postAuthorAvatarStyle, ...(profileIsActuallyOnline ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
                                   {profile?.avatar_url ? (
                                     <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                   ) : (
@@ -13775,7 +13860,7 @@ return (
                             }}
                           >
                             <header style={postHeaderStyle}>
-                              <div style={{ ...postAuthorAvatarStyle, ...(profile?.is_online ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
+                              <div style={{ ...postAuthorAvatarStyle, ...(profileIsActuallyOnline ? postAuthorAvatarOnlineStyle : postAuthorAvatarOfflineStyle) }}>
                                 {profile?.avatar_url ? (
                                   <img src={profile?.avatar_url || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 ) : (
@@ -14150,8 +14235,8 @@ return (
             <div className="profile-activity-right-card" style={rightPanelCardStyle}>
               <div style={rightPanelHeaderStyle}>
                 <h3 style={rightPanelTitleStyle}>Profile Activity</h3>
-                <span style={profile?.is_online ? onlineStatusPillStyle : offlineStatusPillStyle}>
-                  {profile?.is_online ? "Online" : "Offline"}
+                <span style={profileIsActuallyOnline ? onlineStatusPillStyle : offlineStatusPillStyle}>
+                  {profileIsActuallyOnline ? "Online" : "Offline"}
                 </span>
               </div>
 

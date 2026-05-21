@@ -10,6 +10,7 @@ type ProfilePreview = {
   full_name: string | null;
   avatar_url: string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
 };
 
 type FriendRequestRow = {
@@ -34,6 +35,7 @@ export default function FriendsListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [processingFriendId, setProcessingFriendId] = useState<string | null>(null);
+  const [onlineNow, setOnlineNow] = useState(() => Date.now());
 
   const showStatus = useCallback((message: string) => {
     setStatusMessage(message);
@@ -74,7 +76,7 @@ export default function FriendsListPage() {
     if (friendIds.length > 0) {
       const { data: profileRows, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, is_online")
+        .select("id, username, full_name, avatar_url, is_online, last_seen_at")
         .in("id", friendIds);
 
       if (profileError) {
@@ -148,6 +150,16 @@ export default function FriendsListPage() {
     };
   }, [currentUserId, fetchFriends]);
 
+  useEffect(() => {
+    const onlineTimer = window.setInterval(() => {
+      setOnlineNow(Date.now());
+    }, 30000);
+
+    return () => {
+      window.clearInterval(onlineTimer);
+    };
+  }, []);
+
   const filteredFriends = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
@@ -160,9 +172,21 @@ export default function FriendsListPage() {
     });
   }, [friends, searchTerm]);
 
+  const isFriendOnline = useCallback(
+    (profile?: ProfilePreview | null) => {
+      if (!profile?.is_online || !profile.last_seen_at) return false;
+
+      const lastSeenTime = new Date(profile.last_seen_at).getTime();
+      if (Number.isNaN(lastSeenTime)) return false;
+
+      return onlineNow - lastSeenTime <= 3 * 60 * 1000;
+    },
+    [onlineNow]
+  );
+
   const onlineCount = useMemo(() => {
-    return friends.filter((friend) => friend.profile?.is_online).length;
-  }, [friends]);
+    return friends.filter((friend) => isFriendOnline(friend.profile)).length;
+  }, [friends, isFriendOnline]);
 
   const handleRemoveFriend = async (friend: FriendCard) => {
     const confirmRemove = window.confirm("Remove this friend?");
@@ -302,6 +326,7 @@ export default function FriendsListPage() {
                 const label = profile?.full_name || profile?.username || "Unnamed User";
                 const username = profile?.username || "no-username";
                 const isBusy = processingFriendId === friend.friendId;
+                const isOnline = isFriendOnline(profile);
 
                 return (
                   <article key={friend.requestId} style={friendCardStyle}>
@@ -317,7 +342,7 @@ export default function FriendsListPage() {
                           )}
                         </span>
 
-                        {profile?.is_online ? <span style={onlineDotStyle} /> : null}
+                        {isOnline ? <span style={onlineDotStyle} /> : null}
                       </Link>
 
                       <div style={friendInfoStyle}>

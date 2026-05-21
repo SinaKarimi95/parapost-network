@@ -144,11 +144,26 @@ type MixedFeedItem =
 
 type FeedMode = "for_you" | "friends" | "following";
 
+type FeelingActivityIconKey =
+  | "smile"
+  | "heart"
+  | "spark"
+  | "wave"
+  | "target"
+  | "brush"
+  | "briefcase"
+  | "screen"
+  | "music"
+  | "location"
+  | "compass"
+  | "star";
+
 type FeelingActivityOption = {
   id: string;
   label: string;
   category: "Feeling" | "Activity";
   helper: string;
+  icon: FeelingActivityIconKey;
 };
 type CountMap = Record<string, number>;
 type ToggleMap = Record<string, boolean>;
@@ -164,18 +179,18 @@ const FEED_INITIAL_BATCH_SIZE = 14;
 const FEED_BATCH_INCREMENT = 10;
 
 const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
-  { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood" },
-  { id: "grateful", label: "Feeling grateful", category: "Feeling", helper: "Appreciation or good news" },
-  { id: "excited", label: "Feeling excited", category: "Feeling", helper: "Something new is happening" },
-  { id: "relaxed", label: "Feeling relaxed", category: "Feeling", helper: "A calm update" },
-  { id: "focused", label: "Feeling focused", category: "Feeling", helper: "Working on something important" },
-  { id: "creative", label: "Feeling creative", category: "Feeling", helper: "Ideas, art, projects, or content" },
-  { id: "working", label: "Working", category: "Activity", helper: "Share what you are building" },
-  { id: "watching", label: "Watching", category: "Activity", helper: "Shows, videos, events, or streams" },
-  { id: "listening", label: "Listening", category: "Activity", helper: "Music, podcasts, or audio" },
-  { id: "traveling", label: "Traveling", category: "Activity", helper: "Trips, places, and movement" },
-  { id: "exploring", label: "Exploring", category: "Activity", helper: "Adventures, events, or locations" },
-  { id: "celebrating", label: "Celebrating", category: "Activity", helper: "Milestones and special moments" },
+  { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood", icon: "smile" },
+  { id: "grateful", label: "Feeling grateful", category: "Feeling", helper: "Appreciation or good news", icon: "heart" },
+  { id: "excited", label: "Feeling excited", category: "Feeling", helper: "Something new is happening", icon: "spark" },
+  { id: "relaxed", label: "Feeling relaxed", category: "Feeling", helper: "A calm update", icon: "wave" },
+  { id: "focused", label: "Feeling focused", category: "Feeling", helper: "Working on something important", icon: "target" },
+  { id: "creative", label: "Feeling creative", category: "Feeling", helper: "Ideas, art, projects, or content", icon: "brush" },
+  { id: "working", label: "Working", category: "Activity", helper: "Share what you are building", icon: "briefcase" },
+  { id: "watching", label: "Watching", category: "Activity", helper: "Shows, videos, events, or streams", icon: "screen" },
+  { id: "listening", label: "Listening", category: "Activity", helper: "Music, podcasts, or audio", icon: "music" },
+  { id: "traveling", label: "Traveling", category: "Activity", helper: "Trips, places, and movement", icon: "location" },
+  { id: "exploring", label: "Exploring", category: "Activity", helper: "Adventures, events, or locations", icon: "compass" },
+  { id: "celebrating", label: "Celebrating", category: "Activity", helper: "Milestones and special moments", icon: "star" },
 ];
 
 function isLikelyShortenedLink(hostname: string) {
@@ -1095,6 +1110,106 @@ function PlusIcon() {
   );
 }
 
+function FeelingActivityMiniIcon({ icon }: { icon: FeelingActivityIconKey }) {
+  const common = {
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  switch (icon) {
+    case "smile":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" {...common} />
+          <path d="M8.8 14.2c1.6 1.6 4.8 1.6 6.4 0" {...common} />
+          <path d="M9 9.4h.01M15 9.4h.01" {...common} />
+        </svg>
+      );
+    case "heart":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z" {...common} />
+        </svg>
+      );
+    case "spark":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3l1.7 5.2L19 10l-5.3 1.8L12 17l-1.7-5.2L5 10l5.3-1.8L12 3Z" {...common} />
+          <path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8L18 16Z" {...common} />
+        </svg>
+      );
+    case "wave":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 14c2.6-4 5.4-4 8 0s5.4 4 8 0" {...common} />
+          <path d="M4 18c2.6-3 5.4-3 8 0s5.4 3 8 0" {...common} />
+        </svg>
+      );
+    case "target":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" {...common} />
+          <circle cx="12" cy="12" r="3" {...common} />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" {...common} />
+        </svg>
+      );
+    case "brush":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14 4l6 6-8.5 8.5a3 3 0 0 1-4.2-4.2L14 4Z" {...common} />
+          <path d="M5 19c-1.2.8-2.2 1-3 1 0 0 .5-2.2 2-3.2" {...common} />
+        </svg>
+      );
+    case "briefcase":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 7V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" {...common} />
+          <rect x="4" y="7" width="16" height="12" rx="3" {...common} />
+          <path d="M4 12h16" {...common} />
+        </svg>
+      );
+    case "screen":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4" y="5" width="16" height="12" rx="2.5" {...common} />
+          <path d="M10 20h4M12 17v3M10 9l5 3-5 3V9Z" {...common} />
+        </svg>
+      );
+    case "music":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 18V6l10-2v12" {...common} />
+          <circle cx="7" cy="18" r="2" {...common} />
+          <circle cx="17" cy="16" r="2" {...common} />
+        </svg>
+      );
+    case "location":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" {...common} />
+          <circle cx="12" cy="10" r="2.4" {...common} />
+        </svg>
+      );
+    case "compass":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" {...common} />
+          <path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" {...common} />
+        </svg>
+      );
+    case "star":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 4l2.3 4.7 5.2.8-3.8 3.7.9 5.2L12 16l-4.6 2.4.9-5.2-3.8-3.7 5.2-.8L12 4Z" {...common} />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 function DotsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -1359,6 +1474,56 @@ export default function DashboardPage() {
   }, [filteredFeedItems, visibleFeedLimit]);
 
   const hasMoreFeedItems = visibleFeedLimit < filteredFeedItems.length;
+
+  useEffect(() => {
+    const handleDashboardEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      if (showcaseComposerOpen) {
+        setShowcaseComposerOpen(false);
+        setDashboardShowcaseError("");
+        return;
+      }
+
+      if (feelingActivityOpen) {
+        setFeelingActivityOpen(false);
+        return;
+      }
+
+      if (mobileMenuOpen) {
+        setMobileMenuOpen(false);
+        return;
+      }
+
+      if (searchOpen) {
+        setSearchOpen(false);
+        setSearchQuery("");
+        return;
+      }
+
+      if (openPostMenuId) {
+        setOpenPostMenuId(null);
+        return;
+      }
+
+      if (openCommentsPostId) {
+        setOpenCommentsPostId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleDashboardEscape);
+
+    return () => {
+      window.removeEventListener("keydown", handleDashboardEscape);
+    };
+  }, [
+    feelingActivityOpen,
+    mobileMenuOpen,
+    openCommentsPostId,
+    openPostMenuId,
+    searchOpen,
+    showcaseComposerOpen,
+  ]);
 
   const totalLikes = useMemo(() => {
     return Object.values(likeCounts).reduce((sum, count) => sum + count, 0);
@@ -6381,6 +6546,792 @@ export default function DashboardPage() {
           pointer-events: auto !important;
         }
 
+
+        /* === Dashboard post interaction polish: clean actions, comments, and mobile spacing === */
+        .dashboard-post-actions {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 6px !important;
+          margin-top: 14px !important;
+          padding-top: 10px !important;
+          border-top: 1px solid rgba(255,255,255,0.070) !important;
+        }
+
+        .dashboard-post-actions button,
+        .dashboard-post-actions a {
+          border-radius: 12px !important;
+          background: transparent !important;
+          border: 1px solid transparent !important;
+          color: #cbd5e1 !important;
+          min-height: 40px !important;
+          transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease !important;
+        }
+
+        .dashboard-post-actions button:hover,
+        .dashboard-post-actions a:hover {
+          background: rgba(255,255,255,0.045) !important;
+          border-color: rgba(255,255,255,0.085) !important;
+          color: #ffffff !important;
+        }
+
+        .dashboard-post-actions button:active,
+        .dashboard-post-actions a:active {
+          transform: translateY(1px) !important;
+        }
+
+        .dashboard-comments-panel,
+        .dashboard-comments-wrap {
+          border-top: 1px solid rgba(255,255,255,0.065) !important;
+          margin-top: 12px !important;
+          padding-top: 12px !important;
+        }
+
+        .dashboard-comment-composer textarea,
+        .dashboard-comment-input {
+          border-radius: 14px !important;
+          border-color: rgba(255,255,255,0.095) !important;
+          background: rgba(255,255,255,0.035) !important;
+        }
+
+        .dashboard-comment-item {
+          border-bottom: 1px solid rgba(255,255,255,0.050) !important;
+        }
+
+        .dashboard-feed-load-more,
+        .dashboard-load-more-button {
+          border-radius: 14px !important;
+          border-color: rgba(255,255,255,0.10) !important;
+          background: rgba(255,255,255,0.040) !important;
+          box-shadow: 0 12px 26px rgba(0,0,0,0.18) !important;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-post-actions {
+            gap: 4px !important;
+            margin-top: 12px !important;
+            padding-top: 9px !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions a {
+            min-height: 38px !important;
+            font-size: 12px !important;
+            gap: 5px !important;
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+          }
+
+          .dashboard-post-actions svg {
+            width: 17px !important;
+            height: 17px !important;
+          }
+
+          .dashboard-comment-composer {
+            gap: 8px !important;
+          }
+        }
+
+
+        /* === Dashboard brand polish: restore Parapost Network purple identity === */
+        .dashboard-brand-logo {
+          transition: transform 160ms ease, filter 160ms ease;
+        }
+
+        .dashboard-brand-logo:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+        }
+
+        .dashboard-brand-ghost-ring {
+          transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
+        }
+
+        .dashboard-brand-logo:hover .dashboard-brand-ghost-ring {
+          border-color: rgba(192,132,252,0.95) !important;
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.075), 0 0 36px rgba(168,85,247,0.62) !important;
+        }
+
+        .dashboard-brand-network-text {
+          color: #a855f7 !important;
+          -webkit-text-fill-color: #a855f7 !important;
+          text-shadow: 0 0 14px rgba(168,85,247,0.52) !important;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-brand-logo:hover {
+            transform: none;
+          }
+        }
+
+
+        /* === Dashboard right rail polish: cleaner professional widgets === */
+        .dashboard-right-rail a,
+        .dashboard-right-rail button {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .dashboard-right-rail a:hover,
+        .dashboard-right-rail button:hover {
+          border-color: rgba(168,85,247,0.22) !important;
+        }
+
+        .dashboard-right-rail .dashboard-rail-row:hover,
+        .dashboard-right-rail a[style*="grid"]:hover,
+        .dashboard-right-rail a[style*="flex"]:hover {
+          background: rgba(255,255,255,0.050) !important;
+          border-color: rgba(168,85,247,0.18) !important;
+          transform: translateY(-1px);
+        }
+
+        .dashboard-right-rail h3,
+        .dashboard-right-rail h4 {
+          letter-spacing: -0.025em;
+        }
+
+        @media (max-width: 1180px) {
+          .dashboard-right-rail {
+            display: none !important;
+          }
+        }
+
+
+        /* === Dashboard left sidebar polish: cleaner navigation and launch-ready rail === */
+        .dashboard-sidebar-item {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .dashboard-sidebar-item:not(.dashboard-sidebar-item-muted):hover {
+          color: #ffffff !important;
+          background: rgba(255,255,255,0.040) !important;
+          border-color: rgba(168,85,247,0.16) !important;
+          transform: translateX(1px);
+        }
+
+        .dashboard-sidebar-item-active:hover {
+          background: linear-gradient(90deg, rgba(168,85,247,0.24), rgba(255,255,255,0.044)) !important;
+          border-color: rgba(168,85,247,0.30) !important;
+        }
+
+        .dashboard-sidebar-item-muted {
+          filter: saturate(0.82);
+        }
+
+        .dashboard-sidebar-item span {
+          min-width: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .dashboard-sidebar-item,
+          .dashboard-sidebar-profile {
+            transition: none !important;
+          }
+        }
+
+
+        /* === Dashboard Showcase creator cross-device polish === */
+        .profile-showcase-modal-overlay {
+          overflow: hidden !important;
+        }
+
+        .profile-showcase-modal-shell {
+          overscroll-behavior: contain !important;
+        }
+
+        .profile-showcase-visibility-options,
+        .profile-showcase-duration-options {
+          min-width: 0 !important;
+        }
+
+        .profile-showcase-visibility-option,
+        .profile-showcase-duration-option {
+          min-width: 0 !important;
+        }
+
+        .profile-showcase-visibility-option strong,
+        .profile-showcase-visibility-option small,
+        .profile-showcase-duration-option span,
+        .profile-showcase-duration-option small {
+          overflow-wrap: anywhere !important;
+          word-break: normal !important;
+        }
+
+        .profile-showcase-preview-phone {
+          aspect-ratio: 9 / 16;
+        }
+
+        @media (min-width: 761px) and (max-width: 1120px) {
+          .profile-showcase-studio-layout {
+            grid-template-columns: minmax(300px, 0.92fr) minmax(340px, 1.08fr) !important;
+            gap: 18px !important;
+          }
+
+          .profile-showcase-preview-column {
+            padding-left: 18px !important;
+          }
+
+          .profile-showcase-visibility-options,
+          .profile-showcase-duration-options {
+            grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)) !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .profile-showcase-modal-overlay {
+            padding: 0 !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            background:
+              radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--parapost-accent-2) 18%, transparent), transparent 42%),
+              rgba(0,0,0,0.94) !important;
+          }
+
+          .profile-showcase-modal-shell {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-top: none !important;
+            padding: max(14px, env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+
+          .profile-showcase-modal-header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 30 !important;
+            margin: calc(-1 * max(14px, env(safe-area-inset-top))) -14px 14px !important;
+            padding: max(14px, env(safe-area-inset-top)) 14px 12px !important;
+            background:
+              linear-gradient(180deg, rgba(7,9,13,0.995), rgba(7,9,13,0.92)) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.075) !important;
+            backdrop-filter: blur(14px) !important;
+            -webkit-backdrop-filter: blur(14px) !important;
+          }
+
+          .profile-showcase-studio-layout {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          .profile-showcase-simple-controls {
+            gap: 11px !important;
+          }
+
+          .profile-showcase-upload-card {
+            min-height: 118px !important;
+            border-radius: 19px !important;
+            grid-template-columns: 50px minmax(0, 1fr) !important;
+            gap: 12px !important;
+            padding: 15px !important;
+          }
+
+          .profile-showcase-duration-options,
+          .profile-showcase-visibility-options {
+            grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .profile-showcase-duration-option,
+          .profile-showcase-visibility-option {
+            min-height: 56px !important;
+            border-radius: 14px !important;
+            padding: 10px !important;
+          }
+
+          .profile-showcase-visibility-option {
+            grid-template-columns: 34px minmax(0, 1fr) !important;
+          }
+
+          .profile-showcase-preview-column {
+            border-left: none !important;
+            padding-left: 0 !important;
+            border-top: 1px solid rgba(255,255,255,0.075) !important;
+            padding-top: 14px !important;
+          }
+
+          .profile-showcase-preview-header {
+            align-items: flex-start !important;
+          }
+
+          .profile-showcase-preview-phone {
+            width: min(100%, 390px) !important;
+            max-width: 390px !important;
+            height: clamp(360px, 58dvh, 570px) !important;
+            min-height: 360px !important;
+            max-height: 570px !important;
+            justify-self: center !important;
+            border-radius: 28px !important;
+          }
+
+          .profile-showcase-preview-phone img,
+          .profile-showcase-preview-phone video {
+            object-fit: contain !important;
+            object-position: center center !important;
+          }
+
+          .profile-showcase-modal-actions {
+            position: sticky !important;
+            bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+            z-index: 35 !important;
+            margin-left: -14px !important;
+            margin-right: -14px !important;
+            padding: 12px 14px calc(12px + env(safe-area-inset-bottom)) !important;
+            background:
+              linear-gradient(180deg, rgba(7,9,13,0.38), rgba(7,9,13,0.96) 54%, rgba(7,9,13,0.995)) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .profile-showcase-duration-options,
+          .profile-showcase-visibility-options {
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-showcase-upload-copy small {
+            font-size: 10px !important;
+          }
+
+          .profile-showcase-preview-phone {
+            width: min(100%, 345px) !important;
+            max-width: 345px !important;
+            height: clamp(320px, 54dvh, 510px) !important;
+            min-height: 320px !important;
+            max-height: 510px !important;
+            border-radius: 24px !important;
+          }
+
+          .profile-showcase-preview-phone [style*="rotate(-90deg)"] {
+            width: 150px !important;
+          }
+
+          .profile-showcase-modal-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-showcase-modal-actions button {
+            width: 100% !important;
+          }
+        }
+
+        @media (max-height: 720px) and (max-width: 760px) {
+          .profile-showcase-preview-phone {
+            height: clamp(285px, 48dvh, 430px) !important;
+            min-height: 285px !important;
+          }
+
+          .profile-showcase-modal-shell {
+            padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+          }
+        }
+
+        @media (orientation: landscape) and (max-width: 930px) and (max-height: 520px) {
+          .profile-showcase-studio-layout {
+            grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr) !important;
+            align-items: start !important;
+          }
+
+          .profile-showcase-preview-column {
+            border-top: none !important;
+            border-left: 1px solid rgba(255,255,255,0.075) !important;
+            padding-left: 14px !important;
+            padding-top: 0 !important;
+          }
+
+          .profile-showcase-preview-phone {
+            height: calc(100dvh - 170px) !important;
+            min-height: 250px !important;
+            max-height: 360px !important;
+            max-width: 240px !important;
+          }
+
+          .profile-showcase-duration-options,
+          .profile-showcase-visibility-options {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          }
+        }
+
+
+        /* === Showcase creator sticky cleanup: no sticky notes/header/actions === */
+        .profile-showcase-modal-header {
+          position: relative !important;
+          top: auto !important;
+          z-index: 2 !important;
+          margin: 0 0 14px !important;
+          padding: 0 !important;
+          background: transparent !important;
+          border-bottom: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        .profile-showcase-modal-actions {
+          position: relative !important;
+          left: auto !important;
+          right: auto !important;
+          bottom: auto !important;
+          z-index: 2 !important;
+          margin: 16px 0 0 !important;
+          padding: 12px 0 0 !important;
+          background: transparent !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        @media (max-width: 760px) {
+          .profile-showcase-modal-header {
+            position: relative !important;
+            top: auto !important;
+            margin: 0 0 14px !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border-bottom: none !important;
+          }
+
+          .profile-showcase-modal-actions {
+            position: relative !important;
+            bottom: auto !important;
+            margin: 16px 0 0 !important;
+            padding: 12px 0 0 !important;
+            background: transparent !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .profile-showcase-modal-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-showcase-modal-actions button {
+            width: 100% !important;
+          }
+        }
+
+
+        /* === Dashboard flow polish: no layout changes, smoother page interactions === */
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: hidden;
+          background: #07090d;
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+
+        body {
+          overscroll-behavior-x: none;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
+
+        button,
+        a,
+        input,
+        textarea,
+        select {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        input,
+        textarea,
+        select {
+          font-size: 16px;
+        }
+
+        .dashboard-page,
+        .dashboard-shell,
+        .dashboard-main,
+        .dashboard-main-column,
+        .dashboard-feed-stack,
+        .dashboard-card,
+        .dashboard-feed-card,
+        .dashboard-composer-card,
+        .dashboard-left-sidebar,
+        .dashboard-right-rail,
+        .dashboard-mobile-header,
+        .dashboard-desktop-topbar {
+          box-sizing: border-box !important;
+          min-width: 0 !important;
+        }
+
+        .dashboard-feed-card,
+        .dashboard-composer-card,
+        .dashboard-card {
+          isolation: isolate;
+        }
+
+        .dashboard-post-text-link,
+        .dashboard-link-preview-card,
+        .dashboard-external-link-preview {
+          pointer-events: auto !important;
+          touch-action: manipulation !important;
+        }
+
+        .dashboard-post-text-link {
+          position: relative !important;
+          z-index: 8 !important;
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        .dashboard-feed-card,
+        .dashboard-post-content,
+        .dashboard-link-preview-card,
+        .dashboard-external-link-preview {
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        .dashboard-post-single-media,
+        .dashboard-post-media-item,
+        .dashboard-post-media-grid img,
+        .dashboard-post-media-grid video,
+        .dashboard-link-preview-card img,
+        .dashboard-showcase-card img,
+        .dashboard-showcase-card video,
+        .profile-showcase-preview-phone img,
+        .profile-showcase-preview-phone video {
+          max-width: 100% !important;
+          backface-visibility: hidden;
+        }
+
+        .dashboard-post-single-media,
+        .dashboard-post-media-item {
+          background: #05060a;
+        }
+
+        .dashboard-mobile-menu-overlay,
+        .profile-showcase-modal-overlay,
+        .dashboard-search-overlay {
+          width: 100vw !important;
+          max-width: 100vw !important;
+          overflow: hidden !important;
+          isolation: isolate;
+        }
+
+        .dashboard-mobile-menu-sheet,
+        .profile-showcase-modal-shell,
+        .dashboard-search-sheet {
+          min-width: 0 !important;
+          max-width: 100vw !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        .dashboard-link-preview-card:focus-visible,
+        .dashboard-external-link-preview:focus-visible,
+        .dashboard-post-text-link:focus-visible,
+        .dashboard-sidebar-item:focus-visible,
+        .dashboard-top-icon-button:focus-visible,
+        .dashboard-mobile-header button:focus-visible,
+        .profile-showcase-modal-shell button:focus-visible,
+        .dashboard-post-actions button:focus-visible {
+          outline: 2px solid color-mix(in srgb, var(--parapost-accent-2) 74%, #ffffff);
+          outline-offset: 3px;
+        }
+
+        .dashboard-post-actions button,
+        .dashboard-post-actions a,
+        .dashboard-sidebar-item,
+        .dashboard-right-rail a,
+        .dashboard-right-rail button {
+          touch-action: manipulation;
+        }
+
+        .dashboard-post-actions button,
+        .dashboard-post-actions a {
+          min-width: 0 !important;
+        }
+
+        .dashboard-bottom-nav,
+        .bottom-nav,
+        nav[aria-label="Mobile navigation"] {
+          transform: translateZ(0);
+          padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+        }
+
+        /* Keep Showcase creator natural/in-flow. No sticky-note panels. */
+        .profile-showcase-modal-header {
+          position: relative !important;
+          top: auto !important;
+          z-index: 2 !important;
+          margin: 0 0 14px !important;
+          padding: 0 !important;
+          background: transparent !important;
+          border-bottom: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        .profile-showcase-modal-actions {
+          position: relative !important;
+          left: auto !important;
+          right: auto !important;
+          bottom: auto !important;
+          z-index: 2 !important;
+          margin: 16px 0 0 !important;
+          padding: 12px 0 0 !important;
+          background: transparent !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        @media (hover: none), (pointer: coarse) {
+          .dashboard-post-actions button,
+          .dashboard-post-actions a,
+          .dashboard-sidebar-item,
+          .dashboard-right-rail a,
+          .dashboard-right-rail button,
+          .dashboard-brand-logo,
+          .dashboard-brand-ghost-ring {
+            will-change: auto !important;
+            transition-duration: 120ms !important;
+          }
+
+          .dashboard-post-actions button:hover,
+          .dashboard-post-actions a:hover,
+          .dashboard-sidebar-item:hover,
+          .dashboard-right-rail a:hover,
+          .dashboard-right-rail button:hover,
+          .dashboard-brand-logo:hover {
+            transform: none !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-page,
+          .dashboard-shell,
+          .dashboard-main,
+          .dashboard-main-column {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+          }
+
+          .dashboard-desktop-topbar,
+          .dashboard-left-sidebar,
+          .dashboard-right-rail {
+            display: none !important;
+          }
+
+          .dashboard-mobile-header {
+            padding-top: max(10px, env(safe-area-inset-top)) !important;
+            transform: translateZ(0);
+          }
+
+          .dashboard-card,
+          .dashboard-feed-card,
+          .dashboard-composer-card {
+            border-radius: 18px !important;
+          }
+
+          .dashboard-post-single-media {
+            max-height: 72dvh !important;
+            object-fit: contain !important;
+          }
+
+          .dashboard-post-media-grid {
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions a {
+            min-height: 38px !important;
+            white-space: nowrap !important;
+          }
+
+          .dashboard-post-actions span {
+            min-width: 0 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+
+          .dashboard-comment-composer {
+            align-items: stretch !important;
+          }
+
+          .dashboard-comment-composer textarea,
+          .dashboard-comment-input {
+            font-size: 16px !important;
+            min-height: 42px !important;
+          }
+
+          .profile-showcase-preview-phone {
+            max-width: min(100%, 390px) !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .dashboard-card,
+          .dashboard-feed-card,
+          .dashboard-composer-card {
+            border-radius: 16px !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions a {
+            font-size: 11px !important;
+            gap: 4px !important;
+            padding-left: 3px !important;
+            padding-right: 3px !important;
+          }
+
+          .dashboard-post-actions svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+
+          .profile-showcase-duration-options,
+          .profile-showcase-visibility-options {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (orientation: landscape) and (max-width: 930px) and (max-height: 520px) {
+          .dashboard-mobile-header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 80 !important;
+          }
+
+          .dashboard-bottom-nav,
+          .bottom-nav,
+          nav[aria-label="Mobile navigation"] {
+            transform: translateZ(0) scale(0.96);
+            transform-origin: bottom center;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.001ms !important;
+          }
+        }
+
+        @media (prefers-reduced-data: reduce) {
+          .dashboard-loading-shimmer {
+            animation: none !important;
+          }
+        }
+
       ` }} />
     </div>
   );
@@ -6388,11 +7339,11 @@ export default function DashboardPage() {
 
 function SidebarLogo() {
   return (
-    <Link href="/dashboard" style={sidebarLogoStyle}>
-      <div style={logoGhostCircleStyle}><ParaGhostLogoIcon size={42} /></div>
+    <Link href="/dashboard" className="dashboard-brand-logo" style={sidebarLogoStyle}>
+      <div className="dashboard-brand-ghost-ring" style={logoGhostCircleStyle}><ParaGhostLogoIcon size={42} /></div>
       <div>
         <div style={logoWordStyle}>PARAPOST</div>
-        <div style={logoNetworkStyle}>NETWORK</div>
+        <div className="dashboard-brand-network-text" style={logoNetworkStyle}>NETWORK</div>
       </div>
     </Link>
   );
@@ -6412,7 +7363,11 @@ function SidebarLink({
   badge?: number | string;
 }) {
   return (
-    <Link href={href} style={active ? activeSidebarItemStyle : sidebarItemStyle}>
+    <Link
+      href={href}
+      className={active ? "dashboard-sidebar-item dashboard-sidebar-item-active" : "dashboard-sidebar-item"}
+      style={active ? activeSidebarItemStyle : sidebarItemStyle}
+    >
       <span style={sidebarIconWrapStyle}>{icon || <span style={dotIconStyle} />}</span>
       <span>{label}</span>
       {badge ? <span style={sidebarBadgeStyle}>{badge}</span> : null}
@@ -6441,6 +7396,7 @@ function SidebarButton({
 }) {
   return (
     <div
+      className={muted ? "dashboard-sidebar-item dashboard-sidebar-item-muted" : "dashboard-sidebar-item"}
       style={muted ? mutedSidebarItemStyle : sidebarItemStyle}
       aria-disabled={muted ? "true" : undefined}
       title={muted ? `${label} is planned for a future Parapost Network upgrade.` : undefined}
@@ -8142,7 +9098,9 @@ function FeelingActivityOptionButton({
       onClick={onSelect}
       style={active ? { ...feelingActivityOptionStyle, ...feelingActivityOptionActiveStyle } : feelingActivityOptionStyle}
     >
-      <span style={feelingActivityOptionDotStyle} />
+      <span style={feelingActivityOptionIconStyle}>
+        <FeelingActivityMiniIcon icon={option.icon} />
+      </span>
       <span style={{ minWidth: 0 }}>
         <strong style={feelingActivityOptionLabelStyle}>{option.label}</strong>
         <span style={feelingActivityOptionHelperStyle}>{option.helper}</span>
@@ -8499,7 +9457,7 @@ function DashboardShowcaseComposerModal({
                     <strong style={profileShowcaseDurationTitleStyle}>Visibility</strong>
                     <p style={profileShowcaseDurationHelpStyle}>Choose who can see this Showcase.</p>
                   </div>
-                  <div style={profileShowcaseVisibilityOptionsStyle}>
+                  <div className="profile-showcase-visibility-options" style={profileShowcaseVisibilityOptionsStyle}>
                     {[
                       { value: "public" as const, label: "Public", icon: "public", help: "Everyone" },
                       { value: "friends" as const, label: "Friends", icon: "friends", help: "Friends only" },
@@ -8508,6 +9466,7 @@ function DashboardShowcaseComposerModal({
                       const selected = visibility === option.value;
                       return (
                         <button
+                          className="profile-showcase-visibility-option"
                           key={option.value}
                           type="button"
                           onClick={() => setVisibility(option.value)}
@@ -9227,13 +10186,18 @@ const feelingActivityOptionActiveStyle: CSSProperties = {
   boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
 };
 
-const feelingActivityOptionDotStyle: CSSProperties = {
-  width: 30,
-  height: 30,
-  borderRadius: 12,
+const feelingActivityOptionIconStyle: CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 13,
   flexShrink: 0,
-  background: "linear-gradient(135deg, var(--parapost-accent-1), color-mix(in srgb, var(--parapost-accent-2) 72%, transparent))",
-  boxShadow: "0 0 18px var(--parapost-accent-glow)",
+  display: "grid",
+  placeItems: "center",
+  color: "#fff",
+  background:
+    "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-1) 76%, rgba(255,255,255,0.10)), color-mix(in srgb, var(--parapost-accent-2) 66%, transparent))",
+  border: "1px solid rgba(255,255,255,0.12)",
+  boxShadow: "0 10px 22px rgba(0,0,0,0.24), 0 0 14px color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)",
 };
 
 const feelingActivityOptionLabelStyle: CSSProperties = {
@@ -9400,16 +10364,18 @@ const railHeroProfileStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 12,
-  borderRadius: 20,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), rgba(255,255,255,0.035))",
+  borderRadius: 17,
+  border: "1px solid rgba(255,255,255,0.095)",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.105), rgba(255,255,255,0.035))",
   padding: 12,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.030)",
 };
 
 const railProfileButtonStyle: CSSProperties = {
-  borderRadius: 999,
+  borderRadius: 12,
   border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.06)",
+  background: "rgba(255,255,255,0.055)",
   color: "#fff",
   textDecoration: "none",
   padding: "8px 10px",
@@ -9421,18 +10387,19 @@ const railProfileButtonStyle: CSSProperties = {
 const railStatGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 8,
+  gap: 7,
 };
 
 const railStatTileStyle: CSSProperties = {
-  borderRadius: 16,
-  border: "1px solid rgba(255,255,255,0.09)",
-  background: "rgba(255,255,255,0.04)",
-  padding: "10px 11px",
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.085)",
+  background: "rgba(255,255,255,0.034)",
+  padding: "10px 10px",
   display: "flex",
   alignItems: "center",
   gap: 6,
   minWidth: 0,
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.022)",
 };
 
 const railStatValueStyle: CSSProperties = {
@@ -9459,10 +10426,11 @@ const discoverProfileRowStyle: CSSProperties = {
   gap: 10,
   color: "#fff",
   textDecoration: "none",
-  borderRadius: 16,
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.035)",
+  borderRadius: 15,
+  border: "1px solid rgba(255,255,255,0.080)",
+  background: "rgba(255,255,255,0.032)",
   padding: 10,
+  transition: "background 160ms ease, border-color 160ms ease, transform 160ms ease",
 };
 
 const miniArrowStyle: CSSProperties = {
@@ -9496,27 +10464,29 @@ const reelsRailFeatureStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 12,
-  borderRadius: 18,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-3) 12%, transparent), color-mix(in srgb, var(--parapost-accent-2) 10%, transparent))",
+  borderRadius: 16,
+  border: "1px solid rgba(168,85,247,0.18)",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(255,255,255,0.034))",
   padding: 12,
 };
 
 const reelsRailIconStyle: CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 16,
+  width: 42,
+  height: 42,
+  borderRadius: 14,
   display: "grid",
   placeItems: "center",
-  background: "rgba(255,255,255,0.92)",
+  background: "#fff",
   color: "#111827",
   fontWeight: 950,
   flexShrink: 0,
+  boxShadow: "0 12px 24px rgba(0,0,0,0.20)",
 };
 
 const railPrimaryLinkStyle: CSSProperties = {
   minHeight: 40,
-  borderRadius: 999,
+  borderRadius: 13,
   display: "grid",
   placeItems: "center",
   background: "#fff",
@@ -9524,15 +10494,17 @@ const railPrimaryLinkStyle: CSSProperties = {
   textDecoration: "none",
   fontWeight: 950,
   padding: "0 14px",
+  boxShadow: "0 12px 24px rgba(0,0,0,0.18)",
 };
 
 const sponsorCardStyle: CSSProperties = {
   display: "flex",
   gap: 12,
   alignItems: "center",
-  borderRadius: 18,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 12%, transparent), var(--parapost-accent-muted-bg))",
+  borderRadius: 16,
+  border: "1px solid rgba(255,255,255,0.095)",
+  background:
+    "linear-gradient(135deg, rgba(168,85,247,0.10), rgba(255,255,255,0.030))",
   padding: 12,
 };
 
@@ -9544,8 +10516,8 @@ const sponsorIconStyle: CSSProperties = {
   placeItems: "center",
   color: "#fff",
   fontWeight: 950,
-  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-3))",
-  boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 24%, transparent)",
+  background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+  boxShadow: "0 0 22px rgba(168,85,247,0.24)",
   flexShrink: 0,
 };
 
@@ -9594,7 +10566,7 @@ const leftSidebarStyle: CSSProperties = {
   height: "auto",
   maxHeight: "none",
   overflow: "visible",
-  borderRight: "1px solid rgba(255,255,255,0.09)",
+  borderRight: "1px solid rgba(255,255,255,0.075)",
   padding: "0 24px 18px 4px",
 };
 
@@ -9630,6 +10602,7 @@ const sidebarLogoStyle: CSSProperties = {
   color: "#fff",
   textDecoration: "none",
   marginBottom: "28px",
+  userSelect: "none",
 };
 
 const logoGhostCircleStyle: CSSProperties = {
@@ -9638,48 +10611,69 @@ const logoGhostCircleStyle: CSSProperties = {
   borderRadius: "999px",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-2) 18%, transparent), rgba(255,255,255,0.04))",
-  border: "2px solid color-mix(in srgb, var(--parapost-accent-3) 72%, transparent)",
-  boxShadow: "0 0 28px color-mix(in srgb, var(--parapost-accent-2) 55%, transparent)",
+  background:
+    "radial-gradient(circle at 50% 38%, rgba(255,255,255,0.13), transparent 34%), linear-gradient(135deg, rgba(168,85,247,0.24), rgba(236,72,153,0.08))",
+  border: "2px solid rgba(168,85,247,0.82)",
+  boxShadow: "0 0 0 1px rgba(255,255,255,0.065), 0 0 30px rgba(168,85,247,0.50)",
   color: "#fff",
   fontWeight: 950,
   fontSize: 24,
 };
 
-const logoWordStyle: CSSProperties = { fontSize: 32, fontWeight: 950, lineHeight: 0.95, letterSpacing: "0.02em" };
-const logoNetworkStyle: CSSProperties = { color: "var(--parapost-accent-text)", letterSpacing: "0.42em", fontWeight: 900, fontSize: 14, marginTop: 5 };
+const logoWordStyle: CSSProperties = {
+  fontSize: 32,
+  fontWeight: 950,
+  lineHeight: 0.95,
+  letterSpacing: "0.02em",
+  color: "#ffffff",
+  textShadow: "0 1px 0 rgba(255,255,255,0.06), 0 12px 28px rgba(0,0,0,0.35)",
+};
 
-const sidebarNavStyle: CSSProperties = { display: "grid", gap: 8 };
+const logoNetworkStyle: CSSProperties = {
+  color: "#a855f7",
+  letterSpacing: "0.42em",
+  fontWeight: 950,
+  fontSize: 14,
+  marginTop: 5,
+  textShadow: "0 0 14px rgba(168,85,247,0.52)",
+};
+
+const sidebarNavStyle: CSSProperties = {
+  display: "grid",
+  gap: 7,
+};
 
 const sidebarItemStyle: CSSProperties = {
-  minHeight: 48,
-  borderRadius: 14,
+  minHeight: 46,
+  borderRadius: 13,
   color: "#d1d5db",
   textDecoration: "none",
   display: "grid",
-  gridTemplateColumns: "26px 1fr auto",
+  gridTemplateColumns: "25px 1fr auto",
   alignItems: "center",
   gap: 10,
-  padding: "0 14px",
+  padding: "0 13px",
   border: "1px solid transparent",
+  background: "transparent",
+  transition: "background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease",
 };
 
 const activeSidebarItemStyle: CSSProperties = {
   ...sidebarItemStyle,
   color: "#fff",
   background:
-    "linear-gradient(90deg, color-mix(in srgb, var(--parapost-accent-2) 18%, transparent), rgba(255,255,255,0.040))",
-  border: "1px solid color-mix(in srgb, var(--parapost-accent-text) 22%, transparent)",
-  boxShadow: "inset 3px 0 0 var(--parapost-accent-2), 0 10px 24px rgba(0,0,0,0.16)",
+    "linear-gradient(90deg, rgba(168,85,247,0.20), rgba(255,255,255,0.038))",
+  border: "1px solid rgba(168,85,247,0.26)",
+  boxShadow: "inset 3px 0 0 #a855f7, 0 10px 24px rgba(0,0,0,0.16)",
 };
 
 const mutedSidebarItemStyle: CSSProperties = {
   ...sidebarItemStyle,
-  color: "rgba(209,213,219,0.44)",
-  opacity: 0.58,
+  color: "rgba(209,213,219,0.38)",
+  opacity: 0.62,
   cursor: "default",
   pointerEvents: "none",
-  background: "rgba(255,255,255,0.015)",
+  background: "rgba(255,255,255,0.010)",
 };
 
 const sidebarComposerReelIconStyle: CSSProperties = {
@@ -9695,35 +10689,110 @@ const sidebarComposerReelIconStyle: CSSProperties = {
   lineHeight: 1,
 };
 
-const sidebarIconWrapStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center" };
+const sidebarIconWrapStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "inherit",
+};
 const dotIconStyle: CSSProperties = { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.55)" };
 const mutedDotIconStyle: CSSProperties = { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.26)" };
-const sidebarBadgeStyle: CSSProperties = { minWidth: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--parapost-accent-1)", color: "#fff", fontSize: 12, fontWeight: 900, padding: "0 7px" };
-const mutedSidebarBadgeStyle: CSSProperties = { ...sidebarBadgeStyle, background: "color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", color: "rgba(255,255,255,0.68)", border: "1px solid rgba(255,255,255,0.08)" };
-const sidebarDividerStyle: CSSProperties = { height: 1, background: "rgba(255,255,255,0.12)", margin: "20px 0" };
-const sidebarSectionLabelStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 };
+const sidebarBadgeStyle: CSSProperties = {
+  minWidth: 24,
+  height: 22,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+  color: "#fff",
+  fontSize: 11,
+  fontWeight: 950,
+  padding: "0 7px",
+  boxShadow: "0 0 14px rgba(168,85,247,0.24)",
+};
+const mutedSidebarBadgeStyle: CSSProperties = {
+  ...sidebarBadgeStyle,
+  background: "rgba(168,85,247,0.11)",
+  color: "rgba(255,255,255,0.60)",
+  border: "1px solid rgba(255,255,255,0.075)",
+  boxShadow: "none",
+};
+const sidebarDividerStyle: CSSProperties = {
+  height: 1,
+  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+  margin: "20px 0",
+};
+const sidebarSectionLabelStyle: CSSProperties = {
+  color: "#c084fc",
+  fontSize: 12,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  marginBottom: 10,
+};
 const sidebarSectionHeaderRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 };
-const sidebarSectionSoonBadgeStyle: CSSProperties = { borderRadius: 999, background: "color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.76)", padding: "4px 8px", fontSize: 10, fontWeight: 950, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" };
-const paranormalHubIntroStyle: CSSProperties = { margin: "0 0 10px", borderRadius: 14, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 16%, transparent)", background: "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.025))", color: "color-mix(in srgb, var(--parapost-accent-readable-text) 76%, transparent)", fontSize: 12, lineHeight: 1.45, padding: "10px 12px" };
+const sidebarSectionSoonBadgeStyle: CSSProperties = {
+  borderRadius: 999,
+  background: "rgba(168,85,247,0.13)",
+  border: "1px solid rgba(168,85,247,0.18)",
+  color: "rgba(255,255,255,0.76)",
+  padding: "4px 8px",
+  fontSize: 10,
+  fontWeight: 950,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+};
+const paranormalHubIntroStyle: CSSProperties = {
+  margin: "0 0 10px",
+  borderRadius: 14,
+  border: "1px solid rgba(168,85,247,0.16)",
+  background: "linear-gradient(135deg, rgba(168,85,247,0.075), rgba(255,255,255,0.022))",
+  color: "rgba(226,232,240,0.76)",
+  fontSize: 12,
+  lineHeight: 1.45,
+  padding: "10px 12px",
+};
 
 const goLiveCardStyle: CSSProperties = {
   marginTop: 22,
   display: "flex",
   alignItems: "center",
   gap: 12,
-  borderRadius: 18,
-  padding: 16,
+  borderRadius: 17,
+  padding: 15,
   textDecoration: "none",
-  background: "var(--parapost-accent-muted-bg)",
-  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 24%, transparent)",
-  boxShadow: "0 0 20px var(--parapost-accent-muted-bg)",
-  opacity: 0.66,
+  background: "linear-gradient(135deg, rgba(168,85,247,0.070), rgba(255,255,255,0.022))",
+  border: "1px solid rgba(168,85,247,0.16)",
+  boxShadow: "0 14px 28px rgba(0,0,0,0.18)",
+  opacity: 0.74,
   cursor: "default",
 };
 
-const goLiveIconStyle: CSSProperties = { width: 48, height: 48, borderRadius: 14, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 26 };
+const goLiveIconStyle: CSSProperties = {
+  width: 46,
+  height: 46,
+  borderRadius: 14,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.055)",
+  color: "#fff",
+  fontSize: 24,
+  border: "1px solid rgba(255,255,255,0.075)",
+};
 const goLiveSoonBadgeStyle: CSSProperties = { marginLeft: "auto", borderRadius: 999, background: "color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.78)", padding: "5px 8px", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap" };
-const sidebarProfileStyle: CSSProperties = { marginTop: 22, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, padding: 10, background: "rgba(255,255,255,0.04)" };
+const sidebarProfileStyle: CSSProperties = {
+  marginTop: 22,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  textDecoration: "none",
+  border: "1px solid rgba(255,255,255,0.095)",
+  borderRadius: 15,
+  padding: 10,
+  background: "rgba(255,255,255,0.032)",
+  transition: "background 160ms ease, border-color 160ms ease, transform 160ms ease",
+};
 
 const desktopTopBarStyle: CSSProperties = {
   display: "grid",
@@ -10030,24 +11099,29 @@ const profileShowcaseModalOverlayStyle: CSSProperties = {
   alignItems: "stretch",
   justifyContent: "center",
   padding: "18px",
-  background: "radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--parapost-accent-2) 20%, transparent), transparent 38%), rgba(0,0,0,0.88)",
+  background:
+    "radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--parapost-accent-2) 20%, transparent), transparent 38%), rgba(0,0,0,0.88)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
+  overflow: "hidden",
 };
 
 const profileShowcaseModalStyle: CSSProperties = {
   width: "min(1180px, calc(100vw - 32px))",
-  height: "min(840px, calc(100vh - 32px))",
-  maxHeight: "calc(100vh - 32px)",
+  height: "min(840px, calc(100dvh - 32px))",
+  maxHeight: "calc(100dvh - 32px)",
   overflowY: "auto",
+  overflowX: "hidden",
   scrollbarWidth: "auto",
   scrollbarColor: "rgba(255,255,255,0.82) rgba(255,255,255,0.12)",
-  borderRadius: "32px",
+  borderRadius: "30px",
   border: "1px solid rgba(255,255,255,0.14)",
-  background: "radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--parapost-accent-2) 28%, transparent), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
+  background:
+    "radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--parapost-accent-2) 28%, transparent), transparent 34%), radial-gradient(circle at 98% 10%, rgba(34,211,238,0.12), transparent 30%), linear-gradient(180deg, rgba(20,22,30,0.996), rgba(6,8,13,0.998))",
   boxShadow: "0 42px 120px rgba(0,0,0,0.72), 0 0 0 1px rgba(255,255,255,0.035)",
   padding: "22px",
   direction: "ltr",
+  overscrollBehavior: "contain",
 };
 
 const profileShowcaseModalHeaderStyle: CSSProperties = {
@@ -10148,7 +11222,7 @@ const profileShowcaseModalCloseStyle: CSSProperties = {
 const profileShowcaseSimpleStudioStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(330px, 0.88fr) minmax(410px, 1.12fr)",
-  gap: "26px",
+  gap: "24px",
   alignItems: "start",
 };
 
@@ -10298,24 +11372,25 @@ const profileShowcaseDurationHelpStyle: CSSProperties = {
 
 const profileShowcaseDurationOptionsStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))",
   gap: "8px",
 };
 
 const profileShowcaseDurationOptionStyle: CSSProperties = {
   display: "grid",
   gap: "4px",
-  minHeight: "74px",
+  minHeight: "72px",
   alignContent: "start",
   textAlign: "left",
   border: "1px solid rgba(255,255,255,0.09)",
   borderRadius: "13px",
   background: "rgba(255,255,255,0.04)",
   color: "#e5e7eb",
-  padding: "9px 10px",
+  padding: "10px 11px",
   cursor: "pointer",
   fontFamily: "inherit",
   fontWeight: 850,
+  minWidth: 0,
 };
 
 const profileShowcaseDurationOptionActiveStyle: CSSProperties = {
@@ -10425,7 +11500,7 @@ const profileShowcaseFontPreviewStyle: CSSProperties = {
 
 const profileShowcaseVisibilityOptionsStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))",
   gap: "8px",
 };
 
@@ -10443,6 +11518,7 @@ const profileShowcaseVisibilityOptionStyle: CSSProperties = {
   cursor: "pointer",
   fontFamily: "inherit",
   minHeight: "58px",
+  minWidth: 0,
 };
 
 const profileShowcaseVisibilityOptionActiveStyle: CSSProperties = {
@@ -10468,6 +11544,7 @@ const profileShowcaseVisibilityTextStyle: CSSProperties = {
   display: "grid",
   gap: "2px",
   minWidth: 0,
+  overflow: "hidden",
 };
 
 const profileShowcasePreviewColumnStyle: CSSProperties = {
@@ -10493,15 +11570,17 @@ const profileShowcasePreviewHeaderStyle: CSSProperties = {
 const profileShowcasePreviewPhoneStyle: CSSProperties = {
   position: "relative",
   width: "100%",
-  height: "clamp(330px, 42vh, 440px)",
+  maxWidth: "430px",
+  height: "clamp(330px, 42dvh, 460px)",
   minHeight: "330px",
-  maxHeight: "440px",
-  justifySelf: "stretch",
+  maxHeight: "460px",
+  justifySelf: "center",
   alignSelf: "start",
-  borderRadius: "32px",
+  borderRadius: "30px",
   overflow: "hidden",
   border: "1px solid rgba(255,255,255,0.14)",
-  background: "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), color-mix(in srgb, var(--parapost-accent-1) 90%, transparent) 52%, color-mix(in srgb, var(--parapost-accent-2) 84%, transparent))",
+  background:
+    "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.30), transparent 34%), linear-gradient(135deg, rgba(20,184,166,0.78), color-mix(in srgb, var(--parapost-accent-1) 90%, transparent) 52%, color-mix(in srgb, var(--parapost-accent-2) 84%, transparent))",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 34px 86px rgba(0,0,0,0.50)",
 };
 
@@ -10533,6 +11612,7 @@ const profileShowcasePreviewOverlayStyle: CSSProperties = {
   userSelect: "none",
   WebkitUserSelect: "none",
   contain: "layout paint",
+  overflow: "hidden",
 };
 
 const profileShowcasePreviewTextStyle: CSSProperties = {
@@ -10548,9 +11628,9 @@ const profileShowcasePreviewTextStyle: CSSProperties = {
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
   overflowWrap: "anywhere",
-  maxHeight: "72%",
+  maxHeight: "70%",
   overflow: "hidden",
-  padding: "0 4px",
+  padding: "0 6px",
   minWidth: "80px",
   boxSizing: "border-box",
   userSelect: "none",
@@ -10567,7 +11647,7 @@ const profileShowcaseVerticalSizeRailStyle: CSSProperties = {
   top: "50%",
   transform: "translateY(-50%)",
   zIndex: 4,
-  height: "180px",
+  height: "176px",
   display: "grid",
   placeItems: "center",
 };
@@ -10647,7 +11727,6 @@ const profileShowcaseErrorStyle: CSSProperties = {
 };
 
 const profileShowcaseModalActionsStyle: CSSProperties = {
-  position: "static",
   display: "flex",
   justifyContent: "flex-end",
   gap: "10px",
@@ -10655,6 +11734,7 @@ const profileShowcaseModalActionsStyle: CSSProperties = {
   paddingTop: "12px",
   borderTop: "1px solid rgba(255,255,255,0.07)",
   background: "transparent",
+  position: "relative",
   zIndex: 1,
 };
 
@@ -11143,18 +12223,67 @@ const sharedReelTitleStyle: CSSProperties = { margin: "0", color: "#fff", fontSi
 const sharedCaptionStyle: CSSProperties = { color: "#d1d5db", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" };
 const watchReelButtonStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: "fit-content", borderRadius: 999, minHeight: 38, padding: "0 14px", background: "#fff", color: "#0b1020", textDecoration: "none", fontWeight: 950, boxShadow: "0 12px 24px rgba(0,0,0,0.22)" };
 
-const railCardStyle: CSSProperties = { borderRadius: 22, border: "1px solid var(--parapost-accent-border)", background: "radial-gradient(circle at 18% 0%, var(--parapost-accent-muted-bg), transparent 40%), rgba(255,255,255,0.045)", padding: 18, boxShadow: "0 18px 42px rgba(0,0,0,0.22), 0 0 20px var(--parapost-accent-glow)" };
-const railCardHeaderStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 };
-const railActionStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 13, fontWeight: 900 };
+const railCardStyle: CSSProperties = {
+  borderRadius: 20,
+  border: "1px solid rgba(255,255,255,0.105)",
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.052), rgba(255,255,255,0.026))",
+  padding: 16,
+  boxShadow: "0 14px 32px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.028)",
+  overflow: "hidden",
+};
+const railCardHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 13,
+  paddingBottom: 10,
+  borderBottom: "1px solid rgba(255,255,255,0.055)",
+};
+const railActionStyle: CSSProperties = {
+  color: "#f5f3ff",
+  fontSize: 12,
+  fontWeight: 950,
+  textDecoration: "none",
+  borderRadius: 999,
+  border: "1px solid rgba(168,85,247,0.20)",
+  background: "rgba(168,85,247,0.075)",
+  padding: "5px 8px",
+};
 const liveRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, alignItems: "center" };
 const liveThumbStyle: CSSProperties = { position: "relative", height: 70, borderRadius: 14, overflow: "hidden", border: "1px solid rgba(248,113,113,0.45)", background: "linear-gradient(135deg, rgba(14,165,233,0.18), rgba(0,0,0,0.82)), radial-gradient(circle at 70% 30%, rgba(255,255,255,0.16), transparent 28%)" };
 const liveBadgeStyle: CSSProperties = { position: "absolute", left: 8, top: 8, borderRadius: 7, background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 950, padding: "4px 6px" };
 const railNameStyle: CSSProperties = { display: "block", color: "#fff", fontSize: 14, lineHeight: 1.35 };
 const railMetaStyle: CSSProperties = { display: "block", color: "#9ca3af", fontSize: 12, marginTop: 2 };
-const trendingRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "26px 1fr", gap: 10, alignItems: "start" };
-const trendingRankStyle: CSSProperties = { color: "var(--parapost-accent-text)", fontSize: 18, fontWeight: 950 };
+const trendingRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "28px 1fr",
+  gap: 10,
+  alignItems: "start",
+  padding: "8px 0",
+  borderBottom: "1px solid rgba(255,255,255,0.045)",
+};
+const trendingRankStyle: CSSProperties = {
+  color: "#c084fc",
+  fontSize: 17,
+  fontWeight: 950,
+  lineHeight: 1.1,
+  textShadow: "0 0 12px rgba(168,85,247,0.32)",
+};
 const mutedTextStyle: CSSProperties = { color: "#9ca3af", lineHeight: 1.55, margin: 0, fontSize: 13 };
-const recentProfileRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center", textDecoration: "none", borderRadius: 14, padding: 8, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" };
+const recentProfileRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto 1fr",
+  gap: 10,
+  alignItems: "center",
+  textDecoration: "none",
+  borderRadius: 14,
+  padding: 9,
+  background: "rgba(255,255,255,0.032)",
+  border: "1px solid rgba(255,255,255,0.075)",
+  transition: "background 160ms ease, border-color 160ms ease, transform 160ms ease",
+};
 const statRowStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 14, color: "#d1d5db", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8 };
 const searchResultRowStyle: CSSProperties = { display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center", textDecoration: "none", borderRadius: 14, padding: 10, background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" };
 const onlineDotStyle: CSSProperties = {

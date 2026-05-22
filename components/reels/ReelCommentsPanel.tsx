@@ -131,12 +131,6 @@ function getCommentCountLabel(count: number) {
   return `${count} comment${count === 1 ? "" : "s"}`;
 }
 
-function getFooterHint(viewportType: ViewportType) {
-  if (viewportType === "desktop") return "Enter to post · Shift + Enter for a new line";
-  if (viewportType === "tablet") return "Enter to post · Shift + Enter for a new line";
-  return "Add to the conversation";
-}
-
 export default function ReelCommentsPanel({
   isOpen,
   onClose,
@@ -210,26 +204,11 @@ export default function ReelCommentsPanel({
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
+                justifyContent: "flex-end",
                 alignItems: "center",
                 gap: "10px",
-                flexWrap: footerIsCompact ? "nowrap" : "wrap",
               }}
             >
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "#9ca3af",
-                  lineHeight: 1.35,
-                  minWidth: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: footerIsCompact ? "nowrap" : "normal",
-                }}
-              >
-                {getFooterHint(viewportType)}
-              </div>
-
               <button
                 type="button"
                 onClick={onAddComment}
@@ -554,13 +533,22 @@ function CommentActions({
       <button
         type="button"
         onClick={() => onLike(commentId)}
+        aria-pressed={liked}
+        aria-label={liked ? "Unlike this comment" : "Like this comment"}
+        title={liked ? "Unlike comment" : "Like comment"}
         style={{
-          ...textButtonStyle,
-          color: liked ? "#ffffff" : "#aeb3bd",
+          ...commentLikeButtonStyle,
+          background: liked
+            ? "linear-gradient(135deg, rgba(236,72,153,0.26), rgba(168,85,247,0.24))"
+            : "rgba(255,255,255,0.055)",
+          borderColor: liked ? "rgba(236,72,153,0.38)" : "rgba(255,255,255,0.11)",
+          color: liked ? "#ffffff" : "#d1d5db",
+          boxShadow: liked ? "0 0 18px rgba(168,85,247,0.18)" : "none",
         }}
       >
-        {liked ? "Liked" : "Like"}
-        {likeCount > 0 ? ` · ${likeCount}` : ""}
+        <span style={{ fontSize: 13, lineHeight: 1 }}>{liked ? "♥" : "♡"}</span>
+        <span>{liked ? "Liked" : "Like"}</span>
+        {likeCount > 0 ? <span style={commentLikeCountStyle}>{likeCount}</span> : null}
       </button>
 
       <button type="button" onClick={onReply} style={textButtonStyle}>
@@ -675,6 +663,35 @@ const commentTextStyle: CSSProperties = {
   marginBottom: "10px",
   whiteSpace: "pre-wrap",
   overflowWrap: "anywhere",
+};
+
+const commentLikeButtonStyle: CSSProperties = {
+  minHeight: "30px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.11)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "6px",
+  padding: "0 10px",
+  color: "#d1d5db",
+  fontSize: "12px",
+  fontWeight: 900,
+  cursor: "pointer",
+  transition: "background 160ms ease, border-color 160ms ease, transform 160ms ease",
+};
+
+const commentLikeCountStyle: CSSProperties = {
+  minWidth: "18px",
+  height: "18px",
+  borderRadius: "999px",
+  display: "inline-grid",
+  placeItems: "center",
+  padding: "0 5px",
+  background: "rgba(255,255,255,0.11)",
+  color: "#ffffff",
+  fontSize: "10px",
+  fontWeight: 950,
 };
 
 const actionRowStyle: CSSProperties = {

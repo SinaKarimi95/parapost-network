@@ -61,19 +61,24 @@ export default function ReelsCommentsBottomSheet({
     if (isDesktop) {
       return {
         position: "fixed",
-        top: 0,
-        right: 0,
+        left: "50%",
+        right: "auto",
         bottom: 0,
-        width: "min(470px, calc(100vw - 32px))",
-        height: "100dvh",
+        width: "min(560px, calc(100vw - 48px))",
+        height: "min(72dvh, 720px)",
+        maxHeight: "calc(100dvh - 118px)",
+        transform: "translateX(-50%)",
         background:
-          "linear-gradient(180deg, rgba(11,16,32,0.98) 0%, rgba(7,9,13,0.98) 100%)",
-        borderLeft: "1px solid rgba(255,255,255,0.12)",
+          "linear-gradient(180deg, rgba(15,23,42,0.985) 0%, rgba(7,9,13,0.99) 100%)",
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderBottom: "none",
         zIndex: 151,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        boxShadow: "-24px 0 60px rgba(0,0,0,0.52)",
+        boxShadow: "0 -24px 70px rgba(0,0,0,0.56), 0 0 44px rgba(168,85,247,0.12)",
       };
     }
 
@@ -111,12 +116,12 @@ export default function ReelsCommentsBottomSheet({
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
       >
-        {!isDesktop ? <div style={handleStyle} /> : null}
+        <div style={handleStyle} />
 
         <div
           style={{
             ...headerStyle,
-            padding: isDesktop ? "20px 20px 16px" : "10px 16px 12px",
+            padding: isDesktop ? "14px 18px 13px" : "10px 16px 12px",
           }}
         >
           <div style={{ minWidth: 0 }}>

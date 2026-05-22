@@ -279,8 +279,6 @@ export default function DashboardReelsSection() {
                 />
 
                 <div style={reelGradientStyle} />
-                <div style={playBadgeStyle}>▶</div>
-
                 <div style={reelFooterStyle}>
                   <div style={reelAuthorRowStyle}>
                     <div style={reelAvatarStyle}>
@@ -583,24 +581,6 @@ const reelGradientStyle: CSSProperties = {
   inset: 0,
   background: "linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.16) 42%, rgba(0,0,0,0.84) 100%)",
   pointerEvents: "none",
-};
-
-const playBadgeStyle: CSSProperties = {
-  position: "absolute",
-  top: 9,
-  right: 9,
-  width: 28,
-  height: 28,
-  borderRadius: 999,
-  display: "grid",
-  placeItems: "center",
-  background: "rgba(0,0,0,0.45)",
-  border: "1px solid rgba(255,255,255,0.14)",
-  color: "#ffffff",
-  fontSize: 10,
-  boxShadow: "0 10px 18px rgba(0,0,0,0.20)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
 };
 
 const reelFooterStyle: CSSProperties = {

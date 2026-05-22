@@ -468,26 +468,6 @@ export default function ProfileReelsGridPage() {
                             </div>
                           ) : null}
 
-                          <div
-                            className="profile-reel-open-pill"
-                            style={{
-                              display: "inline-flex",
-                              width: "fit-content",
-                              alignItems: "center",
-                              borderRadius: "999px",
-                              background:
-                                "linear-gradient(135deg, var(--parapost-accent, #a855f7), #6d28d9)",
-                              color: "#fff",
-                              padding: "6px 11px",
-                              fontSize: "12px",
-                              fontWeight: 850,
-                              border: "1px solid rgba(255,255,255,0.18)",
-                              boxShadow:
-                                "0 8px 18px color-mix(in srgb, var(--parapost-accent, #a855f7) 26%, transparent)",
-                            }}
-                          >
-                            Open Reel
-                          </div>
                           {reel.created_at ? (
                             <div
                               style={{

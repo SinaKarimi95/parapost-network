@@ -100,7 +100,8 @@ const REEL_CAPTION_MAX_LENGTH = 4000;
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  background: "#000",
+  background:
+    "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 36%), radial-gradient(circle at 88% 18%, rgba(124,58,237,0.18), transparent 34%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.10), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 48%, #05050b 100%)",
   color: "#fff",
 };
 
@@ -140,14 +141,15 @@ const buttonStyle: CSSProperties = {
 };
 
 const primaryButtonStyle: CSSProperties = {
-  background: "white",
-  color: "#000",
-  border: "none",
+  background: "linear-gradient(135deg, #a855f7, #7c3aed)",
+  color: "#fff",
+  border: "1px solid rgba(216,180,254,0.34)",
   borderRadius: "999px",
   padding: "10px 16px",
   fontWeight: 800,
   fontSize: "14px",
   cursor: "pointer",
+  boxShadow: "0 12px 26px rgba(168,85,247,0.28)",
 };
 
 const navLinkStyle: CSSProperties = {
@@ -181,7 +183,8 @@ const sectionStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   overflow: "hidden",
-  background: "#000",
+  background:
+    "radial-gradient(circle at 18% 12%, rgba(168,85,247,0.14), transparent 34%), radial-gradient(circle at 82% 85%, rgba(236,72,153,0.08), transparent 32%), transparent",
 };
 
 const overlayStyle: CSSProperties = {
@@ -1395,8 +1398,10 @@ export default function ProfileReelsViewerPage() {
     event.preventDefault();
     event.stopPropagation();
 
-    const x = clamp(event.clientX - 190, 12, window.innerWidth - 220);
-    const y = clamp(event.clientY + 8, 12, window.innerHeight - 120);
+    const menuWidth = 208;
+    const menuHeight = 132;
+    const x = clamp(event.clientX - menuWidth + 42, 12, window.innerWidth - menuWidth - 12);
+    const y = clamp(event.clientY + 10, 12, window.innerHeight - menuHeight - 12);
 
     setReelMenu({
       reelId,
@@ -1416,6 +1421,11 @@ export default function ProfileReelsViewerPage() {
   const handleSaveReelEdit = async () => {
     if (!editingReelId) return;
 
+    if (!currentUserId) {
+      alert("You must be logged in to edit reels.");
+      return;
+    }
+
     const nextTitle = editTitle.trim();
     const nextCaption = editCaption.trim();
 
@@ -1426,7 +1436,7 @@ export default function ProfileReelsViewerPage() {
         caption: nextCaption,
       })
       .eq("id", editingReelId)
-      .eq("user_id", currentUserId);
+      .or(`user_id.eq.${currentUserId},creator_profile_id.eq.${currentUserId}`);
 
     if (error) {
       alert(error.message || "Could not save reel changes.");
@@ -1452,6 +1462,11 @@ export default function ProfileReelsViewerPage() {
   };
 
   const handleDeleteReel = async (reelId: string) => {
+    if (!currentUserId) {
+      alert("You must be logged in to delete reels.");
+      return;
+    }
+
     const confirmDelete = window.confirm("Delete this reel?");
     if (!confirmDelete) return;
 
@@ -1459,7 +1474,7 @@ export default function ProfileReelsViewerPage() {
       .from("reels")
       .delete()
       .eq("id", reelId)
-      .eq("user_id", currentUserId);
+      .or(`user_id.eq.${currentUserId},creator_profile_id.eq.${currentUserId}`);
 
     if (error) {
       alert(error.message || "Could not delete reel.");
@@ -1493,7 +1508,6 @@ export default function ProfileReelsViewerPage() {
   <div
     style={{
       ...pageStyle,
-      background: "#07090d",
       minHeight: "100vh",
       overflow: "hidden",
     }}
@@ -2254,8 +2268,9 @@ export default function ProfileReelsViewerPage() {
             left: reelMenu.x,
             zIndex: 100,
             minWidth: "200px",
-            background: "#0b1020",
-            border: "1px solid rgba(255,255,255,0.12)",
+            background:
+              "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(7,9,13,0.98))",
+            border: "1px solid rgba(168,85,247,0.28)",
             borderRadius: "18px",
             overflow: "hidden",
             boxShadow: "0 18px 34px rgba(0,0,0,0.34)",
@@ -2265,7 +2280,11 @@ export default function ProfileReelsViewerPage() {
           {(() => {
             const menuReel = reels.find((item) => item.id === reelMenu.reelId);
             const isOwner =
-              !!menuReel && !!currentUserId && menuReel.user_id === currentUserId;
+              !!menuReel &&
+              !!currentUserId &&
+              (menuReel.user_id === currentUserId ||
+                menuReel.creator_profile_id === currentUserId ||
+                currentUserId === profileId);
 
             if (!menuReel) return null;
 
@@ -2346,9 +2365,9 @@ export default function ProfileReelsViewerPage() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: "52%",
-                minHeight: "280px",
-                maxHeight: "56%",
+                height: viewportType === "mobile" ? "46%" : "52%",
+                minHeight: viewportType === "mobile" ? "240px" : "280px",
+                maxHeight: viewportType === "mobile" ? "50%" : "56%",
                 borderTopLeftRadius: "24px",
                 borderTopRightRadius: "24px",
                 background:

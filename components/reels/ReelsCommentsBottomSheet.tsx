@@ -82,10 +82,10 @@ export default function ReelsCommentsBottomSheet({
       left: 0,
       right: 0,
       bottom: 0,
-      height: viewportType === "tablet" ? "74dvh" : "78dvh",
-      maxHeight: "calc(100dvh - 68px)",
+      height: viewportType === "tablet" ? "64dvh" : "56dvh",
+      maxHeight: viewportType === "tablet" ? "calc(100dvh - 150px)" : "calc(100dvh - 230px)",
       background:
-        "linear-gradient(180deg, rgba(11,16,32,0.99) 0%, rgba(7,9,13,0.99) 100%)",
+        "linear-gradient(180deg, rgba(15,23,42,0.99) 0%, rgba(7,9,13,0.99) 100%)",
       borderTopLeftRadius: viewportType === "tablet" ? 28 : 24,
       borderTopRightRadius: viewportType === "tablet" ? 28 : 24,
       border: "1px solid rgba(255,255,255,0.12)",
@@ -116,7 +116,7 @@ export default function ReelsCommentsBottomSheet({
         <div
           style={{
             ...headerStyle,
-            padding: isDesktop ? "20px 20px 16px" : "12px 16px 14px",
+            padding: isDesktop ? "20px 20px 16px" : "10px 16px 12px",
           }}
         >
           <div style={{ minWidth: 0 }}>
@@ -159,7 +159,7 @@ const handleStyle: CSSProperties = {
   height: 5,
   background: "rgba(255,255,255,0.30)",
   borderRadius: 999,
-  margin: "10px auto 2px",
+  margin: "8px auto 0",
   flexShrink: 0,
 };
 
@@ -224,7 +224,7 @@ const closeButtonStyle: CSSProperties = {
 const contentStyle: CSSProperties = {
   flex: 1,
   overflowY: "auto",
-  padding: "14px 16px 16px",
+  padding: "12px 16px 14px",
   overscrollBehavior: "contain",
 };
 

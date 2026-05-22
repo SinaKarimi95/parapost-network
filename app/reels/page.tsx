@@ -404,6 +404,14 @@ function getTargetReelIdFromUrl() {
   return params.get("reel") || window.location.hash.replace("#", "");
 }
 
+function isReelOwner(
+  reel: Pick<ReelItem, "user_id" | "creator_profile_id"> | null | undefined,
+  userId: string
+) {
+  if (!reel || !userId) return false;
+  return reel.user_id === userId || reel.creator_profile_id === userId;
+}
+
 async function insertReelNotification({
   userId,
   actorId,
@@ -1646,23 +1654,38 @@ export default function ReelsPage() {
     }, 2600);
   };
 
-  const handleOpenReelMenu = (
-    event: ReactMouseEvent<HTMLButtonElement>,
-    reelId: string
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const openOwnerReelMenuAtPoint = (clientX: number, clientY: number, reel: ReelItem) => {
+    if (!isReelOwner(reel, currentUserId)) {
+      setReelMenu(null);
+      return;
+    }
 
     const menuWidth = 208;
-    const menuHeight = 132;
-    const x = clamp(event.clientX - menuWidth + 42, 12, window.innerWidth - menuWidth - 12);
-    const y = clamp(event.clientY + 10, 12, window.innerHeight - menuHeight - 12);
+    const menuHeight = 124;
+    const isMobileMenu = window.innerWidth <= 767;
+
+    const x = isMobileMenu
+      ? clamp(window.innerWidth / 2 - menuWidth / 2, 12, window.innerWidth - menuWidth - 12)
+      : clamp(clientX - menuWidth + 42, 12, window.innerWidth - menuWidth - 12);
+
+    const y = isMobileMenu
+      ? clamp(window.innerHeight - menuHeight - 88, 70, window.innerHeight - menuHeight - 12)
+      : clamp(clientY + 10, 12, window.innerHeight - menuHeight - 12);
 
     setReelMenu({
-      reelId,
+      reelId: reel.id,
       x,
       y,
     });
+  };
+
+  const handleOpenReelMenu = (
+    event: ReactMouseEvent<HTMLButtonElement>,
+    reel: ReelItem
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openOwnerReelMenuAtPoint(event.clientX, event.clientY, reel);
   };
 
   const handleStartEditReel = (reel: ReelItem) => {
@@ -1956,11 +1979,7 @@ export default function ReelsPage() {
           {reels.map((reel) => {
             const isLiked = !!likedMap[reel.id];
             const isFavorited = !!favoritedMap[reel.id];
-            const isOwner = Boolean(
-              currentUserId &&
-                (reel.user_id === currentUserId ||
-                  reel.creator_profile_id === currentUserId)
-            );
+            const isOwner = isReelOwner(reel, currentUserId);
             const relationship = relationshipMap[reel.creator_profile_id] || (isOwner ? "you" : "profile");
             const displayedLikes = reel.likes;
             const displayedFavorites = reel.favorites + (isFavorited ? 1 : 0);
@@ -2151,34 +2170,48 @@ export default function ReelsPage() {
                     )}
                   </div>
 
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "12px",
-                      right: "14px",
-                      zIndex: 7,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <button
-                      onClick={(event) => handleOpenReelMenu(event, reel.id)}
+                  {isOwner ? (
+                    <div
                       style={{
-                        width: "42px",
-                        height: "42px",
-                        borderRadius: "50%",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(0,0,0,0.35)",
-                        color: "white",
-                        cursor: "pointer",
-                        fontSize: "20px",
+                        position: "absolute",
+                        top: "12px",
+                        right: "14px",
+                        zIndex: 24,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        pointerEvents: "auto",
                       }}
-                      aria-label="Open reel menu"
                     >
-                      ⋯
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={(event) => handleOpenReelMenu(event, reel)}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onTouchStart={(event) => event.stopPropagation()}
+                        onTouchEnd={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const touch = event.changedTouches[0];
+                          openOwnerReelMenuAtPoint(touch?.clientX || window.innerWidth - 40, touch?.clientY || 40, reel);
+                        }}
+                        style={{
+                          width: "42px",
+                          height: "42px",
+                          borderRadius: "50%",
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          background: "rgba(0,0,0,0.42)",
+                          color: "white",
+                          cursor: "pointer",
+                          fontSize: "20px",
+                          touchAction: "manipulation",
+                          boxShadow: "0 10px 24px rgba(0,0,0,0.24)",
+                        }}
+                        aria-label="Open reel owner menu"
+                      >
+                        ⋯
+                      </button>
+                    </div>
+                  ) : null}
 
                   <div
                     style={{
@@ -2536,63 +2569,137 @@ export default function ReelsPage() {
         </div>
       )}
 
-      {reelMenu && (
-        <div
-          style={{
-            position: "fixed",
-            top: reelMenu.y,
-            left: reelMenu.x,
-            zIndex: 100,
-            minWidth: "200px",
-            background:
-              "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(7,9,13,0.98))",
-            border: "1px solid rgba(168,85,247,0.28)",
-            borderRadius: "18px",
-            overflow: "hidden",
-            boxShadow: "0 18px 34px rgba(0,0,0,0.34)",
-          }}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {(() => {
-            const menuReel = reels.find((item) => item.id === reelMenu.reelId);
-            const isOwner =
-              !!menuReel &&
-              !!currentUserId &&
-              (menuReel.user_id === currentUserId || menuReel.creator_profile_id === currentUserId);
+      {reelMenu && (() => {
+        const menuReel = reels.find((item) => item.id === reelMenu.reelId);
 
-            if (!menuReel) return null;
+        if (!menuReel || !isReelOwner(menuReel, currentUserId)) {
+          return null;
+        }
 
-            return isOwner ? (
-              <>
-                <button style={menuItemStyle} onClick={() => handleStartEditReel(menuReel)}>
-                  Edit Reel
-                </button>
-                <button
-                  style={{ ...menuItemStyle, color: "#fecaca", borderBottom: "none" }}
-                  onClick={() => handleDeleteReel(menuReel.id)}
+        const menuBody = (
+          <>
+            <button
+              type="button"
+              style={{
+                ...menuItemStyle,
+                minHeight: viewportType === "mobile" ? 52 : undefined,
+                fontWeight: 850,
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleStartEditReel(menuReel);
+              }}
+              onTouchEnd={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              Edit Reel
+            </button>
+            <button
+              type="button"
+              style={{
+                ...menuItemStyle,
+                color: "#fecaca",
+                borderBottom: "none",
+                minHeight: viewportType === "mobile" ? 52 : undefined,
+                fontWeight: 850,
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleDeleteReel(menuReel.id);
+              }}
+              onTouchEnd={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              Delete Reel
+            </button>
+          </>
+        );
+
+        if (viewportType === "mobile") {
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                background: "rgba(0,0,0,0.46)",
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+                padding: "0 12px calc(18px + env(safe-area-inset-bottom))",
+                pointerEvents: "auto",
+              }}
+              onClick={() => setReelMenu(null)}
+              onTouchMove={(event) => event.stopPropagation()}
+            >
+              <div
+                style={{
+                  width: "min(420px, 100%)",
+                  background:
+                    "linear-gradient(180deg, rgba(15,23,42,0.99), rgba(7,9,13,0.99))",
+                  border: "1px solid rgba(168,85,247,0.30)",
+                  borderRadius: "22px",
+                  overflow: "hidden",
+                  boxShadow: "0 22px 48px rgba(0,0,0,0.42)",
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div
+                  style={{
+                    padding: "14px 14px 10px",
+                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                  }}
                 >
-                  Delete Reel
-                </button>
-              </>
-            ) : (
-              <>
+                  <div style={{ color: "#fff", fontWeight: 950, fontSize: 15 }}>Reel options</div>
+                  <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 3 }}>Only you can edit or delete this Reel.</div>
+                </div>
+                {menuBody}
                 <button
-                  style={menuItemStyle}
-                  onClick={() => alert("Report flow comes next when reel moderation is database-backed.")}
+                  type="button"
+                  style={{
+                    ...menuItemStyle,
+                    borderBottom: "none",
+                    color: "#d1d5db",
+                    minHeight: 52,
+                    textAlign: "center",
+                    fontWeight: 850,
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setReelMenu(null);
+                  }}
                 >
-                  Report Reel
+                  Cancel
                 </button>
-                <button
-                  style={{ ...menuItemStyle, borderBottom: "none" }}
-                  onClick={() => alert("Block flow comes next when user relationships are database-backed.")}
-                >
-                  Block User
-                </button>
-              </>
-            );
-          })()}
-        </div>
-      )}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            style={{
+              position: "fixed",
+              top: reelMenu.y,
+              left: reelMenu.x,
+              zIndex: 9999,
+              minWidth: "200px",
+              pointerEvents: "auto",
+              background:
+                "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(7,9,13,0.98))",
+              border: "1px solid rgba(168,85,247,0.28)",
+              borderRadius: "18px",
+              overflow: "hidden",
+              boxShadow: "0 18px 34px rgba(0,0,0,0.34)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {menuBody}
+          </div>
+        );
+      })()}
 
 
       {detailsOpen && detailsReel && (

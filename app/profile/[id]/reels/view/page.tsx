@@ -379,6 +379,9 @@ export default function ProfileReelsViewerPage() {
     return typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] || "" : "";
   }, [params]);
 
+  const [resolvedProfileId, setResolvedProfileId] = useState("");
+  const effectiveProfileId = resolvedProfileId || profileId;
+
   const [currentUserId, setCurrentUserId] = useState("");
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [reels, setReels] = useState<ReelItem[]>([]);
@@ -431,6 +434,7 @@ export default function ProfileReelsViewerPage() {
     setPageErrorMessage("");
 
     if (!profileId || !isValidUuid(profileId)) {
+      setResolvedProfileId("");
       setProfile(null);
       setReels([]);
       setComments([]);
@@ -451,14 +455,18 @@ export default function ProfileReelsViewerPage() {
     const nextUserId = user?.id || "";
     setCurrentUserId(nextUserId);
 
-    const { data: profileData, error: profileError } = await supabase
+    let nextProfileId = profileId;
+    let profileData: ProfileRow | null = null;
+
+    const profileResult = await supabase
       .from("profiles")
       .select("id, username, full_name, display_name, avatar_url, is_private")
-      .eq("id", profileId)
+      .eq("id", nextProfileId)
       .maybeSingle();
 
-    if (profileError) {
-      console.error("Error loading profile:", profileError.message);
+    if (profileResult.error) {
+      console.error("Error loading profile:", profileResult.error.message);
+      setResolvedProfileId("");
       setProfile(null);
       setReels([]);
       setComments([]);
@@ -467,12 +475,47 @@ export default function ProfileReelsViewerPage() {
       setLikedMap({});
       setFollowingMap({});
       setCanViewProfileContent(false);
-      setPageErrorMessage(profileError.message || "Unable to load profile.");
+      setPageErrorMessage(profileResult.error.message || "Unable to load profile.");
       setIsFetchingReels(false);
       return;
     }
 
-    const loadedProfile = (profileData as ProfileRow | null) || null;
+    profileData = (profileResult.data as ProfileRow | null) || null;
+
+    // Safety fallback: if the route accidentally receives a Reel ID instead of a Profile ID,
+    // resolve the Reel owner and still open the correct profile Reel viewer.
+    if (!profileData) {
+      const { data: fallbackReel, error: fallbackReelError } = await supabase
+        .from("reels")
+        .select("id, user_id, creator_profile_id")
+        .eq("id", profileId)
+        .maybeSingle();
+
+      if (!fallbackReelError && fallbackReel) {
+        const fallbackProfileId = fallbackReel.creator_profile_id || fallbackReel.user_id || "";
+
+        if (fallbackProfileId && isValidUuid(fallbackProfileId)) {
+          nextProfileId = fallbackProfileId;
+          if (!initialTargetReelIdRef.current) {
+            initialTargetReelIdRef.current = fallbackReel.id;
+          }
+
+          const fallbackProfileResult = await supabase
+            .from("profiles")
+            .select("id, username, full_name, display_name, avatar_url, is_private")
+            .eq("id", fallbackProfileId)
+            .maybeSingle();
+
+          if (!fallbackProfileResult.error) {
+            profileData = (fallbackProfileResult.data as ProfileRow | null) || null;
+          }
+        }
+      }
+    }
+
+    setResolvedProfileId(nextProfileId !== profileId ? nextProfileId : "");
+
+    const loadedProfile = profileData;
     setProfile(loadedProfile);
 
     if (!loadedProfile) {
@@ -489,7 +532,7 @@ export default function ProfileReelsViewerPage() {
     }
 
     const profileIsPrivate = Boolean(loadedProfile.is_private);
-    const viewerIsOwner = Boolean(nextUserId && nextUserId === profileId);
+    const viewerIsOwner = Boolean(nextUserId && nextUserId === nextProfileId);
     let viewerIsFriend = false;
 
     if (profileIsPrivate && nextUserId && !viewerIsOwner) {
@@ -498,7 +541,7 @@ export default function ProfileReelsViewerPage() {
         .select("id")
         .eq("status", "accepted")
         .or(
-          `and(sender_id.eq.${nextUserId},receiver_id.eq.${profileId}),and(sender_id.eq.${profileId},receiver_id.eq.${nextUserId})`
+          `and(sender_id.eq.${nextUserId},receiver_id.eq.${nextProfileId}),and(sender_id.eq.${nextProfileId},receiver_id.eq.${nextUserId})`
         )
         .limit(1);
 
@@ -530,20 +573,20 @@ export default function ProfileReelsViewerPage() {
       supabase
         .from("reels")
         .select("*")
-        .eq("user_id", profileId)
+        .or(`user_id.eq.${nextProfileId},creator_profile_id.eq.${nextProfileId}`)
         .order("created_at", { ascending: false }),
-      nextUserId && profileId && nextUserId !== profileId
+      nextUserId && nextProfileId && nextUserId !== nextProfileId
         ? supabase
             .from("followers")
             .select("follower_id, following_id")
             .eq("follower_id", nextUserId)
-            .eq("following_id", profileId)
+            .eq("following_id", nextProfileId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
 
     if (followersResult.data) {
-      setFollowingMap({ [profileId]: true });
+      setFollowingMap({ [nextProfileId]: true });
     } else {
       setFollowingMap({});
     }
@@ -761,10 +804,10 @@ export default function ProfileReelsViewerPage() {
   }, [profileId]);
 
   useEffect(() => {
-    if (!profileId || !isValidUuid(profileId) || !canViewProfileContent) return;
+    if (!effectiveProfileId || !isValidUuid(effectiveProfileId) || !canViewProfileContent) return;
 
     const channel = supabase
-      .channel(`profile-reels-live-${profileId}-${currentUserId || "guest"}`)
+      .channel(`profile-reels-live-${effectiveProfileId}-${currentUserId || "guest"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "reels" }, async () => {
         await fetchReels();
       })
@@ -782,7 +825,7 @@ export default function ProfileReelsViewerPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profileId, currentUserId, canViewProfileContent]);
+  }, [effectiveProfileId, currentUserId, canViewProfileContent]);
 
   useEffect(() => {
     const setWidth = () => setViewportWidth(window.innerWidth);
@@ -1128,7 +1171,7 @@ export default function ProfileReelsViewerPage() {
       }
 
       await insertReelNotification({
-        userId: reel.user_id,
+        userId: reel.creator_profile_id || reel.user_id,
         actorId: currentUserId,
         type: "reel_like",
         message: "liked your reel.",
@@ -1156,15 +1199,15 @@ export default function ProfileReelsViewerPage() {
   };
 
   const handleFollowToggle = async () => {
-    if (!currentUserId || !profileId || currentUserId === profileId) return;
+    if (!currentUserId || !effectiveProfileId || currentUserId === effectiveProfileId) return;
 
-    const isFollowing = !!followingMap[profileId];
+    const isFollowing = !!followingMap[effectiveProfileId];
     if (isFollowing) {
       const { error } = await supabase
         .from("followers")
         .delete()
         .eq("follower_id", currentUserId)
-        .eq("following_id", profileId);
+        .eq("following_id", effectiveProfileId);
 
       if (error) {
         alert(`Unfollow error: ${error.message}`);
@@ -1177,18 +1220,18 @@ export default function ProfileReelsViewerPage() {
 
     const { error } = await supabase
       .from("followers")
-      .insert([{ follower_id: currentUserId, following_id: profileId }]);
+      .insert([{ follower_id: currentUserId, following_id: effectiveProfileId }]);
 
     if (error) {
       alert(`Follow error: ${error.message}`);
       return;
     }
 
-    setFollowingMap({ [profileId]: true });
+    setFollowingMap({ [effectiveProfileId]: true });
   };
 
   const handleShareLink = async (reelId: string) => {
-    const reelUrl = `${window.location.origin}/profile/${profileId}/reels/view?reelId=${reelId}`;
+    const reelUrl = `${window.location.origin}/profile/${effectiveProfileId}/reels/view?reelId=${reelId}`;
 
     try {
       await navigator.clipboard.writeText(reelUrl);
@@ -1327,7 +1370,13 @@ export default function ProfileReelsViewerPage() {
 
     const reel = reels.find((item) => item.id === comment.reelId);
     const canDeleteComment =
-      comment.authorUserId === currentUserId || (!!reel && reel.user_id === currentUserId);
+      comment.authorUserId === currentUserId ||
+      Boolean(
+        reel &&
+          currentUserId &&
+          (reel.user_id === currentUserId ||
+            reel.creator_profile_id === currentUserId)
+      );
 
     if (!canDeleteComment) {
       alert("You can only delete your own comments.");
@@ -1497,7 +1546,7 @@ export default function ProfileReelsViewerPage() {
     setReelMenu(null);
   };
 
-  const isOwnProfile = !!currentUserId && currentUserId === profileId;
+  const isOwnProfile = !!currentUserId && currentUserId === effectiveProfileId;
   const creatorName =
     profile?.display_name?.trim() ||
     profile?.full_name?.trim() ||
@@ -1539,11 +1588,11 @@ export default function ProfileReelsViewerPage() {
               {muteAll ? "Unmute" : "Mute"}
             </button>
 
-            <Link href={`/profile/${profileId}/reels`} style={navLinkStyle}>
+            <Link href={`/profile/${effectiveProfileId}/reels`} style={navLinkStyle}>
               Back to Grid
             </Link>
 
-            <Link href={`/profile/${profileId}`} style={navLinkStyle}>
+            <Link href={`/profile/${effectiveProfileId}`} style={navLinkStyle}>
               Back to Profile
             </Link>
           </div>
@@ -1710,7 +1759,7 @@ export default function ProfileReelsViewerPage() {
               You can still view this profile&apos;s basic information, but direct Reels are hidden unless you are connected.
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
-              <Link href={`/profile/${profileId}`} style={primaryButtonStyle}>
+              <Link href={`/profile/${effectiveProfileId}`} style={primaryButtonStyle}>
                 View Profile
               </Link>
               <Link href="/dashboard" style={navLinkStyle}>
@@ -1751,7 +1800,7 @@ export default function ProfileReelsViewerPage() {
             >
               This profile does not have any reels to show yet.
             </div>
-            <Link href={`/profile/${profileId}`} style={primaryButtonStyle}>
+            <Link href={`/profile/${effectiveProfileId}`} style={primaryButtonStyle}>
               Back to Profile
             </Link>
           </div>
@@ -1772,8 +1821,12 @@ export default function ProfileReelsViewerPage() {
           {reels.map((reel) => {
             const isLiked = !!likedMap[reel.id];
             const isFavorited = !!favoritedMap[reel.id];
-            const isOwner = !!currentUserId && reel.user_id === currentUserId;
-            const isFollowingCreator = !!followingMap[profileId];
+            const isOwner = Boolean(
+              currentUserId &&
+                (reel.user_id === currentUserId ||
+                  reel.creator_profile_id === currentUserId)
+            );
+            const isFollowingCreator = !!followingMap[effectiveProfileId];
             const displayedLikes = reel.likes;
             const displayedFavorites = reel.favorites + (isFavorited ? 1 : 0);
             const displayedComments = comments.filter(
@@ -2284,7 +2337,7 @@ export default function ProfileReelsViewerPage() {
               !!currentUserId &&
               (menuReel.user_id === currentUserId ||
                 menuReel.creator_profile_id === currentUserId ||
-                currentUserId === profileId);
+                currentUserId === effectiveProfileId);
 
             if (!menuReel) return null;
 
@@ -2472,7 +2525,9 @@ export default function ProfileReelsViewerPage() {
                     const commentLiked = !!commentLikedMap[comment.id];
                     const commentLikeCount = commentLikeMap[comment.id] || 0;
                     const canDeleteComment =
-                      comment.authorUserId === currentUserId || commentReel.user_id === currentUserId;
+                      comment.authorUserId === currentUserId ||
+                      commentReel.user_id === currentUserId ||
+                      commentReel.creator_profile_id === currentUserId;
                     const replies = getVisibleRepliesForComment(comment.id);
 
                     return (
@@ -2574,7 +2629,9 @@ export default function ProfileReelsViewerPage() {
                               const replyLiked = !!commentLikedMap[reply.id];
                               const replyLikeCount = commentLikeMap[reply.id] || 0;
                               const canDeleteReply =
-                                reply.authorUserId === currentUserId || commentReel.user_id === currentUserId;
+                                reply.authorUserId === currentUserId ||
+                                commentReel.user_id === currentUserId ||
+                                commentReel.creator_profile_id === currentUserId;
 
                               return (
                                 <div

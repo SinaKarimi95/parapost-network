@@ -267,13 +267,37 @@ export default function DashboardReelsSection() {
             const handle = profile?.username || "parapost";
 
             return (
-              <Link key={reel.id} href={`/reels?reel=${reel.id}`} style={reelCardStyle} className="dashboard-reel-card">
+              <Link
+                key={reel.id}
+                href={`/reels?reel=${reel.id}`}
+                style={reelCardStyle}
+                className="dashboard-reel-card"
+              >
                 <video
                   src={reel.video_url || undefined}
                   poster={reel.poster_url || undefined}
                   muted
+                  autoPlay
+                  loop
                   playsInline
                   preload="metadata"
+                  onLoadedData={(event) => {
+                    const video = event.currentTarget;
+                    const playPromise = video.play();
+
+                    if (playPromise && typeof playPromise.catch === "function") {
+                      playPromise.catch(() => {
+                        // Muted autoplay is usually allowed, but some browsers may still pause it.
+                      });
+                    }
+                  }}
+                  onMouseEnter={(event) => {
+                    const playPromise = event.currentTarget.play();
+
+                    if (playPromise && typeof playPromise.catch === "function") {
+                      playPromise.catch(() => {});
+                    }
+                  }}
                   style={reelVideoStyle}
                   className="dashboard-reel-video"
                 />

@@ -1161,7 +1161,7 @@ export default function ReelsPage() {
       }
 
       await insertReelNotification({
-        userId: reel.user_id,
+        userId: reel.creator_profile_id || reel.user_id,
         actorId: currentUserId,
         type: "reel_like",
         message: "liked your reel.",
@@ -1263,9 +1263,11 @@ export default function ReelsPage() {
       );
     }
 
-    if (activeReel.user_id && activeReel.user_id !== currentUserId) {
+    const activeReelOwnerId = activeReel.creator_profile_id || activeReel.user_id;
+
+    if (activeReelOwnerId && activeReelOwnerId !== currentUserId) {
       await insertReelNotification({
-        userId: activeReel.user_id,
+        userId: activeReelOwnerId,
         actorId: currentUserId,
         type: "reel_comment",
         message: "commented on your reel.",
@@ -1428,9 +1430,11 @@ export default function ReelsPage() {
       );
     }
 
-    if (activeReel.user_id && activeReel.user_id !== currentUserId) {
+    const activeReplyReelOwnerId = activeReel.creator_profile_id || activeReel.user_id;
+
+    if (activeReplyReelOwnerId && activeReplyReelOwnerId !== currentUserId) {
       await insertReelNotification({
-        userId: activeReel.user_id,
+        userId: activeReplyReelOwnerId,
         actorId: currentUserId,
         type: "reel_comment",
         message: "replied to a comment on your reel.",
@@ -1457,7 +1461,13 @@ export default function ReelsPage() {
 
     const reel = reels.find((item) => item.id === comment.reelId);
     const canDeleteComment =
-      comment.authorUserId === currentUserId || (!!reel && reel.user_id === currentUserId);
+      comment.authorUserId === currentUserId ||
+      Boolean(
+        reel &&
+          currentUserId &&
+          (reel.user_id === currentUserId ||
+            reel.creator_profile_id === currentUserId)
+      );
 
     if (!canDeleteComment) {
       alert("You can only delete your own comments.");
@@ -1946,7 +1956,11 @@ export default function ReelsPage() {
           {reels.map((reel) => {
             const isLiked = !!likedMap[reel.id];
             const isFavorited = !!favoritedMap[reel.id];
-            const isOwner = !!currentUserId && reel.user_id === currentUserId;
+            const isOwner = Boolean(
+              currentUserId &&
+                (reel.user_id === currentUserId ||
+                  reel.creator_profile_id === currentUserId)
+            );
             const relationship = relationshipMap[reel.creator_profile_id] || (isOwner ? "you" : "profile");
             const displayedLikes = reel.likes;
             const displayedFavorites = reel.favorites + (isFavorited ? 1 : 0);
@@ -1962,6 +1976,8 @@ export default function ReelsPage() {
             const isActiveCommentsReel = commentsOpen && activeReelId === reel.id;
             const isActiveDetailsReel = detailsReelId === reel.id;
             const isOverlayedReel = isActiveCommentsReel || isActiveDetailsReel;
+            const creatorProfileId = reel.creator_profile_id || reel.user_id;
+            const creatorProfileHref = creatorProfileId ? `/profile/${creatorProfileId}` : "/reels";
 
             return (
               <section
@@ -2283,7 +2299,11 @@ export default function ReelsPage() {
                         flexWrap: "wrap",
                       }}
                     >
-                      <div
+                      <Link
+                        href={creatorProfileHref}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
                         style={{
                           width: "40px",
                           height: "40px",
@@ -2297,7 +2317,11 @@ export default function ReelsPage() {
                           fontWeight: 800,
                           fontSize: "15px",
                           backdropFilter: "blur(12px)",
+                          color: "#ffffff",
+                          textDecoration: "none",
+                          flexShrink: 0,
                         }}
+                        aria-label={`Open ${reel.creatorName}'s profile`}
                       >
                         {reel.creatorAvatarUrl ? (
                           <img
@@ -2308,7 +2332,7 @@ export default function ReelsPage() {
                         ) : (
                           reel.creatorName.charAt(0)
                         )}
-                      </div>
+                      </Link>
 
                       <div style={{ minWidth: 0 }}>
                         <div
@@ -2320,19 +2344,29 @@ export default function ReelsPage() {
                             flexWrap: "wrap",
                           }}
                         >
-                          <div
+                          <Link
+                            href={creatorProfileHref}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
                             style={{
                               fontWeight: 800,
                               fontSize: "15px",
                               lineHeight: 1.15,
                               textShadow: "0 2px 10px rgba(0,0,0,0.42)",
+                              color: "#ffffff",
+                              textDecoration: "none",
+                              minWidth: 0,
                             }}
                           >
                             {reel.creatorName}
-                          </div>
+                          </Link>
 
                           <Link
-                            href={`/profile/${reel.creator_profile_id}`}
+                            href={creatorProfileHref}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
@@ -2354,15 +2388,25 @@ export default function ReelsPage() {
                           </Link>
                         </div>
 
-                        <div
+                        <Link
+                          href={creatorProfileHref}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                          }}
                           style={{
                             fontSize: "13px",
                             color: "#e5e7eb",
                             textShadow: "0 2px 10px rgba(0,0,0,0.42)",
+                            textDecoration: "none",
+                            display: "inline-flex",
+                            maxWidth: "100%",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {reel.creator}
-                        </div>
+                        </Link>
                       </div>
                     </div>
 
@@ -2457,7 +2501,7 @@ export default function ReelsPage() {
                       allComments={comments}
                       activeReelId={activeReelId}
                       currentUserId={currentUserId}
-                      activeReelOwnerId={activeReel?.user_id || ""}
+                      activeReelOwnerId={activeReel?.creator_profile_id || activeReel?.user_id || ""}
                       commentDraft={commentDraft}
                       setCommentDraft={setCommentDraft}
                       commentInputRef={commentInputRef}

@@ -64,6 +64,15 @@ type ParachatImageDraft = {
   height: number;
 };
 
+type ParachatImageViewer = {
+  url: string;
+  alt: string;
+  caption: string;
+  senderName: string;
+  timeLabel: string;
+  isMine: boolean;
+};
+
 type ConversationItem = ConversationRow & {
   otherUserId: string;
   otherProfile: ProfileRow | null;
@@ -431,6 +440,7 @@ function MessagesPage() {
   const [selectedImage, setSelectedImage] = useState<ParachatImageDraft | null>(null);
   const [imageError, setImageError] = useState("");
   const [compressingImage, setCompressingImage] = useState(false);
+  const [imageViewer, setImageViewer] = useState<ParachatImageViewer | null>(null);
 
   const messagesAreaRef = useRef<HTMLElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -476,9 +486,53 @@ function MessagesPage() {
     }
   }, []);
 
+
   const activeConversation = useMemo(() => {
     return conversations.find((conversation) => conversation.id === activeConversationId) || null;
   }, [conversations, activeConversationId]);
+
+  const handleOpenImageViewer = useCallback(
+    (message: MessageRow, isMine: boolean) => {
+      if (!message.signedImageUrl) return;
+
+      setImageViewer({
+        url: message.signedImageUrl,
+        alt: message.body?.trim() || "Parachat photo",
+        caption: message.body?.trim() || "",
+        senderName: isMine
+          ? "You"
+          : activeConversation?.otherProfile
+            ? getProfileName(activeConversation.otherProfile)
+            : "Parapost Member",
+        timeLabel: formatMessageTime(message.created_at),
+        isMine,
+      });
+    },
+    [activeConversation?.otherProfile]
+  );
+
+  const handleCloseImageViewer = useCallback(() => {
+    setImageViewer(null);
+  }, []);
+
+  useEffect(() => {
+    if (!imageViewer) return;
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setImageViewer(null);
+      }
+    };
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [imageViewer]);
 
   const activeConversationIsAcceptedFriend = useMemo(() => {
     return Boolean(
@@ -1117,6 +1171,7 @@ function MessagesPage() {
     setMessages([]);
     setMessageText("");
     clearSelectedImage();
+    setImageViewer(null);
     setMobileChatOpen(false);
     clearConversationUrl();
 
@@ -1801,7 +1856,9 @@ function MessagesPage() {
                                           src={message.signedImageUrl}
                                           alt={message.body || "Parachat image"}
                                           style={messageImageStyle}
+                                          onClick={() => handleOpenImageViewer(message, isMine)}
                                           onLoad={() => scrollToBottom("auto")}
+                                          title="Open photo"
                                         />
                                       ) : (
                                         <div style={messageImageMissingStyle}>
@@ -1927,6 +1984,44 @@ function MessagesPage() {
           )}
         </main>
       </div>
+
+      {imageViewer ? (
+        <div
+          style={imageViewerOverlayStyle}
+          onClick={handleCloseImageViewer}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Parachat photo viewer"
+        >
+          <div style={imageViewerShellStyle} onClick={(event) => event.stopPropagation()}>
+            <div style={imageViewerTopBarStyle}>
+              <div style={imageViewerMetaStyle}>
+                <strong>{imageViewer.senderName}</strong>
+                <span>{imageViewer.timeLabel}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCloseImageViewer}
+                style={imageViewerCloseButtonStyle}
+                aria-label="Close photo viewer"
+              >
+                ×
+              </button>
+            </div>
+
+            <img
+              src={imageViewer.url}
+              alt={imageViewer.alt}
+              style={imageViewerImageStyle}
+            />
+
+            {imageViewer.caption ? (
+              <div style={imageViewerCaptionStyle}>{imageViewer.caption}</div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2580,6 +2675,7 @@ const messageImageStyle: React.CSSProperties = {
   width: "min(320px, 70vw)",
   maxHeight: "420px",
   objectFit: "cover",
+  cursor: "zoom-in",
   borderRadius: "16px",
   border: "1px solid rgba(255,255,255,0.14)",
 };
@@ -2606,6 +2702,84 @@ const messageTimeStyle: React.CSSProperties = {
   fontSize: "11px",
   fontWeight: 700,
   padding: "0 4px",
+};
+
+const imageViewerOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 9999,
+  display: "grid",
+  placeItems: "center",
+  padding: "clamp(14px, 4vw, 34px)",
+  background: "rgba(3,7,18,0.88)",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+};
+
+const imageViewerShellStyle: React.CSSProperties = {
+  width: "min(980px, 100%)",
+  maxHeight: "calc(100dvh - 28px)",
+  display: "grid",
+  gridTemplateRows: "auto minmax(0, 1fr) auto",
+  gap: "12px",
+  borderRadius: "26px",
+  border: "1px solid rgba(168,85,247,0.32)",
+  background: "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(3,7,18,0.98))",
+  boxShadow: "0 28px 90px rgba(0,0,0,0.55), 0 0 44px rgba(168,85,247,0.24)",
+  padding: "12px",
+  overflow: "hidden",
+};
+
+const imageViewerTopBarStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  padding: "4px 4px 0",
+};
+
+const imageViewerMetaStyle: React.CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "2px",
+  color: "#f9fafb",
+  fontSize: "14px",
+};
+
+const imageViewerCloseButtonStyle: React.CSSProperties = {
+  width: "40px",
+  height: "40px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#ffffff",
+  display: "grid",
+  placeItems: "center",
+  fontSize: "24px",
+  lineHeight: 1,
+  fontWeight: 900,
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+const imageViewerImageStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  height: "100%",
+  maxHeight: "calc(100dvh - 150px)",
+  objectFit: "contain",
+  borderRadius: "20px",
+  background: "rgba(0,0,0,0.34)",
+  border: "1px solid rgba(255,255,255,0.08)",
+};
+
+const imageViewerCaptionStyle: React.CSSProperties = {
+  color: "#e5e7eb",
+  fontSize: "14px",
+  lineHeight: 1.55,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  padding: "0 4px 3px",
 };
 
 const composerShellStyle: React.CSSProperties = {

@@ -7315,6 +7315,149 @@ export default function DashboardPage() {
           }
         }
 
+
+        /* === Final shared Reel card polish: clean on desktop, tablet, and mobile === */
+        .dashboard-shared-reel-card {
+          overflow: hidden !important;
+        }
+
+        .dashboard-shared-reel-frame,
+        .dashboard-shared-reel-frame * {
+          box-sizing: border-box !important;
+        }
+
+        .dashboard-shared-reel-frame {
+          display: grid !important;
+          align-items: stretch !important;
+        }
+
+        .dashboard-shared-reel-media {
+          min-width: 0 !important;
+          flex-shrink: 0 !important;
+        }
+
+        .dashboard-shared-reel-media video {
+          max-height: none !important;
+        }
+
+        .dashboard-shared-reel-copy {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        .dashboard-shared-reel-title,
+        .dashboard-shared-reel-copy p,
+        .dashboard-shared-reel-user-caption {
+          overflow-wrap: anywhere !important;
+        }
+
+        @media (min-width: 1181px) {
+          .dashboard-shared-reel-frame {
+            grid-template-columns: minmax(154px, 184px) minmax(0, 1fr) !important;
+            gap: 16px !important;
+            padding: 14px !important;
+            border-radius: 24px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 100% !important;
+            min-height: 246px !important;
+            max-height: 334px !important;
+            border-radius: 19px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 150px minmax(0, 1fr) !important;
+            gap: 14px !important;
+            padding: 13px !important;
+            border-radius: 23px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 150px !important;
+            min-height: 238px !important;
+            max-height: 300px !important;
+            border-radius: 18px !important;
+          }
+
+          .dashboard-shared-reel-copy {
+            gap: 8px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shared-reel-card {
+            padding: 13px !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 108px minmax(0, 1fr) !important;
+            gap: 10px !important;
+            padding: 10px !important;
+            border-radius: 19px !important;
+            margin-top: 10px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 108px !important;
+            min-height: 192px !important;
+            max-height: 210px !important;
+            border-radius: 16px !important;
+          }
+
+          .dashboard-shared-reel-copy {
+            justify-content: center !important;
+            gap: 6px !important;
+            padding: 1px 0 !important;
+          }
+
+          .dashboard-shared-reel-copy h3 {
+            font-size: 15.5px !important;
+            line-height: 1.12 !important;
+            margin: 0 !important;
+            -webkit-line-clamp: 2 !important;
+          }
+
+          .dashboard-shared-reel-copy p {
+            font-size: 12px !important;
+            line-height: 1.34 !important;
+          }
+
+          .dashboard-shared-reel-caption {
+            -webkit-line-clamp: 2 !important;
+          }
+
+          .dashboard-shared-reel-watch-button {
+            min-height: 33px !important;
+            padding: 0 12px !important;
+            font-size: 12px !important;
+          }
+        }
+
+        @media (max-width: 410px) {
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 96px minmax(0, 1fr) !important;
+            gap: 9px !important;
+            padding: 9px !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 96px !important;
+            min-height: 170px !important;
+            max-height: 190px !important;
+          }
+
+          .dashboard-shared-reel-copy h3 {
+            font-size: 14.5px !important;
+          }
+
+          .dashboard-shared-reel-copy p {
+            font-size: 11.5px !important;
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           *,
           *::before,
@@ -8290,6 +8433,11 @@ function SharedReelCard({
 }) {
   const sharerName = sharerProfile?.full_name || sharerProfile?.username || "Parapost user";
   const creatorName = creatorProfile?.full_name || creatorProfile?.username || "Parapost creator";
+  const creatorProfileId = shared.creator_profile_id || shared.reel_user_id;
+  const reelTitle = shared.reel_title?.trim() || "Untitled Reel";
+  const reelCaption = shared.reel_caption?.trim() || "";
+  const shareCaption = shared.caption?.trim() || "";
+  const reelHref = `/reels?reel=${shared.reel_id}`;
 
   return (
     <article className="dashboard-card dashboard-feed-card dashboard-shared-reel-card" style={postCardStyle}>
@@ -8303,13 +8451,27 @@ function SharedReelCard({
             <div style={postMetaStyle}>shared a Parapost Reel · {formatRelativeTime(shared.created_at)}</div>
           </div>
         </div>
-        {shared.user_id === currentUserId ? <button type="button" onClick={onDelete} style={softDangerButtonStyle}>Remove</button> : null}
+
+        {shared.user_id === currentUserId ? (
+          <button type="button" onClick={onDelete} style={softDangerButtonStyle}>
+            Remove
+          </button>
+        ) : null}
       </div>
 
-      {shared.caption ? <p style={postContentStyle}>{renderLinkedText(shared.caption)}</p> : null}
+      {shareCaption ? (
+        <p className="dashboard-shared-reel-user-caption" style={postContentStyle}>
+          {renderLinkedText(shareCaption)}
+        </p>
+      ) : null}
 
       <div className="dashboard-shared-reel-frame" style={sharedReelFrameStyle}>
-        <Link href={`/reels?reel=${shared.reel_id}`} className="dashboard-shared-reel-media" style={sharedReelVideoStyle}>
+        <Link
+          href={reelHref}
+          className="dashboard-shared-reel-media"
+          style={sharedReelVideoStyle}
+          aria-label={`Watch ${reelTitle} on Parapost Reels`}
+        >
           <video
             src={shared.reel_video_url}
             poster={shared.reel_poster_url || undefined}
@@ -8318,24 +8480,49 @@ function SharedReelCard({
             preload="metadata"
             onLoadedMetadata={primeVideoPreview}
             onLoadedData={primeVideoPreview}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={sharedReelInlineVideoStyle}
           />
-          <div style={sharedReelOverlayStyle}>▶</div>
+          <div style={sharedReelOverlayStyle}>
+            <span style={sharedReelPlayButtonStyle}>▶</span>
+          </div>
           <div style={sharedReelMediaBadgeStyle}>Parapost Reel</div>
         </Link>
 
         <div className="dashboard-shared-reel-copy" style={sharedReelCopyStyle}>
-          <div style={sharedReelBadgeStyle}>Shared Reel</div>
-          <h3 style={sharedReelTitleStyle}>{shared.reel_title || "Untitled Reel"}</h3>
-          <p style={mutedTextStyle}>Original by {creatorName}</p>
-          {shared.reel_caption ? <p style={sharedCaptionStyle}>{renderLinkedText(shared.reel_caption)}</p> : null}
-          <Link href={`/reels?reel=${shared.reel_id}`} style={watchReelButtonStyle}>Open Explore Reels</Link>
+          <div style={sharedReelTopLineStyle}>
+            <span style={sharedReelBadgeStyle}>Shared Reel</span>
+            <span style={sharedReelSmallMetaStyle}>Tap to watch</span>
+          </div>
+
+          <h3 className="dashboard-shared-reel-title" style={sharedReelTitleStyle}>
+            {reelTitle}
+          </h3>
+
+          <div style={sharedReelCreatorRowStyle}>
+            <span style={mutedTextStyle}>Original by</span>
+            <Link href={`/profile/${creatorProfileId}`} style={sharedReelCreatorLinkStyle}>
+              {creatorName}
+            </Link>
+          </div>
+
+          {reelCaption ? (
+            <p className="dashboard-shared-reel-caption" style={sharedCaptionStyle}>
+              {renderLinkedText(reelCaption)}
+            </p>
+          ) : (
+            <p className="dashboard-shared-reel-caption" style={sharedCaptionStyle}>
+              Watch this creator&apos;s latest Parapost Reel.
+            </p>
+          )}
+
+          <Link href={reelHref} className="dashboard-shared-reel-watch-button" style={watchReelButtonStyle}>
+            Watch Reel
+          </Link>
         </div>
       </div>
     </article>
   );
 }
-
 
 function MobileDashboardMenuDrawer({
   isOpen,
@@ -12213,15 +12400,183 @@ const sharedPostOriginalContentStyle: CSSProperties = {
   marginTop: "10px",
 };
 
-const sharedReelFrameStyle: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(138px, 190px) 1fr", gap: 14, alignItems: "stretch", marginTop: 14, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", borderRadius: 23, padding: 12, background: "linear-gradient(135deg, rgba(0,0,0,0.34), var(--parapost-accent-soft))", overflow: "hidden", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045)" };
-const sharedReelVideoStyle: CSSProperties = { position: "relative", display: "block", aspectRatio: "9 / 16", minHeight: 230, maxHeight: 340, borderRadius: 18, overflow: "hidden", background: "#000", textDecoration: "none", boxShadow: "0 18px 34px rgba(0,0,0,0.34)" };
-const sharedReelOverlayStyle: CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff", fontSize: 34, background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.38))" };
-const sharedReelMediaBadgeStyle: CSSProperties = { position: "absolute", left: 10, bottom: 10, borderRadius: 999, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(0,0,0,0.64)", color: "#fff", padding: "6px 9px", fontSize: 11.5, fontWeight: 950 };
-const sharedReelCopyStyle: CSSProperties = { minWidth: 0, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 };
-const sharedReelBadgeStyle: CSSProperties = { display: "inline-flex", width: "fit-content", borderRadius: 999, border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 26%, transparent)", background: "var(--parapost-accent-muted-bg)", color: "var(--parapost-accent-readable-text)", padding: "7px 10px", fontSize: 12, fontWeight: 950 };
-const sharedReelTitleStyle: CSSProperties = { margin: "0", color: "#fff", fontSize: 20, lineHeight: 1.1, letterSpacing: "-0.03em", fontWeight: 950 };
-const sharedCaptionStyle: CSSProperties = { color: "#d1d5db", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" };
-const watchReelButtonStyle: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: "fit-content", borderRadius: 999, minHeight: 38, padding: "0 14px", background: "#fff", color: "#0b1020", textDecoration: "none", fontWeight: 950, boxShadow: "0 12px 24px rgba(0,0,0,0.22)" };
+const sharedReelFrameStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(150px, 188px) minmax(0, 1fr)",
+  gap: 16,
+  alignItems: "stretch",
+  marginTop: 14,
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 24%, rgba(255,255,255,0.08))",
+  borderRadius: 24,
+  padding: 14,
+  background:
+    "linear-gradient(135deg, rgba(0,0,0,0.36), color-mix(in srgb, var(--parapost-accent-muted-bg) 72%, rgba(12,15,26,0.92)))",
+  overflow: "hidden",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 14px 30px rgba(0,0,0,0.22)",
+};
+
+const sharedReelVideoStyle: CSSProperties = {
+  position: "relative",
+  display: "block",
+  width: "100%",
+  aspectRatio: "9 / 16",
+  minHeight: 238,
+  maxHeight: 340,
+  borderRadius: 19,
+  overflow: "hidden",
+  background: "#000",
+  textDecoration: "none",
+  boxShadow: "0 18px 34px rgba(0,0,0,0.34)",
+  isolation: "isolate",
+};
+
+const sharedReelInlineVideoStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  objectPosition: "center",
+  display: "block",
+};
+
+const sharedReelOverlayStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  color: "#fff",
+  background:
+    "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.42))",
+  pointerEvents: "none",
+};
+
+const sharedReelPlayButtonStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  paddingLeft: 4,
+  background: "rgba(0,0,0,0.42)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  boxShadow: "0 14px 32px rgba(0,0,0,0.32)",
+  fontSize: 24,
+  lineHeight: 1,
+};
+
+const sharedReelMediaBadgeStyle: CSSProperties = {
+  position: "absolute",
+  left: 10,
+  bottom: 10,
+  borderRadius: 999,
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(0,0,0,0.66)",
+  color: "#fff",
+  padding: "6px 9px",
+  fontSize: 11.5,
+  fontWeight: 950,
+  lineHeight: 1,
+  backdropFilter: "blur(10px)",
+};
+
+const sharedReelCopyStyle: CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  gap: 9,
+  padding: "4px 2px",
+};
+
+const sharedReelTopLineStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  minWidth: 0,
+};
+
+const sharedReelBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  width: "fit-content",
+  borderRadius: 999,
+  border: "1px solid color-mix(in srgb, var(--parapost-accent-2) 28%, transparent)",
+  background: "var(--parapost-accent-muted-bg)",
+  color: "var(--parapost-accent-readable-text)",
+  padding: "7px 10px",
+  fontSize: 12,
+  lineHeight: 1,
+  fontWeight: 950,
+  whiteSpace: "nowrap",
+};
+
+const sharedReelSmallMetaStyle: CSSProperties = {
+  color: "#9ca3af",
+  fontSize: 11.5,
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};
+
+const sharedReelTitleStyle: CSSProperties = {
+  margin: "0",
+  color: "#fff",
+  fontSize: 20,
+  lineHeight: 1.12,
+  letterSpacing: "-0.03em",
+  fontWeight: 950,
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const sharedReelCreatorRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  minWidth: 0,
+  flexWrap: "wrap",
+};
+
+const sharedReelCreatorLinkStyle: CSSProperties = {
+  color: "#f5f3ff",
+  textDecoration: "none",
+  fontSize: 13,
+  fontWeight: 900,
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const sharedCaptionStyle: CSSProperties = {
+  color: "#d1d5db",
+  lineHeight: 1.48,
+  margin: 0,
+  fontSize: 13,
+  display: "-webkit-box",
+  WebkitLineClamp: 3,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const watchReelButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "fit-content",
+  borderRadius: 999,
+  minHeight: 38,
+  padding: "0 15px",
+  marginTop: 2,
+  background: "#fff",
+  color: "#0b1020",
+  textDecoration: "none",
+  fontWeight: 950,
+  fontSize: 13,
+  boxShadow: "0 12px 24px rgba(0,0,0,0.22)",
+};
+
 
 const railCardStyle: CSSProperties = {
   borderRadius: 20,

@@ -11292,6 +11292,117 @@ return (
           }
         }
 
+
+        /* Final profile menu + spacing cleanup after dashboard icon polish */
+        #profile-composer.profile-dashboard-composer-card,
+        #profile-composer.profile-composer-card {
+          margin-bottom: 14px !important;
+          padding-bottom: 16px !important;
+          overflow: visible !important;
+        }
+
+        #profile-composer + .profile-feed-section-card,
+        .profile-dashboard-composer-card + .profile-feed-section-card,
+        .profile-content-card.profile-feed-section-card {
+          margin-top: 14px !important;
+          clear: both !important;
+        }
+
+        .profile-dashboard-composer-footer {
+          width: 100% !important;
+          display: flex !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+          margin-top: 11px !important;
+          padding-top: 10px !important;
+          border-top: 1px solid rgba(255,255,255,0.065) !important;
+        }
+
+        .profile-dashboard-composer-footer > button {
+          margin-left: auto !important;
+          min-height: 36px !important;
+          padding: 0 14px !important;
+          border-radius: 13px !important;
+          white-space: nowrap !important;
+        }
+
+        .profile-post-menu-wrap {
+          position: relative !important;
+          z-index: 2147481000 !important;
+        }
+
+        .profile-post-menu {
+          position: absolute !important;
+          top: auto !important;
+          bottom: 42px !important;
+          right: 0 !important;
+          left: auto !important;
+          width: auto !important;
+          min-width: 196px !important;
+          max-width: min(238px, calc(100vw - 32px)) !important;
+          z-index: 2147482000 !important;
+          transform-origin: bottom right !important;
+        }
+
+        .profile-feed-section-card {
+          padding-bottom: 18px !important;
+          margin-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-stream-stack {
+          padding-bottom: calc(132px + env(safe-area-inset-bottom)) !important;
+        }
+
+        @media (max-width: 720px) {
+          #profile-composer.profile-dashboard-composer-card,
+          #profile-composer.profile-composer-card {
+            margin-bottom: 12px !important;
+            padding-bottom: 14px !important;
+          }
+
+          #profile-composer + .profile-feed-section-card,
+          .profile-dashboard-composer-card + .profile-feed-section-card,
+          .profile-content-card.profile-feed-section-card {
+            margin-top: 12px !important;
+          }
+
+          .profile-dashboard-composer-footer {
+            margin-top: 10px !important;
+            padding-top: 10px !important;
+          }
+
+          .profile-dashboard-composer-footer > button {
+            width: 100% !important;
+            min-height: 40px !important;
+            justify-content: center !important;
+          }
+
+          .profile-post-menu {
+            position: fixed !important;
+            left: 14px !important;
+            right: 14px !important;
+            top: auto !important;
+            bottom: calc(98px + env(safe-area-inset-bottom)) !important;
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            z-index: 2147482200 !important;
+            border-radius: 20px !important;
+            padding: 9px !important;
+            transform-origin: bottom center !important;
+          }
+
+          .profile-feed-section-card {
+            margin-bottom: calc(132px + env(safe-area-inset-bottom)) !important;
+            padding-bottom: 20px !important;
+          }
+
+          .profile-stream-stack {
+            padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+          }
+        }
+
+
 `}
 </style>
 
@@ -13561,8 +13672,8 @@ return (
                   className="profile-content-card profile-composer-card profile-composer-smooth profile-dashboard-composer-card"
                   style={{
                     ...profileDashboardComposerCardStyle,
-                    marginBottom: "30px",
-                    paddingBottom: "18px",
+                    marginBottom: "14px",
+                    paddingBottom: "16px",
                   }}
                 >
                   <div className="profile-dashboard-composer-top-row" style={profileDashboardComposerTopRowStyle}>
@@ -13717,7 +13828,7 @@ return (
                   className="profile-content-card profile-feed-section-card"
                   style={{
                     ...mainCardStyle,
-                    marginTop: "30px",
+                    marginTop: "14px",
                   }}
                 >
                   <div style={feedHeaderStyle}>
@@ -16556,7 +16667,8 @@ const dotsButtonStyle: CSSProperties = {
 
 const postMenuStyle: CSSProperties = {
   position: "absolute",
-  top: "44px",
+  top: "auto",
+  bottom: "44px",
   right: 0,
   zIndex: 9999,
   minWidth: "176px",

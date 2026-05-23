@@ -2327,7 +2327,7 @@ export default function ReelsPage() {
                           color: "white",
                           cursor: "pointer",
                           fontSize: "20px",
-                          touchAction: viewportType === "mobile" ? "none" : "manipulation",
+                          touchAction: "manipulation",
                           WebkitTapHighlightColor: "transparent",
                           boxShadow: "0 10px 24px rgba(0,0,0,0.24)",
                         }}

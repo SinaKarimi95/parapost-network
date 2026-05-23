@@ -139,11 +139,26 @@ type FriendRequestStatus =
   | "incoming_request"
   | "friends";
 
+type FeelingActivityIconKey =
+  | "smile"
+  | "heart"
+  | "spark"
+  | "wave"
+  | "target"
+  | "brush"
+  | "briefcase"
+  | "screen"
+  | "music"
+  | "location"
+  | "compass"
+  | "star";
+
 type FeelingActivityOption = {
   id: string;
   label: string;
   category: "Feeling" | "Activity";
   helper: string;
+  icon: FeelingActivityIconKey;
 };
 
 type ShowcaseDuration = "24h" | "30d" | "permanent";
@@ -956,16 +971,115 @@ function CommentIcon() {
 function ShareIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M14 5L20 5L20 11" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 14L20 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       <path
-        d="M20 14V18C20 19.105 19.105 20 18 20H6C4.895 20 4 19.105 4 18V6C4 4.895 4.895 4 6 4H10"
+        d="M20.7 3.4L3.9 10.7C3.05 11.07 3.08 12.29 3.96 12.6L10.12 14.76L12.28 20.92C12.59 21.8 13.81 21.83 14.18 20.98L20.7 3.4Z"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.85"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
+}
+
+function FeelingActivityMiniIcon({ icon }: { icon: FeelingActivityIconKey }) {
+  const common = {
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  switch (icon) {
+    case "smile":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" {...common} />
+          <path d="M8.8 14.2c1.6 1.6 4.8 1.6 6.4 0" {...common} />
+          <path d="M9 9.4h.01M15 9.4h.01" {...common} />
+        </svg>
+      );
+    case "heart":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z" {...common} />
+        </svg>
+      );
+    case "spark":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3l1.7 5.2L19 10l-5.3 1.8L12 17l-1.7-5.2L5 10l5.3-1.8L12 3Z" {...common} />
+          <path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8L18 16Z" {...common} />
+        </svg>
+      );
+    case "wave":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 14c2.6-4 5.4-4 8 0s5.4 4 8 0" {...common} />
+          <path d="M4 18c2.6-3 5.4-3 8 0s5.4 3 8 0" {...common} />
+        </svg>
+      );
+    case "target":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" {...common} />
+          <circle cx="12" cy="12" r="3" {...common} />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" {...common} />
+        </svg>
+      );
+    case "brush":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14 4l6 6-8.5 8.5a3 3 0 0 1-4.2-4.2L14 4Z" {...common} />
+          <path d="M5 19c-1.2.8-2.2 1-3 1 0 0 .5-2.2 2-3.2" {...common} />
+        </svg>
+      );
+    case "briefcase":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 7V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" {...common} />
+          <rect x="4" y="7" width="16" height="12" rx="3" {...common} />
+          <path d="M4 12h16" {...common} />
+        </svg>
+      );
+    case "screen":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4" y="5" width="16" height="12" rx="2.5" {...common} />
+          <path d="M10 20h4M12 17v3M10 9l5 3-5 3V9Z" {...common} />
+        </svg>
+      );
+    case "music":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 18V6l10-2v12" {...common} />
+          <circle cx="7" cy="18" r="2" {...common} />
+          <circle cx="17" cy="16" r="2" {...common} />
+        </svg>
+      );
+    case "location":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" {...common} />
+          <circle cx="12" cy="10" r="2.4" {...common} />
+        </svg>
+      );
+    case "compass":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" {...common} />
+          <path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" {...common} />
+        </svg>
+      );
+    case "star":
+      return (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 4l2.3 4.7 5.2.8-3.8 3.7.9 5.2L12 16l-4.6 2.4.9-5.2-3.8-3.7 5.2-.8L12 4Z" {...common} />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
 
 function BookmarkIcon() {
@@ -1234,18 +1348,18 @@ const MAX_POST_IMAGE_MB = 12;
 const MAX_POST_VIDEO_MB = 100;
 
 const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
-  { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood" },
-  { id: "grateful", label: "Feeling grateful", category: "Feeling", helper: "Appreciation or good news" },
-  { id: "excited", label: "Feeling excited", category: "Feeling", helper: "Something new is happening" },
-  { id: "relaxed", label: "Feeling relaxed", category: "Feeling", helper: "A calm update" },
-  { id: "focused", label: "Feeling focused", category: "Feeling", helper: "Working on something important" },
-  { id: "creative", label: "Feeling creative", category: "Feeling", helper: "Ideas, art, projects, or content" },
-  { id: "working", label: "Working", category: "Activity", helper: "Share what you are building" },
-  { id: "watching", label: "Watching", category: "Activity", helper: "Shows, videos, events, or streams" },
-  { id: "listening", label: "Listening", category: "Activity", helper: "Music, podcasts, or audio" },
-  { id: "traveling", label: "Traveling", category: "Activity", helper: "Trips, places, and movement" },
-  { id: "exploring", label: "Exploring", category: "Activity", helper: "Adventures, events, or locations" },
-  { id: "celebrating", label: "Celebrating", category: "Activity", helper: "Milestones and special moments" },
+  { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood", icon: "smile" },
+  { id: "grateful", label: "Feeling grateful", category: "Feeling", helper: "Appreciation or good news", icon: "heart" },
+  { id: "excited", label: "Feeling excited", category: "Feeling", helper: "Something new is happening", icon: "spark" },
+  { id: "relaxed", label: "Feeling relaxed", category: "Feeling", helper: "A calm update", icon: "wave" },
+  { id: "focused", label: "Feeling focused", category: "Feeling", helper: "Working on something important", icon: "target" },
+  { id: "creative", label: "Feeling creative", category: "Feeling", helper: "Ideas, art, projects, or content", icon: "brush" },
+  { id: "working", label: "Working", category: "Activity", helper: "Share what you are building", icon: "briefcase" },
+  { id: "watching", label: "Watching", category: "Activity", helper: "Shows, videos, events, or streams", icon: "screen" },
+  { id: "listening", label: "Listening", category: "Activity", helper: "Music, podcasts, or audio", icon: "music" },
+  { id: "traveling", label: "Traveling", category: "Activity", helper: "Trips, places, and movement", icon: "location" },
+  { id: "exploring", label: "Exploring", category: "Activity", helper: "Adventures, events, or locations", icon: "compass" },
+  { id: "celebrating", label: "Celebrating", category: "Activity", helper: "Milestones and special moments", icon: "star" },
 ];
 
 function isVideoMediaUrl(url?: string | null) {
@@ -1598,84 +1712,94 @@ function ProfileComposerFeelingActivityPanel({
   selectedFeelingActivity,
   onSelect,
   onClear,
+  onClose,
 }: {
   selectedFeelingActivity: FeelingActivityOption | null;
   onSelect: (option: FeelingActivityOption) => void;
   onClear: () => void;
+  onClose: () => void;
 }) {
   const feelingOptions = FEELING_ACTIVITY_OPTIONS.filter((option) => option.category === "Feeling");
   const activityOptions = FEELING_ACTIVITY_OPTIONS.filter((option) => option.category === "Activity");
 
-  return (
-    <div className="profile-dashboard-feeling-panel" style={profileDashboardFeelingPanelStyle}>
-      <div style={profileDashboardFeelingHeaderStyle}>
-        <div>
-          <strong style={profileDashboardFeelingTitleStyle}>Feeling / Activity</strong>
-          <p style={profileDashboardFeelingIntroStyle}>
-            Add one context label to your profile and dashboard post.
-          </p>
+  if (typeof document === "undefined") return null;
+
+  const renderOption = (option: FeelingActivityOption) => (
+    <button
+      key={option.id}
+      type="button"
+      onClick={() => onSelect(option)}
+      style={
+        selectedFeelingActivity?.id === option.id
+          ? { ...profileDashboardFeelingOptionStyle, ...profileDashboardFeelingOptionActiveStyle }
+          : profileDashboardFeelingOptionStyle
+      }
+    >
+      <span style={profileDashboardFeelingOptionIconStyle}>
+        <FeelingActivityMiniIcon icon={option.icon} />
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <strong style={profileDashboardFeelingOptionLabelStyle}>{option.label}</strong>
+        <span style={profileDashboardFeelingOptionHelperStyle}>{option.helper}</span>
+      </span>
+    </button>
+  );
+
+  return createPortal(
+    <div
+      className="profile-dashboard-feeling-popup-overlay"
+      style={profileDashboardFeelingPopupOverlayStyle}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="profile-dashboard-feeling-panel"
+        style={profileDashboardFeelingPanelStyle}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Choose feeling or activity"
+      >
+        <div style={profileDashboardFeelingHeaderStyle}>
+          <div>
+            <div style={profileDashboardFeelingEyebrowStyle}>Create a post</div>
+            <h2 style={profileDashboardFeelingTitleStyle}>Feeling / Activity</h2>
+            <p style={profileDashboardFeelingIntroStyle}>
+              Choose one to add context to your post. It will publish with your post and show on your profile timeline.
+            </p>
+          </div>
+
+          <button type="button" onClick={onClose} style={profileDashboardFeelingCloseStyle} aria-label="Close feeling and activity picker">
+            ×
+          </button>
         </div>
 
         {selectedFeelingActivity ? (
-          <button type="button" onClick={onClear} style={profileDashboardFeelingClearStyle}>
-            Clear
-          </button>
+          <div style={profileDashboardFeelingSelectedPreviewStyle}>
+            <span style={profileDashboardFeelingSelectedCategoryStyle}>{selectedFeelingActivity.category}</span>
+            <strong style={profileDashboardFeelingSelectedLabelStyle}>{selectedFeelingActivity.label}</strong>
+            <button type="button" onClick={onClear} style={profileDashboardFeelingSelectedRemoveStyle}>Clear</button>
+          </div>
         ) : null}
-      </div>
 
-      <div style={profileDashboardFeelingColumnsStyle}>
         <div style={profileDashboardFeelingSectionStyle}>
-          <h4 style={profileDashboardFeelingSectionTitleStyle}>Feelings</h4>
+          <h3 style={profileDashboardFeelingSectionTitleStyle}>Feelings</h3>
           <div style={profileDashboardFeelingGridStyle}>
-            {feelingOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onSelect(option)}
-                style={
-                  selectedFeelingActivity?.id === option.id
-                    ? { ...profileDashboardFeelingOptionStyle, ...profileDashboardFeelingOptionActiveStyle }
-                    : profileDashboardFeelingOptionStyle
-                }
-              >
-                <span style={profileDashboardFeelingOptionDotStyle} />
-                <span style={{ minWidth: 0 }}>
-                  <strong style={profileDashboardFeelingOptionLabelStyle}>{option.label}</strong>
-                  <span style={profileDashboardFeelingOptionHelperStyle}>{option.helper}</span>
-                </span>
-              </button>
-            ))}
+            {feelingOptions.map(renderOption)}
           </div>
         </div>
 
         <div style={profileDashboardFeelingSectionStyle}>
-          <h4 style={profileDashboardFeelingSectionTitleStyle}>Activities</h4>
+          <h3 style={profileDashboardFeelingSectionTitleStyle}>Activities</h3>
           <div style={profileDashboardFeelingGridStyle}>
-            {activityOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onSelect(option)}
-                style={
-                  selectedFeelingActivity?.id === option.id
-                    ? { ...profileDashboardFeelingOptionStyle, ...profileDashboardFeelingOptionActiveStyle }
-                    : profileDashboardFeelingOptionStyle
-                }
-              >
-                <span style={profileDashboardFeelingOptionDotStyle} />
-                <span style={{ minWidth: 0 }}>
-                  <strong style={profileDashboardFeelingOptionLabelStyle}>{option.label}</strong>
-                  <span style={profileDashboardFeelingOptionHelperStyle}>{option.helper}</span>
-                </span>
-              </button>
-            ))}
+            {activityOptions.map(renderOption)}
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
-
 
 function ParaGhostBadgeIcon({
   badge,
@@ -10332,7 +10456,7 @@ return (
 
       .profile-post-actions {
         display: grid !important;
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         gap: 6px !important;
         background: transparent !important;
         border-radius: 0 !important;
@@ -10373,7 +10497,7 @@ return (
         }
 
         .profile-post-actions {
-          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
           gap: 3px !important;
           margin-top: 9px !important;
           padding-top: 9px !important;
@@ -10391,7 +10515,7 @@ return (
 
       @media (max-width: 360px) {
         .profile-post-actions {
-          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
           gap: 7px !important;
         }
 
@@ -10403,30 +10527,49 @@ return (
         }
       }
 
-        /* Match profile post action icons to dashboard action icons */
+        /* Locked profile post actions to match dashboard action icons */
         .profile-post-actions svg,
         .profile-post-action-button svg,
         .profile-post-like-button svg,
         .profile-post-like-button-active svg {
-          width: 13px !important;
-          height: 13px !important;
+          width: 18px !important;
+          height: 18px !important;
           flex-shrink: 0 !important;
-          stroke-width: 1.75 !important;
+          stroke-width: 1.85 !important;
         }
 
         .profile-post-actions .profile-post-action-button,
         .profile-post-actions .profile-post-like-button,
         .profile-post-actions .profile-post-like-button-active {
-          gap: 5px !important;
+          gap: 6px !important;
         }
 
-        @media (min-width: 761px) {
+        @media (max-width: 720px) {
+          .profile-post-actions {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            align-items: center !important;
+          }
+
+          .profile-post-action-button,
+          .profile-post-like-button,
+          .profile-post-like-button-active {
+            min-height: 38px !important;
+            padding: 0 !important;
+            justify-content: center !important;
+          }
+
+          .profile-post-action-button span,
+          .profile-post-like-button span,
+          .profile-post-like-button-active span {
+            display: none !important;
+          }
+
           .profile-post-actions svg,
           .profile-post-action-button svg,
           .profile-post-like-button svg,
           .profile-post-like-button-active svg {
-            width: 15px !important;
-            height: 15px !important;
+            width: 22px !important;
+            height: 22px !important;
           }
         }
         /* Final profile feed visibility + tight mobile end spacing */
@@ -10721,7 +10864,7 @@ return (
             padding-bottom: 11px !important;
             padding-left: 11px !important;
             margin-top: 8px !important;
-            margin-bottom: 8px !important;
+            margin-bottom: 18px !important;
             min-height: 0 !important;
           }
 
@@ -10736,16 +10879,25 @@ return (
           }
 
           .profile-content-card.profile-feed-section-card {
-            margin-top: 0 !important;
+            margin-top: 12px !important;
           }
 
           .profile-feed-section-card > div:first-child {
             margin-bottom: 10px !important;
           }
 
+          .profile-dashboard-composer-footer {
+            margin-top: 12px !important;
+            padding-top: 10px !important;
+          }
+
+          .profile-dashboard-composer-footer button {
+            min-height: 36px !important;
+          }
+
           .profile-dashboard-composer-card + .profile-feed-section-card,
           #profile-composer + .profile-feed-section-card {
-            margin-top: 0 !important;
+            margin-top: 14px !important;
           }
         }
 
@@ -10753,8 +10905,8 @@ return (
           .profile-tabs-mobile-cutoff-v22 #profile-composer,
           #profile-composer.profile-dashboard-composer-card,
           #profile-composer.profile-composer-card {
-            margin-bottom: 7px !important;
-            padding-bottom: 10px !important;
+            margin-bottom: 16px !important;
+            padding-bottom: 14px !important;
           }
 
           .profile-mobile-first-polish .profile-stream-stack {
@@ -11077,6 +11229,66 @@ return (
           .profile-achievements-right-card,
           .profile-badges-right-card {
             display: none !important;
+          }
+        }
+
+
+
+        /* Final profile composer publish/feed separation fix */
+        #profile-composer.profile-dashboard-composer-card,
+        #profile-composer.profile-composer-card {
+          margin-bottom: 30px !important;
+          padding-bottom: 18px !important;
+          overflow: visible !important;
+        }
+
+        #profile-composer + .profile-feed-section-card,
+        .profile-dashboard-composer-card + .profile-feed-section-card,
+        .profile-content-card.profile-feed-section-card {
+          margin-top: 30px !important;
+          clear: both !important;
+        }
+
+        .profile-dashboard-composer-footer {
+          width: 100% !important;
+          display: flex !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+          margin-top: 14px !important;
+          padding-top: 12px !important;
+          border-top: 1px solid rgba(255,255,255,0.075) !important;
+        }
+
+        .profile-dashboard-composer-footer > button {
+          margin-left: auto !important;
+          min-height: 38px !important;
+          padding: 0 15px !important;
+          border-radius: 13px !important;
+          white-space: nowrap !important;
+        }
+
+        @media (max-width: 720px) {
+          #profile-composer.profile-dashboard-composer-card,
+          #profile-composer.profile-composer-card {
+            margin-bottom: 24px !important;
+            padding-bottom: 16px !important;
+          }
+
+          #profile-composer + .profile-feed-section-card,
+          .profile-dashboard-composer-card + .profile-feed-section-card,
+          .profile-content-card.profile-feed-section-card {
+            margin-top: 24px !important;
+          }
+
+          .profile-dashboard-composer-footer {
+            margin-top: 13px !important;
+            padding-top: 12px !important;
+          }
+
+          .profile-dashboard-composer-footer > button {
+            width: 100% !important;
+            min-height: 41px !important;
+            justify-content: center !important;
           }
         }
 
@@ -13347,7 +13559,11 @@ return (
                 <section
                   id="profile-composer"
                   className="profile-content-card profile-composer-card profile-composer-smooth profile-dashboard-composer-card"
-                  style={profileDashboardComposerCardStyle}
+                  style={{
+                    ...profileDashboardComposerCardStyle,
+                    marginBottom: "30px",
+                    paddingBottom: "18px",
+                  }}
                 >
                   <div className="profile-dashboard-composer-top-row" style={profileDashboardComposerTopRowStyle}>
                     <div
@@ -13406,6 +13622,9 @@ return (
 
                   {selectedProfileFeelingActivity ? (
                     <div style={profileDashboardSelectedFeelingActivityStyle}>
+                      <span style={profileDashboardSelectedFeelingIconStyle}>
+                        <FeelingActivityMiniIcon icon={selectedProfileFeelingActivity.icon} />
+                      </span>
                       <span style={profileDashboardSelectedFeelingCategoryStyle}>{selectedProfileFeelingActivity.category}</span>
                       <strong style={profileDashboardSelectedFeelingLabelStyle}>{selectedProfileFeelingActivity.label}</strong>
                       <button
@@ -13432,6 +13651,7 @@ return (
                         setSelectedProfileFeelingActivity(null);
                         setProfileFeelingActivityOpen(false);
                       }}
+                      onClose={() => setProfileFeelingActivityOpen(false)}
                     />
                   ) : null}
 
@@ -13457,7 +13677,7 @@ return (
                     />
                     <ProfileDashboardComposerActionPill
                       label="Feeling / Activity"
-                      icon="●"
+                      icon="✦"
                       tone="gold"
                       active={!!selectedProfileFeelingActivity}
                       onClick={() => setProfileFeelingActivityOpen((current) => !current)}
@@ -13465,7 +13685,6 @@ return (
                   </div>
 
                   <div className="profile-dashboard-composer-footer" style={profileDashboardComposerFooterStyle}>
-                    <span aria-hidden="true" style={{ display: "none" }} />
                     <button
                       type="button"
                       disabled={
@@ -13494,7 +13713,13 @@ return (
               ) : null}
 
               {!isProfileContentLocked && activeProfileTab === "Posts" ? (
-                <div className="profile-content-card profile-feed-section-card" style={mainCardStyle}>
+                <div
+                  className="profile-content-card profile-feed-section-card"
+                  style={{
+                    ...mainCardStyle,
+                    marginTop: "30px",
+                  }}
+                >
                   <div style={feedHeaderStyle}>
                     <div style={feedTitleBlockStyle}>
                       <span style={feedEyebrowStyle}>Timeline</span>
@@ -13983,16 +14208,6 @@ return (
                               >
                                 <ShareIcon />
                                 <span>Share</span>
-                              </button>
-
-                              <button
-                                className="profile-post-action-button"
-                                onClick={() => handleProfileSaveAction(post.id)}
-                                style={actionButtonStyle}
-                                type="button"
-                              >
-                                <BookmarkIcon />
-                                <span>Save</span>
                               </button>
                             </div>
                           </article>
@@ -15385,7 +15600,7 @@ const profileDashboardComposerCardStyle: CSSProperties = {
   background:
     "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 36%), linear-gradient(180deg, rgba(20,26,43,0.90), rgba(9,12,21,0.92))",
   padding: 16,
-  marginBottom: 16,
+  marginBottom: 24,
   boxShadow:
     "0 18px 46px rgba(0,0,0,0.30), 0 0 28px var(--parapost-accent-glow), inset 0 1px 0 rgba(255,255,255,0.045)",
   overflow: "hidden",
@@ -15574,6 +15789,18 @@ const profileDashboardSelectedFeelingActivityStyle: CSSProperties = {
   padding: "8px 10px",
 };
 
+const profileDashboardSelectedFeelingIconStyle: CSSProperties = {
+  width: 24,
+  height: 24,
+  borderRadius: 9,
+  display: "grid",
+  placeItems: "center",
+  background: "var(--parapost-accent-muted-bg)",
+  color: "var(--parapost-accent-readable-text)",
+  border: "1px solid var(--parapost-accent-border)",
+  flexShrink: 0,
+};
+
 const profileDashboardSelectedFeelingCategoryStyle: CSSProperties = {
   color: "var(--parapost-accent-readable-text)",
   fontSize: 11,
@@ -15681,16 +15908,19 @@ const profileDashboardComposerActionToneStyles: Record<"green" | "pink" | "red" 
 const profileDashboardComposerFooterStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
+  justifyContent: "flex-end",
   gap: 10,
-  marginTop: 13,
-  flexWrap: "wrap",
+  marginTop: 14,
+  paddingTop: 12,
+  width: "100%",
+  flexWrap: "nowrap",
+  borderTop: "1px solid rgba(255,255,255,0.07)",
 };
 
 const profileDashboardPublishButtonStyle: CSSProperties = {
-  marginLeft: "auto",
-  minHeight: 35,
-  borderRadius: 14,
+  minWidth: 116,
+  minHeight: 36,
+  borderRadius: 13,
   border: 0,
   background: "linear-gradient(135deg, #ffffff, var(--parapost-accent-readable-text))",
   color: "#111827",
@@ -15702,120 +15932,196 @@ const profileDashboardPublishButtonStyle: CSSProperties = {
   fontSize: 12.5,
 };
 
+const profileDashboardFeelingPopupOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 2147483000,
+  background: "rgba(0,0,0,0.72)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  display: "grid",
+  placeItems: "start center",
+  padding: "82px 18px 24px",
+  pointerEvents: "auto",
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+};
+
 const profileDashboardFeelingPanelStyle: CSSProperties = {
-  marginTop: 12,
-  borderRadius: 20,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))",
-  padding: 12,
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 12px 28px rgba(0,0,0,0.22)",
+  position: "relative",
+  zIndex: 2147483001,
+  width: "min(720px, 100%)",
+  maxHeight: "calc(100dvh - 106px)",
+  overflowY: "auto",
+  borderRadius: 24,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(8,10,18,0.98))",
+  boxShadow: "0 28px 80px rgba(0,0,0,0.58)",
+  padding: 18,
 };
 
 const profileDashboardFeelingHeaderStyle: CSSProperties = {
   display: "flex",
-  alignItems: "flex-start",
   justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 12,
+  alignItems: "center",
+  gap: 16,
+  marginBottom: 14,
+};
+
+const profileDashboardFeelingEyebrowStyle: CSSProperties = {
+  color: "var(--parapost-accent-text)",
+  textTransform: "uppercase",
+  letterSpacing: "0.14em",
+  fontSize: 11,
+  fontWeight: 950,
+  marginBottom: 4,
 };
 
 const profileDashboardFeelingTitleStyle: CSSProperties = {
+  margin: 0,
   color: "#fff",
-  fontSize: 14,
+  fontSize: 22,
   fontWeight: 950,
+  lineHeight: 1.08,
 };
 
 const profileDashboardFeelingIntroStyle: CSSProperties = {
-  margin: "4px 0 0",
-  color: "#a1a1aa",
-  fontSize: 12,
-  lineHeight: 1.4,
+  margin: "7px 0 0",
+  color: "#9ca3af",
+  fontSize: 13,
+  lineHeight: 1.45,
 };
 
-const profileDashboardFeelingClearStyle: CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.10)",
+const profileDashboardFeelingCloseStyle: CSSProperties = {
+  width: 40,
+  height: 40,
   borderRadius: 999,
-  background: "rgba(255,255,255,0.055)",
-  color: "#e5e7eb",
-  padding: "7px 10px",
-  fontSize: 11,
-  fontWeight: 900,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.06)",
+  color: "#fff",
+  fontSize: 26,
+  lineHeight: 1,
   cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
 };
 
-const profileDashboardFeelingColumnsStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 12,
-};
-
-const profileDashboardFeelingSectionStyle: CSSProperties = {
-  display: "grid",
+const profileDashboardFeelingSelectedPreviewStyle: CSSProperties = {
+  marginTop: 0,
+  marginBottom: 14,
+  display: "flex",
+  alignItems: "center",
   gap: 8,
+  maxWidth: "100%",
+  borderRadius: 14,
+  border: "1px solid var(--parapost-accent-border)",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), color-mix(in srgb, var(--parapost-accent-2) 8%, transparent))",
+  color: "#fff",
+  padding: "8px 10px",
 };
 
-const profileDashboardFeelingSectionTitleStyle: CSSProperties = {
-  margin: 0,
-  color: "#e5e7eb",
-  fontSize: 12,
+const profileDashboardFeelingSelectedCategoryStyle: CSSProperties = {
+  color: "var(--parapost-accent-readable-text)",
+  fontSize: 11,
   fontWeight: 950,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
 
+const profileDashboardFeelingSelectedLabelStyle: CSSProperties = {
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: 950,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const profileDashboardFeelingSelectedRemoveStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.055)",
+  color: "#e5e7eb",
+  padding: "5px 8px",
+  fontSize: 11,
+  fontWeight: 900,
+  cursor: "pointer",
+  marginLeft: "auto",
+};
+
+const profileDashboardFeelingSectionStyle: CSSProperties = {
+  marginTop: 14,
+};
+
+const profileDashboardFeelingSectionTitleStyle: CSSProperties = {
+  margin: "0 0 10px",
+  color: "#f9fafb",
+  fontSize: 14,
+  fontWeight: 950,
+};
+
 const profileDashboardFeelingGridStyle: CSSProperties = {
   display: "grid",
-  gap: 7,
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
 };
 
 const profileDashboardFeelingOptionStyle: CSSProperties = {
-  minHeight: 44,
-  borderRadius: 14,
-  border: "1px solid rgba(255,255,255,0.085)",
-  background: "rgba(255,255,255,0.035)",
-  color: "#fff",
-  padding: "8px 10px",
-  display: "grid",
-  gridTemplateColumns: "auto minmax(0,1fr)",
-  gap: 8,
+  minHeight: 58,
+  display: "flex",
   alignItems: "center",
-  textAlign: "left",
+  gap: 10,
+  borderRadius: 16,
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  color: "#fff",
+  padding: "10px 12px",
   cursor: "pointer",
+  textAlign: "left",
+  width: "100%",
 };
 
 const profileDashboardFeelingOptionActiveStyle: CSSProperties = {
   border: "1px solid var(--parapost-accent-active-border)",
-  background: "linear-gradient(135deg, var(--parapost-accent-soft), rgba(255,255,255,0.035))",
-  boxShadow: "0 0 16px var(--parapost-accent-glow)",
+  background: "linear-gradient(135deg, var(--parapost-accent-soft), var(--parapost-accent-muted-bg))",
+  boxShadow: "0 0 22px color-mix(in srgb, var(--parapost-accent-2) 18%, transparent)",
 };
 
-const profileDashboardFeelingOptionDotStyle: CSSProperties = {
-  width: 9,
-  height: 9,
-  borderRadius: 999,
-  background: "var(--parapost-accent-2)",
-  boxShadow: "0 0 12px var(--parapost-accent-glow)",
+const profileDashboardFeelingOptionIconStyle: CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 13,
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+  color: "#fff",
+  background:
+    "linear-gradient(135deg, color-mix(in srgb, var(--parapost-accent-1) 76%, rgba(255,255,255,0.10)), color-mix(in srgb, var(--parapost-accent-2) 66%, transparent))",
+  border: "1px solid rgba(255,255,255,0.12)",
+  boxShadow: "0 10px 22px rgba(0,0,0,0.24), 0 0 14px color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)",
 };
 
 const profileDashboardFeelingOptionLabelStyle: CSSProperties = {
   display: "block",
   color: "#fff",
-  fontSize: 12.5,
+  fontSize: 13,
   fontWeight: 950,
+  whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
 };
 
 const profileDashboardFeelingOptionHelperStyle: CSSProperties = {
   display: "block",
   color: "#9ca3af",
   fontSize: 11,
-  lineHeight: 1.25,
+  marginTop: 2,
+  whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
 };
+
 
 const profilePostVideoBadgeStyle: CSSProperties = {
   position: "absolute",
@@ -15944,7 +16250,7 @@ const profilePostImageGridOverlayStyle: CSSProperties = {
 
 const postActionsRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   alignItems: "center",
   gap: "6px",
   marginTop: "12px",

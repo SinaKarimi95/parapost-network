@@ -21,6 +21,7 @@ type ProfilePreview = {
   full_name: string | null;
   avatar_url: string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
 };
 
 type FriendRequestRow = {
@@ -68,6 +69,19 @@ function formatCompactTime(value?: string | null) {
   return `${years}y`;
 }
 
+function isRecentlyOnline(profile?: ProfilePreview | null) {
+  if (!profile?.is_online) return false;
+
+  if (!profile.last_seen_at) {
+    return Boolean(profile.is_online);
+  }
+
+  const lastSeenTime = new Date(profile.last_seen_at).getTime();
+  if (Number.isNaN(lastSeenTime)) return false;
+
+  return Date.now() - lastSeenTime <= 3 * 60 * 1000;
+}
+
 function reelOwnerId(reel: ReelRow) {
   return reel.creator_profile_id || reel.user_id || "";
 }
@@ -111,7 +125,7 @@ export default function DashboardReelsSection() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, full_name, avatar_url, is_online")
+      .select("id, username, full_name, avatar_url, is_online, last_seen_at")
       .in("id", uniqueIds);
 
     if (error) {
@@ -162,10 +176,12 @@ export default function DashboardReelsSection() {
 
     const safeIds = allowedIds.length ? allowedIds : [EMPTY_UUID];
 
+    const safeIdFilter = safeIds.join(",");
+
     const { data, error } = await supabase
       .from("reels")
       .select("id, user_id, creator_profile_id, title, caption, video_url, poster_url, created_at")
-      .in("user_id", safeIds)
+      .or(`user_id.in.(${safeIdFilter}),creator_profile_id.in.(${safeIdFilter})`)
       .order("created_at", { ascending: false })
       .limit(40);
 
@@ -259,7 +275,13 @@ export default function DashboardReelsSection() {
           </Link>
         </div>
       ) : (
-        <div ref={rowRef} style={reelsScrollerStyle} className="dashboard-friend-reels-scroller">
+        <div
+          ref={rowRef}
+          style={reelsScrollerStyle}
+          className="dashboard-friend-reels-scroller"
+          role="list"
+          aria-label="Dashboard Parapost Reels"
+        >
           {reels.map((reel) => {
             const ownerId = reelOwnerId(reel);
             const profile = profilesMap[ownerId] || profilesMap[reel.user_id || ""];
@@ -272,6 +294,9 @@ export default function DashboardReelsSection() {
                 href={`/reels?reel=${reel.id}`}
                 style={reelCardStyle}
                 className="dashboard-reel-card"
+                aria-label={`Open Reel: ${title}`}
+                title={`Open Reel: ${title}`}
+                role="listitem"
               >
                 <video
                   src={reel.video_url || undefined}
@@ -298,6 +323,9 @@ export default function DashboardReelsSection() {
                       playPromise.catch(() => {});
                     }
                   }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.pause();
+                  }}
                   style={reelVideoStyle}
                   className="dashboard-reel-video"
                 />
@@ -312,7 +340,7 @@ export default function DashboardReelsSection() {
                         <span>{getInitial(profile?.full_name, profile?.username)}</span>
                       )}
 
-                      {profile?.is_online ? <span style={onlineDotStyle} /> : null}
+                      {isRecentlyOnline(profile) ? <span style={onlineDotStyle} /> : null}
                     </div>
 
                     <span style={reelTimeStyle}>{formatCompactTime(reel.created_at)}</span>
@@ -571,6 +599,8 @@ const reelsScrollerStyle: CSSProperties = {
   overflowX: "auto",
   overflowY: "hidden",
   scrollSnapType: "x proximity",
+  overscrollBehaviorX: "contain",
+  WebkitOverflowScrolling: "touch",
   paddingBottom: 4,
 };
 

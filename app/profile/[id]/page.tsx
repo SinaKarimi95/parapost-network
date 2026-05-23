@@ -81,6 +81,15 @@ type Post = {
   images?: PostImage[];
 };
 
+type ProfileComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  is_hidden?: boolean | null;
+};
+
 type Reel = {
   id: string;
   video_url: string | null;
@@ -1881,6 +1890,13 @@ export default function ProfilePage() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [likeCounts, setLikeCounts] = useState<CountMap>({});
   const [userLikes, setUserLikes] = useState<ToggleMap>({});
+  const [commentCounts, setCommentCounts] = useState<CountMap>({});
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [commentsByPostId, setCommentsByPostId] = useState<Record<string, ProfileComment[]>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [commentsLoadingPostId, setCommentsLoadingPostId] = useState<string | null>(null);
+  const [postingCommentPostId, setPostingCommentPostId] = useState<string | null>(null);
+  const [commentProfilesMap, setCommentProfilesMap] = useState<Record<string, ProfileRow>>({});
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -2916,6 +2932,7 @@ useEffect(() => {
     if (event.key === "Escape") {
       closePostMenuIfOpen();
       closeProfileActionsIfOpen();
+      setOpenCommentsPostId(null);
       setProfileFeelingActivityOpen(false);
       setActiveProfileShowcase(null);
       setProfileBadgesViewerOpen(false);
@@ -3386,6 +3403,22 @@ useEffect(() => {
       delete next[post.id];
       return next;
     });
+    setCommentCounts((prev) => {
+      const next = { ...prev };
+      delete next[post.id];
+      return next;
+    });
+    setCommentsByPostId((prev) => {
+      const next = { ...prev };
+      delete next[post.id];
+      return next;
+    });
+    setCommentDrafts((prev) => {
+      const next = { ...prev };
+      delete next[post.id];
+      return next;
+    });
+    setOpenCommentsPostId((current) => (current === post.id ? null : current));
     setEditingPostId((current) => (current === post.id ? null : current));
     setEditingPostContent((current) => (editingPostId === post.id ? "" : current));
   };
@@ -3436,15 +3469,307 @@ useEffect(() => {
     setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
   };
 
-  const handleProfileCommentAction = (postId: string) => {
-    const postElement =
-      typeof document !== "undefined" ? document.getElementById(`profile-post-${postId}`) : null;
+  const fetchProfilePostComments = useCallback(
+    async (postId: string) => {
+      if (!postId) return;
 
-    if (postElement) {
-      postElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      setCommentsLoadingPostId(postId);
+
+      try {
+        const { data, error } = await supabase
+          .from("comments")
+          .select("id, post_id, user_id, content, created_at, is_hidden")
+          .eq("post_id", postId)
+          .order("created_at", { ascending: true })
+          .limit(80);
+
+        if (error) {
+          alert(`Could not load comments: ${error.message}`);
+          return;
+        }
+
+        const nextComments = ((data || []) as ProfileComment[]).filter(
+          (comment) => !comment.is_hidden
+        );
+
+        setCommentsByPostId((prev) => ({
+          ...prev,
+          [postId]: nextComments,
+        }));
+
+        setCommentCounts((prev) => ({
+          ...prev,
+          [postId]: nextComments.length,
+        }));
+
+        const commenterIds = [
+          ...new Set(nextComments.map((comment) => comment.user_id).filter(Boolean)),
+        ];
+
+        if (commenterIds.length > 0) {
+          const { data: profileRows, error: profileRowsError } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, bio, avatar_url, is_online, last_seen_at, location")
+            .in("id", commenterIds);
+
+          if (!profileRowsError && profileRows) {
+            const nextProfileMap: Record<string, ProfileRow> = {};
+
+            for (const commentProfile of profileRows as ProfileRow[]) {
+              if (commentProfile.id) nextProfileMap[commentProfile.id] = commentProfile;
+            }
+
+            setCommentProfilesMap((prev) => ({
+              ...prev,
+              ...nextProfileMap,
+            }));
+          }
+        }
+      } finally {
+        setCommentsLoadingPostId((current) => (current === postId ? null : current));
+      }
+    },
+    []
+  );
+
+  const handleProfileCommentAction = useCallback(
+    async (postId: string) => {
+      if (!postId) return;
+
+      setOpenPostMenuId(null);
+
+      if (openCommentsPostId === postId) {
+        setOpenCommentsPostId(null);
+        return;
+      }
+
+      setOpenCommentsPostId(postId);
+      await fetchProfilePostComments(postId);
+    },
+    [fetchProfilePostComments, openCommentsPostId]
+  );
+
+  const handleProfileCommentDraftChange = (postId: string, value: string) => {
+    setCommentDrafts((prev) => ({
+      ...prev,
+      [postId]: value,
+    }));
+  };
+
+  const handleAddProfileComment = async (postId: string, postOwnerId?: string | null) => {
+    const trimmed = (commentDrafts[postId] || "").trim();
+
+    if (!trimmed) return;
+
+    if (!viewerId) {
+      alert("You must be logged in to comment.");
+      return;
     }
 
-    alert("Comments for profile posts will open in a polished comment panel in the next pass.");
+    setPostingCommentPostId(postId);
+
+    try {
+      const { data, error } = await supabase
+        .from("comments")
+        .insert([
+          {
+            post_id: postId,
+            user_id: viewerId,
+            content: trimmed,
+          },
+        ])
+        .select("id, post_id, user_id, content, created_at, is_hidden")
+        .single();
+
+      if (error) {
+        alert(`Comment error: ${error.message}`);
+        return;
+      }
+
+      const savedComment = data as ProfileComment;
+
+      setCommentDrafts((prev) => ({
+        ...prev,
+        [postId]: "",
+      }));
+
+      setCommentsByPostId((prev) => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), savedComment],
+      }));
+
+      setCommentCounts((prev) => ({
+        ...prev,
+        [postId]: (prev[postId] || 0) + 1,
+      }));
+
+      if (profile && viewerId === profile.id) {
+        setCommentProfilesMap((prev) => ({
+          ...prev,
+          [viewerId]: profile,
+        }));
+      }
+
+      if (postOwnerId && postOwnerId !== viewerId) {
+        await supabase.from("notifications").insert([
+          {
+            user_id: postOwnerId,
+            actor_id: viewerId,
+            type: "post_comment",
+            post_id: postId,
+            comment_id: savedComment.id,
+            friend_request_id: null,
+            message: "commented on your post.",
+            is_read: false,
+          },
+        ]);
+      }
+    } finally {
+      setPostingCommentPostId((current) => (current === postId ? null : current));
+    }
+  };
+
+  const handleDeleteProfileComment = async (postId: string, commentId: string) => {
+    if (!viewerId) return;
+    if (!window.confirm("Delete this comment?")) return;
+
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId)
+      .eq("post_id", postId);
+
+    if (error) {
+      alert(`Delete comment error: ${error.message}`);
+      return;
+    }
+
+    setCommentsByPostId((prev) => ({
+      ...prev,
+      [postId]: (prev[postId] || []).filter((comment) => comment.id !== commentId),
+    }));
+
+    setCommentCounts((prev) => ({
+      ...prev,
+      [postId]: Math.max((prev[postId] || 1) - 1, 0),
+    }));
+  };
+
+  const renderProfileCommentsPanel = (postId: string, postOwnerId?: string | null) => {
+    const comments = commentsByPostId[postId] || [];
+    const draft = commentDrafts[postId] || "";
+    const isLoadingComments = commentsLoadingPostId === postId;
+    const isPostingComment = postingCommentPostId === postId;
+
+    return (
+      <section className="profile-comments-panel" style={profileCommentsPanelStyle}>
+        <div style={profileCommentsHeaderStyle}>
+          <div>
+            <strong style={profileCommentsTitleStyle}>Comments</strong>
+            <p style={profileCommentsSubtitleStyle}>
+              Reply to this profile post without leaving the timeline.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setOpenCommentsPostId(null)}
+            style={profileCommentsCloseButtonStyle}
+            aria-label="Close comments"
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={profileCommentComposerStyle}>
+          <textarea
+            value={draft}
+            onChange={(event) => handleProfileCommentDraftChange(postId, event.target.value)}
+            placeholder={viewerId ? "Write a comment..." : "Log in to comment"}
+            disabled={!viewerId || isPostingComment}
+            rows={2}
+            style={profileCommentInputStyle}
+          />
+          <button
+            type="button"
+            onClick={() => handleAddProfileComment(postId, postOwnerId)}
+            disabled={!viewerId || !draft.trim() || isPostingComment}
+            style={{
+              ...profileCommentSubmitButtonStyle,
+              opacity: !viewerId || !draft.trim() || isPostingComment ? 0.58 : 1,
+              cursor: !viewerId || !draft.trim() || isPostingComment ? "not-allowed" : "pointer",
+            }}
+          >
+            {isPostingComment ? "Posting..." : "Post"}
+          </button>
+        </div>
+
+        <div style={profileCommentsListStyle}>
+          {isLoadingComments ? (
+            <div style={profileCommentsEmptyStyle}>Loading comments...</div>
+          ) : comments.length === 0 ? (
+            <div style={profileCommentsEmptyStyle}>No comments yet. Start the conversation.</div>
+          ) : (
+            comments.map((comment) => {
+              const commentProfile =
+                commentProfilesMap[comment.user_id] ||
+                (comment.user_id === profile?.id ? profile : null);
+              const commentName =
+                commentProfile?.full_name ||
+                commentProfile?.username ||
+                "Parapost Member";
+              const commentHandle = commentProfile?.username || "member";
+              const canDeleteComment = Boolean(viewerId && (comment.user_id === viewerId || postOwnerId === viewerId));
+
+              return (
+                <article key={comment.id} style={profileCommentItemStyle}>
+                  <Link
+                    href={`/profile/${comment.user_id}`}
+                    style={profileCommentAvatarStyle}
+                    aria-label={`Open ${commentName}'s profile`}
+                  >
+                    {commentProfile?.avatar_url ? (
+                      <img
+                        src={commentProfile.avatar_url}
+                        alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <span>{getInitial(commentName, commentHandle)}</span>
+                    )}
+                  </Link>
+
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={profileCommentBubbleStyle}>
+                      <div style={profileCommentMetaRowStyle}>
+                        <strong style={profileCommentNameStyle}>{commentName}</strong>
+                        <span style={profileCommentTimeStyle}>{formatTimeAgo(comment.created_at)}</span>
+                      </div>
+                      <p style={profileCommentTextStyle}>{comment.content}</p>
+                    </div>
+
+                    <div style={profileCommentFooterStyle}>
+                      <Link href={`/profile/${comment.user_id}`} style={profileCommentHandleStyle}>
+                        @{commentHandle}
+                      </Link>
+                      {canDeleteComment ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProfileComment(postId, comment.id)}
+                          style={profileCommentDeleteButtonStyle}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+    );
   };
 
   const handleProfileShareAction = async (postId: string) => {
@@ -14306,9 +14631,10 @@ return (
                                 onClick={() => handleProfileCommentAction(post.id)}
                                 style={actionButtonStyle}
                                 type="button"
+                                aria-expanded={openCommentsPostId === post.id}
                               >
                                 <CommentIcon />
-                                <span>Comment</span>
+                                <span>{commentCounts[post.id] > 0 ? `Comment ${commentCounts[post.id]}` : "Comment"}</span>
                               </button>
 
                               <button
@@ -14321,6 +14647,8 @@ return (
                                 <span>Share</span>
                               </button>
                             </div>
+
+                            {openCommentsPostId === post.id ? renderProfileCommentsPanel(post.id, post.user_id) : null}
                           </article>
                         );
                       })}
@@ -20585,6 +20913,193 @@ const profileAchievementViewerProgressWrapStyle: CSSProperties = {
   gap: "8px",
   marginTop: "14px",
 };
+
+
+const profileCommentsPanelStyle: CSSProperties = {
+  marginTop: "13px",
+  paddingTop: "13px",
+  borderTop: "1px solid rgba(255,255,255,0.075)",
+  display: "grid",
+  gap: "12px",
+};
+
+const profileCommentsHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "12px",
+};
+
+const profileCommentsTitleStyle: CSSProperties = {
+  display: "block",
+  color: "#f8fafc",
+  fontSize: "13px",
+  fontWeight: 950,
+  letterSpacing: "-0.01em",
+};
+
+const profileCommentsSubtitleStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#94a3b8",
+  fontSize: "11px",
+  lineHeight: 1.35,
+  fontWeight: 700,
+};
+
+const profileCommentsCloseButtonStyle: CSSProperties = {
+  width: "30px",
+  height: "30px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.055)",
+  color: "#e5e7eb",
+  cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+  fontSize: "18px",
+  lineHeight: 1,
+  fontWeight: 900,
+};
+
+const profileCommentComposerStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: "10px",
+  alignItems: "end",
+};
+
+const profileCommentInputStyle: CSSProperties = {
+  width: "100%",
+  minHeight: "48px",
+  maxHeight: "150px",
+  resize: "vertical",
+  borderRadius: "16px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(7,9,13,0.66)",
+  color: "#f8fafc",
+  padding: "11px 12px",
+  outline: "none",
+  fontSize: "13px",
+  lineHeight: 1.45,
+  boxSizing: "border-box",
+};
+
+const profileCommentSubmitButtonStyle: CSSProperties = {
+  minHeight: "44px",
+  borderRadius: "15px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2))",
+  color: "#fff",
+  padding: "0 16px",
+  fontSize: "12px",
+  fontWeight: 950,
+  cursor: "pointer",
+  boxShadow: "0 14px 30px var(--parapost-accent-glow)",
+};
+
+const profileCommentsListStyle: CSSProperties = {
+  display: "grid",
+  gap: "10px",
+};
+
+const profileCommentsEmptyStyle: CSSProperties = {
+  borderRadius: "16px",
+  border: "1px dashed rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.030)",
+  color: "#94a3b8",
+  padding: "14px",
+  fontSize: "12px",
+  fontWeight: 800,
+  textAlign: "center",
+};
+
+const profileCommentItemStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "10px",
+};
+
+const profileCommentAvatarStyle: CSSProperties = {
+  width: "34px",
+  height: "34px",
+  minWidth: "34px",
+  borderRadius: "999px",
+  overflow: "hidden",
+  textDecoration: "none",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(135deg, var(--parapost-accent-1), #111827)",
+  color: "#fff",
+  fontSize: "12px",
+  fontWeight: 950,
+  border: "1px solid rgba(255,255,255,0.12)",
+};
+
+const profileCommentBubbleStyle: CSSProperties = {
+  borderRadius: "16px",
+  border: "1px solid rgba(255,255,255,0.085)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.028))",
+  padding: "10px 11px",
+};
+
+const profileCommentMetaRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  marginBottom: "4px",
+};
+
+const profileCommentNameStyle: CSSProperties = {
+  color: "#f8fafc",
+  fontSize: "12px",
+  fontWeight: 950,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profileCommentTimeStyle: CSSProperties = {
+  color: "#94a3b8",
+  fontSize: "10px",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};
+
+const profileCommentTextStyle: CSSProperties = {
+  margin: 0,
+  color: "#dbeafe",
+  fontSize: "12.5px",
+  lineHeight: 1.45,
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+};
+
+const profileCommentFooterStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  marginTop: "5px",
+  paddingLeft: "4px",
+};
+
+const profileCommentHandleStyle: CSSProperties = {
+  color: "#a78bfa",
+  fontSize: "11px",
+  fontWeight: 850,
+  textDecoration: "none",
+};
+
+const profileCommentDeleteButtonStyle: CSSProperties = {
+  border: 0,
+  background: "transparent",
+  color: "#fca5a5",
+  fontSize: "11px",
+  fontWeight: 900,
+  cursor: "pointer",
+  padding: 0,
+};
+
 
 const profileAchievementsViewerGridStyle: CSSProperties = {
   ...profileBadgesViewerGridStyle,

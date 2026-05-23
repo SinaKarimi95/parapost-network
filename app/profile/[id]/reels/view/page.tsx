@@ -3,6 +3,7 @@
 import {
   CSSProperties,
   MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
   useEffect,
   useMemo,
   useRef,
@@ -99,7 +100,7 @@ const initialComments: ReelComment[] = [];
 const REEL_CAPTION_MAX_LENGTH = 4000;
 
 const pageStyle: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
   background:
     "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 36%), radial-gradient(circle at 88% 18%, rgba(124,58,237,0.18), transparent 34%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.10), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 48%, #05050b 100%)",
   color: "#fff",
@@ -168,7 +169,7 @@ const navLinkStyle: CSSProperties = {
 };
 
 const scrollContainerStyle: CSSProperties = {
-  height: "100vh",
+  height: "100dvh",
   overflowY: "auto",
   scrollSnapType: "y mandatory",
   scrollBehavior: "smooth",
@@ -177,7 +178,7 @@ const scrollContainerStyle: CSSProperties = {
 
 const sectionStyle: CSSProperties = {
   position: "relative",
-  minHeight: "100vh",
+  minHeight: "100dvh",
   scrollSnapAlign: "start",
   display: "flex",
   alignItems: "center",
@@ -848,7 +849,17 @@ export default function ProfileReelsViewerPage() {
   }, []);
 
   useEffect(() => {
-    const closeMenu = () => setReelMenu(null);
+    const closeMenu = () => {
+      // On mobile, the owner menu opens from pointer/touch events.
+      // A synthetic click can fire right after touch and instantly close the sheet.
+      // Let the mobile overlay close itself instead.
+      if (typeof window !== "undefined" && window.innerWidth <= 767) {
+        return;
+      }
+
+      setReelMenu(null);
+    };
+
     window.addEventListener("click", closeMenu);
     window.addEventListener("scroll", closeMenu);
     return () => {
@@ -904,14 +915,14 @@ export default function ProfileReelsViewerPage() {
     if (viewportType === "mobile") {
       return {
         stageWidth: "100vw",
-        stageHeight: "100vh",
+        stageHeight: "100dvh",
         borderRadius: 0,
         showDesktopArrows: false,
         outerPadding: 0,
         actionRight: 12,
         textLeft: 12,
         textRight: 80,
-        bottomOffset: 20,
+        bottomOffset: 34,
         topOffset: 0,
         titleSize: 20,
         captionSize: 14,
@@ -1484,7 +1495,32 @@ export default function ProfileReelsViewerPage() {
   ) => {
     event.preventDefault();
     event.stopPropagation();
+
+    // Mobile uses pointer-down so the video/tap layer and delayed click event
+    // cannot swallow or immediately close the owner menu.
+    if (viewportType === "mobile") {
+      return;
+    }
+
     openOwnerReelMenuAtPoint(event.clientX, event.clientY, reel);
+  };
+
+  const handleOpenReelMenuPointer = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    reel: ReelItem
+  ) => {
+    if (viewportType !== "mobile") {
+      event.stopPropagation();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    openOwnerReelMenuAtPoint(
+      event.clientX || window.innerWidth - 44,
+      event.clientY || 44,
+      reel
+    );
   };
 
   const handleStartEditReel = (reel: ReelItem) => {
@@ -1585,7 +1621,7 @@ export default function ProfileReelsViewerPage() {
   <div
     style={{
       ...pageStyle,
-      minHeight: "100vh",
+      minHeight: "100dvh",
       overflow: "hidden",
     }}
   >
@@ -1685,7 +1721,7 @@ export default function ProfileReelsViewerPage() {
       {isFetchingReels ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "grid",
             placeItems: "center",
             padding: "24px",
@@ -1704,7 +1740,7 @@ export default function ProfileReelsViewerPage() {
       ) : pageErrorMessage ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "grid",
             placeItems: "center",
             padding: "24px",
@@ -1741,7 +1777,7 @@ export default function ProfileReelsViewerPage() {
       ) : !canViewProfileContent ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "grid",
             placeItems: "center",
             padding: "24px",
@@ -1799,7 +1835,7 @@ export default function ProfileReelsViewerPage() {
       ) : reels.length === 0 ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "grid",
             placeItems: "center",
             padding: "24px",
@@ -2058,7 +2094,7 @@ export default function ProfileReelsViewerPage() {
                     )}
                   </div>
 
-                  {isOwner ? (
+                  {isOwner && viewportType !== "mobile" ? (
                     <div
                       style={{
                         position: "absolute",
@@ -2074,13 +2110,10 @@ export default function ProfileReelsViewerPage() {
                       <button
                         type="button"
                         onClick={(event) => handleOpenReelMenu(event, reel)}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onTouchStart={(event) => event.stopPropagation()}
-                        onTouchEnd={(event) => {
+                        onPointerDown={(event) => handleOpenReelMenuPointer(event, reel)}
+                        onTouchStart={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
-                          const touch = event.changedTouches[0];
-                          openOwnerReelMenuAtPoint(touch?.clientX || window.innerWidth - 40, touch?.clientY || 40, reel);
                         }}
                         style={{
                           width: "42px",
@@ -2091,7 +2124,8 @@ export default function ProfileReelsViewerPage() {
                           color: "white",
                           cursor: "pointer",
                           fontSize: "20px",
-                          touchAction: "manipulation",
+                          touchAction: viewportType === "mobile" ? "none" : "manipulation",
+                          WebkitTapHighlightColor: "transparent",
                           boxShadow: "0 10px 24px rgba(0,0,0,0.24)",
                         }}
                         aria-label="Open reel owner menu"
@@ -2192,6 +2226,67 @@ export default function ProfileReelsViewerPage() {
                         </div>
                       </div>
                     ))}
+
+
+                    {isOwner && viewportType === "mobile" ? (
+                      <div
+                        style={{
+                          display: "grid",
+                          justifyItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onTouchStart={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setActiveReelId(reel.id);
+                            openOwnerReelMenuAtPoint(window.innerWidth - 64, window.innerHeight - 180, reel);
+                          }}
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "50%",
+                            border: "1px solid rgba(216,180,254,0.32)",
+                            background: "rgba(88,28,135,0.48)",
+                            color: "white",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            fontSize: "18px",
+                            fontWeight: 900,
+                            backdropFilter: "blur(12px)",
+                            boxShadow: "0 8px 18px rgba(0,0,0,0.38)",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                          aria-label="Manage your reel"
+                        >
+                          ⚙
+                        </button>
+
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 800,
+                            color: "#f3e8ff",
+                            textAlign: "center",
+                            maxWidth: "64px",
+                            lineHeight: 1.1,
+                            textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                          }}
+                        >
+                          Manage
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div
@@ -2364,15 +2459,19 @@ export default function ProfileReelsViewerPage() {
               type="button"
               style={{
                 ...menuItemStyle,
-                minHeight: viewportType === "mobile" ? 52 : undefined,
+                minHeight: viewportType === "mobile" ? 56 : undefined,
                 fontWeight: 850,
               }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onTouchStart={(event) => {
+                event.stopPropagation();
+              }}
               onClick={(event) => {
+                event.preventDefault();
                 event.stopPropagation();
                 handleStartEditReel(menuReel);
-              }}
-              onTouchEnd={(event) => {
-                event.stopPropagation();
               }}
             >
               Edit Reel
@@ -2383,15 +2482,19 @@ export default function ProfileReelsViewerPage() {
                 ...menuItemStyle,
                 color: "#fecaca",
                 borderBottom: "none",
-                minHeight: viewportType === "mobile" ? 52 : undefined,
+                minHeight: viewportType === "mobile" ? 56 : undefined,
                 fontWeight: 850,
               }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onTouchStart={(event) => {
+                event.stopPropagation();
+              }}
               onClick={(event) => {
+                event.preventDefault();
                 event.stopPropagation();
                 void handleDeleteReel(menuReel.id);
-              }}
-              onTouchEnd={(event) => {
-                event.stopPropagation();
               }}
             >
               Delete Reel
@@ -2413,7 +2516,15 @@ export default function ProfileReelsViewerPage() {
                 padding: "0 12px calc(18px + env(safe-area-inset-bottom))",
                 pointerEvents: "auto",
               }}
-              onClick={() => setReelMenu(null)}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setReelMenu(null);
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
               onTouchMove={(event) => event.stopPropagation()}
             >
               <div
@@ -2426,6 +2537,8 @@ export default function ProfileReelsViewerPage() {
                   overflow: "hidden",
                   boxShadow: "0 22px 48px rgba(0,0,0,0.42)",
                 }}
+                onPointerDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
               >
                 <div
@@ -2448,7 +2561,14 @@ export default function ProfileReelsViewerPage() {
                     textAlign: "center",
                     fontWeight: 850,
                   }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onTouchStart={(event) => {
+                    event.stopPropagation();
+                  }}
                   onClick={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
                     setReelMenu(null);
                   }}

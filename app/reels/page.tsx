@@ -4,6 +4,7 @@ import {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
   SyntheticEvent as ReactSyntheticEvent,
   useEffect,
   useLayoutEffect,
@@ -125,7 +126,7 @@ const REEL_CAPTION_MAX_LENGTH = 4000;
 
 
 const pageStyle: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
   background:
     "radial-gradient(circle at 12% 0%, rgba(168,85,247,0.28), transparent 36%), radial-gradient(circle at 88% 18%, rgba(124,58,237,0.18), transparent 34%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.10), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 48%, #05050b 100%)",
   color: "#fff",
@@ -194,7 +195,7 @@ const navLinkStyle: CSSProperties = {
 };
 
 const scrollContainerStyle: CSSProperties = {
-  height: "100vh",
+  height: "100dvh",
   overflowY: "auto",
   scrollSnapType: "y mandatory",
   scrollBehavior: "smooth",
@@ -203,7 +204,7 @@ const scrollContainerStyle: CSSProperties = {
 
 const sectionStyle: CSSProperties = {
   position: "relative",
-  minHeight: "100vh",
+  minHeight: "100dvh",
   scrollSnapAlign: "start",
   display: "flex",
   alignItems: "center",
@@ -879,6 +880,13 @@ export default function ReelsPage() {
 
   useEffect(() => {
     const closeMenu = () => {
+      // On mobile, the owner menu opens from pointer/touch events.
+      // A synthetic click can fire right after touch and instantly close the sheet.
+      // Let the mobile overlay close itself instead.
+      if (typeof window !== "undefined" && window.innerWidth <= 767) {
+        return;
+      }
+
       setReelMenu(null);
       setCommentMenu(null);
     };
@@ -945,14 +953,14 @@ export default function ReelsPage() {
     if (viewportType === "mobile") {
       return {
         stageWidth: "100vw",
-        stageHeight: "100vh",
+        stageHeight: "100dvh",
         borderRadius: 0,
         showDesktopArrows: false,
         outerPadding: 0,
         actionRight: 12,
         textLeft: 12,
         textRight: 80,
-        bottomOffset: 20,
+        bottomOffset: 86,
         topOffset: 0,
         titleSize: 20,
         captionSize: 14,
@@ -1042,6 +1050,32 @@ export default function ReelsPage() {
     if (nextIndex < 0 || nextIndex >= reels.length) return;
 
     scrollToReel(reels[nextIndex].id);
+  };
+
+  const handleCloseComments = () => {
+    const reelIdToRestore = activeReelId;
+
+    setCommentsOpen(false);
+    setCommentMenu(null);
+    setReplyingToCommentId(null);
+    setReplyDraft("");
+
+    window.setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container || !reelIdToRestore) return;
+
+      const target = container.querySelector<HTMLElement>(
+        `[data-reel-id="${reelIdToRestore}"]`
+      );
+
+      if (!target) return;
+
+      const previousScrollBehavior = container.style.scrollBehavior;
+      container.style.scrollBehavior = "auto";
+      target.scrollIntoView({ behavior: "auto", block: "start" });
+      container.style.scrollBehavior = previousScrollBehavior || "";
+      setActiveReelId(reelIdToRestore);
+    }, 80);
   };
 
   const updateActiveFromScroll = () => {
@@ -1679,13 +1713,61 @@ export default function ReelsPage() {
     });
   };
 
+  const openOwnerReelMenuFromAction = (reel: ReelItem) => {
+    if (!isReelOwner(reel, currentUserId)) {
+      setReelMenu(null);
+      return;
+    }
+
+    setActiveReelId(reel.id);
+
+    if (typeof window === "undefined") {
+      setReelMenu({ reelId: reel.id, x: 12, y: 80 });
+      return;
+    }
+
+    const menuWidth = 208;
+    const menuHeight = 124;
+
+    setReelMenu({
+      reelId: reel.id,
+      x: clamp(window.innerWidth / 2 - menuWidth / 2, 12, window.innerWidth - menuWidth - 12),
+      y: clamp(window.innerHeight - menuHeight - 88, 70, window.innerHeight - menuHeight - 12),
+    });
+  };
+
   const handleOpenReelMenu = (
     event: ReactMouseEvent<HTMLButtonElement>,
     reel: ReelItem
   ) => {
     event.preventDefault();
     event.stopPropagation();
+
+    // Mobile uses pointer-down so the video/tap layer and delayed click event
+    // cannot swallow or immediately close the owner menu.
+    if (viewportType === "mobile") {
+      return;
+    }
+
     openOwnerReelMenuAtPoint(event.clientX, event.clientY, reel);
+  };
+
+  const handleOpenReelMenuPointer = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    reel: ReelItem
+  ) => {
+    if (viewportType !== "mobile") {
+      event.stopPropagation();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    openOwnerReelMenuAtPoint(
+      event.clientX || window.innerWidth - 44,
+      event.clientY || 44,
+      reel
+    );
   };
 
   const handleStartEditReel = (reel: ReelItem) => {
@@ -1914,7 +1996,7 @@ export default function ReelsPage() {
       {isFetchingReels ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "grid",
             placeItems: "center",
             padding: "24px",
@@ -1933,7 +2015,7 @@ export default function ReelsPage() {
       ) : reels.length === 0 ? (
         <div
           style={{
-            minHeight: "100vh",
+            minHeight: "100dvh",
             display: "grid",
             placeItems: "center",
             padding: "24px",
@@ -1997,6 +2079,51 @@ export default function ReelsPage() {
             const isOverlayedReel = isActiveCommentsReel || isActiveDetailsReel;
             const creatorProfileId = reel.creator_profile_id || reel.user_id;
             const creatorProfileHref = creatorProfileId ? `/profile/${creatorProfileId}` : "/reels";
+            const reelActions = [
+              {
+                symbol: isLiked ? "♥" : "♡",
+                label: displayedLikes,
+                action: () => handleLikeToggle(reel.id),
+              },
+              {
+                symbol: "💬",
+                label: displayedComments,
+                action: () => {
+                  setActiveReelId(reel.id);
+                  setCommentsOpen(true);
+                },
+              },
+              {
+                symbol: isFavorited ? "★" : "☆",
+                label: displayedFavorites,
+                action: () => handleFavoriteToggle(reel.id),
+              },
+              {
+                symbol: "↗",
+                label: displayedShares,
+                action: () => {
+                  setActiveReelId(reel.id);
+                  setShareOpen(true);
+                },
+              },
+              {
+                symbol: "🔗",
+                label: "Link",
+                action: () => {
+                  setActiveReelId(reel.id);
+                  void handleShareLink(reel.id);
+                },
+              },
+              ...(isOwner && viewportType === "mobile"
+                ? [
+                    {
+                      symbol: "⋯",
+                      label: "Manage",
+                      action: () => openOwnerReelMenuFromAction(reel),
+                    },
+                  ]
+                : []),
+            ];
 
             return (
               <section
@@ -2170,7 +2297,7 @@ export default function ReelsPage() {
                     )}
                   </div>
 
-                  {isOwner ? (
+                  {isOwner && viewportType !== "mobile" ? (
                     <div
                       style={{
                         position: "absolute",
@@ -2186,13 +2313,10 @@ export default function ReelsPage() {
                       <button
                         type="button"
                         onClick={(event) => handleOpenReelMenu(event, reel)}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onTouchStart={(event) => event.stopPropagation()}
-                        onTouchEnd={(event) => {
+                        onPointerDown={(event) => handleOpenReelMenuPointer(event, reel)}
+                        onTouchStart={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
-                          const touch = event.changedTouches[0];
-                          openOwnerReelMenuAtPoint(touch?.clientX || window.innerWidth - 40, touch?.clientY || 40, reel);
                         }}
                         style={{
                           width: "42px",
@@ -2203,7 +2327,8 @@ export default function ReelsPage() {
                           color: "white",
                           cursor: "pointer",
                           fontSize: "20px",
-                          touchAction: "manipulation",
+                          touchAction: viewportType === "mobile" ? "none" : "manipulation",
+                          WebkitTapHighlightColor: "transparent",
                           boxShadow: "0 10px 24px rgba(0,0,0,0.24)",
                         }}
                         aria-label="Open reel owner menu"
@@ -2228,42 +2353,7 @@ export default function ReelsPage() {
                       transition: "opacity 180ms ease",
                     }}
                   >
-                    {[
-                      {
-                        symbol: isLiked ? "♥" : "♡",
-                        label: displayedLikes,
-                        action: () => handleLikeToggle(reel.id),
-                      },
-                      {
-                        symbol: "💬",
-                        label: displayedComments,
-                        action: () => {
-                          setActiveReelId(reel.id);
-                          setCommentsOpen(true);
-                        },
-                      },
-                      {
-                        symbol: isFavorited ? "★" : "☆",
-                        label: displayedFavorites,
-                        action: () => handleFavoriteToggle(reel.id),
-                      },
-                      {
-                        symbol: "↗",
-                        label: displayedShares,
-                        action: () => {
-                          setActiveReelId(reel.id);
-                          setShareOpen(true);
-                        },
-                      },
-                      {
-                        symbol: "🔗",
-                        label: "Link",
-                        action: () => {
-                          setActiveReelId(reel.id);
-                          void handleShareLink(reel.id);
-                        },
-                      },
-                    ].map((item, actionIndex) => (
+                    {reelActions.map((item, actionIndex) => (
                       <div
                         key={`${reel.id}-${actionIndex}`}
                         style={{
@@ -2273,7 +2363,18 @@ export default function ReelsPage() {
                         }}
                       >
                         <button
-                          onClick={item.action}
+                          type="button"
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onTouchStart={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            item.action();
+                          }}
                           style={{
                             width: viewportType === "mobile" ? "48px" : "52px",
                             height: viewportType === "mobile" ? "48px" : "52px",
@@ -2528,7 +2629,7 @@ export default function ReelsPage() {
                   {isActiveCommentsReel && (
                     <ReelCommentsPanel
                       isOpen={commentsOpen}
-                      onClose={() => setCommentsOpen(false)}
+                      onClose={handleCloseComments}
                       reelTitle={reel.title}
                       activeComments={activeComments}
                       allComments={comments}
@@ -2582,15 +2683,19 @@ export default function ReelsPage() {
               type="button"
               style={{
                 ...menuItemStyle,
-                minHeight: viewportType === "mobile" ? 52 : undefined,
+                minHeight: viewportType === "mobile" ? 56 : undefined,
                 fontWeight: 850,
               }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onTouchStart={(event) => {
+                event.stopPropagation();
+              }}
               onClick={(event) => {
+                event.preventDefault();
                 event.stopPropagation();
                 handleStartEditReel(menuReel);
-              }}
-              onTouchEnd={(event) => {
-                event.stopPropagation();
               }}
             >
               Edit Reel
@@ -2601,15 +2706,19 @@ export default function ReelsPage() {
                 ...menuItemStyle,
                 color: "#fecaca",
                 borderBottom: "none",
-                minHeight: viewportType === "mobile" ? 52 : undefined,
+                minHeight: viewportType === "mobile" ? 56 : undefined,
                 fontWeight: 850,
               }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onTouchStart={(event) => {
+                event.stopPropagation();
+              }}
               onClick={(event) => {
+                event.preventDefault();
                 event.stopPropagation();
                 void handleDeleteReel(menuReel.id);
-              }}
-              onTouchEnd={(event) => {
-                event.stopPropagation();
               }}
             >
               Delete Reel
@@ -2631,7 +2740,15 @@ export default function ReelsPage() {
                 padding: "0 12px calc(18px + env(safe-area-inset-bottom))",
                 pointerEvents: "auto",
               }}
-              onClick={() => setReelMenu(null)}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setReelMenu(null);
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
               onTouchMove={(event) => event.stopPropagation()}
             >
               <div
@@ -2644,6 +2761,8 @@ export default function ReelsPage() {
                   overflow: "hidden",
                   boxShadow: "0 22px 48px rgba(0,0,0,0.42)",
                 }}
+                onPointerDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
               >
                 <div
@@ -2666,7 +2785,14 @@ export default function ReelsPage() {
                     textAlign: "center",
                     fontWeight: 850,
                   }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onTouchStart={(event) => {
+                    event.stopPropagation();
+                  }}
                   onClick={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
                     setReelMenu(null);
                   }}

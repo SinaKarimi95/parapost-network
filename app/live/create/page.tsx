@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, FormEvent, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -12,6 +12,17 @@ type DetectedLiveMeta = {
   embedUrl: string | null;
   thumbnailUrl: string | null;
   helper: string;
+};
+
+type LiveStreamRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  provider: LiveProvider | string | null;
+  external_url: string | null;
+  scheduled_at: string | null;
+  status: string | null;
 };
 
 const PROVIDERS: { value: LiveProvider; label: string }[] = [
@@ -28,6 +39,16 @@ function normalizeExternalUrl(value: string) {
 
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
 }
 
 function safeUrl(value: string) {
@@ -139,6 +160,8 @@ function detectLiveMetadata(provider: LiveProvider, externalUrlInput: string): D
 }
 
 export default function CreateLiveDraftPage() {
+  const [editingStreamId, setEditingStreamId] = useState("");
+  const [loadingExisting, setLoadingExisting] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [provider, setProvider] = useState<LiveProvider>("youtube");
@@ -155,6 +178,69 @@ export default function CreateLiveDraftPage() {
 
   const previewTitle = title.trim() || "Your Parapost Live Draft";
   const previewProvider = PROVIDERS.find((item) => item.value === detectedMeta.provider)?.label || "External";
+  const isEditing = Boolean(editingStreamId);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("edit") || "";
+    setEditingStreamId(editId);
+  }, []);
+
+  useEffect(() => {
+    if (!editingStreamId) return;
+
+    let cancelled = false;
+
+    const loadExistingDraft = async () => {
+      setLoadingExisting(true);
+      setError("");
+      setMessage("");
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        if (!cancelled) {
+          setError("You must be signed in to edit this hidden Live draft.");
+          setLoadingExisting(false);
+        }
+        return;
+      }
+
+      const { data, error: loadError } = await supabase
+        .from("live_streams")
+        .select("id, user_id, title, description, provider, external_url, scheduled_at, status")
+        .eq("id", editingStreamId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (loadError || !data) {
+        setError(loadError?.message || "Could not load this hidden Live draft.");
+        setLoadingExisting(false);
+        return;
+      }
+
+      const stream = data as LiveStreamRow;
+      setTitle(stream.title || "");
+      setDescription(stream.description || "");
+      setProvider((stream.provider as LiveProvider) || "youtube");
+      setExternalUrl(stream.external_url || "");
+      setScheduledAt(toDateTimeLocal(stream.scheduled_at));
+      setLoadingExisting(false);
+    };
+
+    void loadExistingDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editingStreamId]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -181,45 +267,58 @@ export default function CreateLiveDraftPage() {
 
     const scheduledValue = scheduledAt ? new Date(scheduledAt).toISOString() : null;
 
-    const { error: insertError } = await supabase.from("live_streams").insert({
-      user_id: user.id,
+    const payload = {
       title: cleanTitle,
       description: description.trim() || null,
       provider: detectedMeta.provider,
       external_url: detectedMeta.externalUrl,
       embed_url: detectedMeta.embedUrl,
       thumbnail_url: detectedMeta.thumbnailUrl,
-      status: "draft",
       visibility: "private",
       is_hidden: true,
       is_featured: false,
       scheduled_at: scheduledValue,
-      started_at: null,
-      ended_at: null,
-    });
+    };
+
+    const result = isEditing
+      ? await supabase
+          .from("live_streams")
+          .update(payload)
+          .eq("id", editingStreamId)
+          .eq("user_id", user.id)
+      : await supabase.from("live_streams").insert({
+          ...payload,
+          user_id: user.id,
+          status: "draft",
+          started_at: null,
+          ended_at: null,
+        });
 
     setSaving(false);
 
-    if (insertError) {
-      setError(insertError.message || "Could not create hidden Live draft.");
+    if (result.error) {
+      setError(result.error.message || (isEditing ? "Could not update hidden Live draft." : "Could not create hidden Live draft."));
       return;
     }
 
-    setMessage("Hidden Parapost Live draft created. It is private, hidden, and not publicly launched.");
-    setTitle("");
-    setDescription("");
-    setExternalUrl("");
-    setScheduledAt("");
+    setMessage(isEditing ? "Hidden Parapost Live draft updated." : "Hidden Parapost Live draft created. It is private, hidden, and not publicly launched.");
+
+    if (!isEditing) {
+      setTitle("");
+      setDescription("");
+      setExternalUrl("");
+      setScheduledAt("");
+    }
   };
 
   return (
-    <main style={pageStyle}>
-      <section style={shellStyle}>
-        <div style={heroStyle}>
+    <main style={pageStyle} className="parapost-live-create-page">
+      <section style={shellStyle} className="parapost-live-create-shell">
+        <div style={heroStyle} className="parapost-live-create-hero">
           <div style={badgeStyle}>Private hidden test</div>
-          <h1 style={titleStyle}>Create Live Draft</h1>
+          <h1 style={titleStyle}>{isEditing ? "Edit Live Draft" : "Create Live Draft"}</h1>
           <p style={subtitleStyle}>
-            This creates a hidden draft only. Parapost will not provide RTMP, host video, encode video,
+            {isEditing ? "Update this hidden draft only." : "This creates a hidden draft only."} Parapost will not provide RTMP, host video, encode video,
             store recordings, or deliver live-stream bandwidth. The future public version will only display
             safe external embeds from providers like YouTube or Twitch.
           </p>
@@ -230,7 +329,9 @@ export default function CreateLiveDraftPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={formStyle}>
+        <form onSubmit={handleSubmit} style={formStyle} className="parapost-live-create-form">
+          {loadingExisting ? <div style={successStyle}>Loading hidden Live draft...</div> : null}
+
           <label style={labelStyle}>
             Live title
             <input
@@ -293,7 +394,7 @@ export default function CreateLiveDraftPage() {
             the link, safe embed metadata, and a thumbnail URL when one can be detected.
           </p>
 
-          <div style={previewWrapStyle}>
+          <div style={previewWrapStyle} className="parapost-live-create-preview">
             <div style={previewMediaStyle}>
               {detectedMeta.thumbnailUrl ? (
                 <img
@@ -322,7 +423,7 @@ export default function CreateLiveDraftPage() {
           <div style={safetyBoxStyle}>
             <strong>Hidden safety settings</strong>
             <span>
-              This draft saves as <b>status: draft</b>, <b>visibility: private</b>, and <b>is_hidden: true</b>.
+              {isEditing ? "This update keeps the record hidden/private and does not launch Live publicly." : <>This draft saves as <b>status: draft</b>, <b>visibility: private</b>, and <b>is_hidden: true</b>.</>}
               No public Live launch, no RTMP, no video hosting.
             </span>
           </div>
@@ -333,21 +434,155 @@ export default function CreateLiveDraftPage() {
           <div style={actionsStyle}>
             <Link href="/live" style={cancelButtonStyle}>Cancel</Link>
             <button type="submit" disabled={saving} style={saveButtonStyle}>
-              {saving ? "Saving..." : "Save Hidden Draft"}
+              {saving ? "Saving..." : isEditing ? "Update Hidden Draft" : "Save Hidden Draft"}
             </button>
           </div>
         </form>
+        <style jsx global>{`
+          .parapost-live-create-page {
+            min-height: 100dvh;
+            height: 100dvh;
+            max-height: 100dvh;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            touch-action: pan-y;
+            overscroll-behavior-y: contain;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+          }
+
+          .parapost-live-create-shell {
+            min-height: auto !important;
+          }
+
+          .parapost-live-create-page *,
+          .parapost-live-create-page *::before,
+          .parapost-live-create-page *::after {
+            box-sizing: border-box;
+          }
+
+          .parapost-live-create-form input,
+          .parapost-live-create-form textarea,
+          .parapost-live-create-form select {
+            font-size: 16px !important;
+          }
+
+          .parapost-live-create-form button,
+          .parapost-live-create-form a {
+            touch-action: manipulation;
+          }
+
+          @media (max-width: 980px) {
+            .parapost-live-create-page {
+              padding: 18px 12px calc(110px + env(safe-area-inset-bottom)) !important;
+            }
+
+            .parapost-live-create-preview {
+              grid-template-columns: minmax(210px, 300px) 1fr !important;
+            }
+          }
+
+          @media (max-width: 760px) {
+            html,
+            body {
+              overflow: hidden !important;
+            }
+
+            .parapost-live-create-page {
+              min-height: 100dvh !important;
+              height: 100dvh !important;
+              max-height: 100dvh !important;
+              overflow-y: auto !important;
+              overflow-x: hidden !important;
+              padding: 12px 10px calc(150px + env(safe-area-inset-bottom)) !important;
+              scroll-padding-bottom: calc(150px + env(safe-area-inset-bottom));
+            }
+
+            .parapost-live-create-shell {
+              max-width: 420px !important;
+              gap: 12px !important;
+            }
+
+            .parapost-live-create-hero,
+            .parapost-live-create-form {
+              border-radius: 22px !important;
+              padding: 14px !important;
+            }
+
+            .parapost-live-create-hero h1 {
+              font-size: 29px !important;
+              letter-spacing: -0.05em !important;
+            }
+
+            .parapost-live-create-hero p {
+              font-size: 13px !important;
+              line-height: 1.5 !important;
+            }
+
+            .parapost-live-create-preview {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+            }
+          }
+
+          @media (max-width: 520px) {
+            .parapost-live-create-form {
+              gap: 12px !important;
+            }
+
+            .parapost-live-create-form textarea {
+              min-height: 108px !important;
+            }
+
+            .parapost-live-create-form input,
+            .parapost-live-create-form select {
+              min-height: 46px !important;
+            }
+
+            .parapost-live-create-form [style*="grid-template-columns"] {
+              grid-template-columns: 1fr !important;
+            }
+
+            .parapost-live-create-form > div:last-of-type {
+              display: grid !important;
+              grid-template-columns: 1fr !important;
+              position: static !important;
+              bottom: auto !important;
+              z-index: auto !important;
+              padding-top: 10px !important;
+              margin-top: 2px !important;
+              background: transparent !important;
+            }
+
+            .parapost-live-create-form > div:last-of-type > * {
+              width: 100% !important;
+              min-height: 46px !important;
+            }
+          }
+
+          @media (max-width: 390px) {
+            .parapost-live-create-page {
+              padding-left: 8px !important;
+              padding-right: 8px !important;
+            }
+
+            .parapost-live-create-hero,
+            .parapost-live-create-form {
+              padding: 12px !important;
+            }
+          }
+        `}</style>
       </section>
     </main>
   );
 }
 
 const pageStyle: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
   background:
     "radial-gradient(circle at 14% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 86% 18%, rgba(236,72,153,0.13), transparent 34%), linear-gradient(180deg, #05050b 0%, #07090d 52%, #05050b 100%)",
   color: "#fff",
-  padding: "24px 14px 70px",
+  padding: "24px 14px 110px",
 };
 
 const shellStyle: CSSProperties = {

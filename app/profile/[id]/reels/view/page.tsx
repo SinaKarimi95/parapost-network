@@ -301,6 +301,23 @@ function formatRelativeTime(value?: string | null) {
   return `${years}y ago`;
 }
 
+function formatCompactCount(value: number | string) {
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(String(value).replace(/[^0-9]/g, ""), 10);
+
+  if (!Number.isFinite(numericValue)) return String(value);
+  if (numericValue < 1000) return String(numericValue);
+  if (numericValue < 1000000) {
+    const next = numericValue / 1000;
+    return `${next >= 10 ? next.toFixed(0) : next.toFixed(1)}K`;
+  }
+
+  const next = numericValue / 1000000;
+  return `${next >= 10 ? next.toFixed(0) : next.toFixed(1)}M`;
+}
+
 function isValidUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -1009,6 +1026,22 @@ export default function ProfileReelsViewerPage() {
     setCommentDraft("");
 
     window.setTimeout(() => {
+      const container = scrollContainerRef.current;
+
+      if (container && resumeReelId) {
+        const target = container.querySelector<HTMLElement>(
+          `[data-reel-id="${resumeReelId}"]`
+        );
+
+        if (target) {
+          const previousScrollBehavior = container.style.scrollBehavior;
+          container.style.scrollBehavior = "auto";
+          target.scrollIntoView({ behavior: "auto", block: "start" });
+          container.style.scrollBehavior = previousScrollBehavior || "";
+          setActiveReelId(resumeReelId);
+        }
+      }
+
       const video = videoRefs.current[resumeReelId];
       if (video) {
         const playPromise = video.play();
@@ -1267,6 +1300,36 @@ export default function ProfileReelsViewerPage() {
     window.setTimeout(() => {
       setShareMessage("");
     }, 2200);
+  };
+
+  const openShareForReel = (reelId: string) => {
+    setDetailsReelId("");
+    setCommentsOpen(false);
+    setLockedCommentReelId("");
+    setActiveReelId(reelId);
+    setShareOpen(true);
+
+    const video = videoRefs.current[reelId];
+    if (video) {
+      video.pause();
+    }
+  };
+
+  const closeShareModal = () => {
+    const resumeReelId = activeReelId;
+    setShareOpen(false);
+
+    window.setTimeout(() => {
+      if (commentsOpen || detailsOpen || !resumeReelId) return;
+
+      const video = videoRefs.current[resumeReelId];
+      if (video) {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      }
+    }, 80);
   };
 
   const handleAddComment = async () => {
@@ -2153,32 +2216,36 @@ export default function ProfileReelsViewerPage() {
                     {[
                       {
                         symbol: isLiked ? "♥" : "♡",
-                        label: displayedLikes,
+                        label: formatCompactCount(displayedLikes),
+                        ariaLabel: isLiked ? "Unlike reel" : "Like reel",
                         action: () => handleLikeToggle(reel.id),
                       },
                       {
                         symbol: "💬",
-                        label: displayedComments,
+                        label: formatCompactCount(displayedComments),
+                        ariaLabel: "Open reel comments",
                         action: () => {
                           openCommentsForReel(reel.id);
                         },
                       },
                       {
                         symbol: isFavorited ? "★" : "☆",
-                        label: displayedFavorites,
+                        label: formatCompactCount(displayedFavorites),
+                        ariaLabel: isFavorited ? "Remove favorite" : "Favorite reel",
                         action: () => handleFavoriteToggle(reel.id),
                       },
                       {
                         symbol: "↗",
-                        label: displayedShares,
+                        label: formatCompactCount(displayedShares),
+                        ariaLabel: "Share reel to feed",
                         action: () => {
-                          setActiveReelId(reel.id);
-                          setShareOpen(true);
+                          openShareForReel(reel.id);
                         },
                       },
                       {
                         symbol: "🔗",
                         label: "Link",
+                        ariaLabel: "Copy reel link",
                         action: () => handleShareLink(reel.id),
                       },
                     ].map((item, actionIndex) => (
@@ -2191,7 +2258,9 @@ export default function ProfileReelsViewerPage() {
                         }}
                       >
                         <button
+                          type="button"
                           onClick={item.action}
+                          aria-label={item.ariaLabel}
                           style={{
                             width: viewportType === "mobile" ? "48px" : "52px",
                             height: viewportType === "mobile" ? "48px" : "52px",
@@ -3191,7 +3260,7 @@ export default function ProfileReelsViewerPage() {
 
       {shareOpen && activeReel && (
         <>
-          <div style={overlayStyle} onClick={() => setShareOpen(false)} />
+          <div style={overlayStyle} onClick={closeShareModal} />
           <div style={modalWrapStyle}>
             <div style={modalCardStyle}>
               <div
@@ -3213,7 +3282,7 @@ export default function ProfileReelsViewerPage() {
                   </div>
                 </div>
 
-                <button onClick={() => setShareOpen(false)} style={buttonStyle}>
+                <button onClick={closeShareModal} style={buttonStyle}>
                   Close
                 </button>
               </div>

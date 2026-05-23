@@ -350,6 +350,24 @@ function formatRelativeTime(value?: string | null) {
   return `${years}y ago`;
 }
 
+
+function formatActionCount(value: number | string) {
+  if (typeof value === "string") return value;
+
+  if (!Number.isFinite(value)) return "0";
+  if (value < 1000) return `${value}`;
+
+  try {
+    return new Intl.NumberFormat("en", {
+      notation: "compact",
+      maximumFractionDigits: value < 10000 ? 1 : 0,
+    }).format(value);
+  } catch {
+    if (value >= 1000000) return `${Math.floor(value / 1000000)}M`;
+    return `${Math.floor(value / 1000)}K`;
+  }
+}
+
 function getRelationshipLabel(relationship: ReelRelationship) {
   if (relationship === "you") return "You";
   if (relationship === "friends") return "Friends";
@@ -1075,6 +1093,16 @@ export default function ReelsPage() {
       target.scrollIntoView({ behavior: "auto", block: "start" });
       container.style.scrollBehavior = previousScrollBehavior || "";
       setActiveReelId(reelIdToRestore);
+
+      window.requestAnimationFrame(() => {
+        const video = videoRefs.current[reelIdToRestore];
+        if (!video) return;
+
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      });
     }, 80);
   };
 
@@ -2082,33 +2110,40 @@ export default function ReelsPage() {
             const reelActions = [
               {
                 symbol: isLiked ? "♥" : "♡",
-                label: displayedLikes,
+                label: formatActionCount(displayedLikes),
+                ariaLabel: isLiked ? "Unlike reel" : "Like reel",
                 action: () => handleLikeToggle(reel.id),
               },
               {
                 symbol: "💬",
-                label: displayedComments,
+                label: formatActionCount(displayedComments),
+                ariaLabel: "Open reel comments",
                 action: () => {
                   setActiveReelId(reel.id);
+                  videoRefs.current[reel.id]?.pause();
                   setCommentsOpen(true);
                 },
               },
               {
                 symbol: isFavorited ? "★" : "☆",
-                label: displayedFavorites,
+                label: formatActionCount(displayedFavorites),
+                ariaLabel: isFavorited ? "Remove favorite" : "Favorite reel",
                 action: () => handleFavoriteToggle(reel.id),
               },
               {
                 symbol: "↗",
-                label: displayedShares,
+                label: formatActionCount(displayedShares),
+                ariaLabel: "Share reel to feed",
                 action: () => {
                   setActiveReelId(reel.id);
+                  videoRefs.current[reel.id]?.pause();
                   setShareOpen(true);
                 },
               },
               {
                 symbol: "🔗",
                 label: "Link",
+                ariaLabel: "Copy reel link",
                 action: () => {
                   setActiveReelId(reel.id);
                   void handleShareLink(reel.id);
@@ -2119,6 +2154,7 @@ export default function ReelsPage() {
                     {
                       symbol: "⋯",
                       label: "Manage",
+                      ariaLabel: "Manage your reel",
                       action: () => openOwnerReelMenuFromAction(reel),
                     },
                   ]
@@ -2364,6 +2400,7 @@ export default function ReelsPage() {
                       >
                         <button
                           type="button"
+                          aria-label={item.ariaLabel}
                           onPointerDown={(event) => {
                             event.stopPropagation();
                           }}

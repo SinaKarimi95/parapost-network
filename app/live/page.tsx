@@ -561,19 +561,64 @@ export default function ParapostLiveHiddenPage() {
             transform: translateY(-1px);
           }
 
-          @media (max-width: 980px) {
+          @media (max-width: 1180px) {
             .parapost-live-page {
-              padding: 18px 12px 74px !important;
+              padding-left: 14px !important;
+              padding-right: 14px !important;
             }
 
             .parapost-live-card {
-              grid-template-columns: 260px 1fr !important;
+              grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) !important;
+            }
+          }
+
+          @media (max-width: 980px) {
+            .parapost-live-page {
+              padding: max(18px, env(safe-area-inset-top)) 12px calc(88px + env(safe-area-inset-bottom)) !important;
+            }
+
+            .parapost-live-card {
+              grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) !important;
+            }
+
+            .parapost-live-actions {
+              display: grid !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 8px !important;
+            }
+
+            .parapost-live-actions > * {
+              width: 100% !important;
+              min-height: 42px !important;
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+              touch-action: manipulation;
+            }
+          }
+
+          @media (max-width: 820px) {
+            .parapost-live-card {
+              grid-template-columns: 1fr !important;
+              border-radius: 22px !important;
+            }
+
+            .parapost-live-thumbnail {
+              min-height: 210px !important;
+            }
+
+            .parapost-live-card-header {
+              display: grid !important;
+              gap: 10px !important;
+            }
+
+            .parapost-live-meta-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             }
           }
 
           @media (max-width: 760px) {
             .parapost-live-page {
-              padding: 14px 10px calc(86px + env(safe-area-inset-bottom)) !important;
+              padding: max(14px, env(safe-area-inset-top)) 10px calc(96px + env(safe-area-inset-bottom)) !important;
             }
 
             .parapost-live-hero,
@@ -588,48 +633,48 @@ export default function ParapostLiveHiddenPage() {
             }
 
             .parapost-live-card {
-              grid-template-columns: 1fr !important;
-              border-radius: 22px !important;
               padding: 10px !important;
             }
 
             .parapost-live-thumbnail {
               min-height: 190px !important;
             }
+          }
 
-            .parapost-live-card-header {
-              display: grid !important;
-              gap: 10px !important;
-            }
-
-            .parapost-live-meta-grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            }
-
+          @media (max-width: 560px) {
             .parapost-live-actions {
-              display: grid !important;
-              grid-template-columns: 1fr 1fr !important;
-              gap: 8px !important;
+              grid-template-columns: 1fr !important;
             }
 
             .parapost-live-actions > * {
-              width: 100% !important;
-              min-height: 42px !important;
-              padding-left: 10px !important;
-              padding-right: 10px !important;
-              touch-action: manipulation;
+              justify-content: center !important;
             }
           }
 
           @media (max-width: 430px) {
             .parapost-live-status-strip,
-            .parapost-live-meta-grid,
-            .parapost-live-actions {
+            .parapost-live-meta-grid {
               grid-template-columns: 1fr !important;
             }
 
             .parapost-live-thumbnail {
               min-height: 172px !important;
+            }
+          }
+
+          @media (max-height: 520px) and (orientation: landscape) {
+            .parapost-live-page {
+              padding-top: 10px !important;
+              padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+            }
+
+            .parapost-live-hero,
+            .parapost-live-panel {
+              padding: 14px !important;
+            }
+
+            .parapost-live-thumbnail {
+              min-height: 150px !important;
             }
           }
         `}</style>
@@ -643,11 +688,15 @@ export default function ParapostLiveHiddenPage() {
 }
 
 const pageStyle: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
+  position: "relative",
+  overflowY: "auto",
+  overflowX: "hidden",
+  overscrollBehaviorY: "contain",
   background:
     "radial-gradient(circle at 14% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 88% 14%, rgba(236,72,153,0.14), transparent 34%), linear-gradient(180deg, #05050b 0%, #07090d 52%, #05050b 100%)",
   color: "#fff",
-  padding: "22px 14px 56px",
+  padding: "max(18px, env(safe-area-inset-top)) 14px calc(80px + env(safe-area-inset-bottom))",
 };
 
 const shellStyle: CSSProperties = {
@@ -990,6 +1039,7 @@ const actionRowStyle: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
   gap: 8,
+  alignItems: "center",
 };
 
 const primaryActionStyle: CSSProperties = {

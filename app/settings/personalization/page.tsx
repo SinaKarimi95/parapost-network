@@ -445,7 +445,95 @@ export default function PersonalizationSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="parapost-personalization-page h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
+      <style jsx global>{`
+        .parapost-personalization-page {
+          -webkit-overflow-scrolling: touch;
+          scrollbar-gutter: stable;
+        }
+
+        .parapost-personalization-actions > a,
+        .parapost-personalization-actions > button,
+        .parapost-personalization-save-actions > button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        @media (max-width: 640px) {
+          .parapost-personalization-page h1 {
+            font-size: clamp(2.25rem, 11vw, 3.25rem) !important;
+            line-height: 0.96 !important;
+            letter-spacing: -0.055em !important;
+          }
+
+          .parapost-personalization-page h2 {
+            font-size: clamp(1.35rem, 7vw, 1.7rem) !important;
+            line-height: 1.08 !important;
+          }
+
+          .parapost-personalization-actions,
+          .parapost-personalization-save-actions {
+            width: 100% !important;
+          }
+
+          .parapost-personalization-actions > a,
+          .parapost-personalization-actions > button,
+          .parapost-personalization-save-actions > button {
+            width: 100% !important;
+            min-height: 46px !important;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+            white-space: normal !important;
+          }
+
+          .parapost-personalization-card-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .parapost-personalization-page section {
+            scroll-margin-top: 18px;
+          }
+
+          .parapost-personalization-preview-tags {
+            gap: 8px !important;
+          }
+
+          .parapost-personalization-preview-tags > span {
+            flex: 1 1 calc(50% - 8px);
+            justify-content: center;
+            text-align: center;
+          }
+        }
+
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .parapost-personalization-actions > a,
+          .parapost-personalization-actions > button {
+            min-width: 170px;
+          }
+
+          .parapost-personalization-save-actions {
+            justify-content: flex-end;
+          }
+        }
+
+        @media (max-height: 560px) and (orientation: landscape) {
+          .parapost-personalization-page {
+            padding-top: 12px !important;
+            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .parapost-personalization-page h1 {
+            font-size: clamp(2rem, 7vw, 3rem) !important;
+          }
+
+          .parapost-personalization-page textarea {
+            min-height: 120px !important;
+          }
+        }
+      `}</style>
+
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -499,7 +587,7 @@ export default function PersonalizationSettingsPage() {
               Parapost Network identity purple, black, glassy, and premium by default.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="parapost-personalization-actions mt-6 flex flex-wrap gap-3">
               <a
                 href="#accent-colors"
                 className={`rounded-full bg-gradient-to-r ${selectedAccent.gradient} px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110`}
@@ -612,7 +700,7 @@ export default function PersonalizationSettingsPage() {
                 </span>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="parapost-personalization-card-grid grid gap-3 sm:grid-cols-2">
                 {accentOptions.map((option) => {
                   const selected = option.id === accentId;
 
@@ -665,7 +753,7 @@ export default function PersonalizationSettingsPage() {
                 and font choices personalize highlights while the core dark identity stays consistent across the app.
               </p>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="parapost-personalization-card-grid grid gap-3 sm:grid-cols-2">
                 {[
                   {
                     title: "Parapost Dark",
@@ -759,7 +847,7 @@ export default function PersonalizationSettingsPage() {
                   These settings save to your Parapost Network account.
                 </span>
 
-                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <div className="parapost-personalization-save-actions flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
                   <button
                     type="button"
                     onClick={handleResetToDefaults}
@@ -824,7 +912,7 @@ export default function PersonalizationSettingsPage() {
                   and creator highlights while keeping the core Parapost Network identity consistent.
                 </p>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="parapost-personalization-preview-tags mt-4 flex flex-wrap gap-2">
                   {previewCards.map((item) => (
                     <span
                       key={item}

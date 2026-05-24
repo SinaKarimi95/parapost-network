@@ -171,7 +171,7 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+      <main className="profile-settings-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
           <div className="animate-pulse rounded-[32px] border border-white/10 bg-white/[0.055] p-6 shadow-2xl">
             <div className="mb-5 h-8 w-48 rounded bg-white/10" />
@@ -186,7 +186,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="profile-settings-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -201,7 +201,7 @@ export default function ProfileSettingsPage() {
       />
 
       <section className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="profile-settings-topbar mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <BackToPrevious label="← Back to Your Account" fallbackHref="/settings/account" />
             <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
@@ -220,7 +220,7 @@ export default function ProfileSettingsPage() {
           ) : null}
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="profile-settings-hero-grid mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div
             className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
             style={{
@@ -289,7 +289,7 @@ export default function ProfileSettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="profile-settings-content-grid grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div
             className="rounded-[32px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
             style={{
@@ -411,7 +411,7 @@ export default function ProfileSettingsPage() {
                 </div>
               ) : null}
 
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <div className="profile-settings-action-row flex flex-col gap-3 pt-2 sm:flex-row">
                 <button
                   type="button"
                   onClick={handleSave}
@@ -483,6 +483,115 @@ export default function ProfileSettingsPage() {
           </aside>
         </section>
       </section>
+
+      <style jsx global>{`
+        .profile-settings-root {
+          min-height: 100dvh !important;
+          height: 100dvh !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior-y: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-settings-root input,
+        .profile-settings-root textarea {
+          max-width: 100%;
+        }
+
+        @media (max-width: 640px) {
+          .profile-settings-root {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-top: 18px !important;
+          }
+
+          .profile-settings-root h1 {
+            font-size: clamp(2.25rem, 12vw, 3.35rem) !important;
+            line-height: 0.96 !important;
+          }
+
+          .profile-settings-root h2 {
+            font-size: clamp(1.55rem, 7vw, 2.15rem) !important;
+            line-height: 1.05 !important;
+          }
+
+          .profile-settings-topbar {
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+
+          .profile-settings-topbar > div:first-child {
+            width: 100% !important;
+          }
+
+          .profile-settings-topbar a,
+          .profile-settings-topbar button {
+            min-height: 38px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+          }
+
+          .profile-settings-hero-grid,
+          .profile-settings-content-grid {
+            gap: 14px !important;
+          }
+
+          .profile-settings-root input,
+          .profile-settings-root textarea {
+            font-size: 16px !important;
+          }
+
+          .profile-settings-action-row {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-settings-action-row button,
+          .profile-settings-action-row a {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+          }
+        }
+
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .profile-settings-root {
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+            padding-bottom: calc(8rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .profile-settings-hero-grid,
+          .profile-settings-content-grid {
+            grid-template-columns: 1fr !important;
+            max-width: 860px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+        }
+
+        @media (min-width: 1025px) and (max-width: 1366px) {
+          .profile-settings-root > section,
+          .profile-settings-root > div,
+          .profile-settings-root .relative.z-10 {
+            max-width: 1100px !important;
+          }
+        }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+          .profile-settings-root {
+            padding-top: 12px !important;
+            padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .profile-settings-root h1 {
+            font-size: clamp(2rem, 7vw, 3rem) !important;
+          }
+        }
+      `}</style>
+
     </main>
   );
 }

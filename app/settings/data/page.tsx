@@ -297,7 +297,7 @@ export default function DataAccountSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8 max-[480px]:px-3 max-[480px]:py-4 max-[480px]:pb-[calc(8.5rem+env(safe-area-inset-bottom))]">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -311,9 +311,9 @@ export default function DataAccountSettingsPage() {
         style={{ background: "var(--parapost-accent-soft)" }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+      <div className="relative z-10 mx-auto w-full max-w-6xl max-[480px]:max-w-full">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 max-[520px]:items-start">
+          <div className="flex flex-wrap items-center gap-3 max-[520px]:w-full">
             <BackToPrevious label="← Back to Your Account" fallbackHref="/settings/account" />
 
             <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
@@ -336,7 +336,7 @@ export default function DataAccountSettingsPage() {
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7 max-[480px]:rounded-[24px] max-[480px]:p-4"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -348,7 +348,7 @@ export default function DataAccountSettingsPage() {
               Data & Account
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-[clamp(2rem,9vw,3.75rem)] font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Manage data requests, privacy support, and account deletion.
             </h1>
 
@@ -357,10 +357,10 @@ export default function DataAccountSettingsPage() {
               data deletion, privacy questions, and account deletion requests.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3 max-[520px]:flex-col">
               <a
                 href="#data-request"
-                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                className="inline-flex items-center justify-center rounded-full px-5 py-3 text-center text-sm font-black no-underline shadow-lg transition hover:brightness-110 max-[520px]:w-full"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -373,7 +373,7 @@ export default function DataAccountSettingsPage() {
 
               <Link
                 href="/settings/account"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 max-[520px]:w-full"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
                 Your Account
@@ -381,7 +381,7 @@ export default function DataAccountSettingsPage() {
 
               <Link
                 href="/settings/privacy-safety"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 max-[520px]:w-full"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
                 Privacy & Safety
@@ -390,7 +390,7 @@ export default function DataAccountSettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-center text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 max-[520px]:w-full"
                 >
                   Support Inbox
                 </Link>
@@ -450,11 +450,11 @@ export default function DataAccountSettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="space-y-4">
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px] max-[480px]:gap-3">
+          <div className="space-y-4 max-[480px]:space-y-3">
             <section
               id="data-request"
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6 max-[480px]:rounded-[24px] max-[480px]:p-4"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -481,7 +481,7 @@ export default function DataAccountSettingsPage() {
                 account questions. The request is saved privately to the Parapost Network admin support inbox.
               </p>
 
-              <form onSubmit={handleSubmitRequest} className="space-y-4">
+              <form onSubmit={handleSubmitRequest} className="space-y-4 max-[480px]:space-y-3">
                 <label className="block">
                   <span className="mb-2 block text-sm font-bold text-slate-100">Request Type</span>
                   <select
@@ -489,7 +489,7 @@ export default function DataAccountSettingsPage() {
                     onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                       setRequestType(event.target.value as RequestType)
                     }
-                    className="w-full rounded-2xl border bg-black/35 px-4 py-3 text-white outline-none"
+                    className="w-full rounded-2xl border bg-black/35 px-4 py-3 text-base text-white outline-none max-[480px]:px-3"
                     style={{ borderColor: "var(--parapost-accent-border)" }}
                   >
                     {requestTypes.map((item) => (
@@ -500,12 +500,12 @@ export default function DataAccountSettingsPage() {
                   </select>
                 </label>
 
-                <p className="rounded-2xl border border-purple-200/15 bg-white/[0.035] px-4 py-3 text-sm text-slate-300">
+                <p className="rounded-2xl border border-purple-200/15 bg-white/[0.035] px-4 py-3 text-sm leading-6 text-slate-300 max-[480px]:px-3">
                   {selectedRequest.helper}
                 </p>
 
                 {isHighImpactRequest ? (
-                  <label className="flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                  <label className="flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100 max-[480px]:p-3">
                     <input
                       type="checkbox"
                       checked={acknowledged}
@@ -527,12 +527,12 @@ export default function DataAccountSettingsPage() {
                     placeholder="Describe what you need help with..."
                     rows={7}
                     maxLength={5000}
-                    className="min-h-[170px] w-full resize-y rounded-2xl border bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35"
+                    className="min-h-[170px] w-full resize-y rounded-2xl border bg-black/35 px-4 py-3 text-base text-white outline-none placeholder:text-white/35 max-[480px]:min-h-[150px] max-[480px]:px-3"
                     style={{ borderColor: "var(--parapost-accent-border)" }}
                   />
                 </label>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 max-[520px]:items-start">
                   <span className="text-xs font-bold text-slate-500">{message.trim().length}/5000</span>
                   <button
                     type="submit"
@@ -564,7 +564,7 @@ export default function DataAccountSettingsPage() {
             </section>
 
             <section
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6 max-[480px]:rounded-[24px] max-[480px]:p-4"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -591,7 +591,7 @@ export default function DataAccountSettingsPage() {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="rounded-2xl border border-purple-200/15 bg-black/25 px-4 py-3 text-sm font-bold text-slate-200"
+                    className="rounded-2xl border border-purple-200/15 bg-black/25 px-4 py-3 text-sm font-bold leading-5 text-slate-200 max-[480px]:px-3"
                   >
                     {item}
                   </div>
@@ -600,7 +600,7 @@ export default function DataAccountSettingsPage() {
             </section>
           </div>
 
-          <aside className="space-y-4">
+          <aside className="space-y-4 max-[480px]:space-y-3">
             {accountDataCards.map((card) => {
               const content = (
                 <section

@@ -222,9 +222,171 @@ export default function FriendRequestsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-white">
-      <div className="mx-auto max-w-5xl px-4 py-6 lg:px-6">
+    <div className="friend-requests-page min-h-screen bg-[#07090d] text-white">
+      <style jsx global>{`
+        .friend-requests-page {
+          min-height: 100svh;
+          min-height: 100dvh;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .friend-requests-inner {
+          padding-bottom: calc(96px + env(safe-area-inset-bottom));
+        }
+
+        .friend-requests-card,
+        .friend-request-card {
+          box-sizing: border-box;
+        }
+
+        .friend-request-actions button,
+        .friend-request-top-actions a,
+        .friend-request-top-actions span {
+          white-space: nowrap;
+        }
+
+        @media (max-width: 640px) {
+          .friend-requests-inner {
+            padding: 14px 10px calc(104px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .friend-requests-card {
+            border-radius: 24px !important;
+            padding: 15px !important;
+          }
+
+          .friend-requests-header {
+            align-items: stretch !important;
+          }
+
+          .friend-requests-header h1 {
+            font-size: 25px !important;
+            letter-spacing: -0.04em !important;
+          }
+
+          .friend-requests-header p {
+            font-size: 13px !important;
+            line-height: 1.5 !important;
+          }
+
+          .friend-request-top-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr auto !important;
+            gap: 8px !important;
+          }
+
+          .friend-request-top-actions a {
+            width: 100% !important;
+            min-height: 40px !important;
+            padding: 0 12px !important;
+            font-size: 13px !important;
+          }
+
+          .friend-request-top-actions span {
+            min-height: 40px !important;
+            padding: 0 12px !important;
+            font-size: 13px !important;
+          }
+
+          .friend-requests-empty {
+            border-radius: 20px !important;
+            padding: 20px 16px !important;
+          }
+
+          .friend-requests-list {
+            gap: 12px !important;
+          }
+
+          .friend-request-card {
+            border-radius: 22px !important;
+            padding: 14px !important;
+          }
+
+          .friend-request-row {
+            align-items: flex-start !important;
+          }
+
+          .friend-request-body {
+            width: 100% !important;
+            align-items: flex-start !important;
+          }
+
+          .friend-request-copy {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
+
+          .friend-request-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 9px !important;
+          }
+
+          .friend-request-actions button {
+            width: 100% !important;
+            min-height: 44px !important;
+            padding: 0 12px !important;
+            font-size: 14px !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .friend-requests-inner {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .friend-requests-card {
+            padding: 12px !important;
+          }
+
+          .friend-request-top-actions {
+            grid-template-columns: 1fr !important;
+          }
+
+          .friend-request-top-actions span {
+            width: 100% !important;
+          }
+
+          .friend-request-actions {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .friend-requests-inner {
+            max-width: 860px !important;
+            padding: 22px 18px calc(110px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .friend-requests-card {
+            padding: 20px !important;
+          }
+        }
+
+        @media (min-width: 1025px) and (max-width: 1366px) {
+          .friend-requests-inner {
+            max-width: 980px !important;
+          }
+        }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+          .friend-requests-inner {
+            padding-top: 10px !important;
+            padding-bottom: 84px !important;
+          }
+
+          .friend-requests-card {
+            border-radius: 22px !important;
+          }
+        }
+      `}</style>
+      <div className="friend-requests-inner mx-auto max-w-5xl px-4 py-6 lg:px-6">
         <div
+          className="friend-requests-card"
           style={{
             background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.04) 100%)",
             borderRadius: "28px",
@@ -235,6 +397,7 @@ export default function FriendRequestsPage() {
           }}
         >
           <div
+            className="friend-requests-header"
             style={{
               display: "flex",
               alignItems: "center",
@@ -251,7 +414,7 @@ export default function FriendRequestsPage() {
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <div className="friend-request-top-actions" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <Link href="/dashboard" style={secondaryLinkStyle}>
                 Back to Dashboard
               </Link>
@@ -280,6 +443,7 @@ export default function FriendRequestsPage() {
             <p style={{ color: "#9ca3af", margin: 0 }}>Loading friend requests...</p>
           ) : requests.length === 0 ? (
             <div
+              className="friend-requests-empty"
               style={{
                 border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: "24px",
@@ -293,7 +457,7 @@ export default function FriendRequestsPage() {
               </p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div className="friend-requests-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               {requests.map((request) => {
                 const sender = request.senderProfile;
                 const label = sender?.full_name || sender?.username || "Unnamed User";
@@ -303,6 +467,7 @@ export default function FriendRequestsPage() {
                 return (
                   <div
                     key={request.id}
+                    className="friend-request-card"
                     style={{
                       background: "linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.035) 100%)",
                       border: "1px solid rgba(255,255,255,0.12)",
@@ -312,6 +477,7 @@ export default function FriendRequestsPage() {
                     }}
                   >
                     <div
+                      className="friend-request-row"
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -321,6 +487,7 @@ export default function FriendRequestsPage() {
                       }}
                     >
                       <div
+                        className="friend-request-body"
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -390,7 +557,7 @@ export default function FriendRequestsPage() {
                           )}
                         </Link>
 
-                        <div style={{ minWidth: 0 }}>
+                        <div className="friend-request-copy" style={{ minWidth: 0 }}>
                           <Link
                             href={`/profile/${request.sender_id}`}
                             style={{
@@ -415,7 +582,7 @@ export default function FriendRequestsPage() {
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      <div className="friend-request-actions" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                         <button
                           type="button"
                           onClick={() => handleDecline(request)}

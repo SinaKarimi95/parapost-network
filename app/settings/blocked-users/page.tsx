@@ -218,7 +218,7 @@ export default function BlockedUsersSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="blocked-users-settings-page h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white sm:px-6 sm:py-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -233,7 +233,7 @@ export default function BlockedUsersSettingsPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
           <div className="flex flex-wrap items-center gap-3">
             <BackToPrevious label="← Back to Privacy & Safety" fallbackHref="/settings/privacy-safety" />
 
@@ -255,7 +255,7 @@ export default function BlockedUsersSettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+        <section className="mb-4 rounded-[26px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:mb-5 sm:rounded-[30px] sm:p-7"
           style={{
             borderColor: "var(--parapost-accent-border)",
             background:
@@ -267,7 +267,7 @@ export default function BlockedUsersSettingsPage() {
             Blocked Users
           </p>
 
-          <h1 className="max-w-4xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-4xl text-[2.05rem] font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
             Manage who you have blocked on Parapost Network.
           </h1>
 
@@ -278,7 +278,7 @@ export default function BlockedUsersSettingsPage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <span
-              className="rounded-full px-5 py-3 text-sm font-black shadow-lg"
+              className="inline-flex w-full justify-center rounded-full px-5 py-3 text-sm font-black shadow-lg sm:w-auto"
               style={{
                 background:
                   "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -291,7 +291,7 @@ export default function BlockedUsersSettingsPage() {
 
             <Link
               href="/settings/privacy-safety"
-              className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+              className="inline-flex w-full justify-center rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
               style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
             >
               Privacy & Safety
@@ -313,14 +313,14 @@ export default function BlockedUsersSettingsPage() {
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div
-            className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
                 "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.55))",
             }}
           >
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
               <div>
                 <p
                   className="mb-2 text-xs font-black uppercase tracking-[0.18em]"
@@ -348,7 +348,7 @@ export default function BlockedUsersSettingsPage() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search blocked users..."
-              className="mb-5 h-12 w-full rounded-2xl border bg-black/35 px-4 text-sm font-bold text-white outline-none placeholder:text-white/35"
+              className="mb-4 h-12 w-full rounded-2xl border bg-black/35 px-4 text-sm font-bold text-white outline-none placeholder:text-white/35 sm:mb-5"
               style={{ borderColor: "var(--parapost-accent-border)" }}
             />
 
@@ -378,7 +378,7 @@ export default function BlockedUsersSettingsPage() {
                   return (
                     <article
                       key={item.blockId}
-                      className="rounded-[24px] border p-4"
+                      className="rounded-[22px] border p-4 sm:rounded-[24px]"
                       style={{
                         borderColor: "var(--parapost-accent-border)",
                         background:
@@ -386,7 +386,7 @@ export default function BlockedUsersSettingsPage() {
                       }}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="flex min-w-0 gap-3">
+                        <div className="flex w-full min-w-0 gap-3 sm:w-auto">
                           <Link
                             href={`/profile/${item.blockedId}`}
                             className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full text-xl font-black no-underline"
@@ -427,7 +427,7 @@ export default function BlockedUsersSettingsPage() {
                           type="button"
                           onClick={() => handleUnblock(item)}
                           disabled={isBusy}
-                          className="rounded-full border border-red-300/25 bg-red-400/10 px-4 py-2.5 text-sm font-black text-red-100 transition hover:bg-red-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded-full border border-red-300/25 bg-red-400/10 px-4 py-2.5 text-sm font-black text-red-100 transition hover:bg-red-400/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                         >
                           {isBusy ? "Unblocking..." : "Unblock"}
                         </button>
@@ -441,7 +441,7 @@ export default function BlockedUsersSettingsPage() {
 
           <aside className="space-y-4">
             <section
-              className="rounded-[26px] border p-5 shadow-xl"
+              className="rounded-[24px] border p-4 shadow-xl sm:rounded-[26px] sm:p-5"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:

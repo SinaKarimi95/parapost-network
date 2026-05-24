@@ -152,7 +152,163 @@ export default function PaymentsSettingsPage() {
   }, []);
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="payments-page-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
+      <style jsx global>{`
+        .payments-page-root,
+        .payments-page-root * {
+          box-sizing: border-box;
+        }
+
+        .payments-page-inner {
+          width: min(100%, 1180px);
+        }
+
+        .payments-hero-card,
+        .payments-user-card,
+        .payments-main-card,
+        .payments-safety-card,
+        .payments-side-card {
+          min-width: 0;
+        }
+
+        .payments-hero-actions > a,
+        .payments-hero-actions > span {
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        @media (max-width: 430px) {
+          .payments-page-root {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-top: max(14px, env(safe-area-inset-top)) !important;
+          }
+
+          .payments-back-row {
+            align-items: flex-start !important;
+          }
+
+          .payments-page-pill {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+            letter-spacing: 0.12em !important;
+          }
+
+          .payments-hero-card,
+          .payments-user-card,
+          .payments-main-card,
+          .payments-safety-card,
+          .payments-side-card {
+            border-radius: 24px !important;
+            padding: 16px !important;
+          }
+
+          .payments-hero-card h1 {
+            font-size: clamp(32px, 12vw, 42px) !important;
+            line-height: 0.98 !important;
+            letter-spacing: -0.05em !important;
+          }
+
+          .payments-hero-card p {
+            font-size: 14px !important;
+            line-height: 1.65 !important;
+          }
+
+          .payments-hero-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          .payments-hero-actions > a,
+          .payments-hero-actions > span {
+            width: 100% !important;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+          }
+
+          .payments-area-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .payments-main-card h2,
+          .payments-safety-card h2 {
+            font-size: 24px !important;
+            line-height: 1.08 !important;
+          }
+
+          .payments-user-row {
+            align-items: flex-start !important;
+          }
+        }
+
+        @media (min-width: 431px) and (max-width: 767px) {
+          .payments-hero-actions > a,
+          .payments-hero-actions > span {
+            flex: 1 1 calc(50% - 8px) !important;
+          }
+
+          .payments-area-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (min-width: 768px) and (max-width: 1180px) {
+          .payments-page-root {
+            padding-left: clamp(18px, 3vw, 34px) !important;
+            padding-right: clamp(18px, 3vw, 34px) !important;
+          }
+
+          .payments-hero-grid,
+          .payments-content-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .payments-user-card,
+          .payments-side-rail {
+            max-width: 760px !important;
+            width: 100% !important;
+          }
+
+          .payments-area-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+
+        @media (min-width: 1181px) and (max-width: 1366px) {
+          .payments-page-inner {
+            max-width: 1120px !important;
+          }
+
+          .payments-hero-grid {
+            grid-template-columns: minmax(0, 1fr) 320px !important;
+          }
+
+          .payments-content-grid {
+            grid-template-columns: minmax(0, 1fr) 360px !important;
+          }
+        }
+
+        @media (max-height: 620px) and (max-width: 980px) {
+          .payments-page-root {
+            padding-top: 12px !important;
+            padding-bottom: calc(6.25rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .payments-hero-card,
+          .payments-user-card,
+          .payments-main-card,
+          .payments-safety-card,
+          .payments-side-card {
+            padding: 14px !important;
+          }
+        }
+      `}</style>
+
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -166,12 +322,12 @@ export default function PaymentsSettingsPage() {
         style={{ background: "var(--parapost-accent-soft)" }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="payments-page-inner relative z-10 mx-auto w-full max-w-6xl">
+        <div className="payments-back-row mb-5 flex flex-wrap items-center justify-between gap-3">
           <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            className="payments-page-pill rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background: "var(--parapost-accent-muted-bg)",
@@ -183,9 +339,9 @@ export default function PaymentsSettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="payments-hero-grid mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="payments-hero-card rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -208,7 +364,7 @@ export default function PaymentsSettingsPage() {
               Payments are not live yet on Parapost Network. This page gives users a clear place to understand upcoming promoted posts, sponsored content, creator tools, billing history, and payment support before those features are available.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="payments-hero-actions mt-6 flex flex-wrap gap-3">
               <span
                 className="rounded-full px-5 py-3 text-sm font-black shadow-lg"
                 style={{
@@ -249,7 +405,7 @@ export default function PaymentsSettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="payments-user-card rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -257,7 +413,7 @@ export default function PaymentsSettingsPage() {
               boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
             }}
           >
-            <div className="flex items-center gap-4">
+            <div className="payments-user-row flex items-center gap-4">
               <div
                 className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
                 style={{
@@ -295,10 +451,10 @@ export default function PaymentsSettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="space-y-4">
+        <section className="payments-content-grid grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
+          <div className="payments-side-rail space-y-4">
             <section
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="payments-main-card rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -328,7 +484,7 @@ export default function PaymentsSettingsPage() {
                 </span>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="payments-area-grid grid gap-3 sm:grid-cols-2">
                 {paymentAreas.map((area) => (
                   <article key={area.title} className="rounded-[24px] border border-white/10 bg-black/25 p-4">
                     <span
@@ -360,7 +516,7 @@ export default function PaymentsSettingsPage() {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-amber-300/20 bg-amber-400/10 p-5 shadow-2xl shadow-amber-950/10 sm:p-6">
+            <section className="payments-safety-card rounded-[28px] border border-amber-300/20 bg-amber-400/10 p-5 shadow-2xl shadow-amber-950/10 sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-amber-100">
                 Payment Safety
               </p>
@@ -381,7 +537,7 @@ export default function PaymentsSettingsPage() {
           <aside className="space-y-4">
             <Link href="/settings/account" className="block text-white no-underline">
               <section
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                className="payments-side-card rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background:
@@ -412,7 +568,7 @@ export default function PaymentsSettingsPage() {
 
             <Link href="/settings/data" className="block text-white no-underline">
               <section
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                className="payments-side-card rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background:
@@ -443,7 +599,7 @@ export default function PaymentsSettingsPage() {
 
             <Link href="/settings/help-support" className="block text-white no-underline">
               <section
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                className="payments-side-card rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background:
@@ -474,7 +630,7 @@ export default function PaymentsSettingsPage() {
 
             <Link href="/settings" className="block text-white no-underline">
               <section
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                className="payments-side-card rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background:

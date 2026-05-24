@@ -376,14 +376,181 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <main style={pageStyle}>
+    <main className="notifications-page-root" style={pageStyle}>
       <div style={glowOneStyle} />
       <div style={glowTwoStyle} />
       <div style={glowThreeStyle} />
 
-      <div style={pageInnerStyle}>
-        <section style={heroStyle}>
-          <div style={topBarStyle}>
+      <style jsx global>{`
+        .notifications-page-root {
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
+        }
+
+        .notifications-filter-scroller {
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .notifications-filter-scroller::-webkit-scrollbar {
+          display: none;
+        }
+
+        .notifications-card,
+        .notifications-main-button,
+        .notifications-delete-button,
+        .notifications-filter-button {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+
+        @media (max-width: 760px) {
+          .notifications-page-root {
+            min-height: 100svh !important;
+            min-height: 100dvh !important;
+            height: auto !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+          }
+
+          .notifications-page-inner {
+            max-width: none !important;
+            padding: max(14px, env(safe-area-inset-top)) 10px calc(118px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .notifications-hero {
+            border-radius: 24px !important;
+            padding: 14px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .notifications-topbar {
+            align-items: flex-start !important;
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .notifications-pill {
+            margin-left: auto !important;
+            font-size: 10px !important;
+            letter-spacing: 0.10em !important;
+            padding: 8px 10px !important;
+          }
+
+          .notifications-summary-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .notifications-actions-row {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+
+          .notifications-filter-scroller {
+            display: flex !important;
+            overflow-x: auto !important;
+            gap: 8px !important;
+            padding: 2px 2px 8px !important;
+            margin-left: -2px !important;
+            margin-right: -2px !important;
+          }
+
+          .notifications-filter-button {
+            flex: 0 0 auto !important;
+            min-width: 112px !important;
+            width: auto !important;
+            min-height: 38px !important;
+          }
+
+          .notifications-content-shell {
+            border-radius: 24px !important;
+            padding: 10px !important;
+          }
+
+          .notifications-card {
+            grid-template-columns: 1fr !important;
+            align-items: stretch !important;
+            border-radius: 20px !important;
+            gap: 10px !important;
+          }
+
+          .notifications-main-button {
+            width: 100% !important;
+            grid-template-columns: 46px minmax(0, 1fr) !important;
+            gap: 10px !important;
+          }
+
+          .notifications-avatar {
+            width: 46px !important;
+            height: 46px !important;
+            min-width: 46px !important;
+          }
+
+          .notifications-delete-button {
+            width: 100% !important;
+            min-height: 40px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .notifications-page-inner {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .notifications-summary-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .notifications-main-button {
+            grid-template-columns: 42px minmax(0, 1fr) !important;
+          }
+
+          .notifications-avatar {
+            width: 42px !important;
+            height: 42px !important;
+            min-width: 42px !important;
+          }
+        }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+          .notifications-page-inner {
+            padding-top: 10px !important;
+            padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .notifications-hero {
+            padding: 12px !important;
+          }
+
+          .notifications-summary-grid,
+          .notifications-actions-row {
+            gap: 8px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .notifications-page-inner {
+            max-width: 980px !important;
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+            padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .notifications-card {
+            border-radius: 22px !important;
+          }
+        }
+      `}</style>
+
+      <div className="notifications-page-inner" style={pageInnerStyle}>
+        <section className="notifications-hero" style={heroStyle}>
+          <div className="notifications-topbar" style={topBarStyle}>
             <div style={topBarLeftStyle}>
               <BackToPrevious label="Back" fallbackHref="/dashboard" />
               <Link href="/dashboard" style={topBarLinkStyle}>
@@ -391,7 +558,7 @@ export default function NotificationsPage() {
               </Link>
             </div>
 
-            <span style={settingsPillStyle}>Notifications</span>
+            <span className="notifications-pill" style={settingsPillStyle}>Notifications</span>
           </div>
 
           <div style={heroGridStyle}>
@@ -403,7 +570,7 @@ export default function NotificationsPage() {
               </p>
             </div>
 
-            <div style={summaryGridStyle}>
+            <div className="notifications-summary-grid" style={summaryGridStyle}>
               <div style={summaryCardStyle}>
                 <span style={summaryLabelStyle}>Total</span>
                 <strong style={summaryValueStyle}>{notifications.length}</strong>
@@ -421,7 +588,7 @@ export default function NotificationsPage() {
             </div>
           </div>
 
-          <div style={heroActionsRowStyle}>
+          <div className="notifications-actions-row" style={heroActionsRowStyle}>
             <button
               type="button"
               onClick={handleMarkAllRead}
@@ -444,7 +611,7 @@ export default function NotificationsPage() {
             </Link>
           </div>
 
-          <div style={filterScrollerStyle} aria-label="Notification filters">
+          <div className="notifications-filter-scroller" style={filterScrollerStyle} aria-label="Notification filters">
             {filterButtons.map((filter) => {
               const isActive = activeFilter === filter.key;
 
@@ -453,6 +620,7 @@ export default function NotificationsPage() {
                   key={filter.key}
                   type="button"
                   onClick={() => setActiveFilter(filter.key)}
+                  className="notifications-filter-button"
                   style={{
                     ...filterButtonStyle,
                     ...(isActive ? activeFilterButtonStyle : {}),
@@ -473,7 +641,7 @@ export default function NotificationsPage() {
           </div>
         ) : null}
 
-        <section style={contentShellStyle}>
+        <section className="notifications-content-shell" style={contentShellStyle}>
           {loading ? (
             <div style={emptyStateStyle}>
               <div style={emptyIconStyle}>N</div>
@@ -504,6 +672,7 @@ export default function NotificationsPage() {
                 return (
                   <article
                     key={notification.id}
+                    className="notifications-card"
                     style={{
                       ...notificationCardStyle,
                       ...(isUnread ? unreadCardStyle : {}),
@@ -512,9 +681,10 @@ export default function NotificationsPage() {
                     <button
                       type="button"
                       onClick={() => handleOpenNotification(notification)}
+                      className="notifications-main-button"
                       style={notificationMainButtonStyle}
                     >
-                      <div style={avatarShellStyle}>
+                      <div className="notifications-avatar" style={avatarShellStyle}>
                         {notification.actor?.avatar_url ? (
                           <img src={notification.actor.avatar_url} alt="" style={avatarImageStyle} />
                         ) : (
@@ -554,6 +724,7 @@ export default function NotificationsPage() {
                         cursor: isBusy ? "not-allowed" : "pointer",
                       }}
                       aria-label="Delete notification"
+                      className="notifications-delete-button"
                     >
                       {isBusy ? "..." : "Delete"}
                     </button>
@@ -622,7 +793,7 @@ const pageInnerStyle: CSSProperties = {
   width: "100%",
   maxWidth: "1180px",
   margin: "0 auto",
-  padding: "max(18px, env(safe-area-inset-top)) 12px calc(38px + env(safe-area-inset-bottom))",
+  padding: "max(18px, env(safe-area-inset-top)) 12px calc(112px + env(safe-area-inset-bottom))",
 };
 
 const heroStyle: CSSProperties = {

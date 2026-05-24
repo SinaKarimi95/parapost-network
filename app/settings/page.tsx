@@ -386,13 +386,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="settings-page-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
       <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/25 blur-3xl" />
       <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-indigo-500/12 blur-3xl" />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="settings-page-container relative z-10 mx-auto w-full max-w-6xl">
+        <div className="settings-topbar mb-5 flex flex-wrap items-center justify-between gap-3">
           <BackToPrevious label="← Back" fallbackHref="/dashboard" />
 
           <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
@@ -400,35 +400,35 @@ export default function SettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/14 via-white/[0.065] to-slate-950/70 p-5 shadow-2xl shadow-purple-950/20 ring-1 ring-white/[0.035] sm:p-7">
+        <section className="settings-hero-grid mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="settings-hero-card rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/14 via-white/[0.065] to-slate-950/70 p-5 shadow-2xl shadow-purple-950/20 ring-1 ring-white/[0.035] sm:p-7">
             <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
               Parapost Network Settings
             </p>
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="settings-main-title max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Manage your account, privacy, safety, and support.
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
               Use this settings center to manage your Parapost Network account, profile, privacy, safety, support, personalization, notifications, data requests, legal policies, and coming-soon payment tools.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="settings-quick-actions mt-6 flex flex-wrap gap-3">
               <a
                 href="#support"
-                className="rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110"
+                className="settings-action-button rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110"
               >
                 Contact Support
               </a>
               <Link
                 href="/settings/privacy-safety"
-                className="rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15"
+                className="settings-action-button rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15"
               >
                 Privacy & Safety
               </Link>
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="settings-action-button rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
                 >
                   Support Inbox
                 </Link>
@@ -436,7 +436,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <aside className="rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035]">
+          <aside className="settings-user-card rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035]">
             <div className="flex items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
                 {currentProfile?.avatar_url ? (
@@ -472,9 +472,9 @@ export default function SettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="settings-content-grid grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
-            <section id="support" className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
+            <section id="support" className="settings-panel rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">Support</p>
@@ -549,7 +549,7 @@ export default function SettingsPage() {
               </form>
             </section>
 
-            <section id="delete-account" className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
+            <section id="delete-account" className="settings-panel rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
@@ -608,7 +608,7 @@ export default function SettingsPage() {
               </form>
             </section>
 
-            <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
+            <section className="settings-panel rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 About Parapost Network
               </p>
@@ -622,10 +622,10 @@ export default function SettingsPage() {
             </section>
           </div>
 
-          <aside className="space-y-4">
+          <aside className="settings-side-nav space-y-4">
             {canSeeAdminSupport ? (
               <Link href="/admin/support" className="block text-white no-underline">
-                <section className="rounded-[26px] border border-emerald-300/20 bg-emerald-400/10 p-5 shadow-xl transition hover:bg-emerald-400/15">
+                <section className="settings-nav-card rounded-[26px] border border-emerald-300/20 bg-emerald-400/10 p-5 shadow-xl transition hover:bg-emerald-400/15">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
                       Admin
@@ -657,7 +657,7 @@ export default function SettingsPage() {
             {SETTINGS_CARDS.map((card) => {
               const content = (
                 <section
-                  className={`rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-xl ${
+                  className={`settings-nav-card rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-xl ${
                     card.active ? "" : "opacity-65"
                   }`}
                 >
@@ -705,6 +705,134 @@ export default function SettingsPage() {
           </aside>
         </section>
       </div>
+
+      <style jsx global>{`
+        .settings-page-root {
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
+        }
+
+        .settings-action-button,
+        .settings-side-nav a,
+        .settings-panel button,
+        .settings-panel select,
+        .settings-panel textarea {
+          touch-action: manipulation;
+        }
+
+        @media (max-width: 1120px) {
+          .settings-hero-grid,
+          .settings-content-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .settings-page-container {
+            max-width: 900px !important;
+          }
+        }
+
+        @media (min-width: 1121px) and (max-width: 1366px) {
+          .settings-page-container {
+            max-width: 1080px !important;
+          }
+
+          .settings-content-grid {
+            grid-template-columns: minmax(0, 1fr) 340px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .settings-page-root {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-top: 18px !important;
+            padding-bottom: calc(8.75rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .settings-topbar {
+            align-items: flex-start !important;
+          }
+
+          .settings-topbar > span {
+            width: 100% !important;
+            text-align: center !important;
+          }
+
+          .settings-hero-card,
+          .settings-user-card,
+          .settings-panel,
+          .settings-nav-card {
+            border-radius: 22px !important;
+            padding: 16px !important;
+          }
+
+          .settings-main-title {
+            font-size: clamp(2.15rem, 12vw, 3rem) !important;
+            line-height: 0.96 !important;
+          }
+
+          .settings-quick-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          .settings-action-button {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+          }
+
+          .settings-panel textarea {
+            min-height: 132px !important;
+          }
+
+          .settings-panel select,
+          .settings-panel textarea {
+            font-size: 16px !important;
+          }
+
+          .settings-side-nav {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .settings-page-root {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+          }
+
+          .settings-hero-card,
+          .settings-user-card,
+          .settings-panel,
+          .settings-nav-card {
+            border-radius: 20px !important;
+            padding: 14px !important;
+          }
+
+          .settings-main-title {
+            font-size: clamp(1.95rem, 11.5vw, 2.45rem) !important;
+          }
+        }
+
+        @media (max-width: 760px) and (max-height: 720px) {
+          .settings-page-root {
+            padding-top: 14px !important;
+            padding-bottom: calc(7.5rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .settings-hero-card,
+          .settings-user-card,
+          .settings-panel,
+          .settings-nav-card {
+            padding: 14px !important;
+          }
+        }
+      `}</style>
+
     </main>
   );
 }

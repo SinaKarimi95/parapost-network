@@ -200,6 +200,8 @@ const scrollContainerStyle: CSSProperties = {
   scrollSnapType: "y mandatory",
   scrollBehavior: "smooth",
   WebkitOverflowScrolling: "touch",
+  overscrollBehaviorY: "contain",
+  touchAction: "pan-y",
 };
 
 const sectionStyle: CSSProperties = {
@@ -495,6 +497,7 @@ export default function ReelsPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editCaption, setEditCaption] = useState("");
   const [viewportWidth, setViewportWidth] = useState(1440);
+  const [viewportHeight, setViewportHeight] = useState(900);
   const [holdPausedId, setHoldPausedId] = useState<string | null>(null);
   const [heartBurstId, setHeartBurstId] = useState<string | null>(null);
   const [playPauseFeedback, setPlayPauseFeedback] = useState<PlayPauseFeedback>(null);
@@ -863,10 +866,19 @@ export default function ReelsPage() {
   }, [currentUserId]);
 
   useEffect(() => {
-    const setWidth = () => setViewportWidth(window.innerWidth);
-    setWidth();
-    window.addEventListener("resize", setWidth);
-    return () => window.removeEventListener("resize", setWidth);
+    const setViewportSize = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
+
+    setViewportSize();
+    window.addEventListener("resize", setViewportSize);
+    window.addEventListener("orientationchange", setViewportSize);
+
+    return () => {
+      window.removeEventListener("resize", setViewportSize);
+      window.removeEventListener("orientationchange", setViewportSize);
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -968,6 +980,12 @@ export default function ReelsPage() {
   const viewportType = getViewportType(viewportWidth);
 
   const stageMetrics = useMemo(() => {
+    const isTinyPhone = viewportWidth <= 380;
+    const isSmallPhone = viewportWidth <= 430;
+    const isShortScreen = viewportHeight <= 700;
+    const isLandscapePhone = viewportType === "mobile" && viewportWidth > viewportHeight;
+    const isNotebook = viewportWidth > 1024 && viewportWidth <= 1366;
+
     if (viewportType === "mobile") {
       return {
         stageWidth: "100vw",
@@ -975,54 +993,71 @@ export default function ReelsPage() {
         borderRadius: 0,
         showDesktopArrows: false,
         outerPadding: 0,
-        actionRight: 12,
-        textLeft: 12,
-        textRight: 80,
-        bottomOffset: 86,
+        actionRight: isTinyPhone ? 7 : 10,
+        textLeft: isTinyPhone ? 10 : 12,
+        textRight: isTinyPhone ? 68 : 78,
+        bottomOffset: isLandscapePhone ? 54 : isShortScreen ? 68 : 88,
         topOffset: 0,
-        titleSize: 20,
-        captionSize: 14,
-        captionLines: 2,
-        topHeaderPad: 16,
+        titleSize: isTinyPhone ? 18 : 20,
+        captionSize: isTinyPhone ? 13 : 14,
+        captionLines: isShortScreen || isLandscapePhone ? 1 : 2,
+        topHeaderPad: isLandscapePhone ? 8 : 12,
+        actionButtonSize: isTinyPhone ? 42 : isSmallPhone ? 44 : 48,
+        actionSymbolSize: isTinyPhone ? 16 : 18,
+        actionGap: isShortScreen || isLandscapePhone ? 7 : 9,
+        actionLabelSize: isTinyPhone ? 10 : 11,
+        actionLabelMaxWidth: isTinyPhone ? 48 : 58,
       };
     }
 
     if (viewportType === "tablet") {
+      const isNarrowTablet = viewportWidth <= 820;
+
       return {
-        stageWidth: "min(74vw, 560px)",
-        stageHeight: "min(89vh, 960px)",
+        stageWidth: isNarrowTablet ? "min(88vw, 560px)" : "min(72vw, 620px)",
+        stageHeight: "min(88dvh, 960px)",
         borderRadius: 30,
         showDesktopArrows: false,
-        outerPadding: 18,
+        outerPadding: isNarrowTablet ? 14 : 20,
         actionRight: 14,
-        textLeft: 16,
-        textRight: 86,
-        bottomOffset: 18,
+        textLeft: 18,
+        textRight: 90,
+        bottomOffset: 22,
         topOffset: 8,
         titleSize: 24,
         captionSize: 15,
         captionLines: 3,
-        topHeaderPad: 16,
+        topHeaderPad: 14,
+        actionButtonSize: 50,
+        actionSymbolSize: 19,
+        actionGap: 10,
+        actionLabelSize: 12,
+        actionLabelMaxWidth: 64,
       };
     }
 
     return {
-      stageWidth: "min(34vw, 540px)",
-      stageHeight: "min(90vh, 980px)",
+      stageWidth: isNotebook ? "min(42vw, 560px)" : "min(34vw, 540px)",
+      stageHeight: "min(90dvh, 980px)",
       borderRadius: 32,
       showDesktopArrows: true,
-      outerPadding: 24,
+      outerPadding: isNotebook ? 20 : 24,
       actionRight: 12,
       textLeft: 18,
-      textRight: 82,
+      textRight: 84,
       bottomOffset: 16,
       topOffset: 8,
       titleSize: 22,
       captionSize: 14,
       captionLines: 3,
       topHeaderPad: 12,
+      actionButtonSize: 52,
+      actionSymbolSize: 19,
+      actionGap: 10,
+      actionLabelSize: 12,
+      actionLabelMaxWidth: 64,
     };
-  }, [viewportType]);
+  }, [viewportType, viewportWidth, viewportHeight]);
 
   const activeReel = useMemo(() => {
     return reels.find((reel) => reel.id === activeReelId) || reels[0];
@@ -1929,14 +1964,26 @@ export default function ReelsPage() {
   return (
     <div style={pageStyle}>
       <div style={topBarStyle}>
-        <div style={topBarInnerStyle}>
+        <div
+          style={{
+            ...topBarInnerStyle,
+            ...(viewportType === "mobile"
+              ? {
+                  gap: "8px",
+                  flexWrap: "nowrap",
+                  alignItems: "flex-start",
+                }
+              : {}),
+          }}
+        >
           <div style={{ paddingTop: `${stageMetrics.topHeaderPad}px` }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "26px",
+                fontSize: viewportType === "mobile" ? "18px" : viewportType === "tablet" ? "23px" : "26px",
                 lineHeight: 1.05,
                 textShadow: "0 2px 12px rgba(0,0,0,0.45)",
+                whiteSpace: "nowrap",
               }}
             >
               Parapost Reels
@@ -1946,21 +1993,32 @@ export default function ReelsPage() {
           <div
             style={{
               display: "flex",
-              gap: "10px",
-              flexWrap: "wrap",
+              gap: viewportType === "mobile" ? "6px" : "10px",
+              flexWrap: viewportType === "mobile" ? "nowrap" : "wrap",
               paddingTop: `${stageMetrics.topHeaderPad}px`,
+              justifyContent: "flex-end",
+              minWidth: 0,
             }}
           >
-            <button onClick={() => setIsUploadModalOpen(true)} style={buttonStyle}>
-              + Create Reel
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              style={viewportType === "mobile" ? { ...buttonStyle, padding: "8px 10px", fontSize: "12px", minHeight: "36px" } : buttonStyle}
+            >
+              {viewportType === "mobile" ? "+ Reel" : "+ Create Reel"}
             </button>
 
-            <button onClick={() => setMuteAll((prev) => !prev)} style={buttonStyle}>
+            <button
+              onClick={() => setMuteAll((prev) => !prev)}
+              style={viewportType === "mobile" ? { ...buttonStyle, padding: "8px 10px", fontSize: "12px", minHeight: "36px" } : buttonStyle}
+            >
               {muteAll ? "Unmute" : "Mute"}
             </button>
 
-            <Link href="/dashboard" style={navLinkStyle}>
-              Back to Dashboard
+            <Link
+              href="/dashboard"
+              style={viewportType === "mobile" ? { ...navLinkStyle, padding: "8px 10px", fontSize: "12px", minHeight: "36px" } : navLinkStyle}
+            >
+              {viewportType === "mobile" ? "Dashboard" : "Back to Dashboard"}
             </Link>
           </div>
         </div>
@@ -2382,7 +2440,7 @@ export default function ReelsPage() {
                       zIndex: 7,
                       display: "flex",
                       flexDirection: "column",
-                      gap: "10px",
+                      gap: `${stageMetrics.actionGap}px`,
                       alignItems: "center",
                       opacity: isOverlayedReel ? 0.12 : 1,
                       pointerEvents: isOverlayedReel ? "none" : "auto",
@@ -2413,8 +2471,8 @@ export default function ReelsPage() {
                             item.action();
                           }}
                           style={{
-                            width: viewportType === "mobile" ? "48px" : "52px",
-                            height: viewportType === "mobile" ? "48px" : "52px",
+                            width: `${stageMetrics.actionButtonSize}px`,
+                            height: `${stageMetrics.actionButtonSize}px`,
                             borderRadius: "50%",
                             border: "1px solid rgba(255,255,255,0.16)",
                             background: "rgba(0,0,0,0.34)",
@@ -2423,7 +2481,7 @@ export default function ReelsPage() {
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
-                            fontSize: viewportType === "mobile" ? "18px" : "19px",
+                            fontSize: `${stageMetrics.actionSymbolSize}px`,
                             backdropFilter: "blur(12px)",
                             boxShadow: "0 8px 18px rgba(0,0,0,0.38)",
                           }}
@@ -2433,11 +2491,11 @@ export default function ReelsPage() {
 
                         <div
                           style={{
-                            fontSize: "12px",
+                            fontSize: `${stageMetrics.actionLabelSize}px`,
                             fontWeight: 700,
                             color: "#f3f4f6",
                             textAlign: "center",
-                            maxWidth: "64px",
+                            maxWidth: `${stageMetrics.actionLabelMaxWidth}px`,
                             lineHeight: 1.1,
                             textShadow: "0 2px 10px rgba(0,0,0,0.45)",
                           }}
@@ -2885,7 +2943,7 @@ export default function ReelsPage() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    maxHeight: viewportType === "tablet" ? "72vh" : "78vh",
+                    maxHeight: viewportType === "tablet" ? "76dvh" : "82dvh",
                     borderTop: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "28px 28px 0 0",
                   }),
@@ -3031,8 +3089,31 @@ export default function ReelsPage() {
       {shareOpen && activeReel && (
         <>
           <div style={overlayStyle} onClick={() => setShareOpen(false)} />
-          <div style={modalWrapStyle}>
-            <div style={modalCardStyle}>
+          <div
+            style={{
+              ...modalWrapStyle,
+              ...(viewportType !== "desktop"
+                ? {
+                    alignItems: "flex-end",
+                    padding: "12px 12px calc(20px + env(safe-area-inset-bottom))",
+                  }
+                : {}),
+            }}
+          >
+            <div
+              style={{
+                ...modalCardStyle,
+                ...(viewportType !== "desktop"
+                  ? {
+                      maxHeight: "calc(100dvh - 32px)",
+                      overflowY: "auto",
+                      WebkitOverflowScrolling: "touch",
+                      borderRadius: "26px 26px 0 0",
+                      padding: viewportType === "mobile" ? "16px" : "18px",
+                    }
+                  : {}),
+              }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -3074,7 +3155,7 @@ export default function ReelsPage() {
                     controls
                     style={{
                       width: "100%",
-                      height: "260px",
+                      height: viewportType === "mobile" ? "190px" : viewportType === "tablet" ? "230px" : "260px",
                       objectFit: "cover",
                       display: "block",
                     }}
@@ -3091,7 +3172,7 @@ export default function ReelsPage() {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
+                    justifyContent: viewportType === "mobile" ? "stretch" : "space-between",
                     gap: "10px",
                     flexWrap: "wrap",
                   }}
@@ -3118,8 +3199,31 @@ export default function ReelsPage() {
               setEditingReelId(null);
             }}
           />
-          <div style={modalWrapStyle}>
-            <div style={modalCardStyle}>
+          <div
+            style={{
+              ...modalWrapStyle,
+              ...(viewportType !== "desktop"
+                ? {
+                    alignItems: "flex-end",
+                    padding: "12px 12px calc(20px + env(safe-area-inset-bottom))",
+                  }
+                : {}),
+            }}
+          >
+            <div
+              style={{
+                ...modalCardStyle,
+                ...(viewportType !== "desktop"
+                  ? {
+                      maxHeight: "calc(100dvh - 32px)",
+                      overflowY: "auto",
+                      WebkitOverflowScrolling: "touch",
+                      borderRadius: "26px 26px 0 0",
+                      padding: viewportType === "mobile" ? "16px" : "18px",
+                    }
+                  : {}),
+              }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -3180,7 +3284,7 @@ export default function ReelsPage() {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
+                    justifyContent: viewportType === "mobile" ? "stretch" : "space-between",
                     gap: "10px",
                     flexWrap: "wrap",
                   }}
@@ -3205,6 +3309,19 @@ export default function ReelsPage() {
       )}
 
       <style jsx global>{`
+        @media (max-width: 767px) {
+          .parapost-reels-modal-action-row button,
+          .parapost-reels-modal-action-row a {
+            flex: 1 1 100%;
+          }
+        }
+
+        @media (max-height: 700px) and (orientation: landscape) {
+          body {
+            overscroll-behavior-y: contain;
+          }
+        }
+
         @keyframes parapostPlayPausePop {
           0% {
             opacity: 0;

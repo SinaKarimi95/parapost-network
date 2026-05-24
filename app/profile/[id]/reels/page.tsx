@@ -176,6 +176,7 @@ export default function ProfileReelsGridPage() {
 
   return (
     <div
+      className="profile-reels-grid-page"
       style={{
         minHeight: "100vh",
         background:
@@ -185,6 +186,7 @@ export default function ProfileReelsGridPage() {
       }}
     >
       <div
+        className="profile-reels-shell"
         style={{
           width: "100%",
           maxWidth: "980px",
@@ -206,6 +208,7 @@ export default function ProfileReelsGridPage() {
           }}
         >
           <div
+            className="profile-reels-header-row"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -214,7 +217,7 @@ export default function ProfileReelsGridPage() {
               alignItems: "center",
             }}
           >
-            <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: "14px" }}>
+            <div className="profile-reels-title-cluster" style={{ minWidth: 0, display: "flex", alignItems: "center", gap: "14px" }}>
               <div style={avatarStyle}>
                 {profile?.avatar_url ? (
                   <img
@@ -278,6 +281,7 @@ export default function ProfileReelsGridPage() {
             </div>
 
             <div
+              className="profile-reels-header-actions"
               style={{
                 display: "flex",
                 gap: "10px",
@@ -320,6 +324,7 @@ export default function ProfileReelsGridPage() {
         ) : (
           <>
             <div
+              className="profile-reels-count-row"
               style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -330,6 +335,7 @@ export default function ProfileReelsGridPage() {
               }}
             >
               <div
+                className="profile-reels-count-chip"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -508,11 +514,43 @@ export default function ProfileReelsGridPage() {
       </div>
 
       <style jsx global>{`
+        .profile-reels-grid-page,
         .profile-reels-header-card,
         .profile-reel-card,
         .profile-reels-back-button,
         .profile-reel-open-pill {
           --profile-reels-accent: var(--parapost-accent, #a855f7);
+        }
+
+        .profile-reels-grid-page {
+          min-height: 100dvh !important;
+          overflow-x: hidden;
+          padding-bottom: max(96px, calc(76px + env(safe-area-inset-bottom))) !important;
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-y;
+        }
+
+        .profile-reels-shell {
+          width: min(100%, 1100px) !important;
+        }
+
+        .profile-reels-header-row,
+        .profile-reels-title-cluster,
+        .profile-reels-header-actions,
+        .profile-reels-count-row {
+          min-width: 0;
+        }
+
+        .profile-reels-back-button,
+        .profile-reel-open-pill {
+          transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .profile-reel-card {
+          min-width: 0;
+          will-change: transform;
         }
 
         .profile-reel-card:hover {
@@ -529,19 +567,181 @@ export default function ProfileReelsGridPage() {
           transform: translateY(-1px);
         }
 
-        .profile-reels-back-button,
-        .profile-reel-open-pill {
-          transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+        @media (max-width: 360px) {
+          .profile-reels-grid-page {
+            padding: 12px 9px max(98px, calc(82px + env(safe-area-inset-bottom))) !important;
+          }
+
+          .profile-reels-header-card {
+            border-radius: 20px !important;
+            padding: 12px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .profile-reels-header-row {
+            align-items: flex-start !important;
+          }
+
+          .profile-reels-title-cluster {
+            gap: 10px !important;
+            align-items: flex-start !important;
+          }
+
+          .profile-reels-title-cluster h1 {
+            font-size: 1.28rem !important;
+            line-height: 1.12 !important;
+            word-break: break-word;
+          }
+
+          .profile-reels-title-cluster p {
+            font-size: 0.82rem !important;
+            line-height: 1.45 !important;
+          }
+
+          .profile-reels-header-actions,
+          .profile-reels-header-actions a {
+            width: 100% !important;
+          }
+
+          .profile-reels-header-actions a {
+            justify-content: center !important;
+            min-height: 40px !important;
+            padding: 9px 12px !important;
+          }
+
+          .profile-reels-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 9px !important;
+          }
+
+          .profile-reel-card {
+            border-radius: 17px !important;
+          }
+
+          .profile-reels-count-chip {
+            width: 100%;
+            justify-content: center;
+          }
         }
 
-        @media (max-width: 760px) {
+        @media (min-width: 361px) and (max-width: 760px) {
+          .profile-reels-grid-page {
+            padding: 16px 11px max(104px, calc(84px + env(safe-area-inset-bottom))) !important;
+          }
+
+          .profile-reels-header-card {
+            border-radius: 24px !important;
+            padding: 14px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .profile-reels-title-cluster {
+            gap: 12px !important;
+          }
+
+          .profile-reels-title-cluster h1 {
+            font-size: 1.45rem !important;
+            line-height: 1.12 !important;
+          }
+
+          .profile-reels-title-cluster p {
+            font-size: 0.88rem !important;
+            line-height: 1.5 !important;
+          }
+
+          .profile-reels-header-actions {
+            width: 100%;
+          }
+
+          .profile-reels-header-actions a {
+            flex: 1 1 170px;
+            justify-content: center !important;
+          }
+
           .profile-reels-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             gap: 11px !important;
           }
 
+          .profile-reel-card {
+            border-radius: 20px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1024px) {
+          .profile-reels-grid-page {
+            padding: 22px 18px max(112px, calc(88px + env(safe-area-inset-bottom))) !important;
+          }
+
+          .profile-reels-shell {
+            max-width: 940px !important;
+          }
+
           .profile-reels-header-card {
-            border-radius: 24px !important;
+            padding: 18px !important;
+            border-radius: 28px !important;
+          }
+
+          .profile-reels-grid {
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+            gap: 14px !important;
+          }
+
+          .profile-reels-header-actions a {
+            min-height: 42px !important;
+          }
+        }
+
+        @media (min-width: 1025px) and (max-width: 1366px) {
+          .profile-reels-grid-page {
+            padding: 24px 22px 76px !important;
+          }
+
+          .profile-reels-shell {
+            max-width: 1120px !important;
+          }
+
+          .profile-reels-grid {
+            grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)) !important;
+            gap: 15px !important;
+          }
+        }
+
+        @media (min-width: 1367px) {
+          .profile-reels-shell {
+            max-width: 1180px !important;
+          }
+
+          .profile-reels-grid {
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important;
+          }
+        }
+
+        @media (max-height: 560px) and (orientation: landscape) {
+          .profile-reels-grid-page {
+            padding-bottom: max(76px, calc(60px + env(safe-area-inset-bottom))) !important;
+          }
+
+          .profile-reels-header-card {
+            padding: 12px !important;
+            border-radius: 22px !important;
+          }
+
+          .profile-reels-title-cluster h1 {
+            font-size: 1.25rem !important;
+          }
+
+          .profile-reels-title-cluster p {
+            display: none !important;
+          }
+
+          .profile-reels-grid {
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+            gap: 10px !important;
+          }
+
+          .profile-reel-card {
+            border-radius: 18px !important;
           }
         }
       `}</style>

@@ -323,7 +323,7 @@ export default function CreateLiveDraftPage() {
             safe external embeds from providers like YouTube or Twitch.
           </p>
 
-          <div style={heroActionsStyle}>
+          <div style={heroActionsStyle} className="parapost-live-create-hero-actions">
             <Link href="/live" style={smallLinkStyle}>Back to Live</Link>
             <Link href="/dashboard" style={smallLinkStyle}>Dashboard</Link>
           </div>
@@ -354,7 +354,7 @@ export default function CreateLiveDraftPage() {
             />
           </label>
 
-          <div style={twoColumnStyle}>
+          <div style={twoColumnStyle} className="parapost-live-create-two-column">
             <label style={labelStyle}>
               Provider
               <select
@@ -431,7 +431,7 @@ export default function CreateLiveDraftPage() {
           {error ? <div style={errorStyle}>{error}</div> : null}
           {message ? <div style={successStyle}>{message}</div> : null}
 
-          <div style={actionsStyle}>
+          <div style={actionsStyle} className="parapost-live-create-actions">
             <Link href="/live" style={cancelButtonStyle}>Cancel</Link>
             <button type="submit" disabled={saving} style={saveButtonStyle}>
               {saving ? "Saving..." : isEditing ? "Update Hidden Draft" : "Save Hidden Draft"}
@@ -468,8 +468,30 @@ export default function CreateLiveDraftPage() {
           }
 
           .parapost-live-create-form button,
-          .parapost-live-create-form a {
+          .parapost-live-create-form a,
+          .parapost-live-create-hero-actions a {
             touch-action: manipulation;
+          }
+
+          .parapost-live-create-shell,
+          .parapost-live-create-hero,
+          .parapost-live-create-form,
+          .parapost-live-create-preview {
+            max-width: 100%;
+          }
+
+          @media (min-width: 761px) and (max-width: 1180px) {
+            .parapost-live-create-page {
+              padding: 20px 14px calc(118px + env(safe-area-inset-bottom)) !important;
+            }
+
+            .parapost-live-create-shell {
+              max-width: min(940px, 100%) !important;
+            }
+
+            .parapost-live-create-preview {
+              grid-template-columns: minmax(240px, 320px) 1fr !important;
+            }
           }
 
           @media (max-width: 980px) {
@@ -543,9 +565,12 @@ export default function CreateLiveDraftPage() {
               grid-template-columns: 1fr !important;
             }
 
-            .parapost-live-create-form > div:last-of-type {
+            .parapost-live-create-hero-actions,
+            .parapost-live-create-actions {
               display: grid !important;
               grid-template-columns: 1fr !important;
+              width: 100% !important;
+              gap: 9px !important;
               position: static !important;
               bottom: auto !important;
               z-index: auto !important;
@@ -554,7 +579,8 @@ export default function CreateLiveDraftPage() {
               background: transparent !important;
             }
 
-            .parapost-live-create-form > div:last-of-type > * {
+            .parapost-live-create-hero-actions > *,
+            .parapost-live-create-actions > * {
               width: 100% !important;
               min-height: 46px !important;
             }
@@ -582,11 +608,12 @@ const pageStyle: CSSProperties = {
   background:
     "radial-gradient(circle at 14% 0%, rgba(168,85,247,0.28), transparent 34%), radial-gradient(circle at 86% 18%, rgba(236,72,153,0.13), transparent 34%), linear-gradient(180deg, #05050b 0%, #07090d 52%, #05050b 100%)",
   color: "#fff",
-  padding: "24px 14px 110px",
+  padding: "24px 14px calc(118px + env(safe-area-inset-bottom))",
 };
 
 const shellStyle: CSSProperties = {
   width: "100%",
+  minWidth: 0,
   maxWidth: 980,
   margin: "0 auto",
   display: "grid",
@@ -762,6 +789,7 @@ const fallbackProviderStyle: CSSProperties = {
 };
 
 const previewTextStyle: CSSProperties = {
+  minWidth: 0,
   color: "#aeb6c4",
   fontSize: 13,
   lineHeight: 1.55,

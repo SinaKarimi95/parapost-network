@@ -1367,11 +1367,86 @@ function MessagesPage() {
       style={pageStyle}
     >
       <style>{`
+        .parachat-page-root {
+          overflow-x: hidden !important;
+        }
+
+        .parachat-shell,
+        .parachat-inbox,
+        .parachat-panel,
+        .parachat-messages,
+        .parachat-composer {
+          box-sizing: border-box !important;
+        }
+
+        .parachat-messages {
+          overscroll-behavior: contain !important;
+          scrollbar-width: thin;
+        }
+
+        .parachat-composer textarea {
+          touch-action: manipulation !important;
+        }
+
+        @media (min-width: 1181px) {
+          .parachat-inbox,
+          .parachat-panel {
+            height: calc(100vh - 36px) !important;
+            max-height: calc(100vh - 36px) !important;
+          }
+
+          .parachat-conversation-list {
+            max-height: calc(100vh - 290px) !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-right: 2px !important;
+          }
+        }
+
+        @media (min-width: 981px) and (max-width: 1180px) {
+          .parachat-shell {
+            grid-template-columns: 340px minmax(0, 1fr) !important;
+            gap: 14px !important;
+            padding: 14px !important;
+            max-width: 1180px !important;
+          }
+
+          .parachat-inbox,
+          .parachat-panel {
+            height: calc(100vh - 28px) !important;
+            max-height: calc(100vh - 28px) !important;
+            min-height: calc(100vh - 28px) !important;
+            border-radius: 24px !important;
+          }
+
+          .parachat-title {
+            font-size: 25px !important;
+          }
+
+          .parachat-conversation-list {
+            max-height: calc(100vh - 276px) !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+
+          .parachat-messages {
+            padding: 16px !important;
+          }
+
+          .parachat-composer {
+            padding: 12px !important;
+          }
+        }
+
         @media (max-width: 980px) {
           .parachat-page-root {
             min-height: 100svh !important;
             min-height: 100dvh !important;
             overflow-x: hidden !important;
+            background:
+              radial-gradient(circle at top left, rgba(168,85,247,0.28), transparent 34%),
+              radial-gradient(circle at bottom right, rgba(34,211,238,0.10), transparent 30%),
+              #05070a !important;
           }
 
           .parachat-page-chat-open {
@@ -1408,6 +1483,7 @@ function MessagesPage() {
             border: none !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch !important;
+            padding: 14px 14px calc(110px + env(safe-area-inset-bottom)) !important;
           }
 
           .parachat-panel {
@@ -1432,13 +1508,14 @@ function MessagesPage() {
             max-height: 100svh !important;
             max-height: 100dvh !important;
             overflow: hidden !important;
+            background: rgba(7,10,16,0.98) !important;
           }
 
           .parachat-mobile-chat-open .parachat-messages {
             min-height: 0 !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 18px !important;
+            padding-bottom: calc(22px + env(safe-area-inset-bottom)) !important;
           }
 
           .parachat-mobile-chat-open .parachat-composer {
@@ -1448,7 +1525,7 @@ function MessagesPage() {
             flex-shrink: 0 !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            padding: 9px 10px calc(18px + env(safe-area-inset-bottom)) !important;
+            padding: 10px 12px calc(18px + env(safe-area-inset-bottom)) !important;
             background: rgba(3,7,18,0.99) !important;
             box-shadow: 0 -18px 34px rgba(0,0,0,0.42) !important;
           }
@@ -1462,7 +1539,7 @@ function MessagesPage() {
           .parachat-mobile-chat-open .parachat-composer textarea {
             height: 46px !important;
             min-height: 46px !important;
-            max-height: 92px !important;
+            max-height: 96px !important;
             box-sizing: border-box !important;
             line-height: 1.25 !important;
             overflow-y: auto !important;
@@ -1479,6 +1556,11 @@ function MessagesPage() {
           .parachat-conversation-list {
             max-height: none !important;
             overflow: visible !important;
+            scrollbar-width: none !important;
+          }
+
+          .parachat-conversation-list::-webkit-scrollbar {
+            display: none !important;
           }
         }
 
@@ -1488,17 +1570,29 @@ function MessagesPage() {
           }
         }
 
-
-          .parachat-conversation-list {
-            max-height: none !important;
-            overflow: visible !important;
-            scrollbar-width: none !important;
+        @media (min-width: 641px) and (max-width: 980px) {
+          .parachat-inbox {
+            padding: 18px 22px calc(116px + env(safe-area-inset-bottom)) !important;
           }
 
-          .parachat-conversation-list::-webkit-scrollbar {
-            display: none !important;
+          .parachat-inbox > * {
+            max-width: 760px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
           }
 
+          .parachat-mobile-chat-open .parachat-panel {
+            max-width: 820px !important;
+            margin: 0 auto !important;
+            border-left: 1px solid rgba(255,255,255,0.08) !important;
+            border-right: 1px solid rgba(255,255,255,0.08) !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+        }
 
         @media (max-width: 640px) {
           .parachat-title {
@@ -1515,7 +1609,7 @@ function MessagesPage() {
 
           .parachat-composer {
             gap: 8px !important;
-            padding: 9px 10px calc(18px + env(safe-area-inset-bottom)) !important;
+            padding: 10px 10px calc(18px + env(safe-area-inset-bottom)) !important;
           }
 
           .parachat-composer-row {
@@ -1551,6 +1645,71 @@ function MessagesPage() {
             padding: 0 14px !important;
             font-size: 14px !important;
             white-space: nowrap !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .parachat-inbox {
+            padding: 12px 10px calc(104px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .parachat-title {
+            font-size: 23px !important;
+          }
+
+          .parachat-messages {
+            padding: 12px !important;
+          }
+
+          .parachat-composer {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .parachat-composer-row {
+            gap: 6px !important;
+          }
+
+          .parachat-image-button {
+            width: 40px !important;
+            min-width: 40px !important;
+            height: 40px !important;
+          }
+
+          .parachat-composer textarea {
+            height: 44px !important;
+            min-height: 44px !important;
+            padding: 11px 12px !important;
+          }
+
+          .parachat-composer button[type="submit"] {
+            min-width: 62px !important;
+            min-height: 44px !important;
+            padding: 0 11px !important;
+            font-size: 13px !important;
+          }
+        }
+
+        @media (max-height: 560px) and (max-width: 980px) {
+          .parachat-inbox {
+            padding-top: 8px !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer {
+            padding-top: 7px !important;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer textarea {
+            height: 40px !important;
+            min-height: 40px !important;
+            max-height: 70px !important;
+          }
+
+          .parachat-mobile-chat-open .parachat-composer button[type="submit"],
+          .parachat-mobile-chat-open .parachat-image-button {
+            min-height: 40px !important;
+            height: 40px !important;
           }
         }
       `}</style>
@@ -2027,7 +2186,8 @@ function MessagesPage() {
 }
 
 const pageStyle: React.CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
+  overflowX: "hidden",
   background:
     "radial-gradient(circle at top left, rgba(168,85,247,0.30), transparent 34%), radial-gradient(circle at bottom right, rgba(34,211,238,0.12), transparent 30%), radial-gradient(circle at 50% 0%, rgba(236,72,153,0.10), transparent 28%), #05070a",
   color: "#f9fafb",
@@ -2035,16 +2195,20 @@ const pageStyle: React.CSSProperties = {
 
 const shellStyle: React.CSSProperties = {
   width: "100%",
-  maxWidth: "1600px",
+  maxWidth: "1500px",
+  minHeight: "100dvh",
   margin: "0 auto",
   padding: "18px",
   display: "grid",
-  gridTemplateColumns: "400px minmax(0, 1fr)",
+  gridTemplateColumns: "minmax(320px, 390px) minmax(0, 1fr)",
   gap: "18px",
+  alignItems: "stretch",
 };
 
 const inboxStyle: React.CSSProperties = {
-  minHeight: "calc(100vh - 36px)",
+  height: "calc(100dvh - 36px)",
+  minHeight: "calc(100dvh - 36px)",
+  maxHeight: "calc(100dvh - 36px)",
   border: "1px solid rgba(255,255,255,0.10)",
   background:
     "linear-gradient(180deg, rgba(17,24,39,0.96), rgba(7,10,16,0.94))",
@@ -2193,9 +2357,11 @@ const conversationListStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: "8px",
-  maxHeight: "none",
-  overflow: "visible",
-  paddingRight: 0,
+  maxHeight: "calc(100vh - 300px)",
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehavior: "contain",
+  paddingRight: 2,
 };
 
 const conversationEmptyStyle: React.CSSProperties = {
@@ -2407,7 +2573,9 @@ const newFriendBadgeStyle: React.CSSProperties = {
 };
 
 const chatPanelStyle: React.CSSProperties = {
-  minHeight: "calc(100vh - 36px)",
+  height: "calc(100dvh - 36px)",
+  minHeight: "calc(100dvh - 36px)",
+  maxHeight: "calc(100dvh - 36px)",
   border: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(7,10,16,0.90)",
   borderRadius: "30px",
@@ -2460,8 +2628,10 @@ const headerLeftStyle: React.CSSProperties = {
 const headerActionsStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
+  justifyContent: "flex-end",
   gap: "8px",
   flexShrink: 0,
+  flexWrap: "wrap",
 };
 
 const mobileBackButtonStyle: React.CSSProperties = {
@@ -2556,6 +2726,8 @@ const closeChatButtonStyle: React.CSSProperties = {
 const messagesAreaStyle: React.CSSProperties = {
   minHeight: 0,
   overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehavior: "contain",
   padding: "18px",
 };
 
@@ -2672,7 +2844,7 @@ const messageImageBlockStyle: React.CSSProperties = {
 
 const messageImageStyle: React.CSSProperties = {
   display: "block",
-  width: "min(320px, 70vw)",
+  width: "min(320px, 72vw)",
   maxHeight: "420px",
   objectFit: "cover",
   cursor: "zoom-in",
@@ -2681,7 +2853,7 @@ const messageImageStyle: React.CSSProperties = {
 };
 
 const messageImageMissingStyle: React.CSSProperties = {
-  width: "min(320px, 70vw)",
+  width: "min(320px, 72vw)",
   minHeight: "170px",
   borderRadius: "16px",
   display: "grid",

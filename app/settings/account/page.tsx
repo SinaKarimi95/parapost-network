@@ -223,7 +223,7 @@ export default function AccountSecuritySettingsPage() {
 
   return (
     <main
-      className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8"
+      className="account-settings-page h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8"
       style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
     >
       <div
@@ -240,13 +240,13 @@ export default function AccountSecuritySettingsPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col items-stretch justify-between gap-3 sm:mb-5 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-3">
             <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
           </div>
 
           <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            className="inline-flex justify-center rounded-full border px-3 py-2 text-center text-xs font-black uppercase tracking-[0.18em] shadow-lg"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background: "var(--parapost-accent-muted-bg)",
@@ -258,9 +258,9 @@ export default function AccountSecuritySettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="mb-4 grid gap-4 sm:mb-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -272,7 +272,7 @@ export default function AccountSecuritySettingsPage() {
               Account Safety
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-[clamp(2rem,10vw,3.75rem)] font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Keep your Parapost Network account secure.
             </h1>
 
@@ -281,12 +281,12 @@ export default function AccountSecuritySettingsPage() {
               request flow from one focused security page.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 grid gap-3 sm:mt-6 sm:flex sm:flex-wrap">
               <button
                 type="button"
                 onClick={handleSendPasswordReset}
                 disabled={sendingReset || pageLoading || !userEmail}
-                className="rounded-full px-5 py-3 text-sm font-black shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-center text-sm font-black shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -299,7 +299,7 @@ export default function AccountSecuritySettingsPage() {
 
               <Link
                 href="/settings/data"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background: "rgba(255,255,255,0.055)",
@@ -310,7 +310,7 @@ export default function AccountSecuritySettingsPage() {
 
               <Link
                 href="/settings/help-support"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background: "rgba(255,255,255,0.055)",
@@ -322,7 +322,7 @@ export default function AccountSecuritySettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-center text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 sm:w-auto"
                 >
                   Support Inbox
                 </Link>
@@ -331,7 +331,7 @@ export default function AccountSecuritySettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-5"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -408,7 +408,7 @@ export default function AccountSecuritySettingsPage() {
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
             <section
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -420,7 +420,7 @@ export default function AccountSecuritySettingsPage() {
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
                     Security Controls
                   </p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">
+                  <h2 className="text-[clamp(1.45rem,6vw,1.5rem)] font-black tracking-[-0.03em]">
                     Account protection tools
                   </h2>
                 </div>
@@ -439,7 +439,7 @@ export default function AccountSecuritySettingsPage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {accountControls.map((card) => (
-                  <article key={card.title} className="rounded-[24px] border border-white/10 bg-black/25 p-4">
+                  <article key={card.title} className="rounded-[20px] border border-white/10 bg-black/25 p-4 sm:rounded-[24px]">
                     <span
                       className="rounded-full border px-2.5 py-1 text-[11px] font-black"
                       style={{
@@ -458,11 +458,11 @@ export default function AccountSecuritySettingsPage() {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-amber-300/20 bg-amber-400/10 p-5 shadow-2xl shadow-amber-950/10 sm:p-6">
+            <section className="rounded-[24px] border border-amber-300/20 bg-amber-400/10 p-4 shadow-2xl shadow-amber-950/10 sm:rounded-[28px] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-amber-100">
                 Data & Account
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em] text-white">
+              <h2 className="text-[clamp(1.45rem,6vw,1.5rem)] font-black tracking-[-0.03em] text-white">
                 Account deletion stays controlled.
               </h2>
               <p className="mt-4 text-sm leading-7 text-amber-50/85">
@@ -474,14 +474,14 @@ export default function AccountSecuritySettingsPage() {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   href="/settings/data"
-                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-black no-underline transition hover:brightness-110"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-amber-300 px-5 py-3 text-center text-sm font-black text-black no-underline transition hover:brightness-110 sm:w-auto"
                 >
                   Open Data & Account
                 </Link>
 
                 <Link
                   href="/settings/help-support"
-                  className="rounded-full border border-amber-200/25 bg-black/20 px-5 py-3 text-sm font-black text-amber-50 no-underline hover:bg-black/30"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-amber-200/25 bg-black/20 px-5 py-3 text-center text-sm font-black text-amber-50 no-underline hover:bg-black/30 sm:w-auto"
                 >
                   Contact Support
                 </Link>
@@ -491,7 +491,7 @@ export default function AccountSecuritySettingsPage() {
 
           <aside className="space-y-4">
             <section
-              className="rounded-[26px] border p-5 shadow-xl"
+              className="rounded-[22px] border p-4 shadow-xl sm:rounded-[26px] sm:p-5"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -522,7 +522,7 @@ export default function AccountSecuritySettingsPage() {
             </section>
 
             <section
-              className="rounded-[26px] border p-5 shadow-xl"
+              className="rounded-[22px] border p-4 shadow-xl sm:rounded-[26px] sm:p-5"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -537,7 +537,7 @@ export default function AccountSecuritySettingsPage() {
               <div className="mt-4 grid gap-3">
                 <Link
                   href="/settings/data"
-                  className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white no-underline transition hover:bg-white/[0.06]"
+                  className="block rounded-2xl border border-white/10 bg-black/25 p-4 text-white no-underline transition hover:bg-white/[0.06]"
                 >
                   <strong className="block text-sm font-black">Data & Account</strong>
                   <span className="mt-1 block text-xs leading-5 text-slate-400">
@@ -547,7 +547,7 @@ export default function AccountSecuritySettingsPage() {
 
                 <Link
                   href="/settings/help-support"
-                  className="rounded-2xl border border-white/10 bg-black/25 p-4 text-white no-underline transition hover:bg-white/[0.06]"
+                  className="block rounded-2xl border border-white/10 bg-black/25 p-4 text-white no-underline transition hover:bg-white/[0.06]"
                 >
                   <strong className="block text-sm font-black">Account Support</strong>
                   <span className="mt-1 block text-xs leading-5 text-slate-400">
@@ -558,7 +558,7 @@ export default function AccountSecuritySettingsPage() {
                 {canSeeAdminSupport ? (
                   <Link
                     href="/admin/support"
-                    className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-emerald-100 no-underline transition hover:bg-emerald-400/15"
+                    className="block rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-emerald-100 no-underline transition hover:bg-emerald-400/15"
                   >
                     <strong className="block text-sm font-black">Admin Support Inbox</strong>
                     <span className="mt-1 block text-xs leading-5 text-emerald-100/75">
@@ -570,6 +570,33 @@ export default function AccountSecuritySettingsPage() {
             </section>
           </aside>
         </section>
+
+
+      <style jsx global>{`
+        @media (max-width: 420px) {
+          .account-settings-page h1 {
+            letter-spacing: -0.05em;
+          }
+
+          .account-settings-page aside,
+          .account-settings-page section,
+          .account-settings-page article {
+            max-width: 100%;
+          }
+
+          .account-settings-page button,
+          .account-settings-page a {
+            min-height: 42px;
+          }
+        }
+
+        @media (max-height: 620px) and (orientation: landscape) {
+          .account-settings-page {
+            padding-top: 12px !important;
+            padding-bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+          }
+        }
+      `}</style>
       </div>
     </main>
   );

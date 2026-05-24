@@ -298,7 +298,7 @@ export default function NotificationSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -313,7 +313,7 @@ export default function NotificationSettingsPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:mb-5 sm:items-center">
           <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           <span
@@ -329,9 +329,9 @@ export default function NotificationSettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="mb-4 grid gap-4 sm:mb-5 lg:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -343,19 +343,19 @@ export default function NotificationSettingsPage() {
               Notifications
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-3xl font-black leading-[0.96] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Control how Parapost Network keeps you updated.
             </h1>
 
-            <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:mt-5 sm:text-base">
               Choose which alerts matter most to you, including friend requests, Parachat, post activity,
               Parapost Reels, badges, and support updates.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:flex-wrap">
               <a
                 href="#notification-preferences"
-                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                className="inline-flex w-full justify-center rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110 sm:w-auto"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -368,7 +368,7 @@ export default function NotificationSettingsPage() {
 
               <Link
                 href="/notifications"
-                className="rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15"
+                className="inline-flex w-full justify-center rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15 sm:w-auto"
               >
                 Open Notifications
               </Link>
@@ -376,7 +376,7 @@ export default function NotificationSettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex w-full justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 sm:w-auto"
                 >
                   Support Inbox
                 </Link>
@@ -385,7 +385,7 @@ export default function NotificationSettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-5"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -438,14 +438,14 @@ export default function NotificationSettingsPage() {
           <div className="space-y-4">
             <section
               id="notification-preferences"
-              className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[24px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-4 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6"
             >
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                     Notification Preferences
                   </p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">
+                  <h2 className="text-[1.35rem] font-black tracking-[-0.03em] sm:text-2xl">
                     Choose what you want to hear about.
                   </h2>
                 </div>
@@ -468,7 +468,7 @@ export default function NotificationSettingsPage() {
                   return (
                     <div
                       key={item.key}
-                      className="rounded-[24px] border border-purple-200/15 bg-black/25 p-4"
+                      className="rounded-[20px] border border-purple-200/15 bg-black/25 p-4 sm:rounded-[24px]"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
@@ -508,7 +508,7 @@ export default function NotificationSettingsPage() {
                           type="button"
                           aria-pressed={enabled}
                           onClick={() => handleToggle(item.key)}
-                          className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
+                          className={`relative inline-flex h-8 w-16 shrink-0 self-start items-center rounded-full border transition sm:self-auto ${
                             enabled ? "" : "border-white/10 bg-white/15"
                           }`}
                           style={
@@ -533,7 +533,7 @@ export default function NotificationSettingsPage() {
                 })}
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-5 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
                 <span className="text-xs font-bold text-slate-500">
                   {enabledCount} notification categories enabled
                 </span>
@@ -582,7 +582,7 @@ export default function NotificationSettingsPage() {
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 Notification Types
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em]">
+              <h2 className="text-[1.35rem] font-black tracking-[-0.03em] sm:text-2xl">
                 Keep important activity easy to find.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
@@ -614,7 +614,7 @@ export default function NotificationSettingsPage() {
             {notificationInfoCards.map((card) => (
               <Link key={card.title} href={card.href} className="block text-white no-underline">
                 <section
-                  className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.065]"
+                  className="rounded-[22px] border p-4 shadow-xl transition hover:bg-white/[0.065] sm:rounded-[26px] sm:p-5"
                   style={{
                     borderColor: "var(--parapost-accent-border)",
                     background:
@@ -636,7 +636,7 @@ export default function NotificationSettingsPage() {
               </Link>
             ))}
 
-            <section className="rounded-[26px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.045] to-slate-950/55 p-5 shadow-xl shadow-purple-950/10">
+            <section className="rounded-[22px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.045] to-slate-950/55 p-4 shadow-xl shadow-purple-950/10 sm:rounded-[26px] sm:p-5">
               <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
                 Quiet Control
               </span>

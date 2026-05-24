@@ -242,7 +242,7 @@ export default function PrivacySafetySettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-5 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 sm:py-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -253,7 +253,7 @@ export default function PrivacySafetySettingsPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           <span className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
@@ -268,9 +268,9 @@ export default function PrivacySafetySettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -282,7 +282,7 @@ export default function PrivacySafetySettingsPage() {
               Privacy & Safety Center
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-[clamp(2.15rem,9vw,3.75rem)] font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Protect your profile, privacy, and community experience.
             </h1>
 
@@ -291,10 +291,10 @@ export default function PrivacySafetySettingsPage() {
               and support requests from one focused safety area.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
               <a
                 href="#safety-contact"
-                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                className="inline-flex w-full justify-center rounded-full px-5 py-3 text-center text-sm font-black no-underline shadow-lg transition hover:brightness-110 sm:w-auto"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -307,21 +307,21 @@ export default function PrivacySafetySettingsPage() {
 
               <Link
                 href="/settings/profile-visibility"
-                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+                className="inline-flex w-full justify-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-black text-white no-underline hover:bg-white/10 sm:w-auto"
               >
                 Profile Visibility
               </Link>
 
               <Link
                 href="/settings/blocked-users"
-                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+                className="inline-flex w-full justify-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-black text-white no-underline hover:bg-white/10 sm:w-auto"
               >
                 Blocked Users
               </Link>
 
               <Link
                 href="/settings/content-feed"
-                className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white no-underline hover:bg-white/10"
+                className="inline-flex w-full justify-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-black text-white no-underline hover:bg-white/10 sm:w-auto"
               >
                 Content & Feed
               </Link>
@@ -329,7 +329,7 @@ export default function PrivacySafetySettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex w-full justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-center text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 sm:w-auto"
                 >
                   Support Inbox
                 </Link>
@@ -338,7 +338,7 @@ export default function PrivacySafetySettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-5"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -393,9 +393,9 @@ export default function PrivacySafetySettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
-            <section id="safety-contact" className="rounded-[28px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+            <section id="safety-contact" className="rounded-[24px] border border-purple-200/15 bg-white/[0.055] p-4 shadow-2xl sm:rounded-[28px] sm:p-6">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
@@ -473,7 +473,7 @@ export default function PrivacySafetySettingsPage() {
               </form>
             </section>
 
-            <section className="rounded-[28px] border border-purple-200/15 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+            <section className="rounded-[24px] border border-purple-200/15 bg-white/[0.055] p-4 shadow-2xl sm:rounded-[28px] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 Privacy Tools
               </p>
@@ -499,7 +499,7 @@ export default function PrivacySafetySettingsPage() {
           <aside className="space-y-4">
             {primarySafetyActions.map((card) => (
               <Link key={card.title} href={card.href} className="block text-white no-underline">
-                <section className="rounded-[26px] border border-purple-200/15 bg-white/[0.045] p-5 shadow-xl transition hover:bg-white/[0.065]">
+                <section className="rounded-[22px] border border-purple-200/15 bg-white/[0.045] p-4 shadow-xl transition hover:bg-white/[0.065] sm:rounded-[26px] sm:p-5">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
                       {card.status}

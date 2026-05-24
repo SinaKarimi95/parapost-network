@@ -174,6 +174,8 @@ const scrollContainerStyle: CSSProperties = {
   scrollSnapType: "y mandatory",
   scrollBehavior: "smooth",
   WebkitOverflowScrolling: "touch",
+  overscrollBehaviorY: "contain",
+  touchAction: "pan-y",
 };
 
 const sectionStyle: CSSProperties = {
@@ -215,16 +217,25 @@ const modalWrapStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "20px",
+  padding: "clamp(12px, 3vw, 22px)",
   zIndex: 90,
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+  WebkitOverflowScrolling: "touch",
+  boxSizing: "border-box",
 };
 
 const modalCardStyle: CSSProperties = {
   width: "min(560px, 100%)",
+  maxHeight: "min(92dvh, 760px)",
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+  WebkitOverflowScrolling: "touch",
   background: "#0b1020",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: "28px",
-  padding: "20px",
+  padding: "clamp(16px, 3vw, 20px)",
+  boxSizing: "border-box",
   boxShadow: "0 16px 36px rgba(0,0,0,0.36)",
 };
 
@@ -440,6 +451,7 @@ export default function ProfileReelsViewerPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editCaption, setEditCaption] = useState("");
   const [viewportWidth, setViewportWidth] = useState(1440);
+  const [viewportHeight, setViewportHeight] = useState(900);
   const [holdPausedId, setHoldPausedId] = useState<string | null>(null);
   const [heartBurstId, setHeartBurstId] = useState<string | null>(null);
   const [playPauseFeedback, setPlayPauseFeedback] = useState<PlayPauseFeedback>(null);
@@ -859,10 +871,19 @@ export default function ProfileReelsViewerPage() {
   }, [effectiveProfileId, currentUserId, canViewProfileContent]);
 
   useEffect(() => {
-    const setWidth = () => setViewportWidth(window.innerWidth);
-    setWidth();
-    window.addEventListener("resize", setWidth);
-    return () => window.removeEventListener("resize", setWidth);
+    const setViewportSize = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
+
+    setViewportSize();
+    window.addEventListener("resize", setViewportSize);
+    window.addEventListener("orientationchange", setViewportSize);
+
+    return () => {
+      window.removeEventListener("resize", setViewportSize);
+      window.removeEventListener("orientationchange", setViewportSize);
+    };
   }, []);
 
   useEffect(() => {
@@ -927,6 +948,10 @@ export default function ProfileReelsViewerPage() {
   }, []);
 
   const viewportType = getViewportType(viewportWidth);
+  const isTinyPhone = viewportWidth <= 380;
+  const isShortViewport = viewportHeight <= 690;
+  const isTabletWide = viewportWidth >= 900 && viewportWidth <= 1180;
+  const isNotebookWidth = viewportWidth > 1024 && viewportWidth <= 1366;
 
   const stageMetrics = useMemo(() => {
     if (viewportType === "mobile") {
@@ -936,51 +961,51 @@ export default function ProfileReelsViewerPage() {
         borderRadius: 0,
         showDesktopArrows: false,
         outerPadding: 0,
-        actionRight: 12,
-        textLeft: 12,
-        textRight: 80,
-        bottomOffset: 34,
+        actionRight: isTinyPhone ? 8 : 12,
+        textLeft: isTinyPhone ? 10 : 12,
+        textRight: isTinyPhone ? 72 : 80,
+        bottomOffset: isShortViewport ? 74 : 92,
         topOffset: 0,
-        titleSize: 20,
+        titleSize: isTinyPhone ? 18 : 20,
         captionSize: 14,
-        topHeaderPad: 16,
+        topHeaderPad: isShortViewport ? 8 : 12,
       };
     }
 
     if (viewportType === "tablet") {
       return {
-        stageWidth: "min(74vw, 560px)",
-        stageHeight: "min(89vh, 960px)",
+        stageWidth: isTabletWide ? "min(68vw, 650px)" : "min(82vw, 590px)",
+        stageHeight: "min(88dvh, 960px)",
         borderRadius: 30,
         showDesktopArrows: false,
         outerPadding: 18,
         actionRight: 14,
         textLeft: 16,
         textRight: 86,
-        bottomOffset: 18,
+        bottomOffset: 24,
         topOffset: 8,
         titleSize: 24,
         captionSize: 15,
-        topHeaderPad: 16,
+        topHeaderPad: 14,
       };
     }
 
     return {
-      stageWidth: "min(34vw, 540px)",
-      stageHeight: "min(90vh, 980px)",
+      stageWidth: isNotebookWidth ? "min(46vw, 520px)" : "min(34vw, 540px)",
+      stageHeight: "min(90dvh, 980px)",
       borderRadius: 32,
       showDesktopArrows: true,
-      outerPadding: 24,
+      outerPadding: isNotebookWidth ? 20 : 24,
       actionRight: 12,
       textLeft: 18,
       textRight: 82,
-      bottomOffset: 16,
+      bottomOffset: 18,
       topOffset: 8,
       titleSize: 22,
       captionSize: 14,
       topHeaderPad: 12,
     };
-  }, [viewportType]);
+  }, [isNotebookWidth, isShortViewport, isTabletWide, isTinyPhone, viewportHeight, viewportType, viewportWidth]);
 
   const activeReel = useMemo(() => {
     return reels.find((reel) => reel.id === activeReelId) || reels[0];
@@ -1680,6 +1705,20 @@ export default function ProfileReelsViewerPage() {
     profile?.username?.trim() ||
     "Profile";
 
+  const responsiveTopButtonStyle: CSSProperties = {
+    ...buttonStyle,
+    minHeight: viewportType === "mobile" ? 34 : 40,
+    padding: viewportType === "mobile" ? "7px 10px" : buttonStyle.padding,
+    fontSize: viewportType === "mobile" ? "12px" : buttonStyle.fontSize,
+  };
+
+  const responsiveTopLinkStyle: CSSProperties = {
+    ...navLinkStyle,
+    minHeight: viewportType === "mobile" ? 34 : 40,
+    padding: viewportType === "mobile" ? "7px 10px" : navLinkStyle.padding,
+    fontSize: viewportType === "mobile" ? "12px" : navLinkStyle.fontSize,
+  };
+
   return (
   <div
     style={{
@@ -1688,13 +1727,29 @@ export default function ProfileReelsViewerPage() {
       overflow: "hidden",
     }}
   >
-    <div style={topBarStyle}>
-      <div style={topBarInnerStyle}>
+    <div
+      style={{
+        ...topBarStyle,
+        padding:
+          viewportType === "mobile"
+            ? "10px 10px 0"
+            : viewportType === "tablet"
+              ? "14px 16px 0"
+              : topBarStyle.padding,
+      }}
+    >
+      <div
+        style={{
+          ...topBarInnerStyle,
+          gap: viewportType === "mobile" ? "8px" : "12px",
+          alignItems: viewportType === "mobile" ? "flex-start" : topBarInnerStyle.alignItems,
+        }}
+      >
         <div style={{ paddingTop: `${stageMetrics.topHeaderPad}px` }}>
           <h1
             style={{
               margin: 0,
-              fontSize: "26px",
+              fontSize: viewportType === "mobile" ? (isTinyPhone ? "18px" : "20px") : "26px",
               lineHeight: 1.05,
               textShadow: "0 2px 12px rgba(0,0,0,0.45)",
             }}
@@ -1706,21 +1761,22 @@ export default function ProfileReelsViewerPage() {
           <div
             style={{
               display: "flex",
-              gap: "10px",
+              gap: viewportType === "mobile" ? "7px" : "10px",
               flexWrap: "wrap",
+              justifyContent: viewportType === "mobile" ? "flex-end" : "flex-start",
               paddingTop: `${stageMetrics.topHeaderPad}px`,
             }}
           >
-            <button onClick={() => setMuteAll((prev) => !prev)} style={buttonStyle}>
+            <button onClick={() => setMuteAll((prev) => !prev)} style={responsiveTopButtonStyle}>
               {muteAll ? "Unmute" : "Mute"}
             </button>
 
-            <Link href={`/profile/${effectiveProfileId}/reels`} style={navLinkStyle}>
-              Back to Grid
+            <Link href={`/profile/${effectiveProfileId}/reels`} style={responsiveTopLinkStyle}>
+              {viewportType === "mobile" ? "Grid" : "Back to Grid"}
             </Link>
 
-            <Link href={`/profile/${effectiveProfileId}`} style={navLinkStyle}>
-              Back to Profile
+            <Link href={`/profile/${effectiveProfileId}`} style={responsiveTopLinkStyle}>
+              {viewportType === "mobile" ? "Profile" : "Back to Profile"}
             </Link>
           </div>
         </div>
@@ -2718,9 +2774,9 @@ export default function ProfileReelsViewerPage() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: viewportType === "mobile" ? "46%" : "52%",
-                minHeight: viewportType === "mobile" ? "240px" : "280px",
-                maxHeight: viewportType === "mobile" ? "50%" : "56%",
+                height: viewportType === "mobile" ? (isShortViewport ? "58%" : "52%") : viewportType === "tablet" ? "56%" : "52%",
+                minHeight: viewportType === "mobile" ? (isShortViewport ? "250px" : "275px") : "280px",
+                maxHeight: viewportType === "mobile" ? "64%" : viewportType === "tablet" ? "60%" : "56%",
                 borderTopLeftRadius: "24px",
                 borderTopRightRadius: "24px",
                 background:
@@ -2802,7 +2858,9 @@ export default function ProfileReelsViewerPage() {
                   minHeight: 0,
                   overflowY: "auto",
                   overscrollBehavior: "contain",
-                  padding: "12px",
+                  WebkitOverflowScrolling: "touch",
+                  touchAction: "pan-y",
+                  padding: viewportType === "mobile" ? "10px" : "12px",
                   display: "grid",
                   alignContent: "start",
                   gap: "10px",
@@ -3109,7 +3167,7 @@ export default function ProfileReelsViewerPage() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    maxHeight: viewportType === "tablet" ? "72vh" : "78vh",
+                    maxHeight: viewportType === "tablet" ? "78dvh" : "82dvh",
                     borderTop: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "28px 28px 0 0",
                   }),
@@ -3152,6 +3210,8 @@ export default function ProfileReelsViewerPage() {
               style={{
                 padding: viewportType === "desktop" ? "18px 22px 22px" : "16px 18px 22px",
                 overflowY: "auto",
+                overscrollBehavior: "contain",
+                WebkitOverflowScrolling: "touch",
                 display: "grid",
                 gap: "16px",
               }}
@@ -3238,6 +3298,12 @@ export default function ProfileReelsViewerPage() {
       )}
 
       <style jsx global>{`
+        @media (max-width: 480px) {
+          .parapost-reel-mobile-action button {
+            min-height: 42px;
+          }
+        }
+
         @keyframes parapostPlayPausePop {
           0% {
             opacity: 0;
@@ -3262,7 +3328,13 @@ export default function ProfileReelsViewerPage() {
         <>
           <div style={overlayStyle} onClick={closeShareModal} />
           <div style={modalWrapStyle}>
-            <div style={modalCardStyle}>
+            <div
+              style={{
+                ...modalCardStyle,
+                width: viewportType === "mobile" ? "min(100%, 430px)" : modalCardStyle.width,
+                borderRadius: viewportType === "mobile" ? "24px" : modalCardStyle.borderRadius,
+              }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -3304,7 +3376,7 @@ export default function ProfileReelsViewerPage() {
                     controls
                     style={{
                       width: "100%",
-                      height: "260px",
+                      height: viewportType === "mobile" ? "190px" : viewportType === "tablet" ? "230px" : "260px",
                       objectFit: "contain",
                       display: "block",
                       background: "#000",
@@ -3325,6 +3397,7 @@ export default function ProfileReelsViewerPage() {
                     justifyContent: "space-between",
                     gap: "10px",
                     flexWrap: "wrap",
+                    flexDirection: viewportType === "mobile" ? "column" : "row",
                   }}
                 >
                   <button onClick={() => handleShareLink(activeReel.id)} style={buttonStyle}>
@@ -3350,7 +3423,13 @@ export default function ProfileReelsViewerPage() {
             }}
           />
           <div style={modalWrapStyle}>
-            <div style={modalCardStyle}>
+            <div
+              style={{
+                ...modalCardStyle,
+                width: viewportType === "mobile" ? "min(100%, 430px)" : modalCardStyle.width,
+                borderRadius: viewportType === "mobile" ? "24px" : modalCardStyle.borderRadius,
+              }}
+            >
               <div
                 style={{
                   display: "flex",

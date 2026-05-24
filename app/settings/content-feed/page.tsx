@@ -328,7 +328,7 @@ export default function ContentFeedSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -367,7 +367,7 @@ export default function ContentFeedSettingsPage() {
 
         <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -382,7 +382,7 @@ export default function ContentFeedSettingsPage() {
               Content & Feed
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-[2.05rem] font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Shape what appears in your Parapost Network feed.
             </h1>
 
@@ -394,7 +394,7 @@ export default function ContentFeedSettingsPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#feed-controls"
-                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                className="inline-flex w-full justify-center rounded-full px-5 py-3 text-center text-sm font-black no-underline shadow-lg transition hover:brightness-110 sm:w-auto"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -407,7 +407,7 @@ export default function ContentFeedSettingsPage() {
 
               <Link
                 href="/settings/privacy-safety"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex w-full justify-center rounded-full border px-5 py-3 text-center text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
                 Privacy & Safety
@@ -416,7 +416,7 @@ export default function ContentFeedSettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex w-full justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-center text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 sm:w-auto"
                 >
                   Support Inbox
                 </Link>
@@ -425,7 +425,7 @@ export default function ContentFeedSettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-5"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -481,7 +481,7 @@ export default function ContentFeedSettingsPage() {
           <div className="space-y-4">
             <section
               id="feed-controls"
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -496,7 +496,7 @@ export default function ContentFeedSettingsPage() {
                   >
                     Feed Controls
                   </p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">
+                  <h2 className="text-xl font-black tracking-[-0.03em] sm:text-2xl">
                     Choose your feed preferences.
                   </h2>
                 </div>
@@ -522,7 +522,7 @@ export default function ContentFeedSettingsPage() {
                       key={item.key}
                       type="button"
                       onClick={() => togglePreference(item.key)}
-                      className="rounded-[24px] border p-4 text-left transition hover:bg-white/[0.06]"
+                      className="w-full rounded-[22px] border p-4 text-left transition hover:bg-white/[0.06] sm:rounded-[24px]"
                       style={{
                         borderColor: enabled ? "var(--parapost-accent-active-border)" : "rgba(255,255,255,0.10)",
                         background: enabled ? "var(--parapost-accent-muted-bg)" : "rgba(0,0,0,0.25)",
@@ -631,11 +631,11 @@ export default function ContentFeedSettingsPage() {
               ) : null}
             </section>
 
-            <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
+            <section className="rounded-[24px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-4 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 Advanced Content Controls
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em]">
+              <h2 className="text-xl font-black tracking-[-0.03em] sm:text-2xl">
                 More filtering tools are prepared for future expansion.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
@@ -658,7 +658,7 @@ export default function ContentFeedSettingsPage() {
             {quickLinks.map((card) => (
               <Link key={card.title} href={card.href} className="block text-white no-underline">
                 <section
-                  className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                  className="rounded-[22px] border p-4 shadow-xl transition hover:bg-white/[0.06] sm:rounded-[26px] sm:p-5"
                   style={{
                     borderColor: "var(--parapost-accent-border)",
                     background:
@@ -687,7 +687,7 @@ export default function ContentFeedSettingsPage() {
             ))}
 
             <section
-              className="rounded-[26px] border p-5 shadow-xl"
+              className="rounded-[22px] border p-4 shadow-xl sm:rounded-[26px] sm:p-5"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:

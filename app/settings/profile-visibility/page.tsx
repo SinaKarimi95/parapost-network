@@ -78,7 +78,7 @@ function BackToPrevious({
     <button
       type="button"
       onClick={handleBack}
-      className="text-sm font-bold no-underline transition hover:text-white"
+      className="inline-flex min-h-10 items-center text-sm font-bold no-underline transition hover:text-white"
       style={{ color: "var(--parapost-accent-text)" }}
     >
       {label}
@@ -196,7 +196,7 @@ export default function ProfileVisibilitySettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white sm:px-6 sm:py-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -211,7 +211,7 @@ export default function ProfileVisibilitySettingsPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col items-stretch justify-between gap-3 sm:mb-5 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-3">
             <BackToPrevious label="← Back to Privacy & Safety" fallbackHref="/settings/privacy-safety" />
 
@@ -221,7 +221,7 @@ export default function ProfileVisibilitySettingsPage() {
           </div>
 
           <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            className="self-start rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg sm:self-auto"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background: "var(--parapost-accent-muted-bg)",
@@ -233,9 +233,9 @@ export default function ProfileVisibilitySettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[26px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -247,7 +247,7 @@ export default function ProfileVisibilitySettingsPage() {
               Profile Visibility
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-[2.1rem] font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Choose who can see your profile content.
             </h1>
 
@@ -256,10 +256,10 @@ export default function ProfileVisibilitySettingsPage() {
               while protecting timeline content, Reels, Friends, and other private sections from non-friends.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <a
                 href="#visibility-control"
-                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                className="inline-flex w-full justify-center rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110 sm:w-auto"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -273,7 +273,7 @@ export default function ProfileVisibilitySettingsPage() {
               {currentProfile?.id ? (
                 <Link
                   href={`/profile/${currentProfile.id}`}
-                  className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                  className="inline-flex w-full justify-center rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
                   style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
                 >
                   View Profile
@@ -282,7 +282,7 @@ export default function ProfileVisibilitySettingsPage() {
 
               <Link
                 href="/settings/privacy-safety"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex w-full justify-center rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
                 Privacy & Safety
@@ -291,7 +291,7 @@ export default function ProfileVisibilitySettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex w-full justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 sm:w-auto"
                 >
                   Support Inbox
                 </Link>
@@ -310,7 +310,7 @@ export default function ProfileVisibilitySettingsPage() {
           >
             <div className="flex items-center gap-4">
               <div
-                className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
+                className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full text-xl font-black ring-1 ring-white/15 sm:h-16 sm:w-16 sm:text-2xl"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -351,11 +351,11 @@ export default function ProfileVisibilitySettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
             <section
               id="visibility-control"
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -367,7 +367,7 @@ export default function ProfileVisibilitySettingsPage() {
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.18em]" style={{ color: "var(--parapost-accent-text)" }}>
                     Public / Private
                   </p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">
+                  <h2 className="text-[1.55rem] font-black tracking-[-0.03em] sm:text-2xl">
                     Profile visibility control
                   </h2>
                 </div>
@@ -401,7 +401,7 @@ export default function ProfileVisibilitySettingsPage() {
                       setStatusMessage("");
                       setErrorMessage("");
                     }}
-                    className={`relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border transition ${
+                    className={`relative inline-flex h-9 w-[4.25rem] shrink-0 items-center self-start rounded-full border transition sm:h-8 sm:w-16 sm:self-center ${
                       isPrivate ? "" : "border-white/10 bg-white/15"
                     }`}
                     style={
@@ -428,7 +428,7 @@ export default function ProfileVisibilitySettingsPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-5 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
                 <span className="text-xs font-bold text-slate-500">
                   Save after changing the toggle.
                 </span>
@@ -462,11 +462,11 @@ export default function ProfileVisibilitySettingsPage() {
               ) : null}
             </section>
 
-            <section className="rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
+            <section className="rounded-[24px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-4 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                 What private protects
               </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em]">
+              <h2 className="text-[1.55rem] font-black tracking-[-0.03em] sm:text-2xl">
                 Private profiles still show a basic profile shell.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
@@ -486,7 +486,7 @@ export default function ProfileVisibilitySettingsPage() {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="rounded-2xl border border-purple-200/15 bg-black/30 px-4 py-3 text-sm font-bold text-slate-200"
+                    className="rounded-2xl border border-purple-200/15 bg-black/30 px-3 py-3 text-sm font-bold text-slate-200 sm:px-4"
                   >
                     {item}
                   </div>
@@ -499,7 +499,7 @@ export default function ProfileVisibilitySettingsPage() {
             {visibilityCards.map((card) => (
               <section
                 key={card.title}
-                className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                className="rounded-[24px] border p-4 shadow-xl transition hover:bg-white/[0.06] sm:rounded-[26px] sm:p-5"
                 style={{
                   borderColor: "var(--parapost-accent-border)",
                   background:

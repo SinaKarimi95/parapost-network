@@ -205,7 +205,154 @@ export default function LegalSettingsPage() {
   }, []);
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="legal-settings-page h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+      <style jsx global>{`
+        .legal-settings-page {
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior-y: contain;
+          scroll-padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+        }
+
+        .legal-settings-page a,
+        .legal-settings-page button {
+          touch-action: manipulation;
+        }
+
+        @media (max-width: 430px) {
+          .legal-settings-page {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-top: max(14px, env(safe-area-inset-top)) !important;
+            padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .legal-settings-inner {
+            max-width: 100% !important;
+          }
+
+          .legal-settings-topbar {
+            align-items: flex-start !important;
+          }
+
+          .legal-settings-topbar > div,
+          .legal-settings-topbar a,
+          .legal-settings-topbar button {
+            max-width: 100% !important;
+          }
+
+          .legal-settings-card,
+          .legal-settings-side-card,
+          .legal-settings-policy-shell {
+            border-radius: 22px !important;
+            padding: 16px !important;
+          }
+
+          .legal-settings-hero-title {
+            font-size: clamp(34px, 12vw, 44px) !important;
+            line-height: 0.98 !important;
+            letter-spacing: -0.05em !important;
+          }
+
+          .legal-settings-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            width: 100% !important;
+          }
+
+          .legal-settings-actions a,
+          .legal-settings-actions button {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+          }
+
+          .legal-policy-pill-row {
+            gap: 7px !important;
+          }
+
+          .legal-policy-pill-row span {
+            font-size: 11px !important;
+            padding: 6px 9px !important;
+          }
+
+          .legal-settings-profile-card .legal-profile-row {
+            align-items: flex-start !important;
+          }
+
+          .legal-trust-link section {
+            border-radius: 22px !important;
+            padding: 16px !important;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .legal-settings-topbar {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .legal-settings-status-pill {
+            white-space: normal !important;
+            text-align: center !important;
+            max-width: 100% !important;
+          }
+
+          .legal-settings-hero,
+          .legal-settings-content-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .legal-settings-policy-card {
+            border-radius: 22px !important;
+            padding: 16px !important;
+          }
+        }
+
+        @media (min-width: 768px) and (max-width: 1120px) {
+          .legal-settings-page {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+            padding-bottom: calc(8rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .legal-settings-inner {
+            max-width: 900px !important;
+          }
+
+          .legal-settings-hero,
+          .legal-settings-content-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (min-width: 1121px) and (max-width: 1366px) {
+          .legal-settings-inner {
+            max-width: 1100px !important;
+          }
+
+          .legal-settings-hero {
+            grid-template-columns: minmax(0, 1fr) 310px !important;
+          }
+
+          .legal-settings-content-grid {
+            grid-template-columns: minmax(0, 1fr) 340px !important;
+          }
+        }
+
+        @media (max-height: 720px) and (max-width: 980px) {
+          .legal-settings-page {
+            padding-top: max(12px, env(safe-area-inset-top)) !important;
+            padding-bottom: calc(7.5rem + env(safe-area-inset-bottom)) !important;
+          }
+
+          .legal-settings-card,
+          .legal-settings-side-card,
+          .legal-settings-policy-shell {
+            padding: 15px !important;
+          }
+        }
+      `}</style>
+
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -219,8 +366,8 @@ export default function LegalSettingsPage() {
         style={{ background: "var(--parapost-accent-soft)" }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="legal-settings-inner relative z-10 mx-auto w-full max-w-6xl">
+        <div className="legal-settings-topbar mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <BackToPrevious label="← Back to Help & Support" fallbackHref="/settings/help-support" />
 
@@ -233,7 +380,7 @@ export default function LegalSettingsPage() {
           </div>
 
           <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            className="legal-settings-status-pill rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background: "var(--parapost-accent-muted-bg)",
@@ -245,9 +392,9 @@ export default function LegalSettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="legal-settings-hero mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="legal-settings-card rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -259,7 +406,7 @@ export default function LegalSettingsPage() {
               Legal & Policies
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="legal-settings-hero-title max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Review Parapost Network policies, privacy, and community rules.
             </h1>
 
@@ -269,7 +416,7 @@ export default function LegalSettingsPage() {
               privacy choices, support paths, and data/account request options.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="legal-settings-actions mt-6 flex flex-wrap gap-3">
               <a
                 href="#policy-areas"
                 className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
@@ -311,7 +458,7 @@ export default function LegalSettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="legal-settings-side-card legal-settings-profile-card rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -319,7 +466,7 @@ export default function LegalSettingsPage() {
               boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
             }}
           >
-            <div className="flex items-center gap-4">
+            <div className="legal-profile-row flex items-center gap-4">
               <div
                 className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-2xl font-black ring-1 ring-white/15"
                 style={{
@@ -361,11 +508,11 @@ export default function LegalSettingsPage() {
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="legal-settings-content-grid grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-4">
             <section
               id="policy-areas"
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="legal-settings-policy-shell rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
@@ -391,7 +538,7 @@ export default function LegalSettingsPage() {
                 {legalSections.map((section) => (
                   <article
                     key={section.title}
-                    className="rounded-[26px] border bg-black/25 p-5"
+                    className="legal-settings-policy-card rounded-[26px] border bg-black/25 p-5"
                     style={{ borderColor: "var(--parapost-accent-border)" }}
                   >
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -410,7 +557,7 @@ export default function LegalSettingsPage() {
                       {section.description}
                     </p>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="legal-policy-pill-row mt-4 flex flex-wrap gap-2">
                       {section.items.map((item) => (
                         <span
                           key={item}
@@ -470,7 +617,7 @@ export default function LegalSettingsPage() {
               <Link
                 key={card.title}
                 href={card.href}
-                className="block text-white no-underline"
+                className="legal-trust-link block text-white no-underline"
               >
                 <section
                   className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"

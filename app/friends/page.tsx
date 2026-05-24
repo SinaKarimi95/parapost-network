@@ -244,19 +244,19 @@ export default function FriendsListPage() {
   };
 
   return (
-    <main style={pageStyle}>
+    <main className="friends-page-root" style={pageStyle}>
       <div style={backgroundGlowOneStyle} />
       <div style={backgroundGlowTwoStyle} />
-      <div style={pageInnerStyle}>
-        <section style={heroShellStyle}>
-          <div style={heroTopStyle}>
+      <div className="friends-page-inner" style={pageInnerStyle}>
+        <section className="friends-hero-shell" style={heroShellStyle}>
+          <div className="friends-hero-top" style={heroTopStyle}>
             <div>
               <div style={eyebrowStyle}>Parapost Network</div>
               <h1 style={titleStyle}>Friends</h1>
               <p style={subtitleStyle}>Your accepted connections across Parapost.</p>
             </div>
 
-            <div style={topActionsStyle}>
+            <div className="friends-top-actions" style={topActionsStyle}>
               <Link href="/friends/requests" style={secondaryLinkStyle}>
                 View Friend Requests
               </Link>
@@ -272,21 +272,22 @@ export default function FriendsListPage() {
             </div>
           ) : null}
 
-          <div style={controlRowStyle}>
+          <div className="friends-control-row" style={controlRowStyle}>
             <input
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search friends by name or username..."
+              className="friends-search-input"
               style={searchInputStyle}
             />
 
-            <Link href="/dashboard" style={secondaryLinkStyle}>
+            <Link href="/dashboard" className="friends-pill-action" style={secondaryLinkStyle}>
               Back to Dashboard
             </Link>
           </div>
 
-          <div style={statsGridStyle}>
+          <div className="friends-stats-grid" style={statsGridStyle}>
             <div style={statCardStyle}>
               <span style={statLabelStyle}>Accepted Friends</span>
               <strong style={statValueStyle}>{friends.length}</strong>
@@ -320,7 +321,7 @@ export default function FriendsListPage() {
               </p>
             </div>
           ) : (
-            <div style={friendsGridStyle}>
+            <div className="friends-grid" style={friendsGridStyle}>
               {filteredFriends.map((friend) => {
                 const profile = friend.profile;
                 const label = profile?.full_name || profile?.username || "Unnamed User";
@@ -329,9 +330,9 @@ export default function FriendsListPage() {
                 const isOnline = isFriendOnline(profile);
 
                 return (
-                  <article key={friend.requestId} style={friendCardStyle}>
-                    <div style={friendTopStyle}>
-                      <Link href={`/profile/${friend.friendId}`} style={avatarShellStyle}>
+                  <article key={friend.requestId} className="friends-card" style={friendCardStyle}>
+                    <div className="friends-friend-top" style={friendTopStyle}>
+                      <Link href={`/profile/${friend.friendId}`} className="friends-avatar-shell" style={avatarShellStyle}>
                         <span style={avatarCropStyle}>
                           {profile?.avatar_url ? (
                             <img src={profile.avatar_url} alt={label} style={avatarImageStyle} />
@@ -358,13 +359,14 @@ export default function FriendsListPage() {
                       </div>
                     </div>
 
-                    <div style={friendActionsStyle}>
-                      <Link href={`/profile/${friend.friendId}`} style={primaryLinkStyle}>
+                    <div className="friends-friend-actions" style={friendActionsStyle}>
+                      <Link href={`/profile/${friend.friendId}`} className="friends-card-action" style={primaryLinkStyle}>
                         View Profile
                       </Link>
 
                       <button
                         type="button"
+                        className="friends-card-action"
                         onClick={() => handleRemoveFriend(friend)}
                         disabled={isBusy}
                         style={{
@@ -383,13 +385,156 @@ export default function FriendsListPage() {
           )}
         </section>
       </div>
+
+      <style jsx global>{`
+        .friends-page-root {
+          min-height: 100dvh;
+          overflow-x: hidden;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .friends-pill-action,
+        .friends-card-action {
+          box-sizing: border-box;
+          transition: transform 160ms ease, filter 160ms ease, border-color 160ms ease;
+        }
+
+        .friends-pill-action:hover,
+        .friends-card-action:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.06);
+        }
+
+        .friends-search-input::placeholder {
+          color: rgba(203, 213, 225, 0.70);
+        }
+
+        @media (max-width: 760px) {
+          .friends-page-inner {
+            padding: 14px 10px calc(124px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .friends-hero-shell {
+            border-radius: 24px !important;
+            padding: 14px !important;
+          }
+
+          .friends-hero-top {
+            gap: 12px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .friends-top-actions,
+          .friends-control-row,
+          .friends-friend-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 9px !important;
+            justify-content: stretch !important;
+          }
+
+          .friends-top-actions > *,
+          .friends-control-row > *,
+          .friends-friend-actions > * {
+            width: 100% !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+            text-align: center !important;
+          }
+
+          .friends-search-input {
+            max-width: none !important;
+            font-size: 16px !important;
+          }
+
+          .friends-stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          .friends-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .friends-card {
+            border-radius: 22px !important;
+            padding: 14px !important;
+          }
+
+          .friends-friend-top {
+            align-items: center !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .friends-page-inner {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+
+          .friends-hero-shell {
+            padding: 12px !important;
+          }
+
+          .friends-avatar-shell {
+            width: 56px !important;
+            height: 56px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1024px) {
+          .friends-page-inner {
+            max-width: 940px !important;
+            padding: 22px 16px calc(112px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .friends-hero-shell {
+            padding: 18px !important;
+            border-radius: 28px !important;
+          }
+
+          .friends-grid {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+          }
+
+          .friends-search-input {
+            max-width: 100% !important;
+          }
+        }
+
+        @media (min-width: 1025px) and (max-width: 1366px) {
+          .friends-page-inner {
+            max-width: 1080px !important;
+          }
+
+          .friends-grid {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+          }
+        }
+
+        @media (max-height: 540px) and (orientation: landscape) {
+          .friends-page-inner {
+            padding-top: 10px !important;
+            padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .friends-hero-shell {
+            padding: 12px !important;
+            border-radius: 22px !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
 
 const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  overflow: "hidden",
+  minHeight: "100dvh",
+  overflowX: "hidden",
+  overflowY: "auto",
   position: "relative",
   background:
     "radial-gradient(circle at 12% 0%, var(--parapost-accent-soft), transparent 35%), radial-gradient(circle at 88% 18%, var(--parapost-accent-muted-bg), transparent 32%), linear-gradient(180deg, #05050b 0%, #07090d 45%, #05050b 100%)",
@@ -426,7 +571,7 @@ const pageInnerStyle: CSSProperties = {
   width: "100%",
   maxWidth: "1180px",
   margin: "0 auto",
-  padding: "26px 16px 40px",
+  padding: "26px 16px calc(110px + env(safe-area-inset-bottom))",
 };
 
 const heroShellStyle: CSSProperties = {
@@ -547,7 +692,7 @@ const statValueStyle: CSSProperties = {
 
 const friendsGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
   gap: "14px",
 };
 
@@ -672,6 +817,8 @@ const secondaryLinkStyle: CSSProperties = {
   background: "rgba(255,255,255,0.06)",
   border: "1px solid var(--parapost-accent-border)",
   fontWeight: 850,
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const primaryLinkStyle: CSSProperties = {
@@ -688,6 +835,8 @@ const primaryLinkStyle: CSSProperties = {
   border: "1px solid var(--parapost-accent-active-border)",
   fontWeight: 950,
   boxShadow: "0 12px 26px var(--parapost-accent-glow)",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const countPillStyle: CSSProperties = {
@@ -720,7 +869,7 @@ const onlinePillStyle: CSSProperties = {
 
 const searchInputStyle: CSSProperties = {
   width: "100%",
-  maxWidth: "460px",
+  maxWidth: "min(460px, 100%)",
   minHeight: "46px",
   borderRadius: "18px",
   background: "rgba(255,255,255,0.055)",
@@ -739,6 +888,9 @@ const dangerButtonStyle: CSSProperties = {
   background: "rgba(248,113,113,0.10)",
   color: "#fecaca",
   fontWeight: 850,
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const emptyStateStyle: CSSProperties = {

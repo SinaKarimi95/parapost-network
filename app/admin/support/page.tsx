@@ -373,7 +373,7 @@ export default function AdminSupportInboxPage() {
 
   if (checkingAccess) {
     return (
-      <main className="min-h-screen bg-[#05050b] px-4 py-8 text-white">
+      <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl rounded-[28px] border border-white/10 bg-white/[0.055] p-6">
           <p className="text-sm font-bold text-slate-300">Checking support inbox access...</p>
         </div>
@@ -383,7 +383,7 @@ export default function AdminSupportInboxPage() {
 
   if (!isAdmin) {
     return (
-      <main className="min-h-screen bg-[#05050b] px-4 py-8 text-white">
+      <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl rounded-[28px] border border-white/10 bg-white/[0.055] p-6 shadow-2xl">
           <Link href="/settings" className="text-sm font-bold text-purple-200 no-underline hover:text-white">
             ← Back to Settings
@@ -403,7 +403,7 @@ export default function AdminSupportInboxPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#05050b] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="parapost-admin-support-page h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
       <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
 
@@ -428,7 +428,7 @@ export default function AdminSupportInboxPage() {
           <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
             Parapost Network Admin
           </p>
-          <h1 className="text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+          <h1 className="text-3xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
             Support Inbox
           </h1>
           <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
@@ -437,7 +437,7 @@ export default function AdminSupportInboxPage() {
           </p>
         </header>
 
-        <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Total" value={stats.total} />
           <StatCard label="Open" value={stats.open} />
           <StatCard label="In review" value={stats.inReview} />
@@ -460,7 +460,7 @@ export default function AdminSupportInboxPage() {
                 />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-slate-400">
                     Status
@@ -508,7 +508,7 @@ export default function AdminSupportInboxPage() {
               </button>
             </div>
 
-            <div className="max-h-[680px] space-y-3 overflow-y-auto pr-1">
+            <div className="max-h-[42dvh] space-y-3 overflow-y-auto pr-1 lg:max-h-[680px]">
               {loadingMessages ? (
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-slate-300">
                   Loading support messages...
@@ -563,7 +563,7 @@ export default function AdminSupportInboxPage() {
             </div>
           </aside>
 
-          <section className="min-w-0 rounded-[28px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl sm:p-6">
+          <section className="min-w-0 rounded-[24px] border border-white/10 bg-white/[0.055] p-4 shadow-2xl sm:rounded-[28px] sm:p-6">
             {!selectedMessage ? (
               <div className="rounded-2xl border border-white/10 bg-black/25 p-5 text-sm text-slate-300">
                 Select a support message to view details.
@@ -575,7 +575,7 @@ export default function AdminSupportInboxPage() {
                     <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
                       {getTopicLabel(selectedMessage.topic)}
                     </p>
-                    <h2 className="text-2xl font-black tracking-[-0.035em] sm:text-3xl">
+                    <h2 className="break-words text-2xl font-black tracking-[-0.035em] sm:text-3xl">
                       {selectedMessage.user_name || "Unknown user"}
                     </h2>
                     <p className="mt-2 text-sm text-slate-400">
@@ -696,6 +696,50 @@ export default function AdminSupportInboxPage() {
             )}
           </section>
         </section>
+      
+        <style jsx global>{`
+          .parapost-admin-support-page {
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+            scroll-padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+          }
+
+          .parapost-admin-support-page *,
+          .parapost-admin-support-page *::before,
+          .parapost-admin-support-page *::after {
+            box-sizing: border-box;
+          }
+
+          .parapost-admin-support-page input,
+          .parapost-admin-support-page textarea,
+          .parapost-admin-support-page select {
+            font-size: 16px;
+          }
+
+          @media (max-width: 640px) {
+            .parapost-admin-support-page header {
+              border-radius: 24px;
+              padding: 16px;
+            }
+
+            .parapost-admin-support-page aside,
+            .parapost-admin-support-page section {
+              min-width: 0;
+            }
+
+            .parapost-admin-support-page textarea {
+              min-height: 132px;
+            }
+          }
+
+          @media (max-width: 430px) {
+            .parapost-admin-support-page {
+              padding-left: 10px;
+              padding-right: 10px;
+            }
+          }
+        `}</style>
+
       </div>
     </main>
   );
@@ -703,9 +747,9 @@ export default function AdminSupportInboxPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[22px] border border-white/10 bg-white/[0.055] p-4 shadow-xl">
+    <div className="rounded-[20px] border border-white/10 bg-white/[0.055] p-3 shadow-xl sm:rounded-[22px] sm:p-4">
       <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-black tracking-[-0.04em] text-white">{value}</div>
+      <div className="mt-2 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl">{value}</div>
     </div>
   );
 }

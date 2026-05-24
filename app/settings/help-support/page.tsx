@@ -269,7 +269,7 @@ export default function HelpSupportSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
+    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
       <div
         className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
         style={{ background: "var(--parapost-accent-soft)" }}
@@ -284,11 +284,11 @@ export default function HelpSupportSettingsPage() {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-5 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
           <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
 
           <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
+            className="self-start rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg sm:self-auto"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background: "var(--parapost-accent-muted-bg)",
@@ -300,9 +300,9 @@ export default function HelpSupportSettingsPage() {
           </span>
         </div>
 
-        <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
           <div
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-7"
+            className="rounded-[26px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-7"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -317,7 +317,7 @@ export default function HelpSupportSettingsPage() {
               Help & Support
             </p>
 
-            <h1 className="max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-3xl font-black leading-[0.98] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
               Get help with your Parapost Network account.
             </h1>
 
@@ -326,10 +326,10 @@ export default function HelpSupportSettingsPage() {
               requests, bug reports, policy questions, payment questions, and other platform issues.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <a
                 href="#support-form"
-                className="rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110"
+                className="inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-black no-underline shadow-lg transition hover:brightness-110 sm:w-auto"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--parapost-accent-1), var(--parapost-accent-2), var(--parapost-accent-3))",
@@ -342,7 +342,7 @@ export default function HelpSupportSettingsPage() {
 
               <Link
                 href="/settings/account"
-                className="rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-black text-white no-underline shadow-lg transition hover:bg-white/10 sm:w-auto"
                 style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
               >
                 Account & Security
@@ -351,7 +351,7 @@ export default function HelpSupportSettingsPage() {
               {canSeeAdminSupport ? (
                 <Link
                   href="/admin/support"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15 sm:w-auto"
                 >
                   Support Inbox
                 </Link>
@@ -360,7 +360,7 @@ export default function HelpSupportSettingsPage() {
           </div>
 
           <aside
-            className="rounded-[30px] border p-5 shadow-2xl ring-1 ring-white/[0.035]"
+            className="rounded-[26px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[30px] sm:p-5"
             style={{
               borderColor: "var(--parapost-accent-border)",
               background:
@@ -399,25 +399,25 @@ export default function HelpSupportSettingsPage() {
                 Support Access
               </div>
               <div className="mt-2 text-2xl font-black">{currentUserId ? "Signed in" : "Signed out"}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
+              <p className="mt-2 text-sm leading-6 text-slate-400 break-words">
                 Signed-in users can send support messages directly from this secure support form.
               </p>
             </div>
           </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="space-y-4">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+          <div className="space-y-4 min-w-0">
             <section
               id="support-form"
-              className="rounded-[28px] border p-5 shadow-2xl ring-1 ring-white/[0.035] sm:p-6"
+              className="rounded-[24px] border p-4 shadow-2xl ring-1 ring-white/[0.035] sm:rounded-[28px] sm:p-6"
               style={{
                 borderColor: "var(--parapost-accent-border)",
                 background:
                   "linear-gradient(135deg, var(--parapost-accent-muted-bg), rgba(255,255,255,0.055), rgba(15,23,42,0.55))",
               }}
             >
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div className="mb-4 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-start">
                 <div>
                   <p
                     className="mb-2 text-xs font-black uppercase tracking-[0.18em]"
@@ -440,7 +440,7 @@ export default function HelpSupportSettingsPage() {
                 </span>
               </div>
 
-              <form onSubmit={handleSupportSubmit} className="space-y-4">
+              <form onSubmit={handleSupportSubmit} className="space-y-4 min-w-0">
                 <label className="block">
                   <span className="mb-2 block text-sm font-bold text-slate-100">Topic</span>
                   <select
@@ -476,7 +476,7 @@ export default function HelpSupportSettingsPage() {
                   />
                 </label>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
                   <span className="text-xs font-bold text-slate-500">{supportMessage.trim().length}/5000</span>
 
                   <button
@@ -526,7 +526,7 @@ export default function HelpSupportSettingsPage() {
             </section>
           </div>
 
-          <aside className="space-y-4">
+          <aside className="space-y-4 min-w-0">
             {canSeeAdminSupport ? (
               <Link href="/admin/support" className="block text-white no-underline">
                 <section className="rounded-[26px] border border-emerald-300/20 bg-emerald-400/10 p-5 shadow-xl transition hover:bg-emerald-400/15">
@@ -539,8 +539,8 @@ export default function HelpSupportSettingsPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-black tracking-[-0.02em]">Support Inbox</h3>
-                  <p className="mt-2 text-sm leading-6 text-emerald-100/80">
+                  <h3 className="text-lg font-black tracking-[-0.02em] break-words">Support Inbox</h3>
+                  <p className="mt-2 text-sm leading-6 text-emerald-100/80 break-words">
                     Review support messages, data requests, privacy/safety issues, bug reports, and payment questions.
                   </p>
                 </section>
@@ -550,7 +550,7 @@ export default function HelpSupportSettingsPage() {
             {quickHelpCards.map((card) => (
               <Link key={card.title} href={card.href} className="block text-white no-underline">
                 <section
-                  className="rounded-[26px] border p-5 shadow-xl transition hover:bg-white/[0.06]"
+                  className="rounded-[24px] border p-4 shadow-xl transition hover:bg-white/[0.06] sm:rounded-[26px] sm:p-5"
                   style={{
                     borderColor: "var(--parapost-accent-border)",
                     background:
@@ -572,8 +572,8 @@ export default function HelpSupportSettingsPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-black tracking-[-0.02em]">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
+                  <h3 className="text-lg font-black tracking-[-0.02em] break-words">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-400 break-words">{card.description}</p>
                 </section>
               </Link>
             ))}

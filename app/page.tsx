@@ -5,6 +5,26 @@ import { supabase } from "@/lib/supabase";
 
 type AuthMode = "signin" | "signup";
 
+const LIVE_SITE_ORIGIN = "https://parapost.net";
+
+function getSafeAuthOrigin() {
+  if (typeof window === "undefined") return LIVE_SITE_ORIGIN;
+
+  const origin = window.location.origin;
+
+  if (
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    origin.includes("192.168.") ||
+    origin.includes("10.") ||
+    origin.includes("172.")
+  ) {
+    return LIVE_SITE_ORIGIN;
+  }
+
+  return LIVE_SITE_ORIGIN;
+}
+
 export default function Home() {
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
@@ -17,11 +37,7 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
 
   const isLogin = authMode === "signin";
-
-  const siteOrigin = useMemo(() => {
-    if (typeof window === "undefined") return "https://parapost.net";
-    return window.location.origin;
-  }, []);
+  const authOrigin = useMemo(() => getSafeAuthOrigin(), []);
 
   const switchMode = (mode: AuthMode) => {
     setAuthMode(mode);
@@ -68,14 +84,22 @@ export default function Home() {
         if (error) {
           const lowerMessage = error.message.toLowerCase();
 
-          if (
-            lowerMessage.includes("invalid login credentials") ||
-            lowerMessage.includes("email not confirmed") ||
-            lowerMessage.includes("email")
-          ) {
+          if (lowerMessage.includes("email not confirmed")) {
             setAuthError(
-              "We could not sign you in. Make sure your email is verified, then use the Sign In tab with the same email and password."
+              "Your email still needs to be verified. Please check your inbox for the newest Parapost Network verification email."
             );
+            return;
+          }
+
+          if (lowerMessage.includes("invalid login credentials")) {
+            setAuthError(
+              "We could not sign you in. Please check your email and password. If you recently changed your password, use the newest password reset email."
+            );
+            return;
+          }
+
+          if (lowerMessage.includes("rate limit")) {
+            setAuthError("Too many attempts. Please wait a few minutes and try again.");
             return;
           }
 
@@ -91,7 +115,7 @@ export default function Home() {
         email: cleanEmail,
         password,
         options: {
-          emailRedirectTo: siteOrigin,
+          emailRedirectTo: `${authOrigin}/dashboard`,
         },
       });
 
@@ -103,7 +127,7 @@ export default function Home() {
           lowerMessage.includes("already")
         ) {
           setAuthError(
-            "This email may already have an account. Choose Sign In instead, especially if you already verified your email."
+            "This email may already have an account. Choose Sign In instead, or use Forgot Password if you need a new password."
           );
           return;
         }
@@ -117,7 +141,7 @@ export default function Home() {
         setPassword("");
         setConfirmPassword("");
         setAuthMessage(
-          "Account created. Check your email and verify your account. After verifying, come back here and use Sign In."
+          "Account created. Check your email and verify your account. After verifying, come back to parapost.net and use Sign In."
         );
         return;
       }
@@ -149,7 +173,7 @@ export default function Home() {
       setLoading(true);
 
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${siteOrigin}/reset-password`,
+        redirectTo: `${authOrigin}/reset-password`,
       });
 
       if (error) {
@@ -166,7 +190,9 @@ export default function Home() {
         return;
       }
 
-      setAuthMessage("Password reset email sent. Check your email for the reset link.");
+      setAuthMessage(
+        "Password reset email sent. Use the newest reset email only. If an older link says expired, ignore it and use the latest one."
+      );
     } catch (err) {
       if (err instanceof Error) {
         setAuthError(err.message);
@@ -188,9 +214,9 @@ export default function Home() {
         }}
       >
         <div className="mx-auto flex min-h-[calc(100dvh-24px)] max-w-6xl items-start justify-center lg:items-center">
-          <div className="grid w-full max-w-6xl grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_470px] xl:gap-6">
+          <div className="grid w-full max-w-6xl grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px] lg:gap-5 xl:gap-6">
             <section
-              className="hidden xl:flex xl:flex-col xl:justify-between rounded-[32px] border border-white/10 p-8 shadow-2xl"
+              className="hidden lg:flex lg:min-h-[520px] lg:flex-col lg:justify-between rounded-[28px] xl:rounded-[32px] border border-white/10 p-6 xl:p-8 shadow-2xl"
               style={{
                 background:
                   "linear-gradient(145deg, rgba(168,85,247,0.16), rgba(12,14,20,0.92) 42%, rgba(0,0,0,0.76))",
@@ -202,13 +228,13 @@ export default function Home() {
                   Parapost Network
                 </div>
 
-                <h1 className="mt-8 text-5xl font-black leading-[0.95] tracking-[-0.06em] text-white">
+                <h1 className="mt-7 text-4xl xl:text-5xl font-black leading-[0.95] tracking-[-0.06em] text-white">
                   Share your world.
                   <br />
                   Connect your community.
                 </h1>
 
-                <p className="mt-5 max-w-xl text-base leading-7 text-zinc-300">
+                <p className="mt-5 max-w-xl text-sm xl:text-base leading-7 text-zinc-300">
                   A dark, premium social network for posts, friends, reels, creators,
                   and communities. Paranormal-friendly, but open for everyone.
                 </p>
@@ -236,7 +262,7 @@ export default function Home() {
             </section>
 
             <section
-              className="w-full rounded-[24px] border border-white/10 p-4 shadow-2xl sm:rounded-[28px] sm:p-6 lg:p-7"
+              className="mx-auto w-full max-w-[520px] lg:max-w-none rounded-[24px] border border-white/10 p-4 shadow-2xl sm:rounded-[28px] sm:p-6 lg:p-6 xl:p-7"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(24,27,34,0.96), rgba(12,14,19,0.98))",
@@ -245,7 +271,7 @@ export default function Home() {
             >
               <div className="text-center">
                 <div
-                  className="mx-auto mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border border-purple-300/25 sm:mb-4 sm:h-24 sm:w-24 sm:rounded-[30px]"
+                  className="mx-auto mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border border-purple-300/25 sm:mb-4 sm:h-24 sm:w-24 sm:rounded-[30px] lg:h-20 lg:w-20 lg:rounded-[24px] xl:h-24 xl:w-24 xl:rounded-[30px]"
                   style={{
                     background:
                       "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.55), rgba(124,58,237,0.20) 46%, rgba(255,255,255,0.04) 100%)",
@@ -255,12 +281,12 @@ export default function Home() {
                   <img
                     src="/parapost-icon-white.png"
                     alt="Parapost Network logo"
-                    className="h-12 w-12 object-contain sm:h-14 sm:w-14"
+                    className="h-12 w-12 object-contain sm:h-14 sm:w-14 lg:h-12 lg:w-12 xl:h-14 xl:w-14"
                     draggable={false}
                   />
                 </div>
 
-                <h2 className="text-[2rem] font-black tracking-[-0.05em] text-white sm:text-4xl">
+                <h2 className="text-[2rem] font-black tracking-[-0.05em] text-white sm:text-4xl lg:text-3xl xl:text-4xl">
                   Parapost Network
                 </h2>
 
@@ -275,7 +301,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => switchMode("signin")}
-                  className={`min-h-[48px] rounded-xl px-3 text-sm font-black transition sm:min-h-[52px] sm:text-base ${
+                  className={`min-h-[48px] rounded-xl px-3 text-sm font-black transition sm:min-h-[52px] sm:text-base lg:min-h-[46px] xl:min-h-[52px] ${
                     isLogin
                       ? "bg-purple-500 text-white shadow-lg shadow-purple-950/30"
                       : "text-zinc-400 hover:text-white"
@@ -287,7 +313,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => switchMode("signup")}
-                  className={`min-h-[48px] rounded-xl px-3 text-sm font-black transition sm:min-h-[52px] sm:text-base ${
+                  className={`min-h-[48px] rounded-xl px-3 text-sm font-black transition sm:min-h-[52px] sm:text-base lg:min-h-[46px] xl:min-h-[52px] ${
                     !isLogin
                       ? "bg-purple-500 text-white shadow-lg shadow-purple-950/30"
                       : "text-zinc-400 hover:text-white"
@@ -309,7 +335,7 @@ export default function Home() {
                 </div>
               ) : null}
 
-              <form onSubmit={handleAuth} className="mt-4 flex flex-col gap-3 sm:mt-5 sm:gap-4">
+              <form onSubmit={handleAuth} className="mt-4 flex flex-col gap-3 sm:mt-5 sm:gap-4 lg:gap-3 xl:gap-4">
                 <label className="grid gap-2">
                   <span className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500 sm:text-xs">
                     Email
@@ -319,7 +345,7 @@ export default function Home() {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="min-h-[54px] rounded-2xl border border-white/10 bg-zinc-950/70 px-4 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-purple-400/60 focus:ring-4 focus:ring-purple-500/10"
+                    className="min-h-[54px] rounded-2xl border border-white/10 bg-zinc-950/70 px-4 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-purple-400/60 focus:ring-4 focus:ring-purple-500/10 lg:min-h-[50px] xl:min-h-[54px]"
                     autoComplete="email"
                   />
                 </label>
@@ -335,7 +361,7 @@ export default function Home() {
                       placeholder={isLogin ? "Enter your password" : "Create a password"}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      className="min-h-[54px] w-full rounded-2xl border border-white/10 bg-zinc-950/70 px-4 pr-20 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-purple-400/60 focus:ring-4 focus:ring-purple-500/10"
+                      className="min-h-[54px] w-full rounded-2xl border border-white/10 bg-zinc-950/70 px-4 pr-20 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-purple-400/60 focus:ring-4 focus:ring-purple-500/10 lg:min-h-[50px] xl:min-h-[54px]"
                       autoComplete={isLogin ? "current-password" : "new-password"}
                     />
 
@@ -361,7 +387,7 @@ export default function Home() {
                         placeholder="Re-enter your password"
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
-                        className="min-h-[54px] w-full rounded-2xl border border-white/10 bg-zinc-950/70 px-4 pr-20 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-purple-400/60 focus:ring-4 focus:ring-purple-500/10"
+                        className="min-h-[54px] w-full rounded-2xl border border-white/10 bg-zinc-950/70 px-4 pr-20 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-purple-400/60 focus:ring-4 focus:ring-purple-500/10 lg:min-h-[50px] xl:min-h-[54px]"
                         autoComplete="new-password"
                       />
 
@@ -379,7 +405,8 @@ export default function Home() {
                 {!isLogin ? (
                   <div className="rounded-2xl border border-purple-400/15 bg-purple-500/10 p-3 text-sm leading-6 text-purple-100 sm:p-4">
                     After creating your account, check your email to verify it. Once
-                    verified, return here and choose <strong>Sign In</strong>.
+                    verified, return to <strong>parapost.net</strong> and choose{" "}
+                    <strong>Sign In</strong>.
                   </div>
                 ) : null}
 
@@ -397,7 +424,7 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="min-h-[54px] rounded-2xl bg-purple-500 px-4 text-base font-black text-white shadow-lg shadow-purple-950/35 transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="min-h-[54px] rounded-2xl bg-purple-500 px-4 text-base font-black text-white shadow-lg shadow-purple-950/35 transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-[50px] xl:min-h-[54px]"
                 >
                   {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
                 </button>
@@ -430,7 +457,7 @@ export default function Home() {
               </div>
 
               <p className="mt-4 px-2 text-center text-[11px] leading-5 text-zinc-600 sm:mt-5 sm:text-xs">
-                Parapost Network - the next generation social experience. 
+                Parapost Network - the next generation social experience.
               </p>
             </section>
           </div>

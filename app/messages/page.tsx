@@ -393,6 +393,33 @@ function getParachatErrorMessage(message?: string | null) {
   return cleanMessage || "Parachat needs attention. Please try again.";
 }
 
+function MicrophoneIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 14.6C14.21 14.6 16 12.81 16 10.6V6C16 3.79 14.21 2 12 2C9.79 2 8 3.79 8 6V10.6C8 12.81 9.79 14.6 12 14.6Z"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 10.6C5.5 14.19 8.41 17.1 12 17.1C15.59 17.1 18.5 14.19 18.5 10.6"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 17.1V21"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function MessagesPageWrapper() {
   return (
     <Suspense
@@ -436,11 +463,20 @@ function MessagesPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [openConversationMenuId, setOpenConversationMenuId] = useState<string | null>(null);
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
+  const [conversationDeleteTarget, setConversationDeleteTarget] = useState<ConversationItem | null>(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(!!selectedConversationFromUrl);
   const [selectedImage, setSelectedImage] = useState<ParachatImageDraft | null>(null);
   const [imageError, setImageError] = useState("");
   const [compressingImage, setCompressingImage] = useState(false);
   const [imageViewer, setImageViewer] = useState<ParachatImageViewer | null>(null);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+  const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [sharingMessage, setSharingMessage] = useState<MessageRow | null>(null);
+  const [sharingMessageId, setSharingMessageId] = useState<string | null>(null);
+  const [voiceComingSoonOpen, setVoiceComingSoonOpen] = useState(false);
 
   const messagesAreaRef = useRef<HTMLElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -449,6 +485,7 @@ function MessagesPage() {
   const selectedImagePreviewUrlRef = useRef<string | null>(null);
   const activeConversationIdRef = useRef(selectedConversationFromUrl);
   const conversationsRef = useRef<ConversationItem[]>([]);
+  const messagesRef = useRef<MessageRow[]>([]);
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -457,6 +494,10 @@ function MessagesPage() {
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     selectedImagePreviewUrlRef.current = selectedImage?.previewUrl || null;
@@ -564,6 +605,14 @@ function MessagesPage() {
       );
     });
   }, [conversations, searchText]);
+
+  const shareableConversations = useMemo(() => {
+    return conversations.filter(
+      (conversation) =>
+        conversation.id !== activeConversationId &&
+        Boolean(conversation.otherUserId && acceptedFriendIds.includes(conversation.otherUserId))
+    );
+  }, [acceptedFriendIds, activeConversationId, conversations]);
 
   const groupedMessages = useMemo(() => {
     const groups: { label: string; items: MessageRow[] }[] = [];
@@ -983,11 +1032,15 @@ function MessagesPage() {
   }, [activeConversationId, loadingMessages, messages.length, scrollToBottom]);
 
   useEffect(() => {
-    const closeConversationMenu = () => setOpenConversationMenuId(null);
-    window.addEventListener("click", closeConversationMenu);
+    const closeFloatingMenus = () => {
+      setOpenConversationMenuId(null);
+      setOpenMessageMenuId(null);
+    };
+
+    window.addEventListener("click", closeFloatingMenus);
 
     return () => {
-      window.removeEventListener("click", closeConversationMenu);
+      window.removeEventListener("click", closeFloatingMenus);
     };
   }, []);
 
@@ -1059,6 +1112,91 @@ function MessagesPage() {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "direct_messages",
+        },
+        async (payload) => {
+          const updatedMessage = await attachSignedImageUrlToMessage(payload.new as MessageRow);
+
+          const belongsToUser = conversationsRef.current.some(
+            (conversation) => conversation.id === updatedMessage.conversation_id
+          );
+
+          if (!belongsToUser) return;
+
+          setMessages((prev) =>
+            prev.map((message) => (message.id === updatedMessage.id ? updatedMessage : message))
+          );
+
+          setConversations((prev) =>
+            prev.map((conversation) =>
+              conversation.lastMessage?.id === updatedMessage.id
+                ? { ...conversation, lastMessage: updatedMessage, updated_at: updatedMessage.created_at }
+                : conversation
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "direct_messages",
+        },
+        async (payload) => {
+          const deletedMessage = payload.old as Partial<MessageRow>;
+          const deletedMessageId = deletedMessage.id || "";
+
+          if (!deletedMessageId) {
+            await loadInbox();
+            return;
+          }
+
+          const deletedConversationId =
+            deletedMessage.conversation_id ||
+            messagesRef.current.find((message) => message.id === deletedMessageId)?.conversation_id ||
+            conversationsRef.current.find((conversation) => conversation.lastMessage?.id === deletedMessageId)?.id ||
+            "";
+
+          setMessages((prev) => prev.filter((message) => message.id !== deletedMessageId));
+
+          if (deletedConversationId) {
+            const remainingMessages = messagesRef.current
+              .filter((message) => message.conversation_id === deletedConversationId && message.id !== deletedMessageId)
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            const nextLastMessage = remainingMessages[0] || null;
+
+            setConversations((prev) =>
+              prev.map((conversation) =>
+                conversation.id === deletedConversationId
+                  ? {
+                      ...conversation,
+                      lastMessage: nextLastMessage,
+                      isNewFriend: !nextLastMessage,
+                      updated_at: nextLastMessage?.created_at || conversation.updated_at,
+                    }
+                  : conversation
+              )
+            );
+          }
+
+          setEditingMessageId((currentId) => {
+            if (currentId !== deletedMessageId) return currentId;
+            setEditingMessageText("");
+            return null;
+          });
+
+          setOpenMessageMenuId((currentId) => (currentId === deletedMessageId ? null : currentId));
+
+          await loadInbox();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -1072,15 +1210,22 @@ function MessagesPage() {
     viewerId,
   ]);
 
+  const handleRequestDeleteConversation = (conversation: ConversationItem) => {
+    setOpenConversationMenuId(null);
+    setStatusMessage("");
+    setErrorMessage("");
+    setConversationDeleteTarget(conversation);
+  };
+
+  const handleCancelDeleteConversation = () => {
+    if (deletingConversationId) return;
+    setConversationDeleteTarget(null);
+  };
+
   const handleDeleteConversation = async (conversation: ConversationItem) => {
     if (!viewerId || !conversation.id) return;
 
     const otherName = getProfileName(conversation.otherProfile);
-    const confirmed = window.confirm(
-      `Delete this Parachat with ${otherName} from your inbox? This hides the conversation for you.`
-    );
-
-    if (!confirmed) return;
 
     setDeletingConversationId(conversation.id);
     setOpenConversationMenuId(null);
@@ -1134,12 +1279,302 @@ function MessagesPage() {
     }
 
     setDeletingConversationId(null);
+    setConversationDeleteTarget(null);
     setStatusMessage(`Parachat with ${otherName} was removed from your inbox.`);
+  };
+
+  const handleStartEditMessage = (message: MessageRow) => {
+    if (!viewerId || message.sender_id !== viewerId) return;
+
+    setOpenMessageMenuId(null);
+    setEditingMessageId(message.id);
+    setEditingMessageText(message.body || "");
+    setStatusMessage("");
+    setErrorMessage("");
+  };
+
+  const handleCancelEditMessage = () => {
+    setEditingMessageId(null);
+    setEditingMessageText("");
+    setSavingMessageId(null);
+  };
+
+  const handleSaveEditedMessage = async (message: MessageRow) => {
+    if (!viewerId || message.sender_id !== viewerId || savingMessageId) return;
+
+    const trimmed = editingMessageText.trim();
+    const isPhotoMessage = isImageMessage(message);
+
+    if (!isPhotoMessage && !trimmed) {
+      setErrorMessage("A text message needs some text. Delete the message instead if you want to remove it.");
+      return;
+    }
+
+    setSavingMessageId(message.id);
+    setErrorMessage("");
+    setStatusMessage("");
+
+    const { data, error } = await supabase
+      .from("direct_messages")
+      .update({ body: trimmed || null })
+      .eq("id", message.id)
+      .eq("sender_id", viewerId)
+      .select(DIRECT_MESSAGE_SELECT)
+      .single();
+
+    if (error) {
+      setErrorMessage(`Could not edit this message: ${getParachatErrorMessage(error.message)}`);
+      setSavingMessageId(null);
+      return;
+    }
+
+    const updatedMessage = await attachSignedImageUrlToMessage(data as MessageRow);
+
+    setMessages((prev) =>
+      prev.map((item) => (item.id === updatedMessage.id ? updatedMessage : item))
+    );
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.lastMessage?.id === updatedMessage.id
+          ? { ...conversation, lastMessage: updatedMessage, updated_at: updatedMessage.created_at }
+          : conversation
+      )
+    );
+
+    setEditingMessageId(null);
+    setEditingMessageText("");
+    setSavingMessageId(null);
+  };
+
+  const handleDeleteMessage = async (message: MessageRow) => {
+    if (!viewerId || message.sender_id !== viewerId || deletingMessageId) return;
+
+    const confirmed = window.confirm(
+      "Delete this message? This removes the message from the Parachat."
+    );
+
+    if (!confirmed) return;
+
+    setDeletingMessageId(message.id);
+    setOpenMessageMenuId(null);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase
+      .from("direct_messages")
+      .delete()
+      .eq("id", message.id)
+      .eq("sender_id", viewerId);
+
+    if (error) {
+      setErrorMessage(`Could not delete this message: ${getParachatErrorMessage(error.message)}`);
+      setDeletingMessageId(null);
+      return;
+    }
+
+    if (message.image_path) {
+      const { error: removeImageError } = await supabase.storage
+        .from(PARACHAT_IMAGE_BUCKET)
+        .remove([message.image_path]);
+
+      if (removeImageError) {
+        console.warn("Parachat image cleanup warning:", removeImageError.message);
+      }
+    }
+
+    const remainingMessages = messages
+      .filter((item) => item.id !== message.id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const nextLastMessage =
+      remainingMessages.find((item) => item.conversation_id === message.conversation_id) || null;
+
+    setMessages((prev) => prev.filter((item) => item.id !== message.id));
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === message.conversation_id
+          ? {
+              ...conversation,
+              lastMessage: nextLastMessage,
+              isNewFriend: !nextLastMessage,
+              updated_at: nextLastMessage?.created_at || conversation.updated_at,
+            }
+          : conversation
+      )
+    );
+
+    if (editingMessageId === message.id) {
+      setEditingMessageId(null);
+      setEditingMessageText("");
+    }
+
+    setDeletingMessageId(null);
+  };
+
+  const handleOpenShareMessage = (message: MessageRow) => {
+    if (!viewerId || !message.id) return;
+
+    setOpenMessageMenuId(null);
+    setSharingMessage(message);
+    setSharingMessageId(null);
+    setStatusMessage("");
+    setErrorMessage("");
+  };
+
+  const handleCloseShareMessage = () => {
+    if (sharingMessageId) return;
+
+    setSharingMessage(null);
+    setSharingMessageId(null);
+  };
+
+  const handleShareMessageToConversation = async (conversation: ConversationItem) => {
+    const messageToShare = sharingMessage;
+
+    if (!viewerId || !messageToShare || !conversation.id) return;
+
+    if (!conversation.otherUserId || !acceptedFriendIds.includes(conversation.otherUserId)) {
+      setErrorMessage("You can only share Parachat messages with accepted friends.");
+      return;
+    }
+
+    if (conversation.id === messageToShare.conversation_id) {
+      setErrorMessage("Choose a different Parachat to share this with.");
+      return;
+    }
+
+    const isPhotoShare = isImageMessage(messageToShare);
+    const sharedText = (messageToShare.body || "").trim();
+
+    if (!isPhotoShare && !sharedText) {
+      setErrorMessage("This message has nothing to share.");
+      return;
+    }
+
+    setSharingMessageId(messageToShare.id);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    let copiedImagePath: string | null = null;
+
+    if (isPhotoShare) {
+      if (!messageToShare.image_path) {
+        setErrorMessage("This photo could not be shared because its image file is unavailable.");
+        setSharingMessageId(null);
+        return;
+      }
+
+      const { data: imageBlob, error: downloadError } = await supabase.storage
+        .from(PARACHAT_IMAGE_BUCKET)
+        .download(messageToShare.image_path);
+
+      if (downloadError || !imageBlob) {
+        setErrorMessage(`Could not prepare this photo for sharing: ${getParachatErrorMessage(downloadError?.message)}`);
+        setSharingMessageId(null);
+        return;
+      }
+
+      copiedImagePath = buildParachatImagePath(
+        conversation.id,
+        viewerId,
+        "shared-parachat-photo.jpg"
+      );
+
+      const { error: uploadError } = await supabase.storage
+        .from(PARACHAT_IMAGE_BUCKET)
+        .upload(copiedImagePath, imageBlob, {
+          cacheControl: "3600",
+          contentType: messageToShare.image_mime_type || imageBlob.type || "image/jpeg",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setErrorMessage(`Could not share this photo: ${getParachatErrorMessage(uploadError.message)}`);
+        setSharingMessageId(null);
+        return;
+      }
+    }
+
+    const nextBody = isPhotoShare
+      ? sharedText
+        ? `Shared photo\n\n${sharedText}`
+        : "Shared photo"
+      : `Shared message\n\n${sharedText}`;
+
+    const { data, error } = await supabase
+      .from("direct_messages")
+      .insert([
+        {
+          conversation_id: conversation.id,
+          sender_id: viewerId,
+          body: nextBody,
+          is_read: false,
+          message_type: isPhotoShare ? "image" : "text",
+          image_path: copiedImagePath,
+          image_mime_type: isPhotoShare ? messageToShare.image_mime_type || "image/jpeg" : null,
+          image_size_bytes: isPhotoShare ? messageToShare.image_size_bytes || null : null,
+          image_width: isPhotoShare ? messageToShare.image_width || null : null,
+          image_height: isPhotoShare ? messageToShare.image_height || null : null,
+        },
+      ])
+      .select(DIRECT_MESSAGE_SELECT)
+      .single();
+
+    if (error) {
+      if (copiedImagePath) {
+        await supabase.storage.from(PARACHAT_IMAGE_BUCKET).remove([copiedImagePath]);
+      }
+
+      setErrorMessage(`Could not share this message: ${getParachatErrorMessage(error.message)}`);
+      setSharingMessageId(null);
+      return;
+    }
+
+    const sharedMessage = await attachSignedImageUrlToMessage(data as MessageRow);
+
+    setConversations((prev) =>
+      prev
+        .map((item) =>
+          item.id === conversation.id
+            ? {
+                ...item,
+                lastMessage: sharedMessage,
+                isNewFriend: false,
+                updated_at: sharedMessage.created_at,
+              }
+            : item
+        )
+        .sort((a, b) => {
+          const aTime = new Date(a.lastMessage?.created_at || a.updated_at || 0).getTime();
+          const bTime = new Date(b.lastMessage?.created_at || b.updated_at || 0).getTime();
+          return bTime - aTime;
+        })
+    );
+
+    if (activeConversationId === conversation.id) {
+      setMessages((prev) => {
+        if (prev.some((message) => message.id === sharedMessage.id)) return prev;
+        return [...prev, sharedMessage];
+      });
+      scrollToBottom();
+    }
+
+    await supabase
+      .from("direct_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", conversation.id);
+
+    setSharingMessage(null);
+    setSharingMessageId(null);
+    setStatusMessage(`Shared to ${getProfileName(conversation.otherProfile)}.`);
   };
 
   const handleSelectConversation = (conversationId: string) => {
     if (conversationId === activeConversationId) {
       setOpenConversationMenuId(null);
+      setOpenMessageMenuId(null);
       setMobileChatOpen(true);
       updateConversationUrl(conversationId);
       scrollToBottom("smooth");
@@ -1147,6 +1582,9 @@ function MessagesPage() {
     }
 
     setOpenConversationMenuId(null);
+    setOpenMessageMenuId(null);
+    setEditingMessageId(null);
+    setEditingMessageText("");
     setActiveConversationId(conversationId);
     activeConversationIdRef.current = conversationId;
     setMobileChatOpen(true);
@@ -1161,11 +1599,15 @@ function MessagesPage() {
 
   const handleMobileBackToInbox = () => {
     setOpenConversationMenuId(null);
+    setOpenMessageMenuId(null);
     setMobileChatOpen(false);
   };
 
   const handleCloseActiveConversation = () => {
     setOpenConversationMenuId(null);
+    setOpenMessageMenuId(null);
+    setEditingMessageId(null);
+    setEditingMessageText("");
     setActiveConversationId("");
     activeConversationIdRef.current = "";
     setMessages([]);
@@ -1617,7 +2059,8 @@ function MessagesPage() {
             align-items: center !important;
           }
 
-          .parachat-image-button {
+          .parachat-image-button,
+          .parachat-voice-button {
             width: 44px !important;
             min-width: 44px !important;
             height: 44px !important;
@@ -1670,7 +2113,8 @@ function MessagesPage() {
             gap: 6px !important;
           }
 
-          .parachat-image-button {
+          .parachat-image-button,
+          .parachat-voice-button {
             width: 40px !important;
             min-width: 40px !important;
             height: 40px !important;
@@ -1707,7 +2151,8 @@ function MessagesPage() {
           }
 
           .parachat-mobile-chat-open .parachat-composer button[type="submit"],
-          .parachat-mobile-chat-open .parachat-image-button {
+          .parachat-mobile-chat-open .parachat-image-button,
+          .parachat-mobile-chat-open .parachat-voice-button {
             min-height: 40px !important;
             height: 40px !important;
           }
@@ -1841,33 +2286,14 @@ function MessagesPage() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          setOpenConversationMenuId((currentId) =>
-                            currentId === conversation.id ? null : conversation.id
-                          );
+                          handleRequestDeleteConversation(conversation);
                         }}
                         style={conversationMenuButtonStyle}
-                        aria-label={`More options for Parachat with ${getProfileName(profile)}`}
+                        aria-label={`Delete Parachat with ${getProfileName(profile)}`}
+                        title="Delete conversation"
                       >
                         ⋯
                       </button>
-
-                      {openConversationMenuId === conversation.id ? (
-                        <div
-                          style={conversationMenuStyle}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteConversation(conversation)}
-                            disabled={deletingConversationId === conversation.id}
-                            style={conversationDeleteButtonStyle}
-                          >
-                            {deletingConversationId === conversation.id
-                              ? "Deleting..."
-                              : "Delete conversation"}
-                          </button>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                 );
@@ -1978,6 +2404,54 @@ function MessagesPage() {
 
                         {group.items.map((message) => {
                           const isMine = message.sender_id === viewerId;
+                          const isEditing = editingMessageId === message.id;
+                          const isSavingMessage = savingMessageId === message.id;
+                          const isDeletingMessage = deletingMessageId === message.id;
+
+                          const editBox = (
+                            <div style={messageEditBoxStyle}>
+                              <textarea
+                                value={editingMessageText}
+                                onChange={(event) => setEditingMessageText(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    handleCancelEditMessage();
+                                    return;
+                                  }
+
+                                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                                    event.preventDefault();
+                                    void handleSaveEditedMessage(message);
+                                  }
+                                }}
+                                placeholder={isImageMessage(message) ? "Edit caption..." : "Edit message..."}
+                                rows={3}
+                                style={messageEditTextareaStyle}
+                                autoFocus
+                              />
+
+                              <div style={messageEditActionsStyle}>
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEditMessage}
+                                  style={messageEditCancelButtonStyle}
+                                  disabled={isSavingMessage}
+                                >
+                                  Cancel
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditedMessage(message)}
+                                  style={messageEditSaveButtonStyle}
+                                  disabled={isSavingMessage}
+                                >
+                                  {isSavingMessage ? "Saving..." : "Save"}
+                                </button>
+                              </div>
+                            </div>
+                          );
 
                           return (
                             <div
@@ -2025,17 +2499,78 @@ function MessagesPage() {
                                         </div>
                                       )}
 
-                                      {message.body ? (
+                                      {isEditing ? (
+                                        editBox
+                                      ) : message.body ? (
                                         <div style={messageImageCaptionStyle}>{message.body}</div>
                                       ) : null}
                                     </div>
+                                  ) : isEditing ? (
+                                    editBox
                                   ) : (
                                     message.body
                                   )}
                                 </div>
 
-                                <div style={messageTimeStyle}>
-                                  {formatMessageTime(message.created_at)}
+                                <div style={messageMetaRowStyle}>
+                                  <span style={messageTimeStyle}>
+                                    {isDeletingMessage ? "Deleting..." : formatMessageTime(message.created_at)}
+                                  </span>
+
+                                  <span
+                                    style={messageOptionsWrapStyle}
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setOpenMessageMenuId((currentId) =>
+                                          currentId === message.id ? null : message.id
+                                        );
+                                      }}
+                                      style={messageOptionsButtonStyle}
+                                      aria-label="Message options"
+                                      disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
+                                    >
+                                      ⋯
+                                    </button>
+
+                                    {openMessageMenuId === message.id ? (
+                                      <span style={messageOptionsMenuStyle}>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenShareMessage(message)}
+                                          style={messageOptionButtonStyle}
+                                          disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
+                                        >
+                                          Share to Parachat
+                                        </button>
+
+                                        {isMine ? (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleStartEditMessage(message)}
+                                              style={messageOptionButtonStyle}
+                                              disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
+                                            >
+                                              Edit message
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteMessage(message)}
+                                              style={messageDeleteOptionButtonStyle}
+                                              disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
+                                            >
+                                              {isDeletingMessage ? "Deleting..." : "Delete message"}
+                                            </button>
+                                          </>
+                                        ) : null}
+                                      </span>
+                                    ) : null}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -2109,6 +2644,17 @@ function MessagesPage() {
                     +
                   </button>
 
+                  <button
+                    type="button"
+                    className="parachat-voice-button"
+                    onClick={() => setVoiceComingSoonOpen(true)}
+                    style={voiceComingSoonButtonStyle}
+                    aria-label="Voice messaging coming soon"
+                    title="Voice messaging coming soon"
+                  >
+                    <MicrophoneIcon size={19} />
+                  </button>
+
                   <textarea
                     ref={textareaRef}
                     value={messageText}
@@ -2143,6 +2689,161 @@ function MessagesPage() {
           )}
         </main>
       </div>
+
+      {sharingMessage ? (
+        <div
+          style={shareOverlayStyle}
+          onClick={handleCloseShareMessage}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Share Parachat message"
+        >
+          <div style={shareSheetStyle} onClick={(event) => event.stopPropagation()}>
+            <div style={shareSheetHeaderStyle}>
+              <div>
+                <strong style={shareSheetTitleStyle}>Share to Parachat</strong>
+                <div style={shareSheetSubtitleStyle}>
+                  Choose an accepted friend to forward this {isImageMessage(sharingMessage) ? "photo" : "message"}.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCloseShareMessage}
+                style={shareSheetCloseButtonStyle}
+                aria-label="Close share menu"
+                disabled={Boolean(sharingMessageId)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={sharePreviewStyle}>
+              <span style={sharePreviewLabelStyle}>
+                {isImageMessage(sharingMessage) ? "Photo message" : "Message"}
+              </span>
+              <span style={sharePreviewTextStyle}>
+                {(sharingMessage.body || "").trim() || (isImageMessage(sharingMessage) ? "Shared photo" : "Message")}
+              </span>
+            </div>
+
+            <div style={shareFriendListStyle}>
+              {shareableConversations.length === 0 ? (
+                <div style={shareEmptyStyle}>
+                  No other accepted friends are available to share with yet.
+                </div>
+              ) : (
+                shareableConversations.map((conversation) => {
+                  const profile = conversation.otherProfile;
+                  const sharingNow = sharingMessageId === sharingMessage.id;
+
+                  return (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => handleShareMessageToConversation(conversation)}
+                      style={shareFriendButtonStyle}
+                      disabled={sharingNow}
+                    >
+                      <span style={shareFriendAvatarStyle}>
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" style={shareFriendAvatarImageStyle} />
+                        ) : (
+                          <span>{getInitial(profile)}</span>
+                        )}
+                      </span>
+
+                      <span style={shareFriendTextStyle}>
+                        <strong>{getProfileName(profile)}</strong>
+                        <span>{sharingNow ? "Sharing..." : "Send in Parachat"}</span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {conversationDeleteTarget ? (
+        <div
+          style={conversationDeleteModalOverlayStyle}
+          onClick={handleCancelDeleteConversation}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete Parachat conversation"
+        >
+          <div
+            style={conversationDeleteModalShellStyle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={conversationDeleteModalIconStyle}>!</div>
+            <div style={conversationDeleteModalContentStyle}>
+              <div style={conversationDeleteModalEyebrowStyle}>Delete Parachat</div>
+              <h3 style={conversationDeleteModalTitleStyle}>
+                Delete chat with {getProfileName(conversationDeleteTarget.otherProfile)}?
+              </h3>
+              <p style={conversationDeleteModalTextStyle}>
+                This removes the conversation from your inbox. It does not block this person, unfriend them, or delete the chat from their account.
+              </p>
+            </div>
+
+            <div style={conversationDeleteModalActionsStyle}>
+              <button
+                type="button"
+                onClick={handleCancelDeleteConversation}
+                disabled={Boolean(deletingConversationId)}
+                style={conversationDeleteCancelButtonStyle}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteConversation(conversationDeleteTarget)}
+                disabled={deletingConversationId === conversationDeleteTarget.id}
+                style={conversationDeleteConfirmButtonStyle}
+              >
+                {deletingConversationId === conversationDeleteTarget.id ? "Deleting..." : "Delete chat"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {voiceComingSoonOpen ? (
+        <div
+          style={voiceComingSoonOverlayStyle}
+          onClick={() => setVoiceComingSoonOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Voice messaging coming soon"
+        >
+          <div
+            style={voiceComingSoonShellStyle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={voiceComingSoonIconStyle}>
+              <MicrophoneIcon size={24} />
+            </div>
+            <div style={voiceComingSoonContentStyle}>
+              <div style={voiceComingSoonEyebrowStyle}>Future Parachat upgrade</div>
+              <h3 style={voiceComingSoonTitleStyle}>Voice messaging is coming soon</h3>
+              <p style={voiceComingSoonTextStyle}>
+                Soon you’ll be able to send quick voice messages inside Parachat. This feature is being prepared for a future update.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setVoiceComingSoonOpen(false)}
+              style={voiceComingSoonButtonConfirmStyle}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {imageViewer ? (
         <div
@@ -2434,9 +3135,9 @@ const conversationMenuButtonStyle: React.CSSProperties = {
 const conversationMenuStyle: React.CSSProperties = {
   position: "absolute",
   right: 0,
-  top: "30px",
-  zIndex: 40,
-  minWidth: "150px",
+  bottom: "34px",
+  zIndex: 120,
+  minWidth: "170px",
   borderRadius: "13px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(7,10,16,0.98)",
@@ -2456,6 +3157,101 @@ const conversationDeleteButtonStyle: React.CSSProperties = {
   fontWeight: 900,
   fontSize: "11px",
   cursor: "pointer",
+};
+
+const conversationDeleteModalOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 500,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "18px",
+  background: "rgba(3,7,18,0.72)",
+  backdropFilter: "blur(16px)",
+};
+
+const conversationDeleteModalShellStyle: React.CSSProperties = {
+  width: "min(94vw, 430px)",
+  borderRadius: "26px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background:
+    "linear-gradient(180deg, rgba(17,24,39,0.98), rgba(7,10,16,0.98))",
+  boxShadow: "0 30px 90px rgba(0,0,0,0.56)",
+  padding: "20px",
+  color: "#f9fafb",
+};
+
+const conversationDeleteModalIconStyle: React.CSSProperties = {
+  width: "42px",
+  height: "42px",
+  borderRadius: "16px",
+  display: "grid",
+  placeItems: "center",
+  marginBottom: "14px",
+  border: "1px solid rgba(248,113,113,0.34)",
+  background: "rgba(248,113,113,0.13)",
+  color: "#fecaca",
+  fontWeight: 950,
+  fontSize: "22px",
+  lineHeight: 1,
+};
+
+const conversationDeleteModalContentStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "6px",
+};
+
+const conversationDeleteModalEyebrowStyle: React.CSSProperties = {
+  color: "#fca5a5",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const conversationDeleteModalTitleStyle: React.CSSProperties = {
+  margin: 0,
+  color: "#ffffff",
+  fontSize: "22px",
+  lineHeight: 1.12,
+  letterSpacing: "-0.04em",
+  fontWeight: 950,
+};
+
+const conversationDeleteModalTextStyle: React.CSSProperties = {
+  margin: "4px 0 0",
+  color: "#aeb7c7",
+  fontSize: "14px",
+  lineHeight: 1.55,
+};
+
+const conversationDeleteModalActionsStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "10px",
+  marginTop: "18px",
+};
+
+const conversationDeleteCancelButtonStyle: React.CSSProperties = {
+  minHeight: "44px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.055)",
+  color: "#f3f4f6",
+  borderRadius: "999px",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const conversationDeleteConfirmButtonStyle: React.CSSProperties = {
+  minHeight: "44px",
+  border: "1px solid rgba(248,113,113,0.28)",
+  background: "linear-gradient(135deg, rgba(239,68,68,0.96), rgba(185,28,28,0.96))",
+  color: "#ffffff",
+  borderRadius: "999px",
+  fontWeight: 950,
+  cursor: "pointer",
+  boxShadow: "0 14px 34px rgba(239,68,68,0.22)",
 };
 
 const conversationAvatarWrapStyle: React.CSSProperties = {
@@ -2876,6 +3672,275 @@ const messageTimeStyle: React.CSSProperties = {
   padding: "0 4px",
 };
 
+const messageMetaRowStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: "4px",
+  minHeight: "20px",
+  padding: "0 2px",
+};
+
+const messageOptionsWrapStyle: React.CSSProperties = {
+  position: "relative",
+  display: "inline-flex",
+  alignItems: "center",
+};
+
+const messageOptionsButtonStyle: React.CSSProperties = {
+  width: "22px",
+  height: "20px",
+  border: "1px solid transparent",
+  borderRadius: "999px",
+  background: "transparent",
+  color: "#9ca3af",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 950,
+  cursor: "pointer",
+  lineHeight: 1,
+  padding: 0,
+};
+
+const messageOptionsMenuStyle: React.CSSProperties = {
+  position: "absolute",
+  right: 0,
+  bottom: "24px",
+  zIndex: 55,
+  minWidth: "168px",
+  borderRadius: "13px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(7,10,16,0.98)",
+  boxShadow: "0 14px 34px rgba(0,0,0,0.44)",
+  padding: "6px",
+  backdropFilter: "blur(16px)",
+};
+
+const messageOptionButtonStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.055)",
+  color: "#f3e8ff",
+  borderRadius: "10px",
+  padding: "7px 9px",
+  textAlign: "left",
+  fontWeight: 900,
+  fontSize: "11px",
+  cursor: "pointer",
+  marginBottom: "5px",
+};
+
+const messageDeleteOptionButtonStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(248,113,113,0.20)",
+  background: "rgba(248,113,113,0.10)",
+  color: "#fecaca",
+  borderRadius: "10px",
+  padding: "7px 9px",
+  textAlign: "left",
+  fontWeight: 900,
+  fontSize: "11px",
+  cursor: "pointer",
+};
+
+const messageEditBoxStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "8px",
+  minWidth: "min(320px, 66vw)",
+};
+
+const messageEditTextareaStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: "82px",
+  resize: "vertical",
+  border: "1px solid rgba(255,255,255,0.18)",
+  borderRadius: "14px",
+  background: "rgba(3,7,18,0.34)",
+  color: "#ffffff",
+  padding: "10px 11px",
+  outline: "none",
+  fontSize: "14px",
+  lineHeight: 1.45,
+  fontWeight: 650,
+  boxSizing: "border-box",
+};
+
+const messageEditActionsStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: "8px",
+};
+
+const messageEditCancelButtonStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.18)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.08)",
+  color: "#f3f4f6",
+  padding: "7px 11px",
+  fontSize: "12px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const messageEditSaveButtonStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.22)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.18)",
+  color: "#ffffff",
+  padding: "7px 13px",
+  fontSize: "12px",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const shareOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 9998,
+  display: "grid",
+  placeItems: "center",
+  padding: "clamp(14px, 4vw, 34px)",
+  background: "rgba(3,7,18,0.78)",
+  backdropFilter: "blur(16px)",
+};
+
+const shareSheetStyle: React.CSSProperties = {
+  width: "min(440px, 100%)",
+  maxHeight: "min(620px, calc(100dvh - 34px))",
+  overflowY: "auto",
+  borderRadius: "26px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "linear-gradient(180deg, rgba(17,24,39,0.98), rgba(7,10,16,0.98))",
+  boxShadow: "0 28px 80px rgba(0,0,0,0.50)",
+  padding: "16px",
+  color: "#f9fafb",
+};
+
+const shareSheetHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "12px",
+  marginBottom: "12px",
+};
+
+const shareSheetTitleStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "18px",
+  fontWeight: 950,
+  letterSpacing: "-0.035em",
+};
+
+const shareSheetSubtitleStyle: React.CSSProperties = {
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 750,
+  lineHeight: 1.45,
+  marginTop: "3px",
+};
+
+const shareSheetCloseButtonStyle: React.CSSProperties = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.07)",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 900,
+  cursor: "pointer",
+  lineHeight: 1,
+};
+
+const sharePreviewStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "5px",
+  padding: "12px",
+  borderRadius: "18px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.045)",
+  marginBottom: "12px",
+};
+
+const sharePreviewLabelStyle: React.CSSProperties = {
+  color: "#d8b4fe",
+  fontSize: "11px",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const sharePreviewTextStyle: React.CSSProperties = {
+  color: "#e5e7eb",
+  fontSize: "13px",
+  fontWeight: 750,
+  lineHeight: 1.45,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  display: "-webkit-box",
+  WebkitLineClamp: 4,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const shareFriendListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "8px",
+};
+
+const shareFriendButtonStyle: React.CSSProperties = {
+  width: "100%",
+  display: "grid",
+  gridTemplateColumns: "42px minmax(0, 1fr)",
+  alignItems: "center",
+  gap: "10px",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "18px",
+  background: "rgba(255,255,255,0.055)",
+  color: "#ffffff",
+  padding: "10px",
+  textAlign: "left",
+  cursor: "pointer",
+};
+
+const shareFriendAvatarStyle: React.CSSProperties = {
+  width: "42px",
+  height: "42px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  overflow: "hidden",
+  background: "linear-gradient(135deg, #a855f7, #111827)",
+  color: "#ffffff",
+  fontWeight: 950,
+};
+
+const shareFriendAvatarImageStyle: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
+};
+
+const shareFriendTextStyle: React.CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "2px",
+};
+
+const shareEmptyStyle: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "18px",
+  background: "rgba(255,255,255,0.04)",
+  color: "#9ca3af",
+  fontSize: "13px",
+  fontWeight: 800,
+  padding: "14px",
+  textAlign: "center",
+};
+
 const imageViewerOverlayStyle: React.CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -2985,6 +4050,99 @@ const imageButtonStyle: React.CSSProperties = {
   fontWeight: 900,
   display: "grid",
   placeItems: "center",
+};
+
+const voiceComingSoonButtonStyle: React.CSSProperties = {
+  width: "44px",
+  minWidth: "44px",
+  height: "44px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.055)",
+  color: "#e9d5ff",
+  display: "grid",
+  placeItems: "center",
+  opacity: 0.62,
+  cursor: "pointer",
+  flexShrink: 0,
+  boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.08)",
+};
+
+const voiceComingSoonOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 9999,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "18px",
+  background: "rgba(3,7,18,0.76)",
+  backdropFilter: "blur(16px)",
+};
+
+const voiceComingSoonShellStyle: React.CSSProperties = {
+  width: "min(94vw, 430px)",
+  borderRadius: "26px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "linear-gradient(180deg, rgba(17,24,39,0.98), rgba(7,10,16,0.98))",
+  boxShadow: "0 30px 90px rgba(0,0,0,0.56)",
+  padding: "20px",
+  color: "#f9fafb",
+};
+
+const voiceComingSoonIconStyle: React.CSSProperties = {
+  width: "46px",
+  height: "46px",
+  borderRadius: "17px",
+  display: "grid",
+  placeItems: "center",
+  marginBottom: "14px",
+  border: "1px solid rgba(168,85,247,0.34)",
+  background: "rgba(168,85,247,0.13)",
+  color: "#e9d5ff",
+  boxShadow: "0 14px 34px rgba(168,85,247,0.20)",
+};
+
+const voiceComingSoonContentStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "6px",
+};
+
+const voiceComingSoonEyebrowStyle: React.CSSProperties = {
+  color: "#c4b5fd",
+  fontSize: "11px",
+  fontWeight: 950,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const voiceComingSoonTitleStyle: React.CSSProperties = {
+  margin: 0,
+  color: "#ffffff",
+  fontSize: "22px",
+  lineHeight: 1.12,
+  letterSpacing: "-0.04em",
+  fontWeight: 950,
+};
+
+const voiceComingSoonTextStyle: React.CSSProperties = {
+  margin: "4px 0 0",
+  color: "#aeb7c7",
+  fontSize: "14px",
+  lineHeight: 1.55,
+};
+
+const voiceComingSoonButtonConfirmStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: "46px",
+  borderRadius: "999px",
+  border: "1px solid rgba(168,85,247,0.55)",
+  background: "linear-gradient(135deg, #a855f7, #7c3aed)",
+  color: "#ffffff",
+  fontWeight: 950,
+  fontSize: "14px",
+  marginTop: "18px",
+  cursor: "pointer",
 };
 
 const imagePreviewShellStyle: React.CSSProperties = {

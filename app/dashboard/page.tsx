@@ -3293,7 +3293,7 @@ export default function DashboardPage() {
           <main className="dashboard-main-column" style={mainColumnStyle}>
             <div className="dashboard-desktop-topbar" style={desktopTopBarStyle}>
               {searchBox}
-              <div style={topActionRowStyle}>
+              <div className="dashboard-top-icons" style={topActionRowStyle}>
                 <Link href="/notifications" style={topIconButtonStyle} aria-label="Notifications">
                   <BellIcon />
                   {notificationsCount > 0 ? <span style={topBadgeStyle}>{notificationsCount > 99 ? "99+" : notificationsCount}</span> : null}
@@ -7959,6 +7959,307 @@ export default function DashboardPage() {
             width: 44px !important;
             height: 44px !important;
             transform: translateY(-7px) !important;
+          }
+        }
+
+
+        /* === Phase 12 controlled dashboard polish pass === */
+        /* Safe override layer only: keeps existing dashboard logic intact while tightening desktop, tablet, and mobile flow. */
+        .dashboard-grid-desktop-safe,
+        .dashboard-main-column,
+        .dashboard-feed-card,
+        .dashboard-composer-card,
+        .dashboard-showcase-row,
+        .dashboard-feed-pulse,
+        .dashboard-link-preview-card,
+        .dashboard-post-media-grid,
+        .dashboard-post-media-tile,
+        .dashboard-post-single-media,
+        .dashboard-shared-reel-card,
+        .dashboard-shared-reel-frame,
+        .dashboard-composer-media-preview-wrap,
+        .dashboard-composer-media-preview-grid,
+        .dashboard-composer-media-preview-tile {
+          box-sizing: border-box !important;
+          min-width: 0 !important;
+        }
+
+        .dashboard-main-column {
+          isolation: isolate !important;
+        }
+
+        .dashboard-feed-card,
+        .dashboard-composer-card,
+        .dashboard-feed-pulse,
+        .dashboard-showcase-row {
+          border-color: rgba(255,255,255,0.105) !important;
+        }
+
+        .dashboard-post-header,
+        .dashboard-post-header > div:first-child,
+        .dashboard-post-header > div:first-child > div:last-child,
+        .dashboard-shared-reel-copy,
+        .dashboard-link-preview-card > div:last-child {
+          min-width: 0 !important;
+        }
+
+        .dashboard-post-header a,
+        .dashboard-post-header span,
+        .dashboard-shared-reel-title,
+        .dashboard-link-preview-card,
+        .dashboard-link-preview-card * {
+          overflow-wrap: anywhere !important;
+        }
+
+        .dashboard-post-text-link {
+          word-break: break-word !important;
+        }
+
+        .dashboard-feed-card p {
+          max-width: 100% !important;
+        }
+
+        @media (min-width: 1181px) {
+          .dashboard-desktop-left,
+          .dashboard-right-rail {
+            max-height: calc(100dvh - 36px) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: contain !important;
+            scrollbar-width: none !important;
+          }
+
+          .dashboard-desktop-left::-webkit-scrollbar,
+          .dashboard-right-rail::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-grid-desktop-safe {
+            align-items: start !important;
+          }
+
+          .dashboard-main-column {
+            max-width: 980px !important;
+          }
+
+          .dashboard-feed-card,
+          .dashboard-composer-card {
+            padding: 18px !important;
+          }
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .dashboard-main-column {
+            max-width: 900px !important;
+            gap: 16px !important;
+          }
+
+          .dashboard-desktop-topbar {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+          }
+
+          .dashboard-top-icons {
+            min-width: max-content !important;
+          }
+
+          .dashboard-feed-card,
+          .dashboard-composer-card {
+            padding: 16px !important;
+          }
+
+          .dashboard-post-media-tile {
+            min-height: 220px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-shell-pad {
+            padding-top: 8px !important;
+            padding-left: clamp(8px, 2.8vw, 12px) !important;
+            padding-right: clamp(8px, 2.8vw, 12px) !important;
+            padding-bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .dashboard-main-column {
+            width: 100% !important;
+            max-width: 520px !important;
+            gap: 11px !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+          }
+
+          .dashboard-mobile-header {
+            width: 100% !important;
+            max-width: 520px !important;
+            margin: 0 auto 10px !important;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035) !important;
+          }
+
+          .dashboard-showcase-row {
+            margin-top: 0 !important;
+          }
+
+          .dashboard-showcase-scroller {
+            padding-bottom: 6px !important;
+          }
+
+          .dashboard-composer-card,
+          .dashboard-feed-card,
+          .dashboard-feed-pulse,
+          .dashboard-mobile-sponsored-placement {
+            width: 100% !important;
+            border-radius: 20px !important;
+          }
+
+          .dashboard-composer-card,
+          .dashboard-feed-card {
+            padding: 13px !important;
+          }
+
+          .dashboard-composer-media-preview-wrap {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 11px !important;
+            border-radius: 18px !important;
+            overflow: hidden !important;
+          }
+
+          .dashboard-composer-media-preview-grid {
+            display: flex !important;
+            grid-template-columns: none !important;
+            gap: 8px !important;
+            max-height: none !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+            scrollbar-width: none !important;
+            padding: 8px !important;
+          }
+
+          .dashboard-composer-media-preview-grid::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-composer-media-preview-tile {
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            height: min(68vw, 330px) !important;
+            min-height: 220px !important;
+            scroll-snap-align: center !important;
+          }
+
+          .dashboard-composer-media-preview-grid-single .dashboard-composer-media-preview-tile {
+            height: min(68vw, 330px) !important;
+          }
+
+          .dashboard-post-media-grid {
+            display: flex !important;
+            grid-template-columns: none !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+            scrollbar-width: none !important;
+            gap: 8px !important;
+            padding: 8px !important;
+          }
+
+          .dashboard-post-media-grid::-webkit-scrollbar {
+            display: none !important;
+          }
+
+          .dashboard-post-media-tile {
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            min-height: 260px !important;
+            height: min(70vw, 360px) !important;
+            scroll-snap-align: center !important;
+          }
+
+          .dashboard-post-single-media {
+            width: 100% !important;
+            max-height: 72dvh !important;
+            object-fit: contain !important;
+            background: #05070d !important;
+          }
+
+          .dashboard-link-preview-card {
+            grid-template-columns: 86px minmax(0, 1fr) !important;
+            align-items: center !important;
+          }
+
+          .dashboard-link-preview-card > div:first-child {
+            width: 86px !important;
+            height: 60px !important;
+          }
+
+          .dashboard-post-actions {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+            margin-top: 10px !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions a {
+            min-height: 40px !important;
+            padding-inline: 4px !important;
+          }
+
+          .dashboard-post-actions svg {
+            width: 18px !important;
+            height: 18px !important;
+          }
+
+          .dashboard-comment-composer {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+
+          .dashboard-comment-composer button {
+            width: 100% !important;
+          }
+
+          .dashboard-bottom-nav {
+            width: min(calc(100vw - 18px), 430px) !important;
+          }
+        }
+
+        @media (max-width: 410px) {
+          .dashboard-shell-pad {
+            padding-left: 7px !important;
+            padding-right: 7px !important;
+          }
+
+          .dashboard-composer-actions a,
+          .dashboard-composer-actions button {
+            font-size: 10.75px !important;
+          }
+
+          .dashboard-post-actions {
+            gap: 4px !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions a {
+            min-height: 38px !important;
+          }
+
+          .dashboard-post-actions svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+
+          .dashboard-shared-reel-frame {
+            grid-template-columns: 92px minmax(0, 1fr) !important;
+          }
+
+          .dashboard-shared-reel-media {
+            width: 92px !important;
+            min-height: 164px !important;
+            max-height: 186px !important;
           }
         }
 

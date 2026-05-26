@@ -43,11 +43,18 @@ type ProfileRow = {
   avatar_url?: string | null;
 };
 
+type MobileStep = "select" | "preview" | "details";
+
+const REEL_CAPTION_MAX_LENGTH = 4000;
+const MAX_REEL_DURATION_SECONDS = 30;
+const MAX_REEL_DURATION_TOLERANCE_SECONDS = 0.35;
+const REEL_TOO_LONG_MESSAGE = `This video is longer than ${MAX_REEL_DURATION_SECONDS} seconds. Please choose a shorter video for Parapost Reels.`;
+
 const overlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
   background: "rgba(0,0,0,0.72)",
-  backdropFilter: "blur(6px)",
+  backdropFilter: "blur(8px)",
   zIndex: 120,
 };
 
@@ -61,10 +68,45 @@ const wrapStyle: CSSProperties = {
   zIndex: 130,
 };
 
+const buttonStyle: CSSProperties = {
+  borderRadius: "999px",
+  padding: "12px 18px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.07)",
+  color: "white",
+  fontWeight: 800,
+  fontSize: "14px",
+  cursor: "pointer",
+};
+
+const primaryButtonStyle: CSSProperties = {
+  borderRadius: "999px",
+  padding: "12px 20px",
+  border: "none",
+  background: "linear-gradient(135deg, #ffffff, #e9d5ff)",
+  color: "#07090d",
+  fontWeight: 900,
+  fontSize: "14px",
+  cursor: "pointer",
+  boxShadow: "0 16px 34px rgba(168,85,247,0.20)",
+};
+
+const disabledButtonStyle: CSSProperties = {
+  ...primaryButtonStyle,
+  opacity: 0.5,
+  cursor: "not-allowed",
+  boxShadow: "none",
+};
+
+const ghostButtonStyle: CSSProperties = {
+  ...buttonStyle,
+  background: "rgba(255,255,255,0.035)",
+};
+
 const labelStyle: CSSProperties = {
-  fontSize: "12px",
-  fontWeight: 700,
-  letterSpacing: "0.04em",
+  fontSize: "11px",
+  fontWeight: 900,
+  letterSpacing: "0.06em",
   textTransform: "uppercase",
   color: "#9ca3af",
   marginBottom: "8px",
@@ -72,7 +114,8 @@ const labelStyle: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.04)",
+  boxSizing: "border-box",
+  background: "rgba(255,255,255,0.045)",
   color: "white",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: "18px",
@@ -86,61 +129,19 @@ const textAreaStyle: CSSProperties = {
   minHeight: "118px",
   resize: "vertical",
   fontFamily: "inherit",
+  lineHeight: 1.5,
 };
 
-const buttonStyle: CSSProperties = {
-  borderRadius: "999px",
-  padding: "12px 18px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.06)",
-  color: "white",
-  fontWeight: 700,
-  fontSize: "14px",
-  cursor: "pointer",
-};
-
-const primaryButtonStyle: CSSProperties = {
-  borderRadius: "999px",
-  padding: "12px 18px",
-  border: "none",
-  background: "white",
-  color: "#07090d",
-  fontWeight: 800,
-  fontSize: "14px",
-  cursor: "pointer",
-};
-
-const disabledButtonStyle: CSSProperties = {
-  ...primaryButtonStyle,
-  opacity: 0.55,
-  cursor: "not-allowed",
-};
-
-const ghostButtonStyle: CSSProperties = {
-  ...buttonStyle,
-  background: "transparent",
-};
-
-const statCardStyle: CSSProperties = {
-  borderRadius: "20px",
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.04)",
-  padding: "12px 14px",
-};
-
-const REEL_CAPTION_MAX_LENGTH = 4000;
-
-const fileBoxBase: CSSProperties = {
+const filePickerStyle: CSSProperties = {
   position: "relative",
-  borderRadius: "24px",
-  border: "1px dashed rgba(255,255,255,0.16)",
+  borderRadius: "26px",
+  border: "1px solid rgba(255,255,255,0.12)",
   background:
-    "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03))",
-  minHeight: "280px",
-  padding: "18px",
+    "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.17), transparent 46%), rgba(255,255,255,0.035)",
   display: "grid",
   placeItems: "center",
   textAlign: "center",
+  overflow: "hidden",
 };
 
 const createFileName = (prefix: string, extension: string) => {
@@ -172,30 +173,96 @@ function extractFileExtension(fileName: string) {
   return parts.length > 1 ? parts[parts.length - 1] : "mp4";
 }
 
+function isOverReelDurationLimit(duration: number) {
+  return duration > MAX_REEL_DURATION_SECONDS + MAX_REEL_DURATION_TOLERANCE_SECONDS;
+}
+
+function getReadableVideoDuration(video: HTMLVideoElement) {
+  const duration = video.duration;
+  return Number.isFinite(duration) && duration > 0 ? duration : 0;
+}
+
 async function getVideoDuration(file: File) {
   return await new Promise<number>((resolve, reject) => {
     const video = document.createElement("video");
     const objectUrl = URL.createObjectURL(file);
+    let settled = false;
+    let bestDuration = 0;
+    let acceptShortDurationTimer: number | null = null;
+    let timeoutTimer: number | null = null;
 
     const cleanup = () => {
+      if (acceptShortDurationTimer) window.clearTimeout(acceptShortDurationTimer);
+      if (timeoutTimer) window.clearTimeout(timeoutTimer);
       URL.revokeObjectURL(objectUrl);
       video.removeAttribute("src");
       video.load();
     };
 
-    video.preload = "metadata";
-    video.src = objectUrl;
-
-    video.onloadedmetadata = () => {
-      const duration = video.duration;
+    const finish = (duration: number) => {
+      if (settled) return;
+      settled = true;
       cleanup();
       resolve(duration);
     };
 
-    video.onerror = () => {
+    const fail = () => {
+      if (settled) return;
+      settled = true;
       cleanup();
       reject(new Error("Could not read the selected video."));
     };
+
+    const checkDuration = () => {
+      const duration = getReadableVideoDuration(video);
+      if (duration > bestDuration) bestDuration = duration;
+
+      if (isOverReelDurationLimit(bestDuration)) {
+        finish(bestDuration);
+        return;
+      }
+
+      // Some mobile browsers update video duration shortly after metadata loads.
+      // Wait a moment before accepting a short duration so longer videos are not
+      // accidentally treated like 7-10 second clips.
+      if (bestDuration > 0 && !acceptShortDurationTimer) {
+        acceptShortDurationTimer = window.setTimeout(() => finish(bestDuration), 1500);
+      }
+    };
+
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadedmetadata = () => {
+      checkDuration();
+
+      // Force the browser to resolve the real end time when possible.
+      // This helps prevent some mobile uploads from being misread as a short
+      // 7-10 second clip when the selected video is actually longer.
+      try {
+        video.currentTime = Number.MAX_SAFE_INTEGER;
+      } catch {
+        // Some browsers do not allow seeking before enough metadata is ready.
+      }
+    };
+
+    video.ondurationchange = checkDuration;
+    video.oncanplay = checkDuration;
+    video.onseeked = checkDuration;
+    video.onerror = fail;
+
+    timeoutTimer = window.setTimeout(() => {
+      if (bestDuration > 0) {
+        finish(bestDuration);
+        return;
+      }
+
+      fail();
+    }, 8000);
+
+    video.src = objectUrl;
+    video.load();
   });
 }
 
@@ -246,7 +313,7 @@ async function generatePosterFromFile(file: File, seekTo = 0.6) {
           resolve(blob);
         },
         "image/jpeg",
-        0.9
+        0.9,
       );
     };
 
@@ -284,9 +351,78 @@ export default function ReelUploadModal({
   const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [viewportWidth, setViewportWidth] = useState(1400);
+  const [mobileStep, setMobileStep] = useState<MobileStep>("select");
 
+  const viewportType = getViewportType(viewportWidth);
+  const isMobile = viewportType === "mobile";
   const isReadyToUpload =
     !!selectedVideo && !!userId && title.trim().length > 0 && !isUploading;
+  const publishButtonLabel = isUploading
+    ? isGeneratingPoster
+      ? "Preparing..."
+      : "Uploading..."
+    : "Publish Reel";
+
+  const creatorHandle = useMemo(() => {
+    const raw = profile?.username?.trim();
+    return raw ? `@${raw.replace(/^@+/, "")}` : "@you";
+  }, [profile]);
+
+  const creatorName = useMemo(() => {
+    return profile?.display_name?.trim() || profile?.username?.trim() || "You";
+  }, [profile]);
+
+  const statusText = isUploading
+    ? isGeneratingPoster
+      ? "Generating cover image..."
+      : "Uploading reel..."
+    : isPreparing
+      ? "Preparing preview..."
+      : selectedVideo
+        ? "Ready"
+        : "Waiting";
+
+  const clearTransientMessages = () => {
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  const resetState = () => {
+    setSelectedVideo(null);
+    setTitle("");
+    setCaption("");
+    setVideoDuration(0);
+    setDragActive(false);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsUploading(false);
+    setIsPreparing(false);
+    setIsGeneratingPoster(false);
+    setMobileStep("select");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleClose = () => {
+    if (isUploading) return;
+    resetState();
+    onClose();
+  };
+
+  const handleRemoveVideo = () => {
+    setSelectedVideo(null);
+    setVideoDuration(0);
+    setTitle("");
+    setCaption("");
+    setMobileStep("select");
+    clearTransientMessages();
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     const setWidth = () => setViewportWidth(window.innerWidth);
@@ -356,40 +492,16 @@ export default function ReelUploadModal({
     };
   }, [selectedVideo]);
 
-  const viewportType = getViewportType(viewportWidth);
+  useEffect(() => {
+    if (!isOpen) return;
 
-  const creatorHandle = useMemo(() => {
-    const raw = profile?.username?.trim();
-    return raw ? `@${raw.replace(/^@+/, "")}` : "@you";
-  }, [profile]);
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  const creatorName = useMemo(() => {
-    return profile?.display_name?.trim() || profile?.username?.trim() || "You";
-  }, [profile]);
-
-  const clearTransientMessages = () => {
-    setErrorMessage("");
-    setSuccessMessage("");
-  };
-
-  const resetState = () => {
-    setSelectedVideo(null);
-    setTitle("");
-    setCaption("");
-    setVideoDuration(0);
-    setDragActive(false);
-    setErrorMessage("");
-    setSuccessMessage("");
-    setIsUploading(false);
-    setIsPreparing(false);
-    setIsGeneratingPoster(false);
-  };
-
-  const handleClose = () => {
-    if (isUploading) return;
-    resetState();
-    onClose();
-  };
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [isOpen]);
 
   const processVideoFile = async (file: File) => {
     clearTransientMessages();
@@ -404,10 +516,12 @@ export default function ReelUploadModal({
     try {
       const duration = await getVideoDuration(file);
 
-      if (duration > 30) {
-        setErrorMessage("Reels are currently limited to 30 seconds.");
+      if (isOverReelDurationLimit(duration)) {
+        setErrorMessage(REEL_TOO_LONG_MESSAGE);
         setSelectedVideo(null);
         setVideoDuration(0);
+        setMobileStep("select");
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
 
@@ -418,6 +532,10 @@ export default function ReelUploadModal({
         const cleanedName = file.name.replace(/\.[^.]+$/, "").trim();
         setTitle(cleanedName.slice(0, 80));
       }
+
+      if (isMobile) {
+        setMobileStep("preview");
+      }
     } catch (error) {
       console.error(error);
       setErrorMessage("Could not read that video. Try another file.");
@@ -426,7 +544,9 @@ export default function ReelUploadModal({
     }
   };
 
-  const handleFileInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
     await processVideoFile(file);
@@ -453,14 +573,41 @@ export default function ReelUploadModal({
 
     if (!selectedVideo) {
       setErrorMessage("Choose a video first.");
+      if (isMobile) setMobileStep("select");
       return;
     }
 
     if (!title.trim()) {
       setErrorMessage("Add a reel title before uploading.");
+      if (isMobile) setMobileStep("details");
       return;
     }
 
+    let confirmedDuration = videoDuration;
+
+    try {
+      setIsPreparing(true);
+      confirmedDuration = await getVideoDuration(selectedVideo);
+    } catch {
+      setErrorMessage("Could not confirm this video length. Please try another video.");
+      setIsPreparing(false);
+      if (isMobile) setMobileStep("select");
+      return;
+    }
+
+    setIsPreparing(false);
+
+    if (isOverReelDurationLimit(confirmedDuration)) {
+      setErrorMessage(REEL_TOO_LONG_MESSAGE);
+      setSelectedVideo(null);
+      setPreviewUrl("");
+      setVideoDuration(0);
+      setMobileStep("select");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setVideoDuration(confirmedDuration);
     setIsUploading(true);
 
     let videoPath = "";
@@ -498,7 +645,9 @@ export default function ReelUploadModal({
       }
 
       if (finalVideoUploadError) {
-        throw new Error(finalVideoUploadError.message || "Video upload failed.");
+        throw new Error(
+          finalVideoUploadError.message || "Video upload failed.",
+        );
       }
 
       const { error: posterUploadError } = await supabase.storage
@@ -513,7 +662,9 @@ export default function ReelUploadModal({
         throw new Error(posterUploadError.message || "Poster upload failed.");
       }
 
-      const { data: videoPublic } = supabase.storage.from("reels").getPublicUrl(videoPath);
+      const { data: videoPublic } = supabase.storage
+        .from("reels")
+        .getPublicUrl(videoPath);
       const { data: posterPublic } = supabase.storage
         .from("reel-posters")
         .getPublicUrl(posterPath);
@@ -529,7 +680,7 @@ export default function ReelUploadModal({
         caption: caption.trim(),
         video_url: publicVideoUrl,
         poster_url: publicPosterUrl,
-        duration_seconds: Math.round(videoDuration),
+        duration_seconds: Math.round(confirmedDuration),
         likes: 0,
         comments: 0,
         favorites: 0,
@@ -582,277 +733,776 @@ export default function ReelUploadModal({
       console.error(error);
 
       if (videoPath) {
-        await supabase.storage.from("reels").remove([videoPath]).catch(() => {});
+        await supabase.storage
+          .from("reels")
+          .remove([videoPath])
+          .catch(() => {});
       }
 
       if (posterPath) {
-        await supabase.storage.from("reel-posters").remove([posterPath]).catch(() => {});
+        await supabase.storage
+          .from("reel-posters")
+          .remove([posterPath])
+          .catch(() => {});
       }
 
       setErrorMessage(
-        error instanceof Error ? error.message : "Something went wrong while uploading."
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while uploading.",
       );
     } finally {
       setIsUploading(false);
+      setIsPreparing(false);
       setIsGeneratingPoster(false);
     }
   };
 
   if (!isOpen) return null;
 
-  const statusText = isUploading
-    ? isGeneratingPoster
-      ? "Generating cover image..."
-      : "Uploading reel..."
-    : isPreparing
-      ? "Preparing preview..."
-      : "";
+  const hiddenInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="video/*"
+      onChange={handleFileInputChange}
+      style={{ display: "none" }}
+    />
+  );
+
+  const profileChip = (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "10px",
+        borderRadius: "20px",
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.045)",
+        padding: "9px 11px",
+        width: "fit-content",
+      }}
+    >
+      <div
+        style={{
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.10)",
+          display: "grid",
+          placeItems: "center",
+          fontWeight: 900,
+          fontSize: "14px",
+        }}
+      >
+        {profile?.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt={creatorName}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          creatorName.charAt(0).toUpperCase()
+        )}
+      </div>
+
+      <div>
+        <div style={{ fontWeight: 900, fontSize: "14px" }}>{creatorName}</div>
+        <div style={{ color: "#9ca3af", fontSize: "12px" }}>
+          {creatorHandle}
+        </div>
+      </div>
+    </div>
+  );
+
+  const metaLine = (
+    <div
+      style={{
+        color: "#c4b5fd",
+        fontSize: isMobile ? "12px" : "13px",
+        fontWeight: 850,
+        display: "flex",
+        alignItems: "center",
+        gap: "7px",
+        flexWrap: "wrap",
+      }}
+    >
+      <span>{selectedVideo ? formatDuration(videoDuration) : "0:00"}</span>
+      <span>•</span>
+      <span>{selectedVideo ? formatBytes(selectedVideo.size) : "0 B"}</span>
+      <span>•</span>
+      <span>{statusText}</span>
+      <span>•</span>
+      <span>Max {MAX_REEL_DURATION_SECONDS}s</span>
+    </div>
+  );
+
+  const messages = (
+    <>
+      {errorMessage ? (
+        <div
+          style={{
+            borderRadius: "18px",
+            border: "1px solid rgba(248,113,113,0.25)",
+            background: "rgba(127,29,29,0.24)",
+            color: "#fecaca",
+            padding: "12px 14px",
+            fontSize: "13px",
+            lineHeight: 1.55,
+          }}
+        >
+          {errorMessage}
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div
+          style={{
+            borderRadius: "18px",
+            border: "1px solid rgba(34,197,94,0.22)",
+            background: "rgba(20,83,45,0.24)",
+            color: "#bbf7d0",
+            padding: "12px 14px",
+            fontSize: "13px",
+            lineHeight: 1.55,
+          }}
+        >
+          {successMessage}
+        </div>
+      ) : null}
+    </>
+  );
+
+  const uploadProgressNotice = isUploading ? (
+    <div
+      style={{
+        borderRadius: "18px",
+        border: "1px solid rgba(216,180,254,0.18)",
+        background: "rgba(168,85,247,0.12)",
+        padding: "12px 14px",
+        display: "grid",
+        gap: "9px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+        }}
+      >
+        <strong style={{ fontSize: "13px" }}>{statusText}</strong>
+        <span style={{ color: "#c4b5fd", fontSize: "12px", fontWeight: 850 }}>
+          Please keep this open
+        </span>
+      </div>
+      <div
+        style={{
+          width: "100%",
+          height: "6px",
+          borderRadius: "999px",
+          overflow: "hidden",
+          background: "rgba(255,255,255,0.08)",
+        }}
+      >
+        <div
+          style={{
+            width: isGeneratingPoster ? "42%" : "76%",
+            height: "100%",
+            borderRadius: "999px",
+            background: "linear-gradient(90deg, #a855f7, #ec4899)",
+            transition: "width 260ms ease",
+          }}
+        />
+      </div>
+    </div>
+  ) : null;
+
+  const uploadPicker = (compact = false) => (
+    <div
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragActive(true);
+      }}
+      onDragLeave={() => setDragActive(false)}
+      onDrop={handleDrop}
+      style={{
+        ...filePickerStyle,
+        minHeight: compact
+          ? "min(48dvh, 390px)"
+          : isMobile
+            ? "min(62dvh, 520px)"
+            : "520px",
+        padding: compact ? "18px" : "24px",
+        borderColor: dragActive
+          ? "rgba(216,180,254,0.45)"
+          : "rgba(255,255,255,0.12)",
+      }}
+    >
+      <div style={{ maxWidth: compact ? "320px" : "360px" }}>
+        <div
+          style={{
+            width: compact ? "52px" : "64px",
+            height: compact ? "52px" : "64px",
+            margin: "0 auto 14px",
+            borderRadius: "22px",
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.07)",
+            display: "grid",
+            placeItems: "center",
+            fontSize: compact ? "24px" : "30px",
+          }}
+        >
+          ↑
+        </div>
+
+        <div
+          style={{
+            fontSize: compact ? "18px" : "22px",
+            fontWeight: 950,
+            marginBottom: "8px",
+          }}
+        >
+          Upload your reel
+        </div>
+        <div
+          style={{
+            color: "#b9c0cc",
+            lineHeight: 1.55,
+            fontSize: compact ? "13px" : "14px",
+            marginBottom: "18px",
+          }}
+        >
+          Choose a portrait or landscape video, preview it, then add your title
+          and caption. Max 30 seconds.
+        </div>
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            ...primaryButtonStyle,
+            minWidth: compact ? "190px" : "220px",
+          }}
+          type="button"
+        >
+          Choose Video
+        </button>
+
+        <div
+          style={{
+            marginTop: "12px",
+            color: "#aeb6c3",
+            fontSize: compact ? "12px" : "13px",
+            fontWeight: 800,
+          }}
+        >
+          Portrait and landscape supported · Max {MAX_REEL_DURATION_SECONDS}s
+        </div>
+      </div>
+    </div>
+  );
+
+  const videoPreview = (mode: "hero" | "desktop" | "thumb") => {
+    if (!previewUrl) return null;
+
+    const isHero = mode === "hero";
+    const isThumb = mode === "thumb";
+
+    return (
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: isThumb ? "176px" : isHero ? "100%" : "100%",
+          minHeight: isThumb ? "176px" : isHero ? "0" : "520px",
+          borderRadius: isThumb ? "20px" : isHero ? "0" : "26px",
+          overflow: "hidden",
+          background: "#000",
+          border: isHero ? "none" : "1px solid rgba(255,255,255,0.10)",
+        }}
+      >
+        <video
+          src={previewUrl}
+          controls
+          playsInline
+          muted
+          preload="metadata"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            background: "#000",
+            display: "block",
+          }}
+        />
+      </div>
+    );
+  };
+
+  if (isMobile) {
+    const mobileShellStyle: CSSProperties = {
+      width: "100vw",
+      height: "100dvh",
+      maxHeight: "100dvh",
+      borderRadius: 0,
+      border: "none",
+      background: "linear-gradient(180deg, rgba(10,14,26,1), rgba(5,7,12,1))",
+      boxShadow: "none",
+      overflow: "hidden",
+      color: "white",
+      display: "flex",
+      flexDirection: "column",
+    };
+
+    const mobileHeader = (
+      <div
+        style={{
+          minHeight: "calc(58px + env(safe-area-inset-top))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          padding: "calc(10px + env(safe-area-inset-top)) 14px 10px",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(3,7,18,0.78)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            if (mobileStep === "details") {
+              setMobileStep("preview");
+              return;
+            }
+            handleClose();
+          }}
+          style={{ ...ghostButtonStyle, padding: "8px 12px", minWidth: "74px" }}
+        >
+          {mobileStep === "details" ? "← Back" : "Close"}
+        </button>
+
+        <div style={{ textAlign: "center", minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: "12px",
+              letterSpacing: "0.08em",
+              fontWeight: 950,
+              color: "#d8b4fe",
+            }}
+          >
+            PARAPOST REELS
+          </div>
+          <div style={{ fontSize: "10px", color: "#8b93a4", fontWeight: 800 }}>
+            {mobileStep === "details"
+              ? "Details"
+              : selectedVideo
+                ? "Preview"
+                : "Upload"}
+          </div>
+        </div>
+
+        {selectedVideo && mobileStep !== "details" ? (
+          <button
+            type="button"
+            onClick={() => setMobileStep("details")}
+            style={{
+              ...primaryButtonStyle,
+              padding: "8px 14px",
+              minWidth: "74px",
+            }}
+          >
+            Next
+          </button>
+        ) : (
+          <div style={{ width: "74px" }} />
+        )}
+      </div>
+    );
+
+    if (mobileStep === "details" && selectedVideo) {
+      return (
+        <>
+          <div
+            style={overlayStyle}
+            onClick={isUploading ? undefined : handleClose}
+          />
+          <div style={{ ...wrapStyle, padding: 0 }}>
+            <div
+              style={mobileShellStyle}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Create Parapost Reel"
+            >
+              {mobileHeader}
+              <div
+                style={{
+                  flex: "1 1 auto",
+                  minHeight: 0,
+                  overflowY: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  padding: "16px 16px 26px",
+                  display: "grid",
+                  gap: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "124px minmax(0, 1fr)",
+                    gap: "14px",
+                    alignItems: "start",
+                  }}
+                >
+                  {videoPreview("thumb")}
+                  <div style={{ minWidth: 0, display: "grid", gap: "10px" }}>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontSize: "24px",
+                        lineHeight: 1.05,
+                        fontWeight: 950,
+                      }}
+                    >
+                      Create a Reel
+                    </h2>
+                    {profileChip}
+                    {metaLine}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={labelStyle}>Reel Title</div>
+                  <input
+                    value={title}
+                    onChange={(event) => {
+                      setTitle(event.target.value.slice(0, 80));
+                      if (errorMessage === "Add a reel title before uploading.")
+                        setErrorMessage("");
+                    }}
+                    placeholder="Give your reel a strong title"
+                    style={inputStyle}
+                    maxLength={80}
+                  />
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      color: "#9ca3af",
+                      fontSize: "12px",
+                      textAlign: "right",
+                    }}
+                  >
+                    {title.length}/80
+                  </div>
+                </div>
+
+                <div>
+                  <div style={labelStyle}>Caption</div>
+                  <textarea
+                    value={caption}
+                    onChange={(event) =>
+                      setCaption(
+                        event.target.value.slice(0, REEL_CAPTION_MAX_LENGTH),
+                      )
+                    }
+                    placeholder="Write a caption for your reel..."
+                    style={{ ...textAreaStyle, minHeight: "150px" }}
+                    maxLength={REEL_CAPTION_MAX_LENGTH}
+                  />
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      color: "#9ca3af",
+                      fontSize: "12px",
+                      textAlign: "right",
+                    }}
+                  >
+                    {caption.length}/{REEL_CAPTION_MAX_LENGTH}
+                  </div>
+                </div>
+
+                {messages}
+                {uploadProgressNotice}
+              </div>
+
+              <div
+                style={{
+                  flex: "0 0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                  padding: "12px 14px calc(16px + env(safe-area-inset-bottom))",
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(3,7,18,0.94)",
+                }}
+              >
+                <button
+                  onClick={handleClose}
+                  style={{ ...ghostButtonStyle, padding: "11px 15px" }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpload}
+                  style={
+                    isReadyToUpload
+                      ? {
+                          ...primaryButtonStyle,
+                          padding: "12px 18px",
+                          minWidth: "142px",
+                        }
+                      : {
+                          ...disabledButtonStyle,
+                          padding: "12px 18px",
+                          minWidth: "142px",
+                        }
+                  }
+                  disabled={!isReadyToUpload}
+                  type="button"
+                >
+                  {publishButtonLabel}
+                </button>
+              </div>
+
+              {hiddenInput}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (selectedVideo && mobileStep === "preview") {
+      return (
+        <>
+          <div
+            style={overlayStyle}
+            onClick={isUploading ? undefined : handleClose}
+          />
+          <div style={{ ...wrapStyle, padding: 0 }}>
+            <div
+              style={mobileShellStyle}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Create Parapost Reel"
+            >
+              {mobileHeader}
+              <div
+                style={{
+                  flex: "1 1 auto",
+                  minHeight: 0,
+                  background: "#000",
+                  display: "grid",
+                }}
+              >
+                {videoPreview("hero")}
+              </div>
+
+              <div
+                style={{
+                  flex: "0 0 auto",
+                  padding: "12px 14px calc(16px + env(safe-area-inset-bottom))",
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(3,7,18,0.94)",
+                  display: "grid",
+                  gap: "10px",
+                }}
+              >
+                {metaLine}
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ ...buttonStyle, flex: 1 }}
+                    type="button"
+                  >
+                    Replace Video
+                  </button>
+                  <button
+                    onClick={handleRemoveVideo}
+                    style={{ ...ghostButtonStyle, flex: 1 }}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <button
+                  onClick={() => setMobileStep("details")}
+                  style={{ ...primaryButtonStyle, width: "100%" }}
+                  type="button"
+                >
+                  Next
+                </button>
+                {messages}
+              </div>
+              {hiddenInput}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <div
+          style={overlayStyle}
+          onClick={isUploading ? undefined : handleClose}
+        />
+        <div style={{ ...wrapStyle, padding: 0 }}>
+          <div
+            style={mobileShellStyle}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create Parapost Reel"
+          >
+            {mobileHeader}
+            <div
+              style={{
+                flex: "1 1 auto",
+                minHeight: 0,
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                padding: "16px",
+                display: "grid",
+                gap: "14px",
+                alignContent: "start",
+              }}
+            >
+              {uploadPicker(true)}
+              {messages}
+            </div>
+            {hiddenInput}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const modalStyle: CSSProperties = {
-    width: viewportType === "mobile" ? "100%" : "min(1080px, 100%)",
-    maxHeight: viewportType === "mobile" ? "95vh" : "88vh",
+    width:
+      viewportType === "tablet"
+        ? "min(960px, calc(100vw - 32px))"
+        : "min(1120px, calc(100vw - 40px))",
+    maxHeight: "88dvh",
     overflow: "hidden",
-    borderRadius: viewportType === "mobile" ? "24px" : "28px",
+    borderRadius: "30px",
     border: "1px solid rgba(255,255,255,0.10)",
     background:
       "linear-gradient(180deg, rgba(11,16,32,0.98) 0%, rgba(7,9,13,0.98) 100%)",
     boxShadow: "0 28px 80px rgba(0,0,0,0.55)",
+    color: "white",
     display: "grid",
     gridTemplateColumns:
-      viewportType === "mobile" ? "1fr" : "minmax(290px, 390px) minmax(0, 1fr)",
-  };
-
-  const leftPaneStyle: CSSProperties = {
-    position: "relative",
-    minHeight: viewportType === "mobile" ? "300px" : "560px",
-    background:
-      "radial-gradient(circle at top, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 35%, rgba(0,0,0,0.24) 100%)",
-    borderRight:
-      viewportType === "mobile" ? "none" : "1px solid rgba(255,255,255,0.08)",
-    borderBottom:
-      viewportType === "mobile" ? "1px solid rgba(255,255,255,0.08)" : "none",
-    overflow: "hidden",
-  };
-
-  const rightPaneStyle: CSSProperties = {
-    padding: viewportType === "mobile" ? "18px" : "20px",
-    overflowY: "auto",
-    display: "grid",
-    gap: "14px",
-    maxHeight: viewportType === "mobile" ? "calc(95vh - 300px)" : "88vh",
+      viewportType === "tablet"
+        ? "minmax(320px, 44%) minmax(0, 1fr)"
+        : "minmax(380px, 48%) minmax(0, 1fr)",
   };
 
   return (
     <>
-      <div style={overlayStyle} onClick={handleClose} />
+      <div
+        style={overlayStyle}
+        onClick={isUploading ? undefined : handleClose}
+      />
       <div style={wrapStyle}>
-        <div style={modalStyle}>
-          <div style={leftPaneStyle}>
+        <div
+          style={modalStyle}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create Parapost Reel"
+        >
+          <div
+            style={{
+              minHeight: viewportType === "tablet" ? "620px" : "660px",
+              maxHeight: "88dvh",
+              borderRight: "1px solid rgba(255,255,255,0.08)",
+              background:
+                "radial-gradient(circle at top, rgba(168,85,247,0.12), transparent 46%), rgba(0,0,0,0.20)",
+              padding: "18px",
+              display: "grid",
+              gridTemplateRows: "auto minmax(0, 1fr) auto",
+              gap: "14px",
+            }}
+          >
             <div
               style={{
-                position: "absolute",
-                top: "16px",
-                left: "16px",
-                right: "16px",
-                zIndex: 5,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: "10px",
-                flexWrap: "wrap",
+                gap: "12px",
               }}
             >
               <div
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "8px",
                   padding: "8px 12px",
                   borderRadius: "999px",
                   border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(0,0,0,0.32)",
+                  background: "rgba(0,0,0,0.28)",
                   fontSize: "12px",
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
+                  fontWeight: 900,
+                  letterSpacing: "0.06em",
                   textTransform: "uppercase",
                 }}
               >
                 Parapost Reels
               </div>
 
-              <button onClick={handleClose} style={ghostButtonStyle} type="button">
+              <button
+                onClick={handleClose}
+                style={{ ...ghostButtonStyle, padding: "9px 14px" }}
+                type="button"
+              >
                 Close
               </button>
             </div>
 
-            <div
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDragActive(true);
-              }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={handleDrop}
-              style={{
-                ...fileBoxBase,
-                minHeight: "100%",
-                borderColor: dragActive
-                  ? "rgba(255,255,255,0.34)"
-                  : "rgba(255,255,255,0.16)",
-                background: dragActive
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.04))"
-                  : fileBoxBase.background,
-              }}
-            >
-              {previewUrl ? (
-                <>
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.18) 45%, rgba(0,0,0,0.68) 100%)",
-                      pointerEvents: "none",
-                      zIndex: 1,
-                    }}
-                  />
-                  <video
-                    src={previewUrl}
-                    controls
-                    playsInline
-                    muted
-                    preload="metadata"
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      width: "100%",
-                      height: "100%",
-                      maxWidth: viewportType === "mobile" ? "100%" : "390px",
-                      objectFit: "contain",
-                      background: "#000",
-                      filter: "contrast(1.05) saturate(1.1)",
-                    }}
-                  />
+            {previewUrl ? videoPreview("desktop") : uploadPicker(false)}
 
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: "14px",
-                      right: "14px",
-                      bottom: "14px",
-                      zIndex: 2,
-                      display: "grid",
-                      gap: "10px",
-                      textAlign: "left",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        width: "fit-content",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "8px 12px",
-                        borderRadius: "999px",
-                        background: "rgba(0,0,0,0.45)",
-                        border: "1px solid rgba(255,255,255,0.14)",
-                        backdropFilter: "blur(10px)",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      Preview Ready
-                    </div>
-
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        style={buttonStyle}
-                        type="button"
-                      >
-                        Replace Video
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedVideo(null);
-                          setVideoDuration(0);
-                          setTitle("");
-                          setCaption("");
-                          clearTransientMessages();
-                        }}
-                        style={ghostButtonStyle}
-                        type="button"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div style={{ maxWidth: "320px" }}>
-                  <div
-                    style={{
-                      width: "74px",
-                      height: "74px",
-                      margin: "0 auto 14px",
-                      borderRadius: "24px",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      display: "grid",
-                      placeItems: "center",
-                      fontSize: "30px",
-                    }}
-                  >
-                    ⬆
-                  </div>
-
-                  <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
-                    Upload your reel
-                  </div>
-                  <div
-                    style={{
-                      color: "#d1d5db",
-                      lineHeight: 1.6,
-                      fontSize: "14px",
-                      marginBottom: "18px",
-                    }}
-                  >
-                    Drag and drop a portrait or landscape video here, or choose a file. Reels are set to a 30-second maximum for launch.
-                  </div>
-
+            {previewUrl ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                }}
+              >
+                {metaLine}
+                <div style={{ display: "flex", gap: "10px" }}>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    style={primaryButtonStyle}
+                    style={buttonStyle}
                     type="button"
                   >
-                    Choose Video
+                    Replace Video
                   </button>
-
-                  <div
-                    style={{
-                      marginTop: "16px",
-                      color: "#9ca3af",
-                      fontSize: "12px",
-                      lineHeight: 1.6,
-                    }}
+                  <button
+                    onClick={handleRemoveVideo}
+                    style={ghostButtonStyle}
+                    type="button"
                   >
-                    Recommended: 9:16 portrait for full-screen Reels. Landscape videos are supported and will display cleanly without being forced to crop.
-                  </div>
+                    Remove
+                  </button>
                 </div>
-              )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                onChange={handleFileInputChange}
-                style={{ display: "none" }}
-              />
-            </div>
+              </div>
+            ) : null}
           </div>
 
-          <div style={rightPaneStyle}>
+          <div
+            style={{
+              padding: viewportType === "tablet" ? "20px" : "24px",
+              maxHeight: "88dvh",
+              overflowY: "auto",
+              display: "grid",
+              gap: "16px",
+              alignContent: "start",
+            }}
+          >
             <div
               style={{
                 display: "flex",
@@ -862,111 +1512,45 @@ export default function ReelUploadModal({
                 flexWrap: "wrap",
               }}
             >
-              <div>
-                <div
+              <div style={{ minWidth: 0 }}>
+                <h2
                   style={{
-                    fontSize: viewportType === "mobile" ? "24px" : "28px",
+                    margin: 0,
+                    fontSize: viewportType === "tablet" ? "27px" : "32px",
                     lineHeight: 1.05,
-                    fontWeight: 900,
-                    marginBottom: "6px",
+                    fontWeight: 950,
                   }}
                 >
                   Create a Reel
-                </div>
-                <div style={{ color: "#9ca3af", fontSize: "14px", lineHeight: 1.6 }}>
-                  Upload a short portrait or landscape video for Parapost Reels. The preview and captions are built to flow cleanly on desktop, tablet, and mobile.
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  borderRadius: "20px",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: "rgba(255,255,255,0.04)",
-                  padding: "10px 12px",
-                }}
-              >
+                </h2>
                 <div
                   style={{
-                    width: "42px",
-                    height: "42px",
-                    borderRadius: "50%",
-                    overflow: "hidden",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(255,255,255,0.10)",
-                    display: "grid",
-                    placeItems: "center",
-                    fontWeight: 800,
+                    marginTop: "8px",
+                    color: "#aeb6c3",
                     fontSize: "14px",
+                    lineHeight: 1.55,
+                    maxWidth: "520px",
                   }}
                 >
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={creatorName}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    creatorName.charAt(0).toUpperCase()
-                  )}
-                </div>
-
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: "14px" }}>{creatorName}</div>
-                  <div style={{ color: "#9ca3af", fontSize: "12px" }}>{creatorHandle}</div>
+                  Choose a portrait or landscape video, review the preview, add
+                  your title and caption, then publish. Reels are limited to 30
+                  seconds.
                 </div>
               </div>
+              {profileChip}
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  viewportType === "mobile"
-                    ? "1fr"
-                    : "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "12px",
-              }}
-            >
-              <div style={statCardStyle}>
-                <div style={labelStyle}>Duration</div>
-                <div style={{ fontSize: "20px", fontWeight: 900 }}>
-                  {selectedVideo ? formatDuration(videoDuration) : "0:00"}
-                </div>
-                <div style={{ marginTop: "6px", color: "#9ca3af", fontSize: "12px" }}>
-                  Max 0:30 at launch
-                </div>
-              </div>
-
-              <div style={statCardStyle}>
-                <div style={labelStyle}>File Size</div>
-                <div style={{ fontSize: "20px", fontWeight: 900 }}>
-                  {selectedVideo ? formatBytes(selectedVideo.size) : "0 B"}
-                </div>
-                <div style={{ marginTop: "6px", color: "#9ca3af", fontSize: "12px" }}>
-                  Bigger files may upload slower
-                </div>
-              </div>
-
-              <div style={statCardStyle}>
-                <div style={labelStyle}>Status</div>
-                <div style={{ fontSize: "20px", fontWeight: 900 }}>
-                  {selectedVideo ? "Ready" : "Waiting"}
-                </div>
-                <div style={{ marginTop: "6px", color: "#9ca3af", fontSize: "12px" }}>
-                  {statusText || "Select a reel video to begin"}
-                </div>
-              </div>
-            </div>
+            {metaLine}
 
             <div>
               <div style={labelStyle}>Reel Title</div>
               <input
                 value={title}
-                onChange={(event) => setTitle(event.target.value.slice(0, 80))}
+                onChange={(event) => {
+                  setTitle(event.target.value.slice(0, 80));
+                  if (errorMessage === "Add a reel title before uploading.")
+                    setErrorMessage("");
+                }}
                 placeholder="Give your reel a strong title"
                 style={inputStyle}
                 maxLength={80}
@@ -987,9 +1571,16 @@ export default function ReelUploadModal({
               <div style={labelStyle}>Caption</div>
               <textarea
                 value={caption}
-                onChange={(event) => setCaption(event.target.value.slice(0, REEL_CAPTION_MAX_LENGTH))}
+                onChange={(event) =>
+                  setCaption(
+                    event.target.value.slice(0, REEL_CAPTION_MAX_LENGTH),
+                  )
+                }
                 placeholder="Write a caption for your reel..."
-                style={textAreaStyle}
+                style={{
+                  ...textAreaStyle,
+                  minHeight: viewportType === "tablet" ? "150px" : "190px",
+                }}
                 maxLength={REEL_CAPTION_MAX_LENGTH}
               />
               <div
@@ -1004,86 +1595,42 @@ export default function ReelUploadModal({
               </div>
             </div>
 
-            <div
-              style={{
-                borderRadius: "24px",
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.04)",
-                padding: "14px 16px",
-                display: "grid",
-                gap: "8px",
-              }}
-            >
-              <div style={{ fontWeight: 800, fontSize: "15px" }}>Launch Rules</div>
-              <div style={{ color: "#d1d5db", fontSize: "14px", lineHeight: 1.7 }}>
-                Reels are currently capped at 30 seconds. Owner controls, feed sharing, and the reels page are designed to work with this format first before expanding longer video support later.
-              </div>
-            </div>
-
-            {errorMessage ? (
-              <div
-                style={{
-                  borderRadius: "20px",
-                  border: "1px solid rgba(248,113,113,0.25)",
-                  background: "rgba(127,29,29,0.30)",
-                  color: "#fecaca",
-                  padding: "14px 16px",
-                  fontSize: "14px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {errorMessage}
-              </div>
-            ) : null}
-
-            {successMessage ? (
-              <div
-                style={{
-                  borderRadius: "20px",
-                  border: "1px solid rgba(34,197,94,0.22)",
-                  background: "rgba(20,83,45,0.30)",
-                  color: "#bbf7d0",
-                  padding: "14px 16px",
-                  fontSize: "14px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {successMessage}
-              </div>
-            ) : null}
+            {messages}
+            {uploadProgressNotice}
 
             <div
               style={{
                 display: "flex",
+                alignItems: "center",
                 justifyContent: "space-between",
                 gap: "12px",
                 flexWrap: "wrap",
-                paddingTop: "2px",
+                paddingTop: "4px",
               }}
             >
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <button onClick={handleClose} style={ghostButtonStyle} type="button">
-                  Cancel
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  style={buttonStyle}
-                  type="button"
-                >
-                  Choose Another Video
-                </button>
-              </div>
-
+              <button
+                onClick={handleClose}
+                style={ghostButtonStyle}
+                type="button"
+              >
+                Cancel
+              </button>
               <button
                 onClick={handleUpload}
-                style={isReadyToUpload ? primaryButtonStyle : disabledButtonStyle}
+                style={
+                  isReadyToUpload
+                    ? { ...primaryButtonStyle, minWidth: "150px" }
+                    : { ...disabledButtonStyle, minWidth: "150px" }
+                }
                 disabled={!isReadyToUpload}
                 type="button"
               >
-                {isUploading ? "Uploading..." : "Publish Reel"}
+                {publishButtonLabel}
               </button>
             </div>
           </div>
+
+          {hiddenInput}
         </div>
       </div>
     </>

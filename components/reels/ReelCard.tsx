@@ -31,7 +31,20 @@ export default function ReelCard({
     transform: isDimmed ? "scale(0.985)" : "scale(1)",
     filter: isDimmed ? "brightness(0.78)" : "brightness(1)",
     transition: "transform 220ms ease, filter 220ms ease",
+    isolation: "isolate",
+    contain: "layout paint",
+    WebkitTapHighlightColor: "transparent",
+    touchAction: "manipulation",
+    willChange: isDimmed ? "transform, filter" : "auto",
   };
 
-  return <div style={cardStyle}>{children}</div>;
+  return (
+    <div
+      className="parapost-reel-card"
+      style={cardStyle}
+      data-mobile={isMobile ? "true" : "false"}
+    >
+      {children}
+    </div>
+  );
 }

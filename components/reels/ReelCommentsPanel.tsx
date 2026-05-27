@@ -72,6 +72,7 @@ const primaryButtonStyle: CSSProperties = {
   fontWeight: 850,
   fontSize: "14px",
   cursor: "pointer",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const secondaryButtonStyle: CSSProperties = {
@@ -83,6 +84,7 @@ const secondaryButtonStyle: CSSProperties = {
   fontWeight: 750,
   fontSize: "13px",
   cursor: "pointer",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const textAreaStyle: CSSProperties = {
@@ -168,8 +170,9 @@ export default function ReelCommentsPanel({
 }: ReelCommentsPanelProps) {
   if (!isOpen) return null;
 
+  const isMobile = viewportType === "mobile";
   const canModerateComments = !!activeReelOwnerId && activeReelOwnerId === currentUserId;
-  const footerIsCompact = viewportType === "mobile";
+  const footerIsCompact = isMobile;
   const selectedMenuComment = commentMenu
     ? allComments.find((comment) => comment.id === commentMenu.commentId)
     : null;
@@ -177,6 +180,8 @@ export default function ReelCommentsPanel({
     selectedMenuComment &&
       (selectedMenuComment.authorUserId === currentUserId || canModerateComments)
   );
+
+  const handleCloseCommentMenu = () => setCommentMenu(null);
 
   return (
     <>
@@ -186,7 +191,13 @@ export default function ReelCommentsPanel({
         title="Comments"
         subtitle={`${getCommentCountLabel(activeComments.length)} · ${reelTitle}`}
         footer={
-          <div style={{ display: "grid", gap: footerIsCompact ? 9 : 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gap: footerIsCompact ? 9 : 10,
+              paddingBottom: footerIsCompact ? "env(safe-area-inset-bottom)" : 0,
+            }}
+          >
             <textarea
               ref={commentInputRef}
               value={commentDraft}
@@ -198,6 +209,7 @@ export default function ReelCommentsPanel({
                 ...textAreaStyle,
                 minHeight: footerIsCompact ? "62px" : "72px",
                 maxHeight: footerIsCompact ? "96px" : "118px",
+                fontSize: footerIsCompact ? "16px" : textAreaStyle.fontSize,
               }}
             />
 
@@ -217,8 +229,9 @@ export default function ReelCommentsPanel({
                   ...primaryButtonStyle,
                   opacity: commentDraft.trim() ? 1 : 0.45,
                   cursor: commentDraft.trim() ? "pointer" : "not-allowed",
-                  padding: footerIsCompact ? "9px 14px" : primaryButtonStyle.padding,
+                  padding: footerIsCompact ? "10px 16px" : primaryButtonStyle.padding,
                   flexShrink: 0,
+                  minHeight: footerIsCompact ? 42 : undefined,
                 }}
               >
                 Post
@@ -227,7 +240,13 @@ export default function ReelCommentsPanel({
           </div>
         }
       >
-        <div style={{ display: "grid", gap: viewportType === "mobile" ? "10px" : "12px" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: isMobile ? "10px" : "12px",
+            paddingBottom: isMobile ? "4px" : 0,
+          }}
+        >
           {activeComments.length === 0 ? (
             <div style={emptyStateStyle}>
               <div style={{ fontSize: "28px", lineHeight: 1, marginBottom: 10 }}>💬</div>
@@ -257,7 +276,11 @@ export default function ReelCommentsPanel({
                   onDoubleClick={() => onCommentLikeToggle(comment.id, true)}
                   onTouchStart={() => onCommentTouchStart(comment.id, false)}
                   onTouchEnd={() => onCommentTouchEnd(comment.id)}
-                  style={commentCardStyle}
+                  style={{
+                    ...commentCardStyle,
+                    padding: isMobile ? "12px" : commentCardStyle.padding,
+                    borderRadius: isMobile ? "19px" : commentCardStyle.borderRadius,
+                  }}
                 >
                   <div style={commentHeaderStyle}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -268,7 +291,7 @@ export default function ReelCommentsPanel({
                       </div>
                     </div>
 
-                    <div style={commentTimeDesktopStyle}>{comment.time}</div>
+                    {!isMobile ? <div style={commentTimeDesktopStyle}>{comment.time}</div> : null}
                   </div>
 
                   <div style={commentTextStyle}>{comment.text}</div>
@@ -300,7 +323,7 @@ export default function ReelCommentsPanel({
                           maxHeight: "100px",
                           borderRadius: "16px",
                           padding: "11px 12px",
-                          fontSize: "13px",
+                          fontSize: isMobile ? "16px" : "13px",
                         }}
                       />
 
@@ -335,8 +358,8 @@ export default function ReelCommentsPanel({
                     <div
                       style={{
                         ...repliesWrapStyle,
-                        marginLeft: viewportType === "mobile" ? "8px" : "20px",
-                        paddingLeft: viewportType === "mobile" ? "10px" : "14px",
+                        marginLeft: isMobile ? "8px" : "20px",
+                        paddingLeft: isMobile ? "10px" : "14px",
                       }}
                     >
                       {replies.map((reply) => {
@@ -372,7 +395,7 @@ export default function ReelCommentsPanel({
                                 </div>
                               </div>
 
-                              <div style={commentTimeDesktopStyle}>{reply.time}</div>
+                              {!isMobile ? <div style={commentTimeDesktopStyle}>{reply.time}</div> : null}
                             </div>
 
                             <div style={replyingToStyle}>
@@ -408,81 +431,104 @@ export default function ReelCommentsPanel({
         </div>
       </ReelsCommentsBottomSheet>
 
-      {commentMenu && (
-        <div
-          style={{
-            position: "fixed",
-            top: commentMenu.y,
-            left: commentMenu.x,
-            zIndex: 170,
-            minWidth: "210px",
-            background: "#0b1020",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: "18px",
-            overflow: "hidden",
-            boxShadow: "0 18px 34px rgba(0,0,0,0.34)",
-          }}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button style={menuItemStyle} onClick={() => onCopyCommentText(commentMenu.commentId)}>
-            Copy Comment
-          </button>
-
-          <button
-            style={menuItemStyle}
-            onClick={() => onCommentLikeToggle(commentMenu.commentId, true)}
-          >
-            Like Comment
-          </button>
-
-          <button
-            style={menuItemStyle}
-            onClick={() => {
-              const selectedComment = allComments.find(
-                (comment) => comment.id === commentMenu.commentId
-              );
-              if (selectedComment) {
-                const parentComment = selectedComment.parentCommentId
-                  ? allComments.find((comment) => comment.id === selectedComment.parentCommentId)
-                  : selectedComment;
-
-                if (parentComment) {
-                  onStartCommentReply(parentComment);
-                }
-              }
-              setCommentMenu(null);
-            }}
-          >
-            Reply
-          </button>
-
-          {canModerateComments && selectedMenuComment?.authorUserId !== currentUserId ? (
-            <button style={menuItemStyle} onClick={() => onHideComment(commentMenu.commentId)}>
-              Hide Comment
-            </button>
+      {commentMenu ? (
+        <>
+          {isMobile ? (
+            <button
+              type="button"
+              aria-label="Close comment options"
+              onClick={handleCloseCommentMenu}
+              style={mobileMenuBackdropStyle}
+            />
           ) : null}
 
-          <button style={menuItemStyle} onClick={() => onReportComment(commentMenu.commentId)}>
-            Report Comment
-          </button>
+          <div
+            style={
+              isMobile
+                ? mobileCommentMenuStyle
+                : {
+                    ...desktopCommentMenuStyle,
+                    top: commentMenu.y,
+                    left: commentMenu.x,
+                  }
+            }
+            onClick={(event) => event.stopPropagation()}
+            role="menu"
+            aria-label="Comment options"
+          >
+            {isMobile ? (
+              <div style={mobileMenuHandleWrapStyle}>
+                <span style={mobileMenuHandleStyle} />
+                <div style={mobileMenuTitleStyle}>Comment options</div>
+              </div>
+            ) : null}
 
-          {canDeleteSelectedMenuComment ? (
-            <button
-              style={{ ...menuItemStyle, color: "#fecaca", borderBottom: "none" }}
-              onClick={() => onDeleteLocalComment(commentMenu.commentId)}
-            >
-              Delete Comment
+            <button style={menuItemStyle} onClick={() => onCopyCommentText(commentMenu.commentId)}>
+              Copy Comment
             </button>
-          ) : (
+
             <button
-              style={{ ...menuItemStyle, borderBottom: "none" }}
-              onClick={() => setCommentMenu(null)}
+              style={menuItemStyle}
+              onClick={() => onCommentLikeToggle(commentMenu.commentId, true)}
+            >
+              Like Comment
+            </button>
+
+            <button
+              style={menuItemStyle}
+              onClick={() => {
+                const selectedComment = allComments.find(
+                  (comment) => comment.id === commentMenu.commentId
+                );
+                if (selectedComment) {
+                  const parentComment = selectedComment.parentCommentId
+                    ? allComments.find((comment) => comment.id === selectedComment.parentCommentId)
+                    : selectedComment;
+
+                  if (parentComment) {
+                    onStartCommentReply(parentComment);
+                  }
+                }
+                setCommentMenu(null);
+              }}
+            >
+              Reply
+            </button>
+
+            {canModerateComments && selectedMenuComment?.authorUserId !== currentUserId ? (
+              <button style={menuItemStyle} onClick={() => onHideComment(commentMenu.commentId)}>
+                Hide Comment
+              </button>
+            ) : null}
+
+            <button style={menuItemStyle} onClick={() => onReportComment(commentMenu.commentId)}>
+              Report Comment
+            </button>
+
+            {canDeleteSelectedMenuComment ? (
+              <button
+                style={{ ...menuItemStyle, color: "#fecaca" }}
+                onClick={() => onDeleteLocalComment(commentMenu.commentId)}
+              >
+                Delete Comment
+              </button>
+            ) : null}
+
+            <button
+              style={{
+                ...menuItemStyle,
+                borderBottom: "none",
+                color: isMobile ? "#f9fafb" : "#d1d5db",
+                textAlign: isMobile ? "center" : "left",
+                fontWeight: isMobile ? 900 : 500,
+              }}
+              onClick={handleCloseCommentMenu}
             >
               Cancel
             </button>
-          )}
-        </div>
-      )}
+          </div>
+        </>
+      ) : null}
     </>
   );
 }
@@ -594,6 +640,7 @@ const commentCardStyle: CSSProperties = {
   padding: "13px",
   position: "relative",
   boxShadow: "0 12px 24px rgba(0,0,0,0.18)",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const replyCardStyle: CSSProperties = {
@@ -602,6 +649,7 @@ const replyCardStyle: CSSProperties = {
   borderRadius: "18px",
   padding: "11px",
   position: "relative",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const commentHeaderStyle: CSSProperties = {
@@ -638,7 +686,7 @@ const commentAuthorStyle: CSSProperties = {
   fontWeight: 850,
   fontSize: 14,
   lineHeight: 1.15,
-  maxWidth: "260px",
+  maxWidth: "min(260px, 56vw)",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -679,6 +727,7 @@ const commentLikeButtonStyle: CSSProperties = {
   fontWeight: 900,
   cursor: "pointer",
   transition: "background 160ms ease, border-color 160ms ease, transform 160ms ease",
+  WebkitTapHighlightColor: "transparent",
 };
 
 const commentLikeCountStyle: CSSProperties = {
@@ -709,6 +758,7 @@ const textButtonStyle: CSSProperties = {
   fontWeight: 850,
   cursor: "pointer",
   padding: 0,
+  WebkitTapHighlightColor: "transparent",
 };
 
 const replyComposerWrapStyle: CSSProperties = {
@@ -737,4 +787,62 @@ const replyingToStyle: CSSProperties = {
   color: "#9ca3af",
   fontWeight: 850,
   marginBottom: "5px",
+};
+
+const desktopCommentMenuStyle: CSSProperties = {
+  position: "fixed",
+  zIndex: 170,
+  minWidth: "210px",
+  background: "#0b1020",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "18px",
+  overflow: "hidden",
+  boxShadow: "0 18px 34px rgba(0,0,0,0.34)",
+};
+
+const mobileMenuBackdropStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 168,
+  border: "none",
+  background: "rgba(0,0,0,0.30)",
+  padding: 0,
+  cursor: "pointer",
+};
+
+const mobileCommentMenuStyle: CSSProperties = {
+  position: "fixed",
+  left: "12px",
+  right: "12px",
+  bottom: "calc(12px + env(safe-area-inset-bottom))",
+  zIndex: 170,
+  background:
+    "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(7,10,16,0.98))",
+  border: "1px solid rgba(255,255,255,0.14)",
+  borderRadius: "24px",
+  overflow: "hidden",
+  boxShadow: "0 -18px 44px rgba(0,0,0,0.48)",
+  backdropFilter: "blur(18px)",
+};
+
+const mobileMenuHandleWrapStyle: CSSProperties = {
+  display: "grid",
+  placeItems: "center",
+  gap: "8px",
+  padding: "12px 14px 8px",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+};
+
+const mobileMenuHandleStyle: CSSProperties = {
+  width: "42px",
+  height: "4px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.24)",
+};
+
+const mobileMenuTitleStyle: CSSProperties = {
+  color: "#f9fafb",
+  fontSize: "13px",
+  fontWeight: 950,
+  letterSpacing: "-0.01em",
 };

@@ -74,6 +74,8 @@ function getNotificationTitle(notification: NotificationCard) {
 
   if (notification.message?.trim()) return notification.message.trim();
 
+  if (type === "parachat_message") return `${actorName} sent you a Parachat message.`;
+  if (type === "parachat_photo") return `${actorName} sent you a photo in Parachat.`;
   if (type === "friend_request") return `${actorName} sent you a friend request.`;
   if (type === "friend_accept") return `${actorName} accepted your friend request.`;
   if (type === "post_like") return `${actorName} liked your post.`;
@@ -91,6 +93,7 @@ function getNotificationTitle(notification: NotificationCard) {
 function getNotificationMeta(notification: NotificationCard) {
   const type = notification.type || "";
 
+  if (type.includes("parachat")) return "Parachat";
   if (type.includes("friend")) return "Friends";
   if (type.includes("comment")) return "Comments";
   if (type.includes("like")) return "Likes";
@@ -103,6 +106,10 @@ function getNotificationMeta(notification: NotificationCard) {
 
 function getNotificationHref(notification: NotificationCard) {
   const type = notification.type || "";
+
+  if (type === "parachat_message" || type === "parachat_photo") {
+    return notification.actor_id ? `/messages?user=${notification.actor_id}` : "/messages";
+  }
 
   if (type === "friend_request" || type === "friend_accept") {
     return "/friends/requests";
@@ -133,6 +140,7 @@ function getFilterLabel(filter: FilterKey) {
 function NotificationTypeIcon({ type }: { type: string | null }) {
   const normalizedType = type || "";
 
+  if (normalizedType.includes("parachat")) return <span style={notificationTypeIconTextStyle}>💬</span>;
   if (normalizedType.includes("friend")) return <span style={notificationTypeIconTextStyle}>👥</span>;
   if (normalizedType.includes("comment")) return <span style={notificationTypeIconTextStyle}>💬</span>;
   if (normalizedType.includes("like")) return <span style={notificationTypeIconTextStyle}>♥</span>;
@@ -566,7 +574,7 @@ export default function NotificationsPage() {
               <div style={eyebrowStyle}>Parapost Network</div>
               <h1 style={titleStyle}>Notifications</h1>
               <p style={subtitleStyle}>
-                Friend requests, comments, likes, shares, Parapost Reels activity, and important updates appear here.
+                Friend requests, Parachat messages, comments, likes, shares, Parapost Reels activity, and important updates appear here.
               </p>
             </div>
 
@@ -656,7 +664,7 @@ export default function NotificationsPage() {
               </h2>
               <p style={emptyTextStyle}>
                 {notifications.length === 0
-                  ? "When someone sends a friend request, accepts one, comments, likes, shares, or interacts with your posts or Reels, it will show up here."
+                  ? "When someone sends a friend request, accepts one, sends a Parachat message, comments, likes, shares, or interacts with your posts or Reels, it will show up here."
                   : "Try switching to another notification filter."}
               </p>
             </div>

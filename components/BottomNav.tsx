@@ -83,44 +83,125 @@ export default function BottomNav({
   };
 
   return (
-    <nav aria-label="Primary bottom navigation" style={navStyle}>
-      <NavButton
-        label="Home"
-        icon="⌂"
-        active={detectedActiveItem === "home"}
-        onClick={goToHomeFeed}
-      />
-
-      <NavButton
-        label="Reels"
-        icon="▣"
-        active={detectedActiveItem === "reels"}
-        onClick={() => goTo("/reels")}
-      />
-
-      <button
-        type="button"
-        aria-label="Create a post"
-        onClick={handleCreatePost}
-        style={createButtonStyle}
+    <>
+      <nav
+        aria-label="Primary bottom navigation"
+        className="parapost-bottom-nav"
+        style={navStyle}
       >
-        +
-      </button>
+        <NavButton
+          label="Home"
+          icon="⌂"
+          active={detectedActiveItem === "home"}
+          onClick={goToHomeFeed}
+        />
 
-      <NavButton
-        label="Parachat"
-        icon="☏"
-        active={detectedActiveItem === "parachat"}
-        onClick={() => goTo("/messages")}
-      />
+        <NavButton
+          label="Reels"
+          icon="▣"
+          active={detectedActiveItem === "reels"}
+          onClick={() => goTo("/reels")}
+        />
 
-      <NavButton
-        label="Profile"
-        customIcon={<span style={profileDotStyle} />}
-        active={detectedActiveItem === "profile"}
-        onClick={() => goTo(profileHref)}
-      />
-    </nav>
+        <button
+          type="button"
+          aria-label="Create a post"
+          onClick={handleCreatePost}
+          className="parapost-bottom-nav-create"
+          style={createButtonStyle}
+        >
+          +
+        </button>
+
+        <NavButton
+          label="Parachat"
+          icon="☏"
+          active={detectedActiveItem === "parachat"}
+          onClick={() => goTo("/messages")}
+        />
+
+        <NavButton
+          label="Profile"
+          customIcon={<span style={profileDotStyle} />}
+          active={detectedActiveItem === "profile"}
+          onClick={() => goTo(profileHref)}
+        />
+      </nav>
+
+      <style jsx global>{`
+        .parapost-bottom-nav,
+        .parapost-bottom-nav * {
+          box-sizing: border-box;
+        }
+
+        .parapost-bottom-nav {
+          max-width: 560px;
+          margin-left: auto;
+          margin-right: auto;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          right: max(12px, env(safe-area-inset-right)) !important;
+        }
+
+        .parapost-bottom-nav button {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 760px) {
+          .parapost-bottom-nav {
+            left: 50% !important;
+            right: auto !important;
+            width: min(560px, calc(100vw - 32px)) !important;
+            transform: translateX(-50%) !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .parapost-bottom-nav {
+            min-height: 72px !important;
+            border-radius: 24px !important;
+            padding: 7px !important;
+            gap: 2px !important;
+          }
+
+          .parapost-bottom-nav-create {
+            width: 58px !important;
+            height: 58px !important;
+            font-size: 34px !important;
+            transform: translateY(-12px) !important;
+          }
+        }
+
+        @media (max-width: 370px) {
+          .parapost-bottom-nav {
+            left: max(8px, env(safe-area-inset-left)) !important;
+            right: max(8px, env(safe-area-inset-right)) !important;
+            min-height: 68px !important;
+            padding: 6px !important;
+          }
+
+          .parapost-bottom-nav-create {
+            width: 52px !important;
+            height: 52px !important;
+            font-size: 31px !important;
+            transform: translateY(-10px) !important;
+          }
+        }
+
+        @media (max-height: 560px) and (orientation: landscape) {
+          .parapost-bottom-nav {
+            min-height: 62px !important;
+            bottom: max(8px, env(safe-area-inset-bottom)) !important;
+            border-radius: 22px !important;
+          }
+
+          .parapost-bottom-nav-create {
+            width: 50px !important;
+            height: 50px !important;
+            transform: translateY(-8px) !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }
 
@@ -143,6 +224,7 @@ function NavButton({
       onClick={onClick}
       style={active ? activeItemStyle : itemButtonStyle}
       aria-label={label}
+      aria-current={active ? "page" : undefined}
     >
       {customIcon ? customIcon : <span style={iconStyle}>{icon}</span>}
       <span style={labelStyle}>{label}</span>
@@ -165,16 +247,18 @@ const navStyle: CSSProperties = {
   backdropFilter: "blur(18px)",
   WebkitBackdropFilter: "blur(18px)",
   display: "grid",
-  gridTemplateColumns: "1fr 1fr auto 1fr 1fr",
+  gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr)",
   alignItems: "center",
   gap: "4px",
   padding: "8px",
   pointerEvents: "auto",
+  overflow: "visible",
 };
 
 const itemButtonStyle: CSSProperties = {
   minHeight: "58px",
   width: "100%",
+  minWidth: 0,
   border: "none",
   background: "transparent",
   borderRadius: "22px",
@@ -193,6 +277,7 @@ const itemButtonStyle: CSSProperties = {
   userSelect: "none",
   position: "relative",
   zIndex: 2,
+  padding: "6px 2px",
 };
 
 const activeItemStyle: CSSProperties = {
@@ -210,6 +295,10 @@ const iconStyle: CSSProperties = {
 const labelStyle: CSSProperties = {
   fontSize: "11px",
   lineHeight: 1.1,
+  maxWidth: "100%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 const createButtonStyle: CSSProperties = {
@@ -231,6 +320,9 @@ const createButtonStyle: CSSProperties = {
   touchAction: "manipulation",
   WebkitTapHighlightColor: "transparent",
   userSelect: "none",
+  flexShrink: 0,
+  position: "relative",
+  zIndex: 3,
 };
 
 const profileDotStyle: CSSProperties = {

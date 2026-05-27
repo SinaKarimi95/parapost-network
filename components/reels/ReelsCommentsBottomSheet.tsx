@@ -28,19 +28,32 @@ export default function ReelsCommentsBottomSheet({
   footer,
 }: Props) {
   const [viewportWidth, setViewportWidth] = useState(1440);
+  const [viewportHeight, setViewportHeight] = useState(900);
 
   useEffect(() => {
-    const setWidth = () => setViewportWidth(window.innerWidth);
-    setWidth();
-    window.addEventListener("resize", setWidth);
-    return () => window.removeEventListener("resize", setWidth);
+    const setViewport = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
+
+    setViewport();
+    window.addEventListener("resize", setViewport);
+    window.addEventListener("orientationchange", setViewport);
+
+    return () => {
+      window.removeEventListener("resize", setViewport);
+      window.removeEventListener("orientationchange", setViewport);
+    };
   }, []);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
 
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -49,13 +62,16 @@ export default function ReelsCommentsBottomSheet({
     window.addEventListener("keydown", handleKey);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
       window.removeEventListener("keydown", handleKey);
     };
   }, [isOpen, onClose]);
 
   const viewportType = getViewportType(viewportWidth);
   const isDesktop = viewportType === "desktop";
+  const isMobile = viewportType === "mobile";
+  const isShortMobile = isMobile && viewportHeight <= 700;
 
   const sheetStyle = useMemo<CSSProperties>(() => {
     if (isDesktop) {
@@ -66,7 +82,7 @@ export default function ReelsCommentsBottomSheet({
         bottom: 0,
         width: "min(560px, calc(100vw - 48px))",
         height: "min(72dvh, 720px)",
-        maxHeight: "calc(100dvh - 118px)",
+        maxHeight: "calc(100dvh - 104px)",
         transform: "translateX(-50%)",
         background:
           "linear-gradient(180deg, rgba(15,23,42,0.985) 0%, rgba(7,9,13,0.99) 100%)",
@@ -82,26 +98,51 @@ export default function ReelsCommentsBottomSheet({
       };
     }
 
+    if (viewportType === "tablet") {
+      return {
+        position: "fixed",
+        left: "50%",
+        right: "auto",
+        bottom: 0,
+        width: "min(760px, calc(100vw - 28px))",
+        height: "min(74dvh, 760px)",
+        maxHeight: "calc(100dvh - 86px)",
+        transform: "translateX(-50%)",
+        background:
+          "linear-gradient(180deg, rgba(15,23,42,0.99) 0%, rgba(7,9,13,0.99) 100%)",
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderBottom: "none",
+        zIndex: 151,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        boxShadow: "0 -24px 60px rgba(0,0,0,0.52), 0 0 34px rgba(168,85,247,0.10)",
+      };
+    }
+
     return {
       position: "fixed",
       left: 0,
       right: 0,
       bottom: 0,
-      height: viewportType === "tablet" ? "64dvh" : "56dvh",
-      maxHeight: viewportType === "tablet" ? "calc(100dvh - 150px)" : "calc(100dvh - 230px)",
+      height: isShortMobile ? "72dvh" : "68dvh",
+      maxHeight: "calc(100dvh - 72px)",
+      minHeight: "min(54dvh, 520px)",
       background:
-        "linear-gradient(180deg, rgba(15,23,42,0.99) 0%, rgba(7,9,13,0.99) 100%)",
-      borderTopLeftRadius: viewportType === "tablet" ? 28 : 24,
-      borderTopRightRadius: viewportType === "tablet" ? 28 : 24,
+        "linear-gradient(180deg, rgba(15,23,42,0.995) 0%, rgba(7,9,13,0.995) 100%)",
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
       border: "1px solid rgba(255,255,255,0.12)",
       borderBottom: "none",
       zIndex: 151,
       display: "flex",
       flexDirection: "column",
       overflow: "hidden",
-      boxShadow: "0 -24px 60px rgba(0,0,0,0.52)",
+      boxShadow: "0 -24px 60px rgba(0,0,0,0.56), 0 -1px 28px rgba(168,85,247,0.10)",
     };
-  }, [isDesktop, viewportType]);
+  }, [isDesktop, viewportType, isShortMobile]);
 
   if (!isOpen) return null;
 
@@ -110,41 +151,82 @@ export default function ReelsCommentsBottomSheet({
       <div style={overlayStyle} onClick={onClose} />
 
       <aside
+        className="parapost-reels-comments-sheet"
         style={sheetStyle}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
       >
-        <div style={handleStyle} />
+        <div style={handleWrapStyle}>
+          <div style={handleStyle} />
+        </div>
 
         <div
           style={{
             ...headerStyle,
-            padding: isDesktop ? "14px 18px 13px" : "10px 16px 12px",
+            padding: isDesktop ? "14px 18px 13px" : isMobile ? "10px 14px 11px" : "12px 18px 13px",
           }}
         >
           <div style={{ minWidth: 0 }}>
             <div style={eyebrowStyle}>Parapost Reels</div>
             <div style={titleRowStyle}>
-              <h2 style={titleStyle}>{title}</h2>
+              <h2
+                style={{
+                  ...titleStyle,
+                  fontSize: isMobile ? 20 : titleStyle.fontSize,
+                }}
+              >
+                {title}
+              </h2>
               <button
                 type="button"
                 onClick={onClose}
-                style={closeButtonStyle}
+                style={{
+                  ...closeButtonStyle,
+                  width: isMobile ? 36 : closeButtonStyle.width,
+                  height: isMobile ? 36 : closeButtonStyle.height,
+                }}
                 aria-label="Close comments"
               >
                 ×
               </button>
             </div>
 
-            {subtitle ? <div style={subtitleStyle}>{subtitle}</div> : null}
+            {subtitle ? (
+              <div
+                style={{
+                  ...subtitleStyle,
+                  WebkitLineClamp: isMobile ? 1 : 2,
+                }}
+              >
+                {subtitle}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div style={contentStyle}>{children}</div>
+        <div
+          style={{
+            ...contentStyle,
+            padding: isMobile ? "10px 12px 12px" : contentStyle.padding,
+          }}
+        >
+          {children}
+        </div>
 
-        {footer ? <div style={footerStyle}>{footer}</div> : null}
+        {footer ? (
+          <div
+            style={{
+              ...footerStyle,
+              padding: isMobile
+                ? "10px 12px calc(12px + env(safe-area-inset-bottom))"
+                : footerStyle.padding,
+            }}
+          >
+            {footer}
+          </div>
+        ) : null}
       </aside>
     </>
   );
@@ -154,9 +236,16 @@ const overlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
   background:
-    "radial-gradient(circle at center, rgba(0,0,0,0.42), rgba(0,0,0,0.72))",
+    "radial-gradient(circle at center, rgba(0,0,0,0.36), rgba(0,0,0,0.72))",
   backdropFilter: "blur(5px)",
   zIndex: 150,
+};
+
+const handleWrapStyle: CSSProperties = {
+  display: "grid",
+  placeItems: "center",
+  paddingTop: 8,
+  flexShrink: 0,
 };
 
 const handleStyle: CSSProperties = {
@@ -164,8 +253,6 @@ const handleStyle: CSSProperties = {
   height: 5,
   background: "rgba(255,255,255,0.30)",
   borderRadius: 999,
-  margin: "8px auto 0",
-  flexShrink: 0,
 };
 
 const headerStyle: CSSProperties = {
@@ -224,6 +311,7 @@ const closeButtonStyle: CSSProperties = {
   lineHeight: 1,
   fontWeight: 500,
   flexShrink: 0,
+  WebkitTapHighlightColor: "transparent",
 };
 
 const contentStyle: CSSProperties = {
@@ -231,12 +319,14 @@ const contentStyle: CSSProperties = {
   overflowY: "auto",
   padding: "12px 16px 14px",
   overscrollBehavior: "contain",
+  WebkitOverflowScrolling: "touch",
+  touchAction: "pan-y",
 };
 
 const footerStyle: CSSProperties = {
   padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
   borderTop: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(7,9,13,0.96)",
+  background: "rgba(7,9,13,0.97)",
   backdropFilter: "blur(14px)",
   flexShrink: 0,
 };

@@ -393,6 +393,33 @@ function getParachatErrorMessage(message?: string | null) {
   return cleanMessage || "Parachat needs attention. Please try again.";
 }
 
+async function createParachatNotification({
+  recipientUserId,
+  senderUserId,
+  isPhotoMessage,
+}: {
+  recipientUserId: string;
+  senderUserId: string;
+  isPhotoMessage: boolean;
+}) {
+  if (!recipientUserId || !senderUserId || recipientUserId === senderUserId) return;
+
+  const { error } = await supabase.from("notifications").insert({
+    user_id: recipientUserId,
+    actor_id: senderUserId,
+    type: isPhotoMessage ? "parachat_photo" : "parachat_message",
+    post_id: null,
+    comment_id: null,
+    friend_request_id: null,
+    message: null,
+    is_read: false,
+  });
+
+  if (error) {
+    console.warn("Parachat notification warning:", error.message);
+  }
+}
+
 function MicrophoneIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -448,6 +475,7 @@ function MessagesPage() {
   const searchParams = useSearchParams();
 
   const selectedConversationFromUrl = searchParams.get("conversation") || "";
+  const selectedUserFromUrl = searchParams.get("user") || "";
 
   const [viewerId, setViewerId] = useState("");
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -631,6 +659,27 @@ function MessagesPage() {
     return groups;
   }, [messages]);
 
+  const openMessageMenuMessage = useMemo(() => {
+    if (!openMessageMenuId) return null;
+    return messages.find((message) => message.id === openMessageMenuId) || null;
+  }, [messages, openMessageMenuId]);
+
+  const openMessageMenuIsMine = Boolean(
+    openMessageMenuMessage && openMessageMenuMessage.sender_id === viewerId
+  );
+
+  const openMessageMenuIsSaving = Boolean(
+    openMessageMenuMessage && savingMessageId === openMessageMenuMessage.id
+  );
+
+  const openMessageMenuIsDeleting = Boolean(
+    openMessageMenuMessage && deletingMessageId === openMessageMenuMessage.id
+  );
+
+  const openMessageMenuIsSharing = Boolean(
+    openMessageMenuMessage && sharingMessageId === openMessageMenuMessage.id
+  );
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     if (typeof window === "undefined") return;
 
@@ -677,6 +726,23 @@ function MessagesPage() {
             : conversation
         )
       );
+
+      const conversation = conversationsRef.current.find((item) => item.id === conversationId);
+      const otherUserId = conversation?.otherUserId || "";
+
+      if (otherUserId) {
+        const { error: notificationReadError } = await supabase
+          .from("notifications")
+          .update({ is_read: true })
+          .eq("user_id", currentViewerId)
+          .eq("actor_id", otherUserId)
+          .in("type", ["parachat_message", "parachat_photo"])
+          .eq("is_read", false);
+
+        if (notificationReadError) {
+          console.warn("Parachat notification read warning:", notificationReadError.message);
+        }
+      }
     },
     []
   );
@@ -901,6 +967,10 @@ function MessagesPage() {
       (conversation) => conversation.id === selectedConversationFromUrl
     );
 
+    const urlUserConversationId = selectedUserFromUrl
+      ? nextItems.find((conversation) => conversation.otherUserId === selectedUserFromUrl)?.id || ""
+      : "";
+
     const activeConversationStillValid = Boolean(
       activeConversationIdRef.current &&
         nextItems.some((conversation) => conversation.id === activeConversationIdRef.current)
@@ -908,9 +978,11 @@ function MessagesPage() {
 
     const nextActiveId = urlConversationValid
       ? selectedConversationFromUrl
-      : activeConversationStillValid
-        ? activeConversationIdRef.current
-        : "";
+      : urlUserConversationId
+        ? urlUserConversationId
+        : activeConversationStillValid
+          ? activeConversationIdRef.current
+          : "";
 
     setActiveConversationId(nextActiveId);
     activeConversationIdRef.current = nextActiveId;
@@ -919,7 +991,12 @@ function MessagesPage() {
       setMobileChatOpen(true);
     }
 
-    if (selectedConversationFromUrl && !urlConversationValid) {
+    if (selectedUserFromUrl && urlUserConversationId) {
+      setMobileChatOpen(true);
+      updateConversationUrl(urlUserConversationId);
+    }
+
+    if ((selectedConversationFromUrl && !urlConversationValid) || (selectedUserFromUrl && !urlUserConversationId)) {
       clearConversationUrl();
       setMobileChatOpen(false);
     }
@@ -930,7 +1007,7 @@ function MessagesPage() {
     }
 
     setLoadingInbox(false);
-  }, [router, selectedConversationFromUrl]);
+  }, [router, selectedConversationFromUrl, selectedUserFromUrl]);
 
   const loadMessages = useCallback(
     async (conversationId: string, currentViewerId: string) => {
@@ -1534,6 +1611,12 @@ function MessagesPage() {
 
     const sharedMessage = await attachSignedImageUrlToMessage(data as MessageRow);
 
+    await createParachatNotification({
+      recipientUserId: conversation.otherUserId,
+      senderUserId: viewerId,
+      isPhotoMessage: isPhotoShare,
+    });
+
     setConversations((prev) =>
       prev
         .map((item) =>
@@ -1737,6 +1820,19 @@ function MessagesPage() {
 
     if (data) {
       const sentMessage = await attachSignedImageUrlToMessage(data as MessageRow);
+
+      const notificationConversation =
+        activeConversation ||
+        conversationsRef.current.find((conversation) => conversation.id === activeConversationId) ||
+        null;
+
+      if (notificationConversation?.otherUserId) {
+        await createParachatNotification({
+          recipientUserId: notificationConversation.otherUserId,
+          senderUserId: viewerId,
+          isPhotoMessage: Boolean(imageDraft),
+        });
+      }
 
       setMessages((prev) => {
         if (prev.some((message) => message.id === sentMessage.id)) return prev;
@@ -2536,40 +2632,7 @@ function MessagesPage() {
                                       ⋯
                                     </button>
 
-                                    {openMessageMenuId === message.id ? (
-                                      <span style={messageOptionsMenuStyle}>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenShareMessage(message)}
-                                          style={messageOptionButtonStyle}
-                                          disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
-                                        >
-                                          Share to Parachat
-                                        </button>
-
-                                        {isMine ? (
-                                          <>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleStartEditMessage(message)}
-                                              style={messageOptionButtonStyle}
-                                              disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
-                                            >
-                                              Edit message
-                                            </button>
-
-                                            <button
-                                              type="button"
-                                              onClick={() => handleDeleteMessage(message)}
-                                              style={messageDeleteOptionButtonStyle}
-                                              disabled={isSavingMessage || isDeletingMessage || sharingMessageId === message.id}
-                                            >
-                                              {isDeletingMessage ? "Deleting..." : "Delete message"}
-                                            </button>
-                                          </>
-                                        ) : null}
-                                      </span>
-                                    ) : null}
+                                    {/* Message options are rendered once at page level so the menu cannot be clipped on mobile. */}
                                   </span>
                                 </div>
                               </div>
@@ -2689,6 +2752,69 @@ function MessagesPage() {
           )}
         </main>
       </div>
+
+      {openMessageMenuMessage ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close message options"
+            onClick={() => setOpenMessageMenuId(null)}
+            style={messageOptionsOverlayBackdropStyle}
+          />
+
+          <div
+            style={messageOptionsActionSheetStyle}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Message options"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={mobileMessageOptionsHeaderStyle}>
+              <span style={mobileMessageOptionsHandleStyle} />
+              <span style={mobileMessageOptionsTitleStyle}>Message options</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleOpenShareMessage(openMessageMenuMessage)}
+              style={messageOptionButtonStyle}
+              disabled={openMessageMenuIsSaving || openMessageMenuIsDeleting || openMessageMenuIsSharing}
+            >
+              Share to Parachat
+            </button>
+
+            {openMessageMenuIsMine ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleStartEditMessage(openMessageMenuMessage)}
+                  style={messageOptionButtonStyle}
+                  disabled={openMessageMenuIsSaving || openMessageMenuIsDeleting || openMessageMenuIsSharing}
+                >
+                  Edit message
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteMessage(openMessageMenuMessage)}
+                  style={messageDeleteOptionButtonStyle}
+                  disabled={openMessageMenuIsSaving || openMessageMenuIsDeleting || openMessageMenuIsSharing}
+                >
+                  {openMessageMenuIsDeleting ? "Deleting..." : "Delete message"}
+                </button>
+              </>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setOpenMessageMenuId(null)}
+              style={messageCancelOptionButtonStyle}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : null}
 
       {sharingMessage ? (
         <div
@@ -3717,6 +3843,54 @@ const messageOptionsMenuStyle: React.CSSProperties = {
   backdropFilter: "blur(16px)",
 };
 
+const messageOptionsOverlayBackdropStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 2147483000,
+  border: "none",
+  background: "rgba(0,0,0,0.32)",
+  padding: 0,
+  cursor: "pointer",
+};
+
+const messageOptionsActionSheetStyle: React.CSSProperties = {
+  position: "fixed",
+  left: "max(12px, env(safe-area-inset-left))",
+  right: "max(12px, env(safe-area-inset-right))",
+  bottom: "calc(12px + env(safe-area-inset-bottom))",
+  zIndex: 2147483001,
+  borderRadius: "24px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(7,10,16,0.99))",
+  boxShadow: "0 -18px 44px rgba(0,0,0,0.52)",
+  padding: "8px",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+};
+
+const mobileMessageOptionsHeaderStyle: React.CSSProperties = {
+  display: "grid",
+  placeItems: "center",
+  gap: "8px",
+  padding: "8px 10px 10px",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  marginBottom: "8px",
+};
+
+const mobileMessageOptionsHandleStyle: React.CSSProperties = {
+  width: "42px",
+  height: "4px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.25)",
+};
+
+const mobileMessageOptionsTitleStyle: React.CSSProperties = {
+  color: "#f9fafb",
+  fontSize: "13px",
+  fontWeight: 950,
+  letterSpacing: "-0.01em",
+};
+
 const messageOptionButtonStyle: React.CSSProperties = {
   width: "100%",
   border: "1px solid rgba(255,255,255,0.10)",
@@ -3740,6 +3914,19 @@ const messageDeleteOptionButtonStyle: React.CSSProperties = {
   padding: "7px 9px",
   textAlign: "left",
   fontWeight: 900,
+  fontSize: "11px",
+  cursor: "pointer",
+};
+
+const messageCancelOptionButtonStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.035)",
+  color: "#e5e7eb",
+  borderRadius: "10px",
+  padding: "8px 9px",
+  textAlign: "center",
+  fontWeight: 950,
   fontSize: "11px",
   cursor: "pointer",
 };

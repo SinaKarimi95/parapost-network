@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ProfileSummary = {
   id?: string;
@@ -71,20 +71,86 @@ export default function ProfilePhotosSection({
 
   const profileName = getProfileName(profile);
 
+  useEffect(() => {
+    if (!selectedPhoto) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedPhoto(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedPhoto]);
+
   return (
     <section className="profile-photos-smooth w-full">
       <style>{`
+        .profile-photos-smooth,
+        .profile-photos-smooth * {
+          box-sizing: border-box;
+        }
+
+        .profile-photos-smooth {
+          overflow-wrap: anywhere;
+        }
+
+        .profile-photos-smooth button,
+        .profile-photos-smooth a {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+
+        .profile-photos-grid {
+          align-items: stretch;
+        }
+
+        .profile-photo-tile img {
+          object-position: center;
+        }
+
+        .profile-photo-viewer-scroll {
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+        }
+
+        @media (max-width: 1024px) {
+          .profile-photos-body {
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-photos-sidebar {
+            display: none !important;
+          }
+        }
+
         @media (max-width: 720px) {
           .profile-photos-smooth > div {
-            border-radius: 0 !important;
-            border-left: 0 !important;
-            border-right: 0 !important;
+            border-radius: 18px !important;
             box-shadow: none !important;
             background: #111318 !important;
           }
 
           .profile-photos-header {
-            padding: 16px 14px !important;
+            padding: 14px !important;
+          }
+
+          .profile-photos-header-row {
+            gap: 12px !important;
+          }
+
+          .profile-photos-count-card {
+            width: 100% !important;
+            border-radius: 16px !important;
+            padding: 12px 14px !important;
           }
 
           .profile-photos-body {
@@ -92,13 +158,9 @@ export default function ProfilePhotosSection({
             padding: 0 !important;
           }
 
-          .profile-photos-sidebar {
-            display: none !important;
-          }
-
           .profile-photos-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-            gap: 1px !important;
+            gap: 2px !important;
           }
 
           .profile-photo-tile {
@@ -107,16 +169,65 @@ export default function ProfilePhotosSection({
             box-shadow: none !important;
           }
 
+          .profile-photo-tile img {
+            transition: none !important;
+          }
+
           .profile-photo-empty {
+            min-height: 260px !important;
             border-radius: 0 !important;
             border-left: 0 !important;
             border-right: 0 !important;
+            padding: 24px 16px !important;
+          }
+
+          .profile-photo-viewer {
+            align-items: stretch !important;
+            padding: max(10px, env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)) !important;
+          }
+
+          .profile-photo-viewer-card {
+            max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+            border-radius: 20px !important;
+          }
+
+          .profile-photo-viewer-content {
+            max-height: calc(100dvh - 84px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-photo-viewer-image-wrap {
+            min-height: 52dvh !important;
+          }
+
+          .profile-photo-viewer-image {
+            max-height: 62dvh !important;
+          }
+
+          .profile-photo-viewer-details {
+            border-left: 0 !important;
+            border-top: 1px solid rgba(255,255,255,0.10) !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .profile-photos-header {
+            padding: 12px !important;
+          }
+
+          .profile-photo-empty {
+            min-height: 230px !important;
+          }
+
+          .profile-photo-viewer-image-wrap {
+            min-height: 48dvh !important;
           }
         }
       `}</style>
+
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#202223] via-[#17191d] to-[#111318] shadow-2xl shadow-black/30">
         <div className="profile-photos-header border-b border-white/10 bg-white/[0.025] px-4 py-4 md:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="profile-photos-header-row flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.24em] text-purple-200/80">
                 Profile media
@@ -130,7 +241,7 @@ export default function ProfilePhotosSection({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-purple-500/15 px-4 py-3">
+            <div className="profile-photos-count-card rounded-2xl border border-white/10 bg-purple-500/15 px-4 py-3">
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-purple-100/80">
                 Posted photos
               </p>
@@ -201,8 +312,9 @@ export default function ProfilePhotosSection({
 
                     <img
                       src={photo.url}
-                      alt=""
+                      alt={photo.caption?.trim() || "Profile photo"}
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      loading="lazy"
                     />
 
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-0 transition group-hover:opacity-100" />
@@ -222,16 +334,19 @@ export default function ProfilePhotosSection({
 
       {selectedPhoto ? (
         <div
-          className="fixed inset-0 z-[2147483646] grid place-items-center bg-black/82 p-3 backdrop-blur-md"
+          className="profile-photo-viewer fixed inset-0 z-[2147483646] grid place-items-center bg-black/82 p-3 backdrop-blur-md"
           onClick={() => setSelectedPhoto(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
         >
           <div
-            className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#111318] shadow-2xl shadow-black"
+            className="profile-photo-viewer-card relative w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#111318] shadow-2xl shadow-black"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-              <div>
-                <p className="text-sm font-black text-white">Posted photo</p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-white">Posted photo</p>
                 <p className="text-xs font-semibold text-slate-500">
                   {formatPhotoDate(selectedPhoto.createdAt)}
                 </p>
@@ -240,29 +355,29 @@ export default function ProfilePhotosSection({
               <button
                 type="button"
                 onClick={() => setSelectedPhoto(null)}
-                className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xl font-black text-white transition hover:bg-white/[0.12]"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xl font-black text-white transition hover:bg-white/[0.12]"
                 aria-label="Close photo viewer"
               >
                 ×
               </button>
             </div>
 
-            <div className="grid max-h-[82vh] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="grid min-h-[360px] place-items-center bg-black">
+            <div className="profile-photo-viewer-content profile-photo-viewer-scroll grid max-h-[82vh] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="profile-photo-viewer-image-wrap grid min-h-[360px] place-items-center bg-black">
                 <img
                   src={selectedPhoto.url}
-                  alt=""
-                  className="max-h-[78vh] w-full object-contain"
+                  alt={selectedPhoto.caption?.trim() || "Posted photo"}
+                  className="profile-photo-viewer-image max-h-[78vh] w-full object-contain"
                 />
               </div>
 
-              <aside className="border-t border-white/10 p-4 lg:border-l lg:border-t-0">
+              <aside className="profile-photo-viewer-details border-t border-white/10 p-4 lg:border-l lg:border-t-0">
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
                   Details
                 </p>
 
                 {selectedPhoto.caption ? (
-                  <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-200">
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm font-semibold leading-6 text-slate-200">
                     {selectedPhoto.caption}
                   </p>
                 ) : (

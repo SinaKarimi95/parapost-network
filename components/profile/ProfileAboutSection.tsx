@@ -839,10 +839,10 @@ export default function ProfileAboutSection({
   const isSavingNow = saving || localSaving;
 
   return (
-    <section className="w-full">
-      <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[#202223] shadow-2xl shadow-black/20">
-        <div className="grid min-h-[560px] lg:grid-cols-[288px_1fr]">
-          <aside className="border-b border-white/10 bg-[#202223] p-4 lg:border-b-0 lg:border-r">
+    <section className="profile-about-section w-full">
+      <div className="profile-about-shell overflow-hidden rounded-[18px] border border-white/10 bg-[#202223] shadow-2xl shadow-black/20">
+        <div className="profile-about-layout grid min-h-[560px] lg:grid-cols-[288px_1fr]">
+          <aside className="profile-about-sidebar border-b border-white/10 bg-[#202223] p-4 lg:border-b-0 lg:border-r">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-black tracking-tight text-slate-100">
                 About
@@ -865,7 +865,7 @@ export default function ProfileAboutSection({
             <select
               value={activeTab}
               onChange={(event) => setActiveTab(event.target.value as AboutTab)}
-              className="mb-4 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3 text-sm font-bold text-white outline-none focus:border-blue-400/70 lg:hidden"
+              className="profile-about-mobile-tabs mb-4 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3 text-sm font-bold text-white outline-none focus:border-blue-400/70 lg:hidden"
             >
               {tabs.map((tab) => (
                 <option key={tab.id} value={tab.id}>
@@ -874,7 +874,7 @@ export default function ProfileAboutSection({
               ))}
             </select>
 
-            <nav className="hidden space-y-1 lg:block">
+            <nav className="profile-about-tab-list hidden space-y-1 lg:block">
               {tabs.map((tab) => {
                 const active = activeTab === tab.id;
 
@@ -900,8 +900,8 @@ export default function ProfileAboutSection({
             </nav>
           </aside>
 
-          <main className="bg-[#202223] p-4 md:p-6">
-            <div className="min-h-[420px]">{renderContent()}</div>
+          <main className="profile-about-main bg-[#202223] p-4 md:p-6">
+            <div className="profile-about-content-min min-h-[420px]">{renderContent()}</div>
 
             {saveMessage ? (
               <p
@@ -917,7 +917,7 @@ export default function ProfileAboutSection({
             ) : null}
 
             {editing ? (
-              <div className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+              <div className="profile-about-save-actions mt-8 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -941,6 +941,96 @@ export default function ProfileAboutSection({
           </main>
         </div>
       </div>
+
+      <style jsx global>{`
+        .profile-about-section,
+        .profile-about-section * {
+          box-sizing: border-box;
+        }
+
+        .profile-about-section {
+          overflow-wrap: anywhere;
+        }
+
+        .profile-about-section button,
+        .profile-about-section a,
+        .profile-about-section input,
+        .profile-about-section textarea,
+        .profile-about-section select {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .profile-about-section input,
+        .profile-about-section textarea,
+        .profile-about-section select {
+          min-width: 0;
+        }
+
+        .profile-about-section textarea {
+          scrollbar-width: thin;
+        }
+
+        .profile-about-section a {
+          min-width: 0;
+        }
+
+        @media (max-width: 1024px) {
+          .profile-about-layout {
+            min-height: auto !important;
+          }
+
+          .profile-about-content-min {
+            min-height: 0 !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .profile-about-shell {
+            border-radius: 18px !important;
+          }
+
+          .profile-about-sidebar,
+          .profile-about-main {
+            padding: 14px !important;
+          }
+
+          .profile-about-mobile-tabs {
+            min-height: 44px !important;
+            font-size: 16px !important;
+          }
+
+          .profile-about-section input,
+          .profile-about-section textarea,
+          .profile-about-section select {
+            font-size: 16px !important;
+          }
+
+          .profile-about-section textarea {
+            min-height: 132px !important;
+          }
+
+          .profile-about-section button {
+            min-height: 40px;
+          }
+
+          .profile-about-save-actions {
+            gap: 10px !important;
+            margin-top: 22px !important;
+            padding-top: 16px !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .profile-about-sidebar,
+          .profile-about-main {
+            padding: 12px !important;
+          }
+
+          .profile-about-shell {
+            border-radius: 16px !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }

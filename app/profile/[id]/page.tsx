@@ -11728,6 +11728,310 @@ return (
         }
 
 
+
+      /* Step 4 Profile Polish Final Pass v1:
+         controlled spacing/flow only — no layout redesign, no feature changes. */
+      .profile-polish-surface,
+      .profile-page-shell,
+      .profile-layout-grid,
+      .profile-center-column,
+      .profile-stream-stack,
+      .profile-content-card,
+      .profile-feed-card,
+      .profile-feed-stack,
+      .profile-hero-shell,
+      .profile-tabs-shell,
+      .profile-showcases-panel,
+      .profile-stats-bar {
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+      }
+
+      .profile-polish-surface {
+        overflow-x: clip !important;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .profile-polish-surface a,
+      .profile-polish-surface button,
+      .profile-polish-surface input,
+      .profile-polish-surface textarea,
+      .profile-polish-surface select {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .profile-polish-surface input,
+      .profile-polish-surface textarea,
+      .profile-polish-surface select {
+        font-size: 16px !important;
+      }
+
+      .profile-polish-surface .profile-hero-shell,
+      .profile-polish-surface .profile-content-card,
+      .profile-polish-surface .profile-feed-card,
+      .profile-polish-surface .profile-showcases-panel,
+      .profile-polish-surface .profile-stats-bar,
+      .profile-polish-surface .profile-tabs-shell {
+        backface-visibility: hidden;
+      }
+
+      .profile-polish-surface .profile-hero-shell {
+        overflow: visible !important;
+      }
+
+      .profile-polish-surface .profile-cover-zone {
+        overflow: hidden !important;
+        isolation: isolate !important;
+      }
+
+      .profile-polish-surface .profile-hero-content {
+        position: relative !important;
+        z-index: 3 !important;
+      }
+
+      .profile-polish-surface .profile-avatar-wrap,
+      .profile-polish-surface .profile-avatar-online-ring {
+        flex-shrink: 0 !important;
+      }
+
+      .profile-polish-surface .profile-identity-block,
+      .profile-polish-surface .profile-hero-info,
+      .profile-polish-surface .profile-hero-topline,
+      .profile-polish-surface .profile-meta-row {
+        min-width: 0 !important;
+      }
+
+      .profile-polish-surface .profile-hero-topline h1,
+      .profile-polish-surface .profile-hero-info p,
+      .profile-polish-surface .profile-mobile-bio-real,
+      .profile-polish-surface .profile-mobile-meta-real {
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
+
+      .profile-polish-surface .profile-hero-actions,
+      .profile-polish-surface .profile-mobile-meta-action-row,
+      .profile-polish-surface .profile-post-actions {
+        row-gap: 8px !important;
+      }
+
+      .profile-polish-surface .profile-hero-actions button,
+      .profile-polish-surface .profile-hero-actions a,
+      .profile-polish-surface .profile-mobile-primary-real,
+      .profile-polish-surface .profile-mobile-secondary-real,
+      .profile-polish-surface .profile-mobile-owner-more-real,
+      .profile-polish-surface .profile-post-action-button,
+      .profile-polish-surface .profile-post-menu-trigger {
+        touch-action: manipulation !important;
+      }
+
+      .profile-polish-surface .profile-showcases-row,
+      .profile-polish-surface .profile-tabs-desktop {
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      .profile-polish-surface .profile-showcases-row::-webkit-scrollbar,
+      .profile-polish-surface .profile-tabs-desktop::-webkit-scrollbar {
+        display: none !important;
+      }
+
+      .profile-polish-surface .profile-feed-card,
+      .profile-polish-surface .profile-shared-post-card,
+      .profile-polish-surface .profile-shared-reel-card,
+      .profile-polish-surface .profile-comments-panel,
+      .profile-polish-surface .profile-post-editor-shell {
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
+
+      .profile-polish-surface .profile-feed-card img,
+      .profile-polish-surface .profile-feed-card video,
+      .profile-polish-surface .profile-shared-reel-card video,
+      .profile-polish-surface .profile-shared-post-card img {
+        max-width: 100% !important;
+      }
+
+      .profile-polish-surface .profile-post-menu,
+      .profile-polish-surface .profile-desktop-action-menu {
+        overscroll-behavior: contain !important;
+      }
+
+      .profile-polish-surface .profile-mobile-action-overlay,
+      .profile-polish-surface .profile-mobile-main-menu-overlay,
+      .profile-polish-surface .profile-mobile-search-overlay,
+      .profile-polish-surface .profile-showcase-modal-overlay,
+      .profile-polish-surface .profile-showcase-viewer-overlay,
+      .profile-badges-viewer-overlay {
+        overscroll-behavior: none !important;
+      }
+
+      .profile-polish-surface .profile-mobile-action-sheet,
+      .profile-polish-surface .profile-mobile-main-menu-sheet,
+      .profile-polish-surface .profile-mobile-search-sheet,
+      .profile-polish-surface .profile-showcase-modal-shell,
+      .profile-polish-surface .profile-showcase-viewer-shell,
+      .profile-badges-viewer-shell {
+        max-width: 100% !important;
+        overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      @media (min-width: 721px) {
+        .profile-polish-surface .profile-layout-grid {
+          align-items: start !important;
+        }
+
+        .profile-polish-surface .profile-center-column {
+          overflow: visible !important;
+        }
+
+        .profile-polish-surface .profile-hero-actions {
+          align-items: center !important;
+        }
+
+        .profile-polish-surface .profile-tabs-shell {
+          overflow: visible !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .profile-page-shell {
+          padding-left: 10px !important;
+          padding-right: 10px !important;
+          padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-polish-surface .profile-hero-shell {
+          border-radius: 22px !important;
+          margin-bottom: 12px !important;
+        }
+
+        .profile-polish-surface .profile-cover-zone {
+          min-height: 128px !important;
+        }
+
+        .profile-polish-surface .profile-hero-content {
+          width: 100% !important;
+        }
+
+        .profile-polish-surface .profile-avatar-edit-button,
+        .profile-polish-surface .profile-mobile-camera-real {
+          box-shadow: 0 10px 24px rgba(0,0,0,0.34), 0 0 0 1px rgba(255,255,255,0.10) !important;
+        }
+
+        .profile-polish-surface .profile-hero-actions,
+        .profile-polish-surface .profile-mobile-meta-action-row {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          width: 100% !important;
+        }
+
+        .profile-polish-surface .profile-hero-actions button,
+        .profile-polish-surface .profile-hero-actions a,
+        .profile-polish-surface .profile-mobile-primary-real,
+        .profile-polish-surface .profile-mobile-secondary-real,
+        .profile-polish-surface .profile-mobile-owner-more-real {
+          min-height: 40px !important;
+          max-width: 100% !important;
+        }
+
+        .profile-polish-surface .profile-tabs-shell {
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 28 !important;
+        }
+
+        .profile-polish-surface .profile-tabs-desktop {
+          scroll-padding-left: 14px !important;
+          scroll-padding-right: 14px !important;
+        }
+
+        .profile-polish-surface .profile-content-card,
+        .profile-polish-surface .profile-feed-card,
+        .profile-polish-surface .profile-showcases-panel,
+        .profile-polish-surface .profile-stats-bar {
+          border-radius: 22px !important;
+        }
+
+        .profile-polish-surface .profile-feed-stack,
+        .profile-polish-surface .profile-stream-stack {
+          gap: 13px !important;
+        }
+
+        .profile-polish-surface .profile-comments-panel {
+          max-height: min(62dvh, 520px) !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        .profile-polish-surface .profile-post-menu {
+          position: fixed !important;
+          left: 12px !important;
+          right: 12px !important;
+          bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+          top: auto !important;
+          width: auto !important;
+          max-height: min(62dvh, 440px) !important;
+          border-radius: 22px !important;
+          overflow-y: auto !important;
+          z-index: 2147483000 !important;
+        }
+
+        .profile-polish-surface .profile-mobile-action-sheet,
+        .profile-polish-surface .profile-mobile-main-menu-sheet,
+        .profile-polish-surface .profile-mobile-search-sheet {
+          max-height: calc(100dvh - 18px) !important;
+          border-radius: 26px 26px 0 0 !important;
+          padding-bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+        }
+
+        .profile-polish-surface .profile-mobile-main-menu-scroll {
+          max-height: calc(100dvh - 112px) !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .profile-page-shell {
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+        }
+
+        .profile-polish-surface .profile-hero-shell,
+        .profile-polish-surface .profile-content-card,
+        .profile-polish-surface .profile-feed-card,
+        .profile-polish-surface .profile-showcases-panel,
+        .profile-polish-surface .profile-stats-bar {
+          border-radius: 20px !important;
+        }
+
+        .profile-polish-surface .profile-post-actions {
+          gap: 8px !important;
+        }
+
+        .profile-polish-surface .profile-post-action-button {
+          min-height: 38px !important;
+        }
+      }
+
+      @media (max-width: 720px) and (max-height: 700px) {
+        .profile-polish-surface .profile-cover-zone {
+          min-height: 116px !important;
+        }
+
+        .profile-polish-surface .profile-mobile-action-sheet,
+        .profile-polish-surface .profile-mobile-main-menu-sheet,
+        .profile-polish-surface .profile-mobile-search-sheet {
+          max-height: calc(100dvh - 10px) !important;
+        }
+      }
+
+
 `}
 </style>
 

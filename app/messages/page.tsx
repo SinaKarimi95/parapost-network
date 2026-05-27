@@ -498,6 +498,8 @@ function MessagesPage() {
   const [compressingImage, setCompressingImage] = useState(false);
   const [imageViewer, setImageViewer] = useState<ParachatImageViewer | null>(null);
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const [messageMenuAnchor, setMessageMenuAnchor] = useState<{ top: number; left: number } | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(1200);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState("");
   const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
@@ -530,6 +532,20 @@ function MessagesPage() {
   useEffect(() => {
     selectedImagePreviewUrlRef.current = selectedImage?.previewUrl || null;
   }, [selectedImage?.previewUrl]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+    updateViewportWidth();
+    window.addEventListener("resize", updateViewportWidth);
+    window.addEventListener("orientationchange", updateViewportWidth);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportWidth);
+      window.removeEventListener("orientationchange", updateViewportWidth);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -679,6 +695,28 @@ function MessagesPage() {
   const openMessageMenuIsSharing = Boolean(
     openMessageMenuMessage && sharingMessageId === openMessageMenuMessage.id
   );
+
+  const messageOptionsUsesBottomSheet = viewportWidth <= 1024;
+
+  const closeMessageOptions = useCallback(() => {
+    setOpenMessageMenuId(null);
+    setMessageMenuAnchor(null);
+  }, []);
+
+  const getDesktopMessageMenuPosition = useCallback((button: HTMLElement) => {
+    if (typeof window === "undefined") return { top: 80, left: 16 };
+
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 210;
+    const edgePadding = 12;
+    const top = Math.min(window.innerHeight - 220, Math.max(edgePadding, rect.bottom + 8));
+    const left = Math.min(
+      window.innerWidth - menuWidth - edgePadding,
+      Math.max(edgePadding, rect.right - menuWidth)
+    );
+
+    return { top, left };
+  }, []);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     if (typeof window === "undefined") return;
@@ -1364,6 +1402,7 @@ function MessagesPage() {
     if (!viewerId || message.sender_id !== viewerId) return;
 
     setOpenMessageMenuId(null);
+    setMessageMenuAnchor(null);
     setEditingMessageId(message.id);
     setEditingMessageText(message.body || "");
     setStatusMessage("");
@@ -1435,6 +1474,7 @@ function MessagesPage() {
 
     setDeletingMessageId(message.id);
     setOpenMessageMenuId(null);
+    setMessageMenuAnchor(null);
     setStatusMessage("");
     setErrorMessage("");
 
@@ -1494,6 +1534,7 @@ function MessagesPage() {
     if (!viewerId || !message.id) return;
 
     setOpenMessageMenuId(null);
+    setMessageMenuAnchor(null);
     setSharingMessage(message);
     setSharingMessageId(null);
     setStatusMessage("");
@@ -2621,9 +2662,14 @@ function MessagesPage() {
                                       type="button"
                                       onClick={(event) => {
                                         event.stopPropagation();
-                                        setOpenMessageMenuId((currentId) =>
-                                          currentId === message.id ? null : message.id
-                                        );
+
+                                        if (openMessageMenuId === message.id) {
+                                          closeMessageOptions();
+                                          return;
+                                        }
+
+                                        setMessageMenuAnchor(getDesktopMessageMenuPosition(event.currentTarget));
+                                        setOpenMessageMenuId(message.id);
                                       }}
                                       style={messageOptionsButtonStyle}
                                       aria-label="Message options"
@@ -2758,26 +2804,36 @@ function MessagesPage() {
           <button
             type="button"
             aria-label="Close message options"
-            onClick={() => setOpenMessageMenuId(null)}
-            style={messageOptionsOverlayBackdropStyle}
+            onClick={closeMessageOptions}
+            style={messageOptionsUsesBottomSheet ? messageOptionsOverlayBackdropStyle : messageOptionsDesktopBackdropStyle}
           />
 
           <div
-            style={messageOptionsActionSheetStyle}
-            role="dialog"
-            aria-modal="true"
+            style={
+              messageOptionsUsesBottomSheet
+                ? messageOptionsActionSheetStyle
+                : {
+                    ...messageOptionsDesktopPopoverStyle,
+                    top: messageMenuAnchor?.top ?? 80,
+                    left: messageMenuAnchor?.left ?? 16,
+                  }
+            }
+            role={messageOptionsUsesBottomSheet ? "dialog" : "menu"}
+            aria-modal={messageOptionsUsesBottomSheet ? "true" : undefined}
             aria-label="Message options"
             onClick={(event) => event.stopPropagation()}
           >
-            <div style={mobileMessageOptionsHeaderStyle}>
-              <span style={mobileMessageOptionsHandleStyle} />
-              <span style={mobileMessageOptionsTitleStyle}>Message options</span>
-            </div>
+            {messageOptionsUsesBottomSheet ? (
+              <div style={mobileMessageOptionsHeaderStyle}>
+                <span style={mobileMessageOptionsHandleStyle} />
+                <span style={mobileMessageOptionsTitleStyle}>Message options</span>
+              </div>
+            ) : null}
 
             <button
               type="button"
               onClick={() => handleOpenShareMessage(openMessageMenuMessage)}
-              style={messageOptionButtonStyle}
+              style={messageOptionsUsesBottomSheet ? messageOptionButtonStyle : messageDesktopOptionButtonStyle}
               disabled={openMessageMenuIsSaving || openMessageMenuIsDeleting || openMessageMenuIsSharing}
             >
               Share to Parachat
@@ -2788,7 +2844,7 @@ function MessagesPage() {
                 <button
                   type="button"
                   onClick={() => handleStartEditMessage(openMessageMenuMessage)}
-                  style={messageOptionButtonStyle}
+                  style={messageOptionsUsesBottomSheet ? messageOptionButtonStyle : messageDesktopOptionButtonStyle}
                   disabled={openMessageMenuIsSaving || openMessageMenuIsDeleting || openMessageMenuIsSharing}
                 >
                   Edit message
@@ -2797,7 +2853,7 @@ function MessagesPage() {
                 <button
                   type="button"
                   onClick={() => handleDeleteMessage(openMessageMenuMessage)}
-                  style={messageDeleteOptionButtonStyle}
+                  style={messageOptionsUsesBottomSheet ? messageDeleteOptionButtonStyle : messageDesktopDeleteOptionButtonStyle}
                   disabled={openMessageMenuIsSaving || openMessageMenuIsDeleting || openMessageMenuIsSharing}
                 >
                   {openMessageMenuIsDeleting ? "Deleting..." : "Delete message"}
@@ -2807,8 +2863,8 @@ function MessagesPage() {
 
             <button
               type="button"
-              onClick={() => setOpenMessageMenuId(null)}
-              style={messageCancelOptionButtonStyle}
+              onClick={closeMessageOptions}
+              style={messageOptionsUsesBottomSheet ? messageCancelOptionButtonStyle : messageDesktopCancelOptionButtonStyle}
             >
               Cancel
             </button>
@@ -3853,6 +3909,29 @@ const messageOptionsOverlayBackdropStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const messageOptionsDesktopBackdropStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 2147483000,
+  border: "none",
+  background: "transparent",
+  padding: 0,
+  cursor: "default",
+};
+
+const messageOptionsDesktopPopoverStyle: React.CSSProperties = {
+  position: "fixed",
+  zIndex: 2147483001,
+  width: "210px",
+  borderRadius: "16px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(7,10,16,0.99))",
+  boxShadow: "0 18px 44px rgba(0,0,0,0.50), 0 0 24px rgba(168,85,247,0.12)",
+  padding: "7px",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+};
+
 const messageOptionsActionSheetStyle: React.CSSProperties = {
   position: "fixed",
   left: "max(12px, env(safe-area-inset-left))",
@@ -3905,6 +3984,15 @@ const messageOptionButtonStyle: React.CSSProperties = {
   marginBottom: "5px",
 };
 
+const messageDesktopOptionButtonStyle: React.CSSProperties = {
+  ...messageOptionButtonStyle,
+  borderRadius: "11px",
+  padding: "10px 11px",
+  fontSize: "12px",
+  marginBottom: "6px",
+  background: "rgba(255,255,255,0.045)",
+};
+
 const messageDeleteOptionButtonStyle: React.CSSProperties = {
   width: "100%",
   border: "1px solid rgba(248,113,113,0.20)",
@@ -3918,6 +4006,13 @@ const messageDeleteOptionButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const messageDesktopDeleteOptionButtonStyle: React.CSSProperties = {
+  ...messageDesktopOptionButtonStyle,
+  color: "#fecaca",
+  borderColor: "rgba(248,113,113,0.22)",
+  background: "rgba(127,29,29,0.18)",
+};
+
 const messageCancelOptionButtonStyle: React.CSSProperties = {
   width: "100%",
   border: "1px solid rgba(255,255,255,0.10)",
@@ -3929,6 +4024,13 @@ const messageCancelOptionButtonStyle: React.CSSProperties = {
   fontWeight: 950,
   fontSize: "11px",
   cursor: "pointer",
+};
+
+const messageDesktopCancelOptionButtonStyle: React.CSSProperties = {
+  ...messageDesktopOptionButtonStyle,
+  marginBottom: 0,
+  textAlign: "center",
+  color: "#d1d5db",
 };
 
 const messageEditBoxStyle: React.CSSProperties = {

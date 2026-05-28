@@ -15714,15 +15714,15 @@ function ProfileStableBottomNav({
         }
 
         .profile-stable-bottom-nav {
-          width: min(700px, calc(100vw - 40px)) !important;
-          max-width: 700px !important;
+          width: auto !important;
+          max-width: none !important;
           min-height: 88px !important;
           padding: 10px !important;
-          border-radius: 30px !important;
-          left: 50% !important;
-          right: auto !important;
-          transform: translateX(-50%) !important;
-          bottom: max(14px, env(safe-area-inset-bottom)) !important;
+          border-radius: 28px 28px 0 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          transform: none !important;
+          bottom: 0 !important;
         }
 
         .profile-stable-bottom-nav a,
@@ -15747,111 +15747,52 @@ function ProfileStableBottomNav({
           transform: translateY(-16px) !important;
         }
 
-        /* Match the dashboard mobile/tablet bottom nav sizing exactly. */
         @media (max-width: 760px) {
           .profile-stable-bottom-nav {
-            display: grid !important;
-            left: 50% !important;
-            right: auto !important;
-            width: min(calc(100vw - 22px), 520px) !important;
-            max-width: 520px !important;
+            width: auto !important;
+            left: max(14px, env(safe-area-inset-left)) !important;
+            right: max(14px, env(safe-area-inset-right)) !important;
+            transform: none !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .profile-stable-bottom-nav {
+            min-height: 82px !important;
+            padding: 8px !important;
+            border-radius: 26px !important;
+            gap: 3px !important;
+          }
+
+          .profile-stable-bottom-nav a {
+            min-height: 62px !important;
+          }
+
+          .profile-stable-create-button {
+            width: 66px !important;
+            min-width: 66px !important;
+            height: 66px !important;
             min-height: 66px !important;
-            padding: 6px 6px 8px !important;
-            border-radius: 21px !important;
-            transform: translateX(-50%) !important;
-            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            justify-items: center !important;
-            align-items: center !important;
-            gap: 4px !important;
-            bottom: max(8px, env(safe-area-inset-bottom)) !important;
-          }
-
-          .profile-stable-bottom-nav a {
-            min-width: 0 !important;
-            width: 100% !important;
-            height: 48px !important;
-            min-height: 48px !important;
-            grid-template-rows: 22px auto !important;
-            border-radius: 18px !important;
-            padding: 5px 3px !important;
-            gap: 2px !important;
-          }
-
-          .profile-stable-bottom-nav a span:last-child {
-            display: block !important;
-            max-width: 100% !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            white-space: nowrap !important;
-            font-size: 9px !important;
-          }
-
-          .profile-stable-bottom-nav a[aria-label="Profile"] span:last-child {
-            font-size: 9px !important;
-          }
-
-          .profile-stable-bottom-nav a span:first-child {
-            font-size: 18px !important;
-          }
-
-          .profile-stable-create-button {
-            width: 50px !important;
-            min-width: 50px !important;
-            height: 50px !important;
-            min-height: 50px !important;
-            font-size: 31px !important;
-            border-radius: 999px !important;
-            transform: translateY(-12px) !important;
+            font-size: 38px !important;
+            transform: translateY(-14px) !important;
           }
         }
 
-        @media (max-width: 300px) {
+        @media (max-width: 370px) {
           .profile-stable-bottom-nav {
+            left: max(8px, env(safe-area-inset-left)) !important;
+            right: max(8px, env(safe-area-inset-right)) !important;
+            min-height: 76px !important;
+            padding: 7px !important;
+          }
+
+          .profile-stable-create-button {
+            width: 58px !important;
+            min-width: 58px !important;
+            height: 58px !important;
             min-height: 58px !important;
-            padding: 5px !important;
-            border-radius: 18px !important;
-          }
-
-          .profile-stable-bottom-nav a {
-            height: 42px !important;
-            min-height: 42px !important;
-            grid-template-rows: 1fr !important;
-          }
-
-          .profile-stable-bottom-nav a span:last-child {
-            display: none !important;
-          }
-
-          .profile-stable-create-button {
-            width: 44px !important;
-            min-width: 44px !important;
-            height: 44px !important;
-            min-height: 44px !important;
-            font-size: 28px !important;
-            transform: translateY(-8px) !important;
-          }
-        }
-
-        @media (orientation: landscape) and (max-width: 930px) and (max-height: 540px) {
-          .profile-stable-bottom-nav {
-            min-height: 56px !important;
-            padding: 5px 8px !important;
-            border-radius: 18px !important;
-            bottom: max(6px, env(safe-area-inset-bottom)) !important;
-          }
-
-          .profile-stable-bottom-nav a {
-            height: 42px !important;
-            min-height: 42px !important;
-          }
-
-          .profile-stable-create-button {
-            width: 44px !important;
-            min-width: 44px !important;
-            height: 44px !important;
-            min-height: 44px !important;
-            font-size: 28px !important;
-            transform: translateY(-8px) !important;
+            font-size: 34px !important;
+            transform: translateY(-11px) !important;
           }
         }
       `}</style>
@@ -15864,14 +15805,14 @@ function ProfileStableBottomNav({
 
 const profileStableBottomNavStyle: CSSProperties = {
   position: "fixed",
-  left: "50%",
-  right: "auto",
-  bottom: "max(14px, env(safe-area-inset-bottom))",
+  left: "0",
+  right: "0",
+  bottom: "0",
   zIndex: 2147483647,
-  width: "min(700px, calc(100vw - 40px))",
-  maxWidth: "700px",
+  width: "auto",
+  maxWidth: "none",
   minHeight: "88px",
-  borderRadius: "30px",
+  borderRadius: "28px 28px 0 0",
   border: "1px solid rgba(255,255,255,0.12)",
   background:
     "linear-gradient(180deg, rgba(10,14,22,0.98), rgba(5,7,12,1))",
@@ -15879,13 +15820,13 @@ const profileStableBottomNavStyle: CSSProperties = {
   backdropFilter: "blur(18px)",
   WebkitBackdropFilter: "blur(18px)",
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr)",
+  gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) 74px minmax(0,1fr) minmax(0,1fr)",
   alignItems: "center",
   gap: "6px",
   padding: "10px",
   pointerEvents: "auto",
   overflow: "visible",
-  transform: "translateX(-50%)",
+  transform: "none",
 };
 
 const profileStableBottomNavItemStyle: CSSProperties = {

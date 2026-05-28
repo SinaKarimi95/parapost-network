@@ -14,7 +14,6 @@ import {
 import MutualFriendsPreviewCard from "@/components/profile/MutualFriendsPreviewCard";
 import ProfileAboutSection from "@/components/profile/ProfileAboutSection";
 import ProfilePhotosSection from "@/components/profile/ProfilePhotosSection";
-import BottomNav from "@/components/BottomNav";
 
 type ProfileRow = {
   id: string;
@@ -15646,16 +15645,272 @@ return (
       ) : null}
 
       {!showcaseComposerOpen ? (
-        <BottomNav
-        currentUserId={viewerId}
-        activeItem="profile"
-        onCreatePost={handleMobileCreatePostClick}
-      />
-    ) : null}
+        <ProfileStableBottomNav
+          viewerId={viewerId}
+          onCreatePost={handleMobileCreatePostClick}
+        />
+      ) : null}
     </div>
   );
 }   
 
+
+function ProfileStableBottomNav({
+  viewerId,
+  onCreatePost,
+}: {
+  viewerId: string;
+  onCreatePost: () => void;
+}) {
+  const profileHref = viewerId ? `/profile/${viewerId}` : "/dashboard";
+
+  return (
+    <>
+      <nav
+        className="profile-stable-bottom-nav"
+        aria-label="Primary bottom navigation"
+        style={profileStableBottomNavStyle}
+      >
+        <Link href="/dashboard" aria-label="Home" style={profileStableBottomNavItemStyle}>
+          <span style={profileStableBottomNavIconStyle}>⌂</span>
+          <span style={profileStableBottomNavLabelStyle}>Home</span>
+        </Link>
+
+        <Link href="/reels" aria-label="Reels" style={profileStableBottomNavItemStyle}>
+          <span style={profileStableBottomNavIconStyle}>▣</span>
+          <span style={profileStableBottomNavLabelStyle}>Reels</span>
+        </Link>
+
+        <button
+          type="button"
+          aria-label="Create a post"
+          className="profile-stable-create-button"
+          onClick={onCreatePost}
+          style={profileStableCreateButtonStyle}
+        >
+          +
+        </button>
+
+        <Link href="/messages" aria-label="Parachat" style={profileStableBottomNavItemStyle}>
+          <span style={profileStableBottomNavIconStyle}>☏</span>
+          <span style={profileStableBottomNavLabelStyle}>Parachat</span>
+        </Link>
+
+        <Link
+          href={profileHref}
+          aria-label="Profile"
+          aria-current="page"
+          style={profileStableBottomNavItemActiveStyle}
+        >
+          <span style={profileStableProfileDotStyle} />
+          <span style={profileStableBottomNavLabelStyle}>Profile</span>
+        </Link>
+      </nav>
+
+      <style jsx global>{`
+        .profile-stable-bottom-nav,
+        .profile-stable-bottom-nav * {
+          box-sizing: border-box;
+        }
+
+        .profile-stable-bottom-nav {
+          width: auto !important;
+          max-width: none !important;
+          min-height: 88px !important;
+          padding: 10px !important;
+          border-radius: 28px 28px 0 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          transform: none !important;
+          bottom: 0 !important;
+        }
+
+        .profile-stable-bottom-nav a,
+        .profile-stable-bottom-nav button {
+          -webkit-tap-highlight-color: transparent !important;
+          touch-action: manipulation !important;
+        }
+
+        .profile-stable-bottom-nav a {
+          min-height: 68px !important;
+        }
+
+        .profile-stable-create-button {
+          width: 74px !important;
+          min-width: 74px !important;
+          height: 74px !important;
+          min-height: 74px !important;
+          border-radius: 999px !important;
+          aspect-ratio: 1 / 1 !important;
+          font-size: 44px !important;
+          line-height: 1 !important;
+          transform: translateY(-16px) !important;
+        }
+
+        @media (max-width: 760px) {
+          .profile-stable-bottom-nav {
+            width: auto !important;
+            left: max(14px, env(safe-area-inset-left)) !important;
+            right: max(14px, env(safe-area-inset-right)) !important;
+            transform: none !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .profile-stable-bottom-nav {
+            min-height: 82px !important;
+            padding: 8px !important;
+            border-radius: 26px !important;
+            gap: 3px !important;
+          }
+
+          .profile-stable-bottom-nav a {
+            min-height: 62px !important;
+          }
+
+          .profile-stable-create-button {
+            width: 66px !important;
+            min-width: 66px !important;
+            height: 66px !important;
+            min-height: 66px !important;
+            font-size: 38px !important;
+            transform: translateY(-14px) !important;
+          }
+        }
+
+        @media (max-width: 370px) {
+          .profile-stable-bottom-nav {
+            left: max(8px, env(safe-area-inset-left)) !important;
+            right: max(8px, env(safe-area-inset-right)) !important;
+            min-height: 76px !important;
+            padding: 7px !important;
+          }
+
+          .profile-stable-create-button {
+            width: 58px !important;
+            min-width: 58px !important;
+            height: 58px !important;
+            min-height: 58px !important;
+            font-size: 34px !important;
+            transform: translateY(-11px) !important;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
+
+
+
+
+const profileStableBottomNavStyle: CSSProperties = {
+  position: "fixed",
+  left: "0",
+  right: "0",
+  bottom: "0",
+  zIndex: 2147483647,
+  width: "auto",
+  maxWidth: "none",
+  minHeight: "88px",
+  borderRadius: "28px 28px 0 0",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background:
+    "linear-gradient(180deg, rgba(10,14,22,0.98), rgba(5,7,12,1))",
+  boxShadow: "0 18px 50px rgba(0,0,0,0.65)",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) 74px minmax(0,1fr) minmax(0,1fr)",
+  alignItems: "center",
+  gap: "6px",
+  padding: "10px",
+  pointerEvents: "auto",
+  overflow: "visible",
+  transform: "none",
+};
+
+const profileStableBottomNavItemStyle: CSSProperties = {
+  minHeight: "68px",
+  width: "100%",
+  minWidth: 0,
+  border: "none",
+  background: "transparent",
+  borderRadius: "23px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "5px",
+  color: "#9ca3af",
+  fontSize: "12px",
+  fontWeight: 900,
+  letterSpacing: "-0.01em",
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+  userSelect: "none",
+  position: "relative",
+  zIndex: 2,
+  padding: "7px 3px",
+  textDecoration: "none",
+};
+
+const profileStableBottomNavItemActiveStyle: CSSProperties = {
+  ...profileStableBottomNavItemStyle,
+  color: "#ffffff",
+  background: "rgba(168,85,247,0.18)",
+  boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.22)",
+};
+
+const profileStableBottomNavIconStyle: CSSProperties = {
+  fontSize: "24px",
+  lineHeight: 1,
+};
+
+const profileStableBottomNavLabelStyle: CSSProperties = {
+  fontSize: "12px",
+  lineHeight: 1.1,
+  maxWidth: "100%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const profileStableCreateButtonStyle: CSSProperties = {
+  width: "74px",
+  minWidth: "74px",
+  height: "74px",
+  minHeight: "74px",
+  borderRadius: "999px",
+  aspectRatio: "1 / 1",
+  border: "3px solid rgba(255,255,255,0.88)",
+  background:
+    "linear-gradient(135deg, #ffffff 0%, #ffffff 42%, var(--parapost-accent-2) 43%, #ec4899 100%)",
+  color: "#05070a",
+  fontSize: "44px",
+  fontWeight: 900,
+  lineHeight: 1,
+  display: "grid",
+  placeItems: "center",
+  boxShadow: "0 0 28px rgba(168,85,247,0.56)",
+  cursor: "pointer",
+  transform: "translateY(-16px)",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+  userSelect: "none",
+  flexShrink: 0,
+  position: "relative",
+  zIndex: 3,
+  padding: 0,
+};
+
+const profileStableProfileDotStyle: CSSProperties = {
+  width: "20px",
+  height: "20px",
+  borderRadius: "999px",
+  background: "linear-gradient(135deg, var(--parapost-accent-2), #7c3aed)",
+  boxShadow: "0 0 18px rgba(168,85,247,0.45)",
+};
 
 const profileViewerBackToOptionsStyle: CSSProperties = {
   width: "100%",

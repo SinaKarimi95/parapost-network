@@ -135,39 +135,68 @@ export default function BottomNav({
         }
 
         .parapost-bottom-nav {
-          max-width: 560px;
-          margin-left: auto;
-          margin-right: auto;
+          width: auto !important;
+          max-width: none !important;
+          min-height: 88px !important;
           left: max(12px, env(safe-area-inset-left)) !important;
           right: max(12px, env(safe-area-inset-right)) !important;
+          bottom: max(12px, env(safe-area-inset-bottom)) !important;
+          padding: 10px !important;
+          gap: 6px !important;
+          border-radius: 30px !important;
         }
 
         .parapost-bottom-nav button {
           -webkit-tap-highlight-color: transparent;
         }
 
+        .parapost-bottom-nav-item {
+          min-height: 68px !important;
+          border-radius: 23px !important;
+        }
+
+        .parapost-bottom-nav-create {
+          width: 74px !important;
+          height: 74px !important;
+          min-width: 74px !important;
+          min-height: 74px !important;
+          border-radius: 999px !important;
+          aspect-ratio: 1 / 1 !important;
+          padding: 0 !important;
+          font-size: 44px !important;
+          line-height: 1 !important;
+          transform: translateY(-16px) !important;
+        }
+
         @media (min-width: 760px) {
           .parapost-bottom-nav {
-            left: 50% !important;
-            right: auto !important;
-            width: min(560px, calc(100vw - 32px)) !important;
-            transform: translateX(-50%) !important;
+            left: max(12px, env(safe-area-inset-left)) !important;
+            right: max(12px, env(safe-area-inset-right)) !important;
+            width: auto !important;
+            max-width: none !important;
+            transform: none !important;
           }
         }
 
         @media (max-width: 430px) {
           .parapost-bottom-nav {
-            min-height: 72px !important;
-            border-radius: 24px !important;
-            padding: 7px !important;
-            gap: 2px !important;
+            min-height: 82px !important;
+            border-radius: 26px !important;
+            padding: 8px !important;
+            gap: 3px !important;
+          }
+
+          .parapost-bottom-nav-item {
+            min-height: 62px !important;
           }
 
           .parapost-bottom-nav-create {
-            width: 58px !important;
-            height: 58px !important;
-            font-size: 34px !important;
-            transform: translateY(-12px) !important;
+            width: 66px !important;
+            height: 66px !important;
+            min-width: 66px !important;
+            min-height: 66px !important;
+            font-size: 38px !important;
+            transform: translateY(-14px) !important;
           }
         }
 
@@ -175,29 +204,41 @@ export default function BottomNav({
           .parapost-bottom-nav {
             left: max(8px, env(safe-area-inset-left)) !important;
             right: max(8px, env(safe-area-inset-right)) !important;
-            min-height: 68px !important;
-            padding: 6px !important;
+            min-height: 76px !important;
+            padding: 7px !important;
+          }
+
+          .parapost-bottom-nav-item {
+            min-height: 58px !important;
           }
 
           .parapost-bottom-nav-create {
-            width: 52px !important;
-            height: 52px !important;
-            font-size: 31px !important;
-            transform: translateY(-10px) !important;
+            width: 58px !important;
+            height: 58px !important;
+            min-width: 58px !important;
+            min-height: 58px !important;
+            font-size: 34px !important;
+            transform: translateY(-11px) !important;
           }
         }
 
         @media (max-height: 560px) and (orientation: landscape) {
           .parapost-bottom-nav {
-            min-height: 62px !important;
+            min-height: 70px !important;
             bottom: max(8px, env(safe-area-inset-bottom)) !important;
             border-radius: 22px !important;
           }
 
+          .parapost-bottom-nav-item {
+            min-height: 54px !important;
+          }
+
           .parapost-bottom-nav-create {
-            width: 50px !important;
-            height: 50px !important;
-            transform: translateY(-8px) !important;
+            width: 58px !important;
+            height: 58px !important;
+            min-width: 58px !important;
+            min-height: 58px !important;
+            transform: translateY(-10px) !important;
           }
         }
       `}</style>
@@ -222,6 +263,7 @@ function NavButton({
     <button
       type="button"
       onClick={onClick}
+      className="parapost-bottom-nav-item"
       style={active ? activeItemStyle : itemButtonStyle}
       aria-label={label}
       aria-current={active ? "page" : undefined}
@@ -238,8 +280,10 @@ const navStyle: CSSProperties = {
   right: "12px",
   bottom: "max(12px, env(safe-area-inset-bottom))",
   zIndex: 2147483647,
-  minHeight: "76px",
-  borderRadius: "28px",
+  width: "auto",
+  maxWidth: "none",
+  minHeight: "88px",
+  borderRadius: "30px",
   border: "1px solid rgba(255,255,255,0.12)",
   background:
     "linear-gradient(180deg, rgba(10,14,22,0.98), rgba(5,7,12,1))",
@@ -247,28 +291,28 @@ const navStyle: CSSProperties = {
   backdropFilter: "blur(18px)",
   WebkitBackdropFilter: "blur(18px)",
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr)",
+  gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) 74px minmax(0,1fr) minmax(0,1fr)",
   alignItems: "center",
-  gap: "4px",
-  padding: "8px",
+  gap: "6px",
+  padding: "10px",
   pointerEvents: "auto",
   overflow: "visible",
 };
 
 const itemButtonStyle: CSSProperties = {
-  minHeight: "58px",
+  minHeight: "68px",
   width: "100%",
   minWidth: 0,
   border: "none",
   background: "transparent",
-  borderRadius: "22px",
+  borderRadius: "23px",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  gap: "4px",
+  gap: "5px",
   color: "#9ca3af",
-  fontSize: "11px",
+  fontSize: "12px",
   fontWeight: 900,
   letterSpacing: "-0.01em",
   cursor: "pointer",
@@ -277,7 +321,7 @@ const itemButtonStyle: CSSProperties = {
   userSelect: "none",
   position: "relative",
   zIndex: 2,
-  padding: "6px 2px",
+  padding: "7px 3px",
 };
 
 const activeItemStyle: CSSProperties = {
@@ -288,12 +332,12 @@ const activeItemStyle: CSSProperties = {
 };
 
 const iconStyle: CSSProperties = {
-  fontSize: "22px",
+  fontSize: "24px",
   lineHeight: 1,
 };
 
 const labelStyle: CSSProperties = {
-  fontSize: "11px",
+  fontSize: "12px",
   lineHeight: 1.1,
   maxWidth: "100%",
   overflow: "hidden",
@@ -302,32 +346,36 @@ const labelStyle: CSSProperties = {
 };
 
 const createButtonStyle: CSSProperties = {
-  width: "62px",
-  height: "62px",
-  borderRadius: "50%",
+  width: "74px",
+  height: "74px",
+  minWidth: "74px",
+  minHeight: "74px",
+  aspectRatio: "1 / 1",
+  borderRadius: "999px",
   border: "3px solid rgba(255,255,255,0.88)",
   background:
     "linear-gradient(135deg, #ffffff 0%, #ffffff 42%, #a855f7 43%, #ec4899 100%)",
   color: "#05070a",
-  fontSize: "38px",
+  fontSize: "44px",
   fontWeight: 900,
   lineHeight: 1,
   display: "grid",
   placeItems: "center",
-  boxShadow: "0 0 26px rgba(168,85,247,0.50)",
+  boxShadow: "0 0 28px rgba(168,85,247,0.56)",
   cursor: "pointer",
-  transform: "translateY(-14px)",
+  transform: "translateY(-16px)",
   touchAction: "manipulation",
   WebkitTapHighlightColor: "transparent",
   userSelect: "none",
   flexShrink: 0,
   position: "relative",
   zIndex: 3,
+  padding: 0,
 };
 
 const profileDotStyle: CSSProperties = {
-  width: "18px",
-  height: "18px",
+  width: "20px",
+  height: "20px",
   borderRadius: "999px",
   background: "linear-gradient(135deg, #a855f7, #7c3aed)",
   boxShadow: "0 0 18px rgba(168,85,247,0.45)",

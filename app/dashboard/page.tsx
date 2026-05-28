@@ -177,6 +177,8 @@ const MAX_POST_IMAGE_MB = 12;
 const MAX_POST_VIDEO_MB = 100;
 const FEED_INITIAL_BATCH_SIZE = 14;
 const FEED_BATCH_INCREMENT = 10;
+const DASHBOARD_REALTIME_REFRESH_DELAY_MS = 1500;
+const DASHBOARD_BACKGROUND_REFRESH_MS = 120000;
 
 const FEELING_ACTIVITY_OPTIONS: FeelingActivityOption[] = [
   { id: "happy", label: "Feeling happy", category: "Feeling", helper: "Share a positive mood", icon: "smile" },
@@ -652,7 +654,7 @@ function PostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string })
       );
     }
 
-    return <img src={url} alt={`${alt} ${index + 1}`} className="dashboard-post-media-item" style={postImageGridImageStyle} />;
+    return <img src={url} alt={`${alt} ${index + 1}`} loading="lazy" className="dashboard-post-media-item" style={postImageGridImageStyle} />;
   };
 
   if (safeUrls.length === 1) {
@@ -671,7 +673,7 @@ function PostImageGrid({ imageUrls, alt }: { imageUrls: string[]; alt: string })
         aria-label={`${alt} video`}
       />
     ) : (
-      <img src={safeUrls[0]} alt={alt} className="dashboard-post-single-media" style={postImageStyle} />
+      <img src={safeUrls[0]} alt={alt} loading="lazy" className="dashboard-post-single-media" style={postImageStyle} />
     );
   }
 
@@ -2199,6 +2201,7 @@ export default function DashboardPage() {
 
     const requestDashboardRefresh = () => {
       if (!shouldRunDashboardNetworkRefresh()) return;
+      if (dashboardRefreshInFlightRef.current) return;
       void fetchDashboardData(false);
     };
 
@@ -2207,7 +2210,10 @@ export default function DashboardPage() {
         window.clearTimeout(refreshTimer);
       }
 
-      refreshTimer = window.setTimeout(requestDashboardRefresh, 650);
+      refreshTimer = window.setTimeout(
+        requestDashboardRefresh,
+        DASHBOARD_REALTIME_REFRESH_DELAY_MS
+      );
     };
 
     const channel = supabase
@@ -2224,15 +2230,15 @@ export default function DashboardPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "recently_viewed_profiles" }, schedulePulseRefresh)
       .subscribe();
 
-    const intervalId = window.setInterval(requestDashboardRefresh, 60000);
+    const intervalId = window.setInterval(requestDashboardRefresh, DASHBOARD_BACKGROUND_REFRESH_MS);
 
     const handleFocusRefresh = () => {
-      requestDashboardRefresh();
+      schedulePulseRefresh();
     };
 
     const handleVisibilityRefresh = () => {
       if (document.visibilityState === "visible") {
-        requestDashboardRefresh();
+        schedulePulseRefresh();
       }
     };
 
@@ -3270,6 +3276,11 @@ export default function DashboardPage() {
               <SidebarButton label="Events" badge="Soon" muted />
             </nav>
 
+            <div style={{ ...sidebarDividerStyle, margin: "12px 0 10px" }} />
+            <div style={sidebarSectionHeaderRowStyle}>
+              <div style={{ ...sidebarSectionLabelStyle, marginBottom: 0 }}>Live Tools</div>
+            </div>
+
             <div style={goLiveCardStyle} aria-disabled="true" title="Live streaming is coming soon.">
               <span style={goLiveIconStyle}>+</span>
               <span style={{ minWidth: 0 }}>
@@ -3278,6 +3289,9 @@ export default function DashboardPage() {
               </span>
               <span style={goLiveSoonBadgeStyle}>Soon</span>
             </div>
+
+            <div style={{ ...sidebarDividerStyle, margin: "12px 0 10px" }} />
+            <div style={{ ...sidebarSectionLabelStyle, marginBottom: 8 }}>Profile</div>
 
             <Link href={currentUserId ? `/profile/${currentUserId}` : "/dashboard"} style={sidebarProfileStyle}>
               <Avatar profile={currentProfile} size={38} />
@@ -6757,6 +6771,28 @@ export default function DashboardPage() {
           min-width: 0;
         }
 
+
+        /* === No inner sidebar/rail scrollbars: page scroll only === */
+        @media (min-width: 1181px) {
+          .dashboard-desktop-left,
+          .dashboard-right-rail {
+            position: relative !important;
+            top: auto !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            overscroll-behavior: auto !important;
+            scrollbar-width: auto !important;
+          }
+
+          .dashboard-desktop-left::-webkit-scrollbar,
+          .dashboard-right-rail::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .dashboard-sidebar-item,
           .dashboard-sidebar-profile {
@@ -8022,11 +8058,14 @@ export default function DashboardPage() {
         @media (min-width: 1181px) {
           .dashboard-desktop-left,
           .dashboard-right-rail {
-            max-height: calc(100dvh - 36px) !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            overscroll-behavior: contain !important;
-            scrollbar-width: none !important;
+            position: relative !important;
+            top: auto !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            overscroll-behavior: auto !important;
+            scrollbar-width: auto !important;
+            scrollbar-gutter: auto !important;
           }
 
           .dashboard-desktop-left::-webkit-scrollbar,
@@ -8036,6 +8075,20 @@ export default function DashboardPage() {
 
           .dashboard-grid-desktop-safe {
             align-items: start !important;
+          }
+
+
+          .dashboard-desktop-left .dashboard-sidebar-item {
+            min-height: 39px !important;
+          }
+
+          .dashboard-desktop-left nav {
+            gap: 5px !important;
+          }
+
+          .dashboard-right-card {
+            border-radius: 18px !important;
+            padding: 13px !important;
           }
 
           .dashboard-main-column {
@@ -8279,6 +8332,234 @@ export default function DashboardPage() {
             animation: none !important;
           }
         }
+
+        /* === Dashboard performance and hover responsiveness pass === */
+        .dashboard-feed-card,
+        .dashboard-link-preview-card,
+        .dashboard-sidebar-item,
+        .dashboard-right-rail .dashboard-rail-row,
+        .dashboard-mobile-menu-row,
+        .dashboard-mobile-menu-list-row,
+        .dashboard-composer-action-pill,
+        .dashboard-top-icons a,
+        .dashboard-top-icons button {
+          transition-property: background-color, border-color, color, opacity, transform, box-shadow !important;
+          transition-duration: 140ms !important;
+          transition-timing-function: ease !important;
+        }
+
+        .dashboard-feed-card:hover,
+        .dashboard-link-preview-card:hover,
+        .dashboard-sidebar-item:not(.dashboard-sidebar-item-muted):hover,
+        .dashboard-right-rail .dashboard-rail-row:hover {
+          will-change: transform;
+        }
+
+        .dashboard-post-single-media,
+        .dashboard-post-media-item,
+        .dashboard-composer-media-preview-tile img,
+        .dashboard-composer-media-preview-tile video {
+          backface-visibility: hidden;
+          transform: translateZ(0);
+        }
+
+        @media (hover: none), (pointer: coarse) {
+          .dashboard-feed-card:hover,
+          .dashboard-link-preview-card:hover,
+          .dashboard-sidebar-item:hover,
+          .dashboard-right-rail .dashboard-rail-row:hover,
+          .dashboard-brand-logo:hover,
+          .dashboard-post-media-tile:hover,
+          .dashboard-composer-media-preview-tile:hover {
+            transform: none !important;
+            filter: none !important;
+            box-shadow: inherit;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .dashboard-feed-card,
+          .dashboard-link-preview-card,
+          .dashboard-sidebar-item,
+          .dashboard-right-rail .dashboard-rail-row,
+          .dashboard-mobile-menu-row,
+          .dashboard-mobile-menu-list-row,
+          .dashboard-composer-action-pill,
+          .dashboard-post-single-media,
+          .dashboard-post-media-item {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
+
+
+        /* === Dashboard clean-lines polish: no redesign, smoother overall feel === */
+        .dashboard-grid-desktop-safe,
+        .dashboard-main-column,
+        .dashboard-desktop-left,
+        .dashboard-right-rail {
+          min-width: 0 !important;
+        }
+
+        .dashboard-card,
+        .dashboard-right-card,
+        .dashboard-composer-card,
+        .dashboard-feed-card,
+        .dashboard-showcase-row,
+        .dashboard-feed-pulse,
+        .dashboard-mobile-sponsored-placement {
+          border-color: rgba(255,255,255,0.085) !important;
+          box-shadow: 0 14px 34px rgba(0,0,0,0.22) !important;
+          background-clip: padding-box !important;
+        }
+
+        .dashboard-card::before,
+        .dashboard-right-card::before,
+        .dashboard-feed-card::before,
+        .dashboard-composer-card::before,
+        .dashboard-showcase-row::before {
+          pointer-events: none !important;
+        }
+
+        .dashboard-card:hover,
+        .dashboard-feed-card:hover,
+        .dashboard-right-card:hover,
+        .dashboard-showcase-row:hover {
+          border-color: rgba(168,85,247,0.16) !important;
+        }
+
+        .dashboard-feed-card {
+          overflow: hidden !important;
+        }
+
+        .dashboard-post-header {
+          min-width: 0 !important;
+        }
+
+        .dashboard-post-header a,
+        .dashboard-post-header strong,
+        .dashboard-post-header span {
+          min-width: 0 !important;
+        }
+
+        .dashboard-post-actions {
+          border-top-color: rgba(255,255,255,0.055) !important;
+        }
+
+        .dashboard-post-actions button,
+        .dashboard-post-actions a,
+        .dashboard-composer-actions button,
+        .dashboard-composer-action-pill,
+        .dashboard-top-icons a,
+        .dashboard-top-icons button,
+        .dashboard-search-parapost,
+        .dashboard-sidebar-item,
+        .dashboard-right-rail a,
+        .dashboard-right-rail button {
+          transition:
+            background-color 120ms ease,
+            border-color 120ms ease,
+            color 120ms ease,
+            opacity 120ms ease !important;
+        }
+
+        .dashboard-post-actions button:hover,
+        .dashboard-post-actions a:hover,
+        .dashboard-composer-actions button:hover,
+        .dashboard-composer-action-pill:hover,
+        .dashboard-top-icons a:hover,
+        .dashboard-top-icons button:hover,
+        .dashboard-search-parapost:hover,
+        .dashboard-right-rail a:hover,
+        .dashboard-right-rail button:hover {
+          transform: none !important;
+        }
+
+        .dashboard-sidebar-item:not(.dashboard-sidebar-item-muted):hover {
+          transform: none !important;
+        }
+
+        .dashboard-post-single-media,
+        .dashboard-post-media-item,
+        .dashboard-shared-reel-media,
+        .dashboard-composer-media-preview-tile img,
+        .dashboard-composer-media-preview-tile video {
+          background: rgba(0,0,0,0.34) !important;
+        }
+
+        .dashboard-post-single-media,
+        .dashboard-post-media-grid,
+        .dashboard-shared-reel-frame,
+        .dashboard-link-preview-card {
+          border-color: rgba(255,255,255,0.075) !important;
+        }
+
+        .dashboard-showcase-scroller,
+        .dashboard-composer-media-preview-wrap {
+          scrollbar-width: none !important;
+        }
+
+        .dashboard-showcase-scroller::-webkit-scrollbar,
+        .dashboard-composer-media-preview-wrap::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        .dashboard-right-rail {
+          gap: 14px !important;
+        }
+
+        .dashboard-right-card {
+          overflow: hidden !important;
+        }
+
+        .dashboard-right-rail .dashboard-rail-row,
+        .dashboard-right-rail a[style*="grid"],
+        .dashboard-right-rail a[style*="flex"] {
+          transition:
+            background-color 120ms ease,
+            border-color 120ms ease,
+            opacity 120ms ease !important;
+        }
+
+        .dashboard-right-rail .dashboard-rail-row:hover,
+        .dashboard-right-rail a[style*="grid"]:hover,
+        .dashboard-right-rail a[style*="flex"]:hover {
+          transform: none !important;
+        }
+
+        .dashboard-mobile-insights {
+          border-color: rgba(255,255,255,0.085) !important;
+        }
+
+        .dashboard-bottom-nav {
+          border-color: rgba(255,255,255,0.10) !important;
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-card,
+          .dashboard-right-card,
+          .dashboard-composer-card,
+          .dashboard-feed-card,
+          .dashboard-showcase-row,
+          .dashboard-mobile-sponsored-placement {
+            box-shadow: 0 10px 22px rgba(0,0,0,0.18) !important;
+          }
+
+          .dashboard-post-actions button,
+          .dashboard-post-actions a,
+          .dashboard-composer-action-pill {
+            transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease !important;
+          }
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+          .dashboard-feed-card:hover,
+          .dashboard-card:hover,
+          .dashboard-right-card:hover {
+            box-shadow: 0 16px 38px rgba(0,0,0,0.24) !important;
+          }
+        }
+
 
       ` }} />
     </div>
@@ -9938,7 +10219,7 @@ function RightRailCard({ title, action, children }: { title: string; action?: st
         <h3 style={{ margin: 0, fontSize: 17 }}>{title}</h3>
         {action ? <span style={railActionStyle}>{action}</span> : null}
       </div>
-      <div style={{ display: "grid", gap: 12 }}>{children}</div>
+      <div style={{ display: "grid", gap: 10 }}>{children}</div>
     </section>
   );
 }
@@ -11411,7 +11692,7 @@ const railProfileButtonStyle: CSSProperties = {
 const railStatGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 7,
+  gap: 6,
 };
 
 const railStatTileStyle: CSSProperties = {
@@ -11571,45 +11852,52 @@ const backgroundGlowStyle: CSSProperties = {
 const dashboardShellStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
-  maxWidth: "1860px",
+  maxWidth: "1740px",
   margin: "0 auto",
-  padding: "24px 18px 110px",
+  padding: "18px 16px 110px",
 };
 
 const dashboardGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "300px minmax(0, 1fr) 360px",
-  gap: "28px",
+  gridTemplateColumns: "280px minmax(0, 1fr) 330px",
+  gap: "22px",
   alignItems: "start",
 };
 
 const leftSidebarStyle: CSSProperties = {
-  position: "sticky",
-  top: "18px",
+  position: "relative",
+  top: "auto",
   alignSelf: "start",
   height: "auto",
   maxHeight: "none",
-  overflow: "visible",
+  overflowY: "visible",
+  overflowX: "visible",
+  overscrollBehavior: "auto",
+  scrollbarWidth: "auto",
   borderRight: "1px solid rgba(255,255,255,0.075)",
-  padding: "0 24px 18px 4px",
+  padding: "0 18px 18px 4px",
 };
 
 const mainColumnStyle: CSSProperties = {
   minWidth: 0,
-  maxWidth: "1040px",
+  maxWidth: "1000px",
   margin: "0 auto",
   width: "100%",
 };
 
 const rightRailStyle: CSSProperties = {
-  position: "sticky",
-  top: "18px",
+  position: "relative",
+  top: "auto",
   alignSelf: "start",
   maxHeight: "none",
-  overflow: "visible",
+  overflowY: "visible",
+  overflowX: "visible",
+  overscrollBehavior: "auto",
+  scrollbarWidth: "auto",
   display: "grid",
-  gap: "18px",
+  gap: "14px",
   paddingBottom: "18px",
+  paddingRight: "0",
 };
 
 const feedLoadMoreSentinelStyle: CSSProperties = {
@@ -11625,7 +11913,7 @@ const sidebarLogoStyle: CSSProperties = {
   gap: "14px",
   color: "#fff",
   textDecoration: "none",
-  marginBottom: "28px",
+  marginBottom: "20px",
   userSelect: "none",
 };
 
@@ -11664,19 +11952,19 @@ const logoNetworkStyle: CSSProperties = {
 
 const sidebarNavStyle: CSSProperties = {
   display: "grid",
-  gap: 7,
+  gap: 5,
 };
 
 const sidebarItemStyle: CSSProperties = {
-  minHeight: 46,
-  borderRadius: 13,
+  minHeight: 39,
+  borderRadius: 12,
   color: "#d1d5db",
   textDecoration: "none",
   display: "grid",
-  gridTemplateColumns: "25px 1fr auto",
+  gridTemplateColumns: "22px 1fr auto",
   alignItems: "center",
-  gap: 10,
-  padding: "0 13px",
+  gap: 8,
+  padding: "0 11px",
   border: "1px solid transparent",
   background: "transparent",
   transition: "background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease",
@@ -11744,7 +12032,7 @@ const mutedSidebarBadgeStyle: CSSProperties = {
 const sidebarDividerStyle: CSSProperties = {
   height: 1,
   background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
-  margin: "20px 0",
+  margin: "14px 0",
 };
 const sidebarSectionLabelStyle: CSSProperties = {
   color: "#c084fc",
@@ -11752,9 +12040,9 @@ const sidebarSectionLabelStyle: CSSProperties = {
   fontWeight: 950,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
-  marginBottom: 10,
+  marginBottom: 8,
 };
-const sidebarSectionHeaderRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 };
+const sidebarSectionHeaderRowStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 };
 const sidebarSectionSoonBadgeStyle: CSSProperties = {
   borderRadius: 999,
   background: "rgba(168,85,247,0.13)",
@@ -11768,52 +12056,52 @@ const sidebarSectionSoonBadgeStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 const paranormalHubIntroStyle: CSSProperties = {
-  margin: "0 0 10px",
-  borderRadius: 14,
+  margin: "0 0 9px",
+  borderRadius: 13,
   border: "1px solid rgba(168,85,247,0.16)",
   background: "linear-gradient(135deg, rgba(168,85,247,0.075), rgba(255,255,255,0.022))",
   color: "rgba(226,232,240,0.76)",
-  fontSize: 12,
-  lineHeight: 1.45,
-  padding: "10px 12px",
+  fontSize: 11.5,
+  lineHeight: 1.38,
+  padding: "9px 10px",
 };
 
 const goLiveCardStyle: CSSProperties = {
-  marginTop: 22,
+  marginTop: 0,
   display: "flex",
   alignItems: "center",
-  gap: 12,
-  borderRadius: 17,
-  padding: 15,
+  gap: 10,
+  borderRadius: 15,
+  padding: 11,
   textDecoration: "none",
   background: "linear-gradient(135deg, rgba(168,85,247,0.070), rgba(255,255,255,0.022))",
   border: "1px solid rgba(168,85,247,0.16)",
-  boxShadow: "0 14px 28px rgba(0,0,0,0.18)",
-  opacity: 0.74,
+  boxShadow: "0 12px 24px rgba(0,0,0,0.16)",
+  opacity: 0.78,
   cursor: "default",
 };
 
 const goLiveIconStyle: CSSProperties = {
-  width: 46,
-  height: 46,
-  borderRadius: 14,
+  width: 38,
+  height: 38,
+  borderRadius: 12,
   display: "grid",
   placeItems: "center",
   background: "rgba(255,255,255,0.055)",
   color: "#fff",
-  fontSize: 24,
+  fontSize: 21,
   border: "1px solid rgba(255,255,255,0.075)",
 };
 const goLiveSoonBadgeStyle: CSSProperties = { marginLeft: "auto", borderRadius: 999, background: "color-mix(in srgb, var(--parapost-accent-2) 22%, transparent)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.78)", padding: "5px 8px", fontSize: 11, fontWeight: 950, whiteSpace: "nowrap" };
 const sidebarProfileStyle: CSSProperties = {
-  marginTop: 22,
+  marginTop: 0,
   display: "flex",
   alignItems: "center",
   gap: 10,
   textDecoration: "none",
   border: "1px solid rgba(255,255,255,0.095)",
-  borderRadius: 15,
-  padding: 10,
+  borderRadius: 14,
+  padding: 9,
   background: "rgba(255,255,255,0.032)",
   transition: "background 160ms ease, border-color 160ms ease, transform 160ms ease",
 };
@@ -13416,21 +13704,21 @@ const watchReelButtonStyle: CSSProperties = {
 
 
 const railCardStyle: CSSProperties = {
-  borderRadius: 20,
+  borderRadius: 18,
   border: "1px solid rgba(255,255,255,0.105)",
   background:
     "linear-gradient(180deg, rgba(255,255,255,0.052), rgba(255,255,255,0.026))",
-  padding: 16,
-  boxShadow: "0 14px 32px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.028)",
+  padding: 13,
+  boxShadow: "0 12px 28px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.028)",
   overflow: "hidden",
 };
 const railCardHeaderStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 13,
-  paddingBottom: 10,
+  gap: 10,
+  marginBottom: 10,
+  paddingBottom: 8,
   borderBottom: "1px solid rgba(255,255,255,0.055)",
 };
 const railActionStyle: CSSProperties = {

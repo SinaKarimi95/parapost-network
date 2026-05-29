@@ -49,6 +49,11 @@ type ShowcaseFontValue =
   | "playfair"
   | "merriweather";
 
+type BlockedUserRow = {
+  blocker_id: string | null;
+  blocked_id: string | null;
+};
+
 type DashboardShowcaseItem = {
   id: string;
   user_id: string;
@@ -750,6 +755,26 @@ function getDiscoverySortTime(profile: ProfilePreview) {
   return Number.isNaN(time) ? 0 : time;
 }
 
+function buildDashboardBlockedUserIds(
+  rows: BlockedUserRow[] | null | undefined,
+  viewerId: string
+) {
+  const blockedIds = new Set<string>();
+
+  for (const row of rows || []) {
+    const otherId =
+      row.blocker_id === viewerId
+        ? row.blocked_id
+        : row.blocked_id === viewerId
+          ? row.blocker_id
+          : "";
+
+    if (otherId) blockedIds.add(otherId);
+  }
+
+  return Array.from(blockedIds);
+}
+
 
 const TREND_STOP_WORDS = new Set([
   "about",
@@ -1369,6 +1394,7 @@ export default function DashboardPage() {
   const [feedMode, setFeedMode] = useState<FeedMode>("for_you");
   const [followedUserIds, setFollowedUserIds] = useState<string[]>([]);
   const [acceptedFriendUserIds, setAcceptedFriendUserIds] = useState<string[]>([]);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
   const [followingMap, setFollowingMap] = useState<FollowMap>({});
   const [likeCounts, setLikeCounts] = useState<CountMap>({});
   const [commentCounts, setCommentCounts] = useState<CountMap>({});
@@ -1429,21 +1455,34 @@ export default function DashboardPage() {
   const firstName = currentName.split(" ")[0] || "there";
 
   const mixedFeedItems = useMemo<MixedFeedItem[]>(() => {
-    const postItems = posts.map((post) => ({
+    const visiblePostsForViewer = posts.filter((post) => !blockedUserIds.includes(post.user_id));
+    const visibleSharedPostItemsForViewer = sharedPostItems.filter(
+      (sharedPost) =>
+        !blockedUserIds.includes(sharedPost.user_id) &&
+        !blockedUserIds.includes(sharedPost.original_post.user_id)
+    );
+    const visibleSharedReelItemsForViewer = sharedReelItems.filter(
+      (share) =>
+        !blockedUserIds.includes(share.user_id) &&
+        !blockedUserIds.includes(share.reel_user_id) &&
+        !blockedUserIds.includes(share.creator_profile_id || "")
+    );
+
+    const postItems = visiblePostsForViewer.map((post) => ({
       type: "post" as const,
       id: post.id,
       created_at: post.created_at,
       post,
     }));
 
-    const sharedPostFeedItems = sharedPostItems.map((sharedPost) => ({
+    const sharedPostFeedItems = visibleSharedPostItemsForViewer.map((sharedPost) => ({
       type: "shared_post" as const,
       id: sharedPost.id,
       created_at: sharedPost.created_at,
       sharedPost,
     }));
 
-    const reelShareItems = sharedReelItems.map((share) => ({
+    const reelShareItems = visibleSharedReelItemsForViewer.map((share) => ({
       type: "reel_share" as const,
       id: share.id,
       created_at: share.created_at,
@@ -1453,7 +1492,7 @@ export default function DashboardPage() {
     return [...postItems, ...sharedPostFeedItems, ...reelShareItems].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [posts, sharedPostItems, sharedReelItems]);
+  }, [blockedUserIds, posts, sharedPostItems, sharedReelItems]);
 
   const filteredFeedItems = useMemo(() => {
     if (feedMode === "friends" && currentUserId) {
@@ -1542,14 +1581,20 @@ export default function DashboardPage() {
   }, [shareCounts]);
 
   const peopleToDiscover = useMemo(() => {
-    return discoverProfiles.slice(0, 4);
-  }, [discoverProfiles]);
+    return discoverProfiles
+      .filter((profile) => profile.id && !blockedUserIds.includes(profile.id))
+      .slice(0, 4);
+  }, [blockedUserIds, discoverProfiles]);
+
+  const visibleRecentlyViewed = useMemo(() => {
+    return recentlyViewed.filter((profile) => profile.id && !blockedUserIds.includes(profile.id));
+  }, [blockedUserIds, recentlyViewed]);
 
   const trendingTopics = useMemo(() => {
     return buildDashboardTrendingTopics(mixedFeedItems);
   }, [mixedFeedItems]);
 
-  const fetchPeopleToDiscover = useCallback(async (userId?: string) => {
+  const fetchPeopleToDiscover = useCallback(async (userId?: string, blockedIds: string[] = []) => {
     if (!userId) {
       setDiscoverProfiles([]);
       return;
@@ -1577,7 +1622,12 @@ export default function DashboardPage() {
       (followingRows || []).map((row) => row.following_id).filter(Boolean) as string[]
     );
 
-    const hiddenIds = new Set<string>([userId, ...Array.from(friendIds), ...Array.from(followingIds)]);
+    const hiddenIds = new Set<string>([
+      userId,
+      ...Array.from(friendIds),
+      ...Array.from(followingIds),
+      ...blockedIds,
+    ]);
 
     const selectWithDates =
       "id, username, full_name, avatar_url, bio, location, is_online, last_seen_at, created_at, updated_at";
@@ -1615,8 +1665,8 @@ export default function DashboardPage() {
     setDiscoverProfiles(nextProfiles);
   }, []);
 
-  const fetchProfileMap = useCallback(async (userIds: string[]) => {
-    const uniqueIds = [...new Set(userIds.filter(Boolean))];
+  const fetchProfileMap = useCallback(async (userIds: string[], blockedIds: string[] = []) => {
+    const uniqueIds = [...new Set(userIds.filter((id) => Boolean(id) && !blockedIds.includes(id)))];
     if (uniqueIds.length === 0) {
       setProfilesMap({});
       return;
@@ -1731,7 +1781,7 @@ export default function DashboardPage() {
     setPendingFriendRequestCount(requestCount || 0);
   }, []);
 
-  const fetchFriendShowcases = useCallback(async (userId?: string) => {
+  const fetchFriendShowcases = useCallback(async (userId?: string, blockedIds: string[] = []) => {
     if (!userId) {
       setAcceptedFriendUserIds([]);
       setFriendShowcases([]);
@@ -1755,7 +1805,7 @@ export default function DashboardPage() {
       ...new Set(
         (friendshipRows || [])
           .map((row) => (row.sender_id === userId ? row.receiver_id : row.sender_id))
-          .filter(Boolean)
+          .filter((id) => Boolean(id) && !blockedIds.includes(String(id)))
       ),
     ] as string[];
 
@@ -1764,7 +1814,9 @@ export default function DashboardPage() {
     // Dashboard Showcases are the user's own Showcases plus Showcases from accepted friends only.
     // This keeps the homepage automatic: users create their own Showcase from Dashboard/profile,
     // and friends' Showcases appear here without showing a separate “friend showcase” tile.
-    const showcaseUserIds = [...new Set([userId, ...friendIds].filter(Boolean))] as string[];
+    const showcaseUserIds = [
+      ...new Set([userId, ...friendIds].filter((id) => Boolean(id) && !blockedIds.includes(String(id)))),
+    ] as string[];
 
     if (showcaseUserIds.length === 0) {
       setFriendShowcases([]);
@@ -1820,6 +1872,7 @@ export default function DashboardPage() {
       created_at: string | null;
     }>)
       .filter((item) => item.user_id && showcaseUserIds.includes(item.user_id))
+      .filter((item) => !blockedIds.includes(item.user_id))
       .filter((item) => item.user_id === userId || item.visibility !== "private")
       .filter((item) => !item.expires_at || new Date(item.expires_at).getTime() > now)
       .map((item) => ({
@@ -1831,7 +1884,7 @@ export default function DashboardPage() {
     return nextItems;
   }, []);
 
-  const fetchRecentlyViewed = useCallback(async (userId?: string) => {
+  const fetchRecentlyViewed = useCallback(async (userId?: string, blockedIds: string[] = []) => {
     if (!userId) {
       setRecentlyViewed([]);
       return;
@@ -1853,7 +1906,8 @@ export default function DashboardPage() {
     const rows = (data || []) as Array<{ profiles?: ProfilePreview | ProfilePreview[] | null }>;
     const profiles = rows
       .map((row) => (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles))
-      .filter(Boolean) as ProfilePreview[];
+      .filter(Boolean)
+      .filter((profile) => !blockedIds.includes((profile as ProfilePreview).id)) as ProfilePreview[];
 
     setRecentlyViewed(profiles);
   }, []);
@@ -2032,25 +2086,32 @@ export default function DashboardPage() {
 
       setCurrentProfile((profileData as ProfilePreview | null) || null);
 
-      const { data: blocksData } = await supabase
-        .from("user_blocks")
+      const { data: blocksData, error: blocksError } = await supabase
+        .from("blocked_users")
         .select("blocker_id, blocked_id")
         .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
 
-      blockedIds =
-        blocksData?.map((row) => (row.blocker_id === user.id ? row.blocked_id : row.blocker_id)) || [];
+      if (blocksError) {
+        logDashboardNetworkIssue("Dashboard blocked users skipped", blocksError);
+        blockedIds = [];
+      } else {
+        blockedIds = buildDashboardBlockedUserIds((blocksData as BlockedUserRow[]) || [], user.id);
+      }
+
+      setBlockedUserIds(blockedIds);
 
       await Promise.all([
         fetchFollowData(user.id),
         fetchNotifications(user.id),
-        fetchRecentlyViewed(user.id),
-        fetchFriendShowcases(user.id),
-        fetchPeopleToDiscover(user.id),
+        fetchRecentlyViewed(user.id, blockedIds),
+        fetchFriendShowcases(user.id, blockedIds),
+        fetchPeopleToDiscover(user.id, blockedIds),
       ]);
     } else {
       setCurrentUserId("");
       setUserEmail("");
       setCurrentProfile(null);
+      setBlockedUserIds([]);
       await Promise.all([fetchFollowData(), fetchNotifications(), fetchRecentlyViewed(), fetchFriendShowcases(), fetchPeopleToDiscover()]);
     }
 
@@ -2091,7 +2152,7 @@ export default function DashboardPage() {
       ]),
     ];
 
-    await Promise.all([fetchProfileMap(profileIds), fetchCounts(userId || undefined, countPostIds)]);
+    await Promise.all([fetchProfileMap(profileIds, blockedIds), fetchCounts(userId || undefined, countPostIds)]);
     } catch (error) {
       // Supabase/network hiccups can throw TypeError: Failed to fetch.
       // Keep the current timeline on screen and avoid logging raw TypeError objects.
@@ -2228,6 +2289,7 @@ export default function DashboardPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "reel_shares" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "profile_showcases" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "recently_viewed_profiles" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocked_users" }, schedulePulseRefresh)
       .subscribe();
 
     const intervalId = window.setInterval(requestDashboardRefresh, DASHBOARD_BACKGROUND_REFRESH_MS);
@@ -2354,7 +2416,14 @@ export default function DashboardPage() {
           return;
         }
 
-        setSearchResults((data || []) as ProfilePreview[]);
+        const nextResults = ((data || []) as ProfilePreview[]).filter(
+          (profile) =>
+            profile.id &&
+            profile.id !== currentUserId &&
+            !blockedUserIds.includes(profile.id)
+        );
+
+        setSearchResults(nextResults);
       } catch (error) {
         logDashboardNetworkIssue("Dashboard search skipped", error);
         setSearchResults([]);
@@ -2364,7 +2433,7 @@ export default function DashboardPage() {
     }, 240);
 
     return () => window.clearTimeout(timeout);
-  }, [searchQuery]);
+  }, [blockedUserIds, currentUserId, searchQuery]);
 
   const getActiveDashboardUserId = useCallback(async () => {
     if (currentUserId) return currentUserId;
@@ -2815,6 +2884,49 @@ export default function DashboardPage() {
     setShareCounts((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
     await fetchDashboardData(false);
     alert("Shared to your feed and profile.");
+  };
+
+  const handleReportPost = async (postId: string, postOwnerId?: string | null) => {
+    if (!currentUserId) {
+      alert("Please log in to report posts.");
+      return;
+    }
+
+    if (!postId) return;
+
+    if (postOwnerId && postOwnerId === currentUserId) {
+      alert("You cannot report your own post from here.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "Report this post to Parapost moderation. Please add a short reason:",
+      ""
+    );
+
+    const trimmedReason = (reason || "").trim();
+
+    if (!trimmedReason) {
+      return;
+    }
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: currentUserId,
+      reported_user_id: postOwnerId || null,
+      target_type: "post",
+      target_id: postId,
+      reason: trimmedReason.slice(0, 160),
+      details: trimmedReason.length > 160 ? trimmedReason : null,
+      status: "open",
+    });
+
+    if (error) {
+      alert(`Could not report this post: ${error.message}`);
+      return;
+    }
+
+    setOpenPostMenuId(null);
+    alert("Thanks. This post has been sent to Parapost moderation.");
   };
 
 
@@ -3427,6 +3539,7 @@ export default function DashboardPage() {
                               setEditingPostContent("");
                             }}
                             onDelete={() => handleDeletePost(item.post.id)}
+                            onReport={() => handleReportPost(item.post.id, item.post.user_id)}
                           />
                         ) : item.type === "shared_post" ? (
                           <SharedPostCard
@@ -3463,6 +3576,7 @@ export default function DashboardPage() {
                             }}
                             onDeleteOriginal={() => handleDeletePost(item.sharedPost.original_post.id)}
                             onRemoveShare={() => handleDeleteSharedPostShare(item.sharedPost.id, item.sharedPost.post_id)}
+                            onReportOriginal={() => handleReportPost(item.sharedPost.original_post.id, item.sharedPost.original_post.user_id)}
                           />
                         ) : (
                           <SharedReelCard
@@ -3526,11 +3640,11 @@ export default function DashboardPage() {
 
             <RightRailCard title="Recently Viewed" action="Private">
               <div style={privacyNoticeStyle}>Only you can see the profiles you recently viewed.</div>
-              {recentlyViewed.length === 0 ? (
+              {visibleRecentlyViewed.length === 0 ? (
                 <p style={mutedTextStyle}>Profiles you view will appear here privately.</p>
               ) : (
                 <div style={{ display: "grid", gap: 10 }}>
-                  {recentlyViewed.slice(0, 5).map((profile) => (
+                  {visibleRecentlyViewed.slice(0, 5).map((profile) => (
                     <Link key={profile.id} href={`/profile/${profile.id}`} style={recentProfileRowStyle}>
                       <Avatar profile={profile} size={34} />
                       <span style={{ minWidth: 0 }}>
@@ -3622,7 +3736,7 @@ export default function DashboardPage() {
         currentUserId={currentUserId}
         notificationsCount={notificationsCount}
         pendingFriendRequestCount={pendingFriendRequestCount}
-        recentlyViewed={recentlyViewed}
+        recentlyViewed={visibleRecentlyViewed}
         peopleToDiscover={peopleToDiscover}
         trendingTopics={trendingTopics}
         followedCount={followedUserIds.length}
@@ -9050,6 +9164,7 @@ function PostCard({
   onSaveEdit,
   onCancelEdit,
   onDelete,
+  onReport,
 }: {
   post: Post;
   profile?: ProfilePreview | null;
@@ -9081,6 +9196,7 @@ function PostCard({
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onDelete: () => void;
+  onReport: () => void;
 }) {
   const isPostOwner = currentUserId === post.user_id;
   const isEditing = editingPostId === post.id;
@@ -9106,7 +9222,7 @@ function PostCard({
           </div>
         </div>
 
-        {isPostOwner ? (
+        {currentUserId ? (
           <div style={{ position: "relative" }}>
             <button
               type="button"
@@ -9121,8 +9237,20 @@ function PostCard({
             </button>
             {openPostMenuId === post.id ? (
               <div style={postMenuStyle} onClick={(event) => event.stopPropagation()}>
-                <button type="button" style={menuItemStyle} onClick={onStartEdit}>Edit post</button>
-                <button type="button" style={{ ...menuItemStyle, color: "#fca5a5" }} onClick={onDelete}>Delete post</button>
+                {isPostOwner ? (
+                  <>
+                    <button type="button" style={menuItemStyle} onClick={onStartEdit}>Edit post</button>
+                    <button type="button" style={{ ...menuItemStyle, color: "#fca5a5" }} onClick={onDelete}>Delete post</button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    style={{ ...menuItemStyle, color: "#fca5a5", borderBottomColor: "transparent" }}
+                    onClick={onReport}
+                  >
+                    Report post
+                  </button>
+                )}
               </div>
             ) : null}
           </div>
@@ -9319,6 +9447,7 @@ function SharedPostCard({
   onCancelEditOriginal,
   onDeleteOriginal,
   onRemoveShare,
+  onReportOriginal,
 }: {
   sharedPost: SharedPostItem;
   sharerProfile?: ProfilePreview | null;
@@ -9350,6 +9479,7 @@ function SharedPostCard({
   onCancelEditOriginal: () => void;
   onDeleteOriginal: () => void;
   onRemoveShare: () => void;
+  onReportOriginal: () => void;
 }) {
   const originalPost = sharedPost.original_post;
   const sharerName = sharerProfile?.full_name || sharerProfile?.username || "Parapost user";
@@ -9359,7 +9489,7 @@ function SharedPostCard({
   const menuId = `shared-post-menu-${sharedPost.id}`;
   const isShareOwner = !!currentUserId && sharedPost.user_id === currentUserId;
   const isOriginalPostOwner = !!currentUserId && originalPost.user_id === currentUserId;
-  const showOwnerMenu = isShareOwner || isOriginalPostOwner;
+  const showPostMenu = Boolean(currentUserId);
   const isEditingOriginalPost = editingPostId === originalPost.id;
 
   return (
@@ -9382,7 +9512,7 @@ function SharedPostCard({
           </div>
         </div>
 
-        {showOwnerMenu ? (
+        {showPostMenu ? (
           <div style={{ position: "relative" }}>
             <button
               type="button"
@@ -9412,7 +9542,15 @@ function SharedPostCard({
                       Delete original post
                     </button>
                   </>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    style={{ ...menuItemStyle, color: "#fca5a5" }}
+                    onClick={onReportOriginal}
+                  >
+                    Report original post
+                  </button>
+                )}
 
                 {isShareOwner ? (
                   <button

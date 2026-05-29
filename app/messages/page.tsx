@@ -38,6 +38,11 @@ type ConversationHideRow = {
   hidden_at: string | null;
 };
 
+type BlockedUserRow = {
+  blocker_id: string;
+  blocked_id: string;
+};
+
 type MessageRow = {
   id: string;
   conversation_id: string;
@@ -331,6 +336,41 @@ function buildAcceptedFriendIdSet(
   return friendIds;
 }
 
+function buildBlockedUserIdSet(
+  rows: BlockedUserRow[] | null | undefined,
+  viewerId: string
+) {
+  const blockedIds = new Set<string>();
+
+  for (const row of rows || []) {
+    const otherId =
+      row.blocker_id === viewerId
+        ? row.blocked_id
+        : row.blocked_id === viewerId
+          ? row.blocker_id
+          : "";
+
+    if (otherId) blockedIds.add(otherId);
+  }
+
+  return blockedIds;
+}
+
+async function checkParachatBlockedBetween(viewerId: string, otherUserId: string) {
+  if (!viewerId || !otherUserId) return false;
+
+  const { data, error } = await supabase.rpc("is_blocked_between", {
+    user_a: viewerId,
+    user_b: otherUserId,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Could not check this Parachat block status.");
+  }
+
+  return Boolean(data);
+}
+
 async function updateParachatPresence(viewerId: string, isOnline: boolean) {
   if (!viewerId) return;
 
@@ -480,6 +520,7 @@ function MessagesPage() {
   const [viewerId, setViewerId] = useState("");
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
   const [activeConversationId, setActiveConversationId] = useState(selectedConversationFromUrl);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [messageText, setMessageText] = useState("");
@@ -625,6 +666,12 @@ function MessagesPage() {
     );
   }, [acceptedFriendIds, activeConversation?.otherUserId]);
 
+  const activeConversationIsBlocked = useMemo(() => {
+    return Boolean(
+      activeConversation?.otherUserId && blockedUserIds.includes(activeConversation.otherUserId)
+    );
+  }, [activeConversation?.otherUserId, blockedUserIds]);
+
   const totalUnreadCount = useMemo(() => {
     return conversations.reduce((total, conversation) => total + conversation.unreadCount, 0);
   }, [conversations]);
@@ -654,9 +701,10 @@ function MessagesPage() {
     return conversations.filter(
       (conversation) =>
         conversation.id !== activeConversationId &&
-        Boolean(conversation.otherUserId && acceptedFriendIds.includes(conversation.otherUserId))
+        Boolean(conversation.otherUserId && acceptedFriendIds.includes(conversation.otherUserId)) &&
+        !blockedUserIds.includes(conversation.otherUserId)
     );
-  }, [acceptedFriendIds, activeConversationId, conversations]);
+  }, [acceptedFriendIds, activeConversationId, blockedUserIds, conversations]);
 
   const groupedMessages = useMemo(() => {
     const groups: { label: string; items: MessageRow[] }[] = [];
@@ -823,6 +871,18 @@ function MessagesPage() {
     const acceptedFriendIdSet = buildAcceptedFriendIdSet(friendshipRows, user.id);
     const nextAcceptedFriendIds = Array.from(acceptedFriendIdSet);
     setAcceptedFriendIds(nextAcceptedFriendIds);
+
+    const { data: blockRows, error: blockError } = await supabase
+      .from("blocked_users")
+      .select("blocker_id, blocked_id")
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+
+    if (blockError) {
+      console.warn("Parachat block-list warning:", blockError.message);
+      setBlockedUserIds([]);
+    } else {
+      setBlockedUserIds(Array.from(buildBlockedUserIdSet((blockRows as BlockedUserRow[]) || [], user.id)));
+    }
 
     if (nextAcceptedFriendIds.length === 0) {
       setConversations([]);
@@ -1183,6 +1243,17 @@ function MessagesPage() {
             return;
           }
 
+          const incomingConversation = conversationsRef.current.find(
+            (conversation) => conversation.id === nextMessage.conversation_id
+          );
+
+          if (
+            incomingConversation?.otherUserId &&
+            blockedUserIds.includes(incomingConversation.otherUserId)
+          ) {
+            return;
+          }
+
           setConversations((prev) =>
             prev
               .map((conversation) => {
@@ -1319,6 +1390,7 @@ function MessagesPage() {
     };
   }, [
     activeConversationId,
+    blockedUserIds,
     loadInbox,
     markConversationRead,
     scrollToBottom,
@@ -1558,6 +1630,26 @@ function MessagesPage() {
       return;
     }
 
+    if (blockedUserIds.includes(conversation.otherUserId)) {
+      setErrorMessage("You can’t share messages to this Parachat because one of you has blocked the other.");
+      return;
+    }
+
+    try {
+      const isBlocked = await checkParachatBlockedBetween(viewerId, conversation.otherUserId);
+
+      if (isBlocked) {
+        setBlockedUserIds((prev) =>
+          prev.includes(conversation.otherUserId) ? prev : [...prev, conversation.otherUserId]
+        );
+        setErrorMessage("You can’t share messages to this Parachat because one of you has blocked the other.");
+        return;
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not check this Parachat block status.");
+      return;
+    }
+
     if (conversation.id === messageToShare.conversation_id) {
       setErrorMessage("Choose a different Parachat to share this with.");
       return;
@@ -1765,6 +1857,12 @@ function MessagesPage() {
       return;
     }
 
+    if (activeConversationIsBlocked) {
+      setImageError("Photos are unavailable because this Parachat is blocked.");
+      event.currentTarget.value = "";
+      return;
+    }
+
     setImageError("");
     setCompressingImage(true);
 
@@ -1799,6 +1897,36 @@ function MessagesPage() {
 
     if (!activeConversationIsAcceptedFriend) {
       setErrorMessage("Parachat is only available between accepted friends.");
+      return;
+    }
+
+    const recipientUserId =
+      activeConversation?.otherUserId ||
+      conversationsRef.current.find((conversation) => conversation.id === activeConversationId)?.otherUserId ||
+      "";
+
+    if (!recipientUserId) {
+      setErrorMessage("This Parachat could not find the other user.");
+      return;
+    }
+
+    if (activeConversationIsBlocked) {
+      setErrorMessage("You can’t send messages in this Parachat because one of you has blocked the other.");
+      return;
+    }
+
+    try {
+      const isBlocked = await checkParachatBlockedBetween(viewerId, recipientUserId);
+
+      if (isBlocked) {
+        setBlockedUserIds((prev) =>
+          prev.includes(recipientUserId) ? prev : [...prev, recipientUserId]
+        );
+        setErrorMessage("You can’t send messages in this Parachat because one of you has blocked the other.");
+        return;
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not check this Parachat block status.");
       return;
     }
 
@@ -1936,8 +2064,16 @@ function MessagesPage() {
   const activeProfile = activeConversation?.otherProfile || null;
   const activeName = getProfileName(activeProfile);
   const activeHandle = activeProfile?.username ? `@${activeProfile.username}` : "Parapost Network member";
+  const activeBlockedNotice = activeConversationIsBlocked
+    ? "This Parachat is blocked. You can view previous messages, but new messages and photos are disabled."
+    : "";
   const inputDisabled =
-    loadingInbox || sending || !activeConversationId || !activeConversationIsAcceptedFriend || !!errorMessage;
+    loadingInbox ||
+    sending ||
+    !activeConversationId ||
+    !activeConversationIsAcceptedFriend ||
+    activeConversationIsBlocked ||
+    !!errorMessage;
   const sendDisabled = (!messageText.trim() && !selectedImage) || inputDisabled || compressingImage;
 
   return (
@@ -2694,6 +2830,12 @@ function MessagesPage() {
               </section>
 
               <form className="parachat-composer" onSubmit={handleSubmit} style={composerShellStyle}>
+                {activeBlockedNotice ? (
+                  <div style={blockedParachatNoticeStyle}>
+                    {activeBlockedNotice}
+                  </div>
+                ) : null}
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -2770,11 +2912,13 @@ function MessagesPage() {
                     onChange={handleTextChange}
                     onKeyDown={handleComposerKeyDown}
                     placeholder={
-                      activeConversationIsAcceptedFriend
-                        ? selectedImage
-                          ? "Add a caption..."
-                          : "Message..."
-                        : "Friends only"
+                      activeConversationIsBlocked
+                        ? "Messaging unavailable"
+                        : activeConversationIsAcceptedFriend
+                          ? selectedImage
+                            ? "Add a caption..."
+                            : "Message..."
+                          : "Friends only"
                     }
                     rows={1}
                     style={composerInputStyle}
@@ -4316,6 +4460,19 @@ const composerShellStyle: React.CSSProperties = {
   padding: "14px",
   borderTop: "1px solid rgba(255,255,255,0.10)",
   background: "rgba(3,7,18,0.92)",
+};
+
+const blockedParachatNoticeStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  borderRadius: "18px",
+  border: "1px solid rgba(248,113,113,0.30)",
+  background: "rgba(127,29,29,0.20)",
+  color: "#fecaca",
+  padding: "11px 12px",
+  fontSize: "12px",
+  fontWeight: 850,
+  lineHeight: 1.35,
 };
 
 const composerRowStyle: React.CSSProperties = {

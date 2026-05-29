@@ -1911,6 +1911,9 @@ export default function ProfilePage() {
 
   const [activeProfileTab, setActiveProfileTab] = useState("Posts");
   const [profileActionsOpen, setProfileActionsOpen] = useState(false);
+  const [isProfileBlocked, setIsProfileBlocked] = useState(false);
+  const [isBlockedByProfile, setIsBlockedByProfile] = useState(false);
+  const [profileBlockLoading, setProfileBlockLoading] = useState(false);
   const [profileMainMenuOpen, setProfileMainMenuOpen] = useState(false);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [showcaseComposerOpen, setShowcaseComposerOpen] = useState(false);
@@ -1990,7 +1993,52 @@ export default function ProfilePage() {
   const profileIsPrivate = Boolean(profile?.is_private);
   const canViewPrivateProfileContent = !profileIsPrivate || isOwnProfile || friendStatus === "friends";
   const isProfileContentLocked = Boolean(profile && profileIsPrivate && !canViewPrivateProfileContent);
+  const profileInteractionBlocked = Boolean(!isOwnProfile && (isProfileBlocked || isBlockedByProfile));
+  const profileBlockedActionLabel = isProfileBlocked ? "Blocked" : "Unavailable";
   const canManageProfileShowcases = Boolean(viewerId && profileId && viewerId === profileId);
+
+  useEffect(() => {
+    if (!isOwnProfile && profileMainMenuOpen) {
+      setProfileMainMenuOpen(false);
+    }
+  }, [isOwnProfile, profileMainMenuOpen]);
+
+  useEffect(() => {
+    if (!viewerId || !profileId || isOwnProfile) {
+      setIsProfileBlocked(false);
+      setIsBlockedByProfile(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfileBlockStatus = async () => {
+      const { data, error } = await supabase
+        .from("blocked_users")
+        .select("blocker_id, blocked_id")
+        .or(
+          `and(blocker_id.eq.${viewerId},blocked_id.eq.${profileId}),and(blocker_id.eq.${profileId},blocked_id.eq.${viewerId})`
+        );
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Could not load profile block status:", error.message);
+        setIsProfileBlocked(false);
+        return;
+      }
+
+      const rows = (data || []) as Array<{ blocker_id?: string | null; blocked_id?: string | null }>;
+      setIsProfileBlocked(rows.some((row) => row.blocker_id === viewerId && row.blocked_id === profileId));
+      setIsBlockedByProfile(rows.some((row) => row.blocker_id === profileId && row.blocked_id === viewerId));
+    };
+
+    loadProfileBlockStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerId, profileId, isOwnProfile]);
 
   const canManageProfilePost = useCallback(
     (post: Post | null | undefined) => {
@@ -2110,7 +2158,30 @@ export default function ProfilePage() {
     return;
   }
 
+  if (profileInteractionBlocked) {
+    alert("Parachat is unavailable because one of you has blocked the other.");
+    return;
+  }
+
   try {
+    const { data: blockData, error: blockError } = await supabase.rpc("is_blocked_between", {
+      user_a: viewerId,
+      user_b: profileId,
+    });
+
+    if (blockError) {
+      console.warn("Could not check profile Parachat block status:", blockError.message);
+      alert("Could not check this Parachat right now. Please try again.");
+      return;
+    }
+
+    if (blockData) {
+      setIsProfileBlocked((current) => current || false);
+      showFriendStatus("Parachat is unavailable because one of you has blocked the other.");
+      alert("Parachat is unavailable because one of you has blocked the other.");
+      return;
+    }
+
     const { data, error } = await supabase.rpc(
       "get_or_create_direct_conversation",
       {
@@ -4530,9 +4601,11 @@ useEffect(() => {
       return;
     }
 
-    const { error } = await supabase.from("profile_reports").insert({
+    const { error } = await supabase.from("reports").insert({
       reporter_id: viewerId,
-      reported_profile_id: profileId,
+      reported_user_id: profileId,
+      target_type: "profile",
+      target_id: profileId,
       reason: trimmedReason.slice(0, 160),
       details: trimmedReason.length > 160 ? trimmedReason : null,
       status: "open",
@@ -4549,20 +4622,53 @@ useEffect(() => {
   };
 
   const handleBlockProfile = async () => {
-    if (isOwnProfile || !profileId) return;
+    if (isOwnProfile || !profileId || profileBlockLoading) return;
 
     if (!viewerId) {
       handleLoggedOutProfileAction("block this user", "block_user");
       return;
     }
 
+    const profileName = profile?.full_name || profile?.username || "this user";
+
+    if (isProfileBlocked) {
+      const confirmed = window.confirm(
+        `Unblock ${profileName}? They may be able to interact with you again.`
+      );
+
+      if (!confirmed) return;
+
+      setProfileBlockLoading(true);
+
+      const { error } = await supabase
+        .from("blocked_users")
+        .delete()
+        .eq("blocker_id", viewerId)
+        .eq("blocked_id", profileId);
+
+      setProfileBlockLoading(false);
+
+      if (error) {
+        console.error("Unblock user error:", error.message);
+        showFriendStatus("Could not unblock user. Please try again.");
+        return;
+      }
+
+      setIsProfileBlocked(false);
+      setProfileActionsOpen(false);
+      showFriendStatus("User unblocked.");
+      return;
+    }
+
     const confirmed = window.confirm(
-      `Block ${profile?.full_name || profile?.username || "this user"}? This will save the block to your Parapost account.`
+      `Block ${profileName}? This will save the block to your Parapost account.`
     );
 
     if (!confirmed) return;
 
-    const { error } = await supabase.from("user_blocks").upsert(
+    setProfileBlockLoading(true);
+
+    const { error } = await supabase.from("blocked_users").upsert(
       {
         blocker_id: viewerId,
         blocked_id: profileId,
@@ -4573,12 +4679,15 @@ useEffect(() => {
       }
     );
 
+    setProfileBlockLoading(false);
+
     if (error) {
       console.error("Block user error:", error.message);
       showFriendStatus("Could not block user. Please try again.");
       return;
     }
 
+    setIsProfileBlocked(true);
     setProfileActionsOpen(false);
     showFriendStatus("User blocked.");
   };
@@ -12071,56 +12180,60 @@ return (
           </svg>
         </button>
 
-        <Link
-          href="/notifications"
-          className="profile-top-search-icon-button"
-          style={{ ...profileTopSearchIconButtonStyle, textDecoration: "none" }}
-          aria-label="Notifications"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
-            <path
-              d="M18 8.7a6 6 0 0 0-12 0c0 7-3 7.8-3 7.8h18s-3-.8-3-7.8Z"
-              stroke="currentColor"
-              strokeWidth="2.15"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M9.8 19a2.3 2.3 0 0 0 4.4 0"
-              stroke="currentColor"
-              strokeWidth="2.15"
-              strokeLinecap="round"
-            />
-          </svg>
-        </Link>
+        {isOwnProfile ? (
+          <>
+            <Link
+              href="/notifications"
+              className="profile-top-search-icon-button"
+              style={{ ...profileTopSearchIconButtonStyle, textDecoration: "none" }}
+              aria-label="Notifications"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+                <path
+                  d="M18 8.7a6 6 0 0 0-12 0c0 7-3 7.8-3 7.8h18s-3-.8-3-7.8Z"
+                  stroke="currentColor"
+                  strokeWidth="2.15"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9.8 19a2.3 2.3 0 0 0 4.4 0"
+                  stroke="currentColor"
+                  strokeWidth="2.15"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </Link>
 
-        <button
-          type="button"
-          className="profile-top-search-icon-button"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            closeProfileMobileSearch();
-            setProfileActionsOpen(false);
-            setProfileMainMenuOpen((value) => !value);
-          }}
-          style={profileTopSearchIconButtonStyle}
-          aria-label="Open menu"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
-            <path
-              d="M4 7h16M4 12h16M4 17h16"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+            <button
+              type="button"
+              className="profile-top-search-icon-button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                closeProfileMobileSearch();
+                setProfileActionsOpen(false);
+                setProfileMainMenuOpen((value) => !value);
+              }}
+              style={profileTopSearchIconButtonStyle}
+              aria-label="Open menu"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+                <path
+                  d="M4 7h16M4 12h16M4 17h16"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </>
+        ) : null}
       </div>
 
     </div>
 
-    {isClientMounted && profileMainMenuOpen
+    {isClientMounted && isOwnProfile && profileMainMenuOpen
       ? createPortal(
           (
             <div
@@ -12402,66 +12515,77 @@ return (
                         •••
                       </button>
                     ) : viewerId ? (
-                      <>
-                        {friendStatus === "none" ? (
-                          <button
-                            type="button"
-                            onClick={handleSendFriendRequest}
-                            disabled={friendLoading}
-                            className="profile-mobile-secondary-real"
-                          >
-                            {friendLoading ? "Saving..." : "Add Friend"}
-                          </button>
-                        ) : friendStatus === "outgoing_request" ? (
-                          <button
-                            type="button"
-                            onClick={handleCancelFriendRequest}
-                            disabled={friendLoading}
-                            className="profile-mobile-secondary-real"
-                          >
-                            {friendLoading ? "Saving..." : "Requested"}
-                          </button>
-                        ) : friendStatus === "incoming_request" ? (
-                          <>
+                      profileInteractionBlocked ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="profile-mobile-secondary-real"
+                          title="Interactions are limited because one of you has blocked the other."
+                        >
+                          {profileBlockedActionLabel}
+                        </button>
+                      ) : (
+                        <>
+                          {friendStatus === "none" ? (
                             <button
                               type="button"
-                              onClick={handleAcceptFriendRequest}
-                              disabled={friendLoading}
-                              className="profile-mobile-primary-real"
-                            >
-                              {friendLoading ? "Saving..." : "Accept"}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={handleDeclineFriendRequest}
+                              onClick={handleSendFriendRequest}
                               disabled={friendLoading}
                               className="profile-mobile-secondary-real"
                             >
-                              {friendLoading ? "Saving..." : "Decline"}
+                              {friendLoading ? "Saving..." : "Add Friend"}
                             </button>
-                          </>
-                        ) : friendStatus === "friends" ? (
-                          <button
-                            type="button"
-                            onClick={handleRemoveFriend}
-                            disabled={friendLoading}
-                            className="profile-mobile-secondary-real"
-                          >
-                            {friendLoading ? "Saving..." : "Friends"}
-                          </button>
-                        ) : null}
+                          ) : friendStatus === "outgoing_request" ? (
+                            <button
+                              type="button"
+                              onClick={handleCancelFriendRequest}
+                              disabled={friendLoading}
+                              className="profile-mobile-secondary-real"
+                            >
+                              {friendLoading ? "Saving..." : "Requested"}
+                            </button>
+                          ) : friendStatus === "incoming_request" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleAcceptFriendRequest}
+                                disabled={friendLoading}
+                                className="profile-mobile-primary-real"
+                              >
+                                {friendLoading ? "Saving..." : "Accept"}
+                              </button>
 
-                        {friendStatus === "friends" ? (
-                          <button
-                            type="button"
-                            onClick={handleMessageUser}
-                            className="profile-mobile-primary-real"
-                          >
-                            Parachat
-                          </button>
-                        ) : null}
-                      </>
+                              <button
+                                type="button"
+                                onClick={handleDeclineFriendRequest}
+                                disabled={friendLoading}
+                                className="profile-mobile-secondary-real"
+                              >
+                                {friendLoading ? "Saving..." : "Decline"}
+                              </button>
+                            </>
+                          ) : friendStatus === "friends" ? (
+                            <button
+                              type="button"
+                              onClick={handleRemoveFriend}
+                              disabled={friendLoading}
+                              className="profile-mobile-secondary-real"
+                            >
+                              {friendLoading ? "Saving..." : "Friends"}
+                            </button>
+                          ) : null}
+
+                          {friendStatus === "friends" ? (
+                            <button
+                              type="button"
+                              onClick={handleMessageUser}
+                              className="profile-mobile-primary-real"
+                            >
+                              Parachat
+                            </button>
+                          ) : null}
+                        </>
+                      )
                     ) : null}
                   </div>
 
@@ -12549,66 +12673,77 @@ return (
 
                       <div className={`profile-hero-actions ${isOwnProfile ? "profile-owner-actions" : "profile-public-actions"}`} style={profileHeroActionsStyle}>
                         {!isOwnProfile && viewerId ? (
-                          <>
-                            {friendStatus === "none" ? (
-                              <button
-                                type="button"
-                                onClick={handleSendFriendRequest}
-                                disabled={friendLoading}
-                                style={profilePrimaryButtonStyle}
-                              >
-                                {friendLoading ? "Saving..." : "Add Friend"}
-                              </button>
-                            ) : friendStatus === "outgoing_request" ? (
-                              <button
-                                type="button"
-                                onClick={handleCancelFriendRequest}
-                                disabled={friendLoading}
-                                style={profileGlassButtonStyle}
-                              >
-                                {friendLoading ? "Saving..." : "Requested"}
-                              </button>
-                            ) : friendStatus === "incoming_request" ? (
-                              <>
+                          profileInteractionBlocked ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{ ...profileGlassButtonStyle, opacity: 0.72, cursor: "not-allowed" }}
+                              title="Interactions are limited because one of you has blocked the other."
+                            >
+                              {profileBlockedActionLabel}
+                            </button>
+                          ) : (
+                            <>
+                              {friendStatus === "none" ? (
                                 <button
                                   type="button"
-                                  onClick={handleAcceptFriendRequest}
+                                  onClick={handleSendFriendRequest}
                                   disabled={friendLoading}
                                   style={profilePrimaryButtonStyle}
                                 >
-                                  {friendLoading ? "Saving..." : "Accept"}
+                                  {friendLoading ? "Saving..." : "Add Friend"}
                                 </button>
-
+                              ) : friendStatus === "outgoing_request" ? (
                                 <button
                                   type="button"
-                                  onClick={handleDeclineFriendRequest}
+                                  onClick={handleCancelFriendRequest}
                                   disabled={friendLoading}
                                   style={profileGlassButtonStyle}
                                 >
-                                  {friendLoading ? "Saving..." : "Decline"}
+                                  {friendLoading ? "Saving..." : "Requested"}
                                 </button>
-                              </>
-                            ) : friendStatus === "friends" ? (
-                              <button
-                                type="button"
-                                onClick={handleRemoveFriend}
-                                disabled={friendLoading}
-                                style={profileGlassButtonStyle}
-                              >
-                                {friendLoading ? "Saving..." : "Friends"}
-                              </button>
-                            ) : null}
+                              ) : friendStatus === "incoming_request" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={handleAcceptFriendRequest}
+                                    disabled={friendLoading}
+                                    style={profilePrimaryButtonStyle}
+                                  >
+                                    {friendLoading ? "Saving..." : "Accept"}
+                                  </button>
 
-                            {friendStatus === "friends" ? (
-                              <button
-                                type="button"
-                                onClick={handleMessageUser}
-                                style={profilePrimaryButtonStyle}
-                              >
-                                Parachat
-                              </button>
-                            ) : null}
-                          </>
+                                  <button
+                                    type="button"
+                                    onClick={handleDeclineFriendRequest}
+                                    disabled={friendLoading}
+                                    style={profileGlassButtonStyle}
+                                  >
+                                    {friendLoading ? "Saving..." : "Decline"}
+                                  </button>
+                                </>
+                              ) : friendStatus === "friends" ? (
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveFriend}
+                                  disabled={friendLoading}
+                                  style={profileGlassButtonStyle}
+                                >
+                                  {friendLoading ? "Saving..." : "Friends"}
+                                </button>
+                              ) : null}
+
+                              {friendStatus === "friends" ? (
+                                <button
+                                  type="button"
+                                  onClick={handleMessageUser}
+                                  style={profilePrimaryButtonStyle}
+                                >
+                                  Parachat
+                                </button>
+                              ) : null}
+                            </>
+                          )
                         ) : null}
                         {profileIsReady ? (
 
@@ -15365,12 +15500,29 @@ return (
               <button
                 type="button"
                 onClick={handleBlockProfile}
-                style={profileDesktopLogoutActionItemStyle}
+                disabled={profileBlockLoading}
+                style={
+                  isProfileBlocked
+                    ? profileDesktopActionItemStyle
+                    : profileDesktopLogoutActionItemStyle
+                }
               >
-                <span style={profileActionLogoutIconStyle}>⊘</span>
+                <span style={isProfileBlocked ? profileActionIconStyle : profileActionLogoutIconStyle}>
+                  {isProfileBlocked ? "↺" : "⊘"}
+                </span>
                 <span>
-                  <strong>Block user</strong>
-                  <small>Limit future interaction with this person</small>
+                  <strong>
+                    {profileBlockLoading
+                      ? "Working..."
+                      : isProfileBlocked
+                        ? "Unblock user"
+                        : "Block user"}
+                  </strong>
+                  <small>
+                    {isProfileBlocked
+                      ? "Allow future interaction with this person again"
+                      : "Limit future interaction with this person"}
+                  </small>
                 </span>
               </button>
             </>
@@ -15600,12 +15752,29 @@ return (
                   <button
                     type="button"
                     onClick={handleBlockProfile}
-                    style={profileMobileLogoutActionItemStyle}
+                    disabled={profileBlockLoading}
+                    style={
+                      isProfileBlocked
+                        ? profileActionItemStyle
+                        : profileMobileLogoutActionItemStyle
+                    }
                   >
-                    <span style={profileActionLogoutIconStyle}>⊘</span>
+                    <span style={isProfileBlocked ? profileActionIconStyle : profileActionLogoutIconStyle}>
+                      {isProfileBlocked ? "↺" : "⊘"}
+                    </span>
                     <span>
-                      <strong>Block user</strong>
-                      <small>Limit future interaction with this person</small>
+                      <strong>
+                        {profileBlockLoading
+                          ? "Working..."
+                          : isProfileBlocked
+                            ? "Unblock user"
+                            : "Block user"}
+                      </strong>
+                      <small>
+                        {isProfileBlocked
+                          ? "Allow future interaction with this person again"
+                          : "Limit future interaction with this person"}
+                      </small>
                     </span>
                   </button>
                 </>

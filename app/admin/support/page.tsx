@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 
 type AdminRole = "owner" | "admin" | "support" | "moderator";
 
+const ALLOWED_SUPPORT_ROLES: AdminRole[] = ["owner", "admin", "support", "moderator"];
+
 type SupportStatus = "open" | "in_review" | "waiting" | "resolved" | "closed";
 type SupportPriority = "low" | "normal" | "high" | "urgent";
 type SupportTopic =
@@ -147,7 +149,10 @@ export default function AdminSupportInboxPage() {
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const isAdmin = Boolean(currentUserId && adminRole);
+  const isAdmin = Boolean(
+    currentUserId &&
+      ALLOWED_SUPPORT_ROLES.includes(adminRole as AdminRole)
+  );
 
   const selectedMessage = useMemo(() => {
     return messages.find((message) => message.id === selectedId) || messages[0] || null;
@@ -266,9 +271,9 @@ export default function AdminSupportInboxPage() {
 
       const role = (adminRow as AdminUser | null)?.role || "";
 
-      if (!role) {
+      if (!ALLOWED_SUPPORT_ROLES.includes(role as AdminRole)) {
         setAdminRole("");
-        setAccessError("This page is private. Your account does not have admin/support access yet.");
+        setAccessError("This page is private. Your account does not have owner, admin, support, or moderator access.");
         setCheckingAccess(false);
         return;
       }
@@ -412,6 +417,10 @@ export default function AdminSupportInboxPage() {
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/settings" className="text-sm font-bold text-purple-200 no-underline hover:text-white">
               ← Back to Settings
+            </Link>
+
+            <Link href="/admin/moderation" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
+              Moderation Dashboard
             </Link>
 
             <Link href="/dashboard" className="text-sm font-bold text-slate-300 no-underline hover:text-white">

@@ -2460,7 +2460,7 @@ const closeProfileMobileSearch = useCallback(() => {
     setViewerId(nextViewerId);
     setViewerEmail(user?.email || "");
 
-    const profileAchievementsPromise = loadProfileAchievements(profileId, Boolean(nextViewerId));
+    const profileAchievementsPromise = loadProfileAchievements(profileId, Boolean(nextViewerId && nextViewerId === profileId));
     const profileAchievementActivityPromise = loadProfileAchievementActivityRows(profileId);
 
     if (nextViewerId) {

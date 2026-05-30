@@ -3725,6 +3725,49 @@ useEffect(() => {
     }));
   };
 
+  const handleReportProfileComment = async (
+    commentId: string,
+    commentOwnerId?: string | null
+  ) => {
+    if (!viewerId) {
+      alert("Please log in to report comments.");
+      return;
+    }
+
+    if (!commentId) return;
+
+    if (commentOwnerId && commentOwnerId === viewerId) {
+      alert("You cannot report your own comment from here.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "Report this comment to Parapost moderation. Please add a short reason:",
+      ""
+    );
+
+    const trimmedReason = (reason || "").trim();
+
+    if (!trimmedReason) return;
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: viewerId,
+      reported_user_id: commentOwnerId || null,
+      target_type: "comment",
+      target_id: commentId,
+      reason: trimmedReason.slice(0, 160),
+      details: trimmedReason.length > 160 ? trimmedReason : null,
+      status: "open",
+    });
+
+    if (error) {
+      alert(`Could not report this comment: ${error.message}`);
+      return;
+    }
+
+    alert("Thanks. This comment has been sent to Parapost moderation.");
+  };
+
   const renderProfileCommentsPanel = (postId: string, postOwnerId?: string | null) => {
     const comments = commentsByPostId[postId] || [];
     const draft = commentDrafts[postId] || "";
@@ -3790,6 +3833,7 @@ useEffect(() => {
                 "Parapost Member";
               const commentHandle = commentProfile?.username || "member";
               const canDeleteComment = Boolean(viewerId && (comment.user_id === viewerId || postOwnerId === viewerId));
+              const canReportComment = Boolean(viewerId && comment.user_id !== viewerId);
 
               return (
                 <article key={comment.id} style={profileCommentItemStyle}>
@@ -3829,6 +3873,16 @@ useEffect(() => {
                           style={profileCommentDeleteButtonStyle}
                         >
                           Delete
+                        </button>
+                      ) : null}
+
+                      {canReportComment ? (
+                        <button
+                          type="button"
+                          onClick={() => handleReportProfileComment(comment.id, comment.user_id)}
+                          style={profileCommentDeleteButtonStyle}
+                        >
+                          Report
                         </button>
                       ) : null}
                     </div>

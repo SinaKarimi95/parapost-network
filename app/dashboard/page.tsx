@@ -2951,7 +2951,7 @@ export default function DashboardPage() {
         }
 
         const nextComments = ((data || []) as DashboardComment[]).filter(
-          (comment) => !comment.is_hidden
+          (comment) => !comment.is_hidden && !blockedUserIds.includes(comment.user_id)
         );
 
         setCommentsByPostId((prev) => ({
@@ -2985,7 +2985,7 @@ export default function DashboardPage() {
         setCommentsLoadingPostId((current) => (current === postId ? null : current));
       }
     },
-    []
+    [blockedUserIds]
   );
 
   const handleToggleDashboardComments = useCallback(
@@ -3109,6 +3109,49 @@ export default function DashboardPage() {
       ...prev,
       [postId]: Math.max((prev[postId] || 1) - 1, 0),
     }));
+  };
+
+  const handleReportDashboardComment = async (
+    commentId: string,
+    commentOwnerId?: string | null
+  ) => {
+    if (!currentUserId) {
+      alert("Please log in to report comments.");
+      return;
+    }
+
+    if (!commentId) return;
+
+    if (commentOwnerId && commentOwnerId === currentUserId) {
+      alert("You cannot report your own comment from here.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "Report this comment to Parapost moderation. Please add a short reason:",
+      ""
+    );
+
+    const trimmedReason = (reason || "").trim();
+
+    if (!trimmedReason) return;
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: currentUserId,
+      reported_user_id: commentOwnerId || null,
+      target_type: "comment",
+      target_id: commentId,
+      reason: trimmedReason.slice(0, 160),
+      details: trimmedReason.length > 160 ? trimmedReason : null,
+      status: "open",
+    });
+
+    if (error) {
+      alert(`Could not report this comment: ${error.message}`);
+      return;
+    }
+
+    alert("Thanks. This comment has been sent to Parapost moderation.");
   };
 
   const handleStartEditPost = (post: Post) => {
@@ -3531,6 +3574,7 @@ export default function DashboardPage() {
                             onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.post.id, value)}
                             onAddComment={() => handleAddDashboardComment(item.post.id, item.post.user_id)}
                             onDeleteComment={(commentId) => handleDeleteDashboardComment(item.post.id, commentId)}
+                            onReportComment={(commentId, commentOwnerId) => handleReportDashboardComment(commentId, commentOwnerId)}
                             onShare={() => handleShare(item.post.id)}
                             onStartEdit={() => handleStartEditPost(item.post)}
                             onSaveEdit={() => handleSavePostEdit(item.post.id)}
@@ -3567,6 +3611,7 @@ export default function DashboardPage() {
                             onCommentDraftChange={(value) => handleDashboardCommentDraftChange(item.sharedPost.post_id, value)}
                             onAddComment={() => handleAddDashboardComment(item.sharedPost.post_id, item.sharedPost.original_post.user_id)}
                             onDeleteComment={(commentId) => handleDeleteDashboardComment(item.sharedPost.post_id, commentId)}
+                            onReportComment={(commentId, commentOwnerId) => handleReportDashboardComment(commentId, commentOwnerId)}
                             onShareOriginal={() => handleShare(item.sharedPost.post_id)}
                             onStartEditOriginal={() => handleStartEditPost(item.sharedPost.original_post)}
                             onSaveEditOriginal={() => handleSavePostEdit(item.sharedPost.original_post.id)}
@@ -9159,6 +9204,7 @@ function PostCard({
   onCommentDraftChange,
   onAddComment,
   onDeleteComment,
+  onReportComment,
   onShare,
   onStartEdit,
   onSaveEdit,
@@ -9191,6 +9237,7 @@ function PostCard({
   onCommentDraftChange: (value: string) => void;
   onAddComment: () => void;
   onDeleteComment: (commentId: string) => void;
+  onReportComment: (commentId: string, commentOwnerId: string) => void;
   onShare: () => void;
   onStartEdit: () => void;
   onSaveEdit: () => void;
@@ -9309,6 +9356,7 @@ function PostCard({
           onDraftChange={onCommentDraftChange}
           onAddComment={onAddComment}
           onDeleteComment={onDeleteComment}
+          onReportComment={onReportComment}
         />
       ) : null}
     </article>
@@ -9327,6 +9375,7 @@ function DashboardCommentsPanel({
   onDraftChange,
   onAddComment,
   onDeleteComment,
+  onReportComment,
 }: {
   postId: string;
   comments: DashboardComment[];
@@ -9338,6 +9387,7 @@ function DashboardCommentsPanel({
   onDraftChange: (value: string) => void;
   onAddComment: () => void;
   onDeleteComment: (commentId: string) => void;
+  onReportComment: (commentId: string, commentOwnerId: string) => void;
 }) {
   return (
     <section style={dashboardCommentsPanelStyle} onClick={(event) => event.stopPropagation()}>
@@ -9405,6 +9455,14 @@ function DashboardCommentsPanel({
                     >
                       Delete
                     </button>
+                  ) : currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={() => onReportComment(comment.id, comment.user_id)}
+                      style={dashboardCommentDeleteButtonStyle}
+                    >
+                      Report
+                    </button>
                   ) : null}
                 </div>
               </div>
@@ -9441,6 +9499,7 @@ function SharedPostCard({
   onCommentDraftChange,
   onAddComment,
   onDeleteComment,
+  onReportComment,
   onShareOriginal,
   onStartEditOriginal,
   onSaveEditOriginal,
@@ -9473,6 +9532,7 @@ function SharedPostCard({
   onCommentDraftChange: (value: string) => void;
   onAddComment: () => void;
   onDeleteComment: (commentId: string) => void;
+  onReportComment: (commentId: string, commentOwnerId: string) => void;
   onShareOriginal: () => void;
   onStartEditOriginal: () => void;
   onSaveEditOriginal: () => void;
@@ -9651,6 +9711,7 @@ function SharedPostCard({
           onDraftChange={onCommentDraftChange}
           onAddComment={onAddComment}
           onDeleteComment={onDeleteComment}
+          onReportComment={onReportComment}
         />
       ) : null}
     </article>

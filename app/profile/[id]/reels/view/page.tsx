@@ -1535,6 +1535,48 @@ export default function ProfileReelsViewerPage() {
     );
   };
 
+  const handleReportComment = async (commentId: string) => {
+    if (!currentUserId) {
+      alert("You must be logged in to report comments.");
+      return;
+    }
+
+    const comment = comments.find((item) => item.id === commentId);
+
+    if (!comment) return;
+
+    if (comment.authorUserId === currentUserId) {
+      alert("You cannot report your own comment from here.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "Report this Reel comment to Parapost moderation. Please add a short reason:",
+      ""
+    );
+
+    const trimmedReason = (reason || "").trim();
+
+    if (!trimmedReason) return;
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: currentUserId,
+      reported_user_id: comment.authorUserId || null,
+      target_type: "comment",
+      target_id: comment.id,
+      reason: trimmedReason.slice(0, 160),
+      details: trimmedReason.length > 160 ? trimmedReason : null,
+      status: "open",
+    });
+
+    if (error) {
+      alert(`Could not report this comment: ${error.message}`);
+      return;
+    }
+
+    alert("Thanks. This Reel comment has been sent to Parapost moderation.");
+  };
+
   const handleShareToFeed = () => {
     if (!activeReel) return;
 
@@ -1552,8 +1594,53 @@ export default function ProfileReelsViewerPage() {
     }, 2200);
   };
 
+  const handleReportReel = async (reel: ReelItem) => {
+    if (!currentUserId) {
+      alert("You must be logged in to report Reels.");
+      return;
+    }
+
+    if (isReelOwner(reel, currentUserId, effectiveProfileId)) {
+      alert("You cannot report your own Reel from here.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "Report this Reel to Parapost moderation. Please add a short reason:",
+      ""
+    );
+
+    const trimmedReason = (reason || "").trim();
+
+    if (!trimmedReason) {
+      setReelMenu(null);
+      return;
+    }
+
+    const reportedUserId = reel.creator_profile_id || reel.user_id || null;
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: currentUserId,
+      reported_user_id: reportedUserId,
+      target_type: "reel",
+      target_id: reel.id,
+      reason: trimmedReason.slice(0, 160),
+      details: trimmedReason.length > 160 ? trimmedReason : null,
+      status: "open",
+    });
+
+    setReelMenu(null);
+
+    if (error) {
+      alert(`Could not report this Reel: ${error.message}`);
+      return;
+    }
+
+    alert("Thanks. This Reel has been sent to Parapost moderation.");
+  };
+
   const openOwnerReelMenuAtPoint = (clientX: number, clientY: number, reel: ReelItem) => {
-    if (!isReelOwner(reel, currentUserId, effectiveProfileId)) {
+    if (!currentUserId) {
       setReelMenu(null);
       return;
     }
@@ -2213,7 +2300,7 @@ export default function ProfileReelsViewerPage() {
                     )}
                   </div>
 
-                  {isOwner && viewportType !== "mobile" ? (
+                  {currentUserId && viewportType !== "mobile" ? (
                     <div
                       style={{
                         position: "absolute",
@@ -2247,7 +2334,7 @@ export default function ProfileReelsViewerPage() {
                           WebkitTapHighlightColor: "transparent",
                           boxShadow: "0 10px 24px rgba(0,0,0,0.24)",
                         }}
-                        aria-label="Open reel owner menu"
+                        aria-label={isOwner ? "Open Reel owner menu" : "Open Reel options"}
                       >
                         ⋯
                       </button>
@@ -2353,7 +2440,7 @@ export default function ProfileReelsViewerPage() {
                     ))}
 
 
-                    {isOwner && viewportType === "mobile" ? (
+                    {currentUserId && viewportType === "mobile" ? (
                       <div
                         style={{
                           display: "grid",
@@ -2392,9 +2479,9 @@ export default function ProfileReelsViewerPage() {
                             boxShadow: "0 8px 18px rgba(0,0,0,0.38)",
                             WebkitTapHighlightColor: "transparent",
                           }}
-                          aria-label="Manage your reel"
+                          aria-label={isOwner ? "Manage your Reel" : "Report this Reel"}
                         >
-                          ⚙
+                          {isOwner ? "⚙" : "⋯"}
                         </button>
 
                         <div
@@ -2408,7 +2495,7 @@ export default function ProfileReelsViewerPage() {
                             textShadow: "0 2px 10px rgba(0,0,0,0.45)",
                           }}
                         >
-                          Manage
+                          {isOwner ? "Manage" : "Report"}
                         </div>
                       </div>
                     ) : null}
@@ -2574,11 +2661,13 @@ export default function ProfileReelsViewerPage() {
       {reelMenu && (() => {
         const menuReel = reels.find((item) => item.id === reelMenu.reelId);
 
-        if (!menuReel || !isReelOwner(menuReel, currentUserId, effectiveProfileId)) {
+        if (!menuReel || !currentUserId) {
           return null;
         }
 
-        const menuBody = (
+        const menuReelIsOwner = isReelOwner(menuReel, currentUserId, effectiveProfileId);
+
+        const menuBody = menuReelIsOwner ? (
           <>
             <button
               type="button"
@@ -2625,6 +2714,30 @@ export default function ProfileReelsViewerPage() {
               Delete Reel
             </button>
           </>
+        ) : (
+          <button
+            type="button"
+            style={{
+              ...menuItemStyle,
+              color: "#fecaca",
+              borderBottom: "none",
+              minHeight: viewportType === "mobile" ? 56 : undefined,
+              fontWeight: 850,
+            }}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onTouchStart={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void handleReportReel(menuReel);
+            }}
+          >
+            Report Reel
+          </button>
         );
 
         if (viewportType === "mobile") {
@@ -2673,7 +2786,11 @@ export default function ProfileReelsViewerPage() {
                   }}
                 >
                   <div style={{ color: "#fff", fontWeight: 950, fontSize: 15 }}>Reel options</div>
-                  <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 3 }}>Only you can edit or delete this Reel.</div>
+                  <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 3 }}>
+                    {menuReelIsOwner
+                      ? "Only you can edit or delete this Reel."
+                      : "Report this Reel to Parapost moderation."}
+                  </div>
                 </div>
                 {menuBody}
                 <button
@@ -2970,6 +3087,24 @@ export default function ProfileReelsViewerPage() {
                               Delete
                             </button>
                           ) : null}
+
+                          {currentUserId && comment.authorUserId !== currentUserId ? (
+                            <button
+                              type="button"
+                              onClick={() => handleReportComment(comment.id)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#fca5a5",
+                                fontSize: "12px",
+                                fontWeight: 850,
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              Report
+                            </button>
+                          ) : null}
                         </div>
 
                         {replies.length > 0 ? (
@@ -3077,6 +3212,24 @@ export default function ProfileReelsViewerPage() {
                                         }}
                                       >
                                         Delete
+                                      </button>
+                                    ) : null}
+
+                                    {currentUserId && reply.authorUserId !== currentUserId ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleReportComment(reply.id)}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          color: "#fca5a5",
+                                          fontSize: "12px",
+                                          fontWeight: 850,
+                                          cursor: "pointer",
+                                          padding: 0,
+                                        }}
+                                      >
+                                        Report
                                       </button>
                                     ) : null}
                                   </div>

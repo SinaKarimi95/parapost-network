@@ -298,37 +298,22 @@ export default function DashboardReelsSection() {
                 title={`Open Reel: ${title}`}
                 role="listitem"
               >
-                <video
-                  src={reel.video_url || undefined}
-                  poster={reel.poster_url || undefined}
-                  muted
-                  autoPlay
-                  loop
-                  playsInline
-                  preload="metadata"
-                  onLoadedData={(event) => {
-                    const video = event.currentTarget;
-                    const playPromise = video.play();
-
-                    if (playPromise && typeof playPromise.catch === "function") {
-                      playPromise.catch(() => {
-                        // Muted autoplay is usually allowed, but some browsers may still pause it.
-                      });
-                    }
-                  }}
-                  onMouseEnter={(event) => {
-                    const playPromise = event.currentTarget.play();
-
-                    if (playPromise && typeof playPromise.catch === "function") {
-                      playPromise.catch(() => {});
-                    }
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.pause();
-                  }}
-                  style={reelVideoStyle}
-                  className="dashboard-reel-video"
-                />
+                {reel.poster_url ? (
+                  <img
+                    src={reel.poster_url}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    style={reelVideoStyle}
+                    className="dashboard-reel-video"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    style={reelVideoFallbackStyle}
+                    className="dashboard-reel-video"
+                  />
+                )}
 
                 <div style={reelGradientStyle} />
                 <div style={reelFooterStyle}>
@@ -628,6 +613,12 @@ const reelVideoStyle: CSSProperties = {
   objectFit: "cover",
   display: "block",
   transition: "transform 220ms ease",
+};
+
+const reelVideoFallbackStyle: CSSProperties = {
+  ...reelVideoStyle,
+  background:
+    "radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--parapost-accent-2) 26%, transparent), transparent 42%), linear-gradient(180deg, rgba(16,20,34,0.92), rgba(4,6,12,0.98))",
 };
 
 const reelGradientStyle: CSSProperties = {

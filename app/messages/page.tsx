@@ -895,7 +895,7 @@ function MessagesPage() {
       return;
     }
 
-    let { data: conversationData, error: conversationError } = await supabase
+    const { data: conversationData, error: conversationError } = await supabase
       .from("direct_conversations")
       .select("id, user_one_id, user_two_id, created_at, updated_at")
       .or(`user_one_id.eq.${user.id},user_two_id.eq.${user.id}`)

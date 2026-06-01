@@ -221,7 +221,7 @@ export default function FriendsListPage() {
     const timestamp = new Date(value).getTime();
     if (Number.isNaN(timestamp)) return "Recently";
 
-    const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
+    const seconds = Math.max(1, Math.floor((onlineNow - timestamp) / 1000));
     if (seconds < 60) return `${seconds}s ago`;
 
     const minutes = Math.floor(seconds / 60);

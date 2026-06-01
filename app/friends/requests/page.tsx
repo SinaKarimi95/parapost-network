@@ -30,6 +30,15 @@ export default function FriendRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
+  const [relativeTimeNow, setRelativeTimeNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setRelativeTimeNow(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const pendingCount = useMemo(
     () => requests.filter((request) => request.status === "pending").length,
@@ -199,7 +208,7 @@ export default function FriendRequestsPage() {
     const timestamp = new Date(value).getTime();
     if (Number.isNaN(timestamp)) return "Just now";
 
-    const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
+    const seconds = Math.max(1, Math.floor((relativeTimeNow - timestamp) / 1000));
     if (seconds < 60) return `${seconds}s ago`;
 
     const minutes = Math.floor(seconds / 60);

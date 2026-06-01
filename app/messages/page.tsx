@@ -895,11 +895,13 @@ function MessagesPage() {
       return;
     }
 
-    const { data: conversationData, error: conversationError } = await supabase
+    const { data: initialConversationData, error: conversationError } = await supabase
       .from("direct_conversations")
       .select("id, user_one_id, user_two_id, created_at, updated_at")
       .or(`user_one_id.eq.${user.id},user_two_id.eq.${user.id}`)
       .order("updated_at", { ascending: false });
+
+    let conversationData = initialConversationData;
 
     if (conversationError) {
       setErrorMessage(getParachatErrorMessage(conversationError.message || "Could not load conversations."));

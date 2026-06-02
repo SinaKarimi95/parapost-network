@@ -24,6 +24,7 @@ type ProfilePreview = {
   full_name: string | null;
   avatar_url: string | null;
   is_online?: boolean | null;
+  last_seen_at?: string | null;
 };
 
 type NotificationCard = NotificationRow & {
@@ -66,6 +67,21 @@ function formatRelativeTime(value?: string | null) {
 
   const years = Math.floor(days / 365);
   return `${years}y ago`;
+}
+
+const NOTIFICATIONS_ONLINE_TIMEOUT_MS = 3 * 60 * 1000;
+
+function isRecentNotificationOnlineTimestamp(value?: string | null) {
+  if (!value) return false;
+
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return false;
+
+  return Date.now() - time <= NOTIFICATIONS_ONLINE_TIMEOUT_MS;
+}
+
+function isNotificationProfileActuallyOnline(profile?: ProfilePreview | null) {
+  return Boolean(profile?.is_online && isRecentNotificationOnlineTimestamp(profile.last_seen_at));
 }
 
 function getNotificationTitle(notification: NotificationCard) {
@@ -111,8 +127,12 @@ function getNotificationHref(notification: NotificationCard) {
     return notification.actor_id ? `/messages?user=${notification.actor_id}` : "/messages";
   }
 
-  if (type === "friend_request" || type === "friend_accept") {
+  if (type === "friend_request") {
     return "/friends/requests";
+  }
+
+  if (type === "friend_accept") {
+    return "/friends";
   }
 
   if ((type === "reel_like" || type === "reel_comment") && notification.actor_id) {
@@ -243,7 +263,7 @@ export default function NotificationsPage() {
       if (actorIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, is_online")
+          .select("id, username, full_name, avatar_url, is_online, last_seen_at")
           .in("id", actorIds);
 
         if (profilesError) {
@@ -699,7 +719,7 @@ export default function NotificationsPage() {
                           <span style={avatarFallbackStyle}>{getInitial(notification.actor)}</span>
                         )}
 
-                        {notification.actor?.is_online ? <span style={onlineDotStyle} /> : null}
+                        {isNotificationProfileActuallyOnline(notification.actor) ? <span style={onlineDotStyle} /> : null}
 
                         <span style={typeBadgeStyle}>
                           <NotificationTypeIcon type={notification.type} />

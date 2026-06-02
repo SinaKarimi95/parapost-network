@@ -1409,6 +1409,7 @@ export default function DashboardPage() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingPostContent, setEditingPostContent] = useState("");
   const [notificationsCount, setNotificationsCount] = useState(0);
+  const [parachatUnreadCount, setParachatUnreadCount] = useState(0);
   const [pendingFriendRequestCount, setPendingFriendRequestCount] = useState(0);
   const [recentlyViewed, setRecentlyViewed] = useState<ProfilePreview[]>([]);
   const [discoverProfiles, setDiscoverProfiles] = useState<ProfilePreview[]>([]);
@@ -1760,16 +1761,23 @@ export default function DashboardPage() {
   const fetchNotifications = useCallback(async (userId?: string) => {
     if (!userId) {
       setNotificationsCount(0);
+      setParachatUnreadCount(0);
       setPendingFriendRequestCount(0);
       return;
     }
 
-    const [{ count: unreadCount }, { count: requestCount }] = await Promise.all([
+    const [{ count: unreadCount }, { count: parachatCount }, { count: requestCount }] = await Promise.all([
       supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("is_read", false),
+      supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_read", false)
+        .in("type", ["parachat_message", "parachat_photo"]),
       supabase
         .from("friend_requests")
         .select("*", { count: "exact", head: true })
@@ -1778,6 +1786,7 @@ export default function DashboardPage() {
     ]);
 
     setNotificationsCount(unreadCount || 0);
+    setParachatUnreadCount(parachatCount || 0);
     setPendingFriendRequestCount(requestCount || 0);
   }, []);
 
@@ -2285,6 +2294,7 @@ export default function DashboardPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "followers" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests" }, schedulePulseRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${currentUserId}` }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "reel_shares" }, schedulePulseRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "profile_showcases" }, schedulePulseRefresh)
@@ -3395,6 +3405,7 @@ export default function DashboardPage() {
         <MobileDashboardHeader
           currentProfile={currentProfile}
           notificationsCount={notificationsCount}
+          parachatUnreadCount={parachatUnreadCount}
           onOpenSearch={openSearch}
           onOpenMenu={() => setMobileMenuOpen(true)}
         />
@@ -3408,7 +3419,7 @@ export default function DashboardPage() {
               <SidebarButton label="Live" badge="Soon" muted />
               <SidebarLink href="/friends" label="Friends" badge={pendingFriendRequestCount || undefined} />
               <SidebarButton label="Groups" muted />
-              <SidebarLink href="/messages" label="Parachat" badge={notificationsCount || undefined} />
+              <SidebarLink href="/messages" label="Parachat" badge={parachatUnreadCount || undefined} />
               <SidebarLink href="/notifications" label="Notifications" badge={notificationsCount || undefined} />
               <SidebarButton label="Bookmarks" muted />
               <SidebarButton label="Explore" muted />
@@ -3469,6 +3480,7 @@ export default function DashboardPage() {
                 </Link>
                 <Link href="/messages" style={topIconButtonStyle} aria-label="Parachat">
                   <ChatIcon />
+                  {parachatUnreadCount > 0 ? <span style={topBadgeStyle}>{parachatUnreadCount > 99 ? "99+" : parachatUnreadCount}</span> : null}
                 </Link>
                 <button
                   type="button"
@@ -3780,6 +3792,7 @@ export default function DashboardPage() {
         currentProfile={currentProfile}
         currentUserId={currentUserId}
         notificationsCount={notificationsCount}
+        parachatUnreadCount={parachatUnreadCount}
         pendingFriendRequestCount={pendingFriendRequestCount}
         recentlyViewed={visibleRecentlyViewed}
         peopleToDiscover={peopleToDiscover}
@@ -3796,7 +3809,7 @@ export default function DashboardPage() {
         }}
       />
 
-      <MobileBottomNav currentUserId={currentUserId} notificationsCount={notificationsCount} onCreatePost={scrollToComposer} />
+      <MobileBottomNav currentUserId={currentUserId} parachatUnreadCount={parachatUnreadCount} onCreatePost={scrollToComposer} />
 
       {feelingActivityOpen ? (
         <FeelingActivityModal
@@ -8799,11 +8812,13 @@ function SidebarButton({
 function MobileDashboardHeader({
   currentProfile,
   notificationsCount,
+  parachatUnreadCount,
   onOpenSearch,
   onOpenMenu,
 }: {
   currentProfile: ProfilePreview | null;
   notificationsCount: number;
+  parachatUnreadCount: number;
   onOpenSearch: () => void;
   onOpenMenu: () => void;
 }) {
@@ -8823,6 +8838,7 @@ function MobileDashboardHeader({
         </Link>
         <Link href="/messages" style={mobileTopIconButtonStyle} aria-label="Parachat">
           <ChatIcon />
+          {parachatUnreadCount > 0 ? <span style={topBadgeStyle}>{parachatUnreadCount > 99 ? "99+" : parachatUnreadCount}</span> : null}
         </Link>
         <button type="button" onClick={onOpenMenu} style={mobileTopIconButtonStyle} aria-label="Open dashboard menu">
           <MenuIcon />
@@ -9830,6 +9846,7 @@ function MobileDashboardMenuDrawer({
   currentProfile,
   currentUserId,
   notificationsCount,
+  parachatUnreadCount,
   pendingFriendRequestCount,
   recentlyViewed,
   peopleToDiscover,
@@ -9846,6 +9863,7 @@ function MobileDashboardMenuDrawer({
   currentProfile: ProfilePreview | null;
   currentUserId: string;
   notificationsCount: number;
+  parachatUnreadCount: number;
   pendingFriendRequestCount: number;
   recentlyViewed: ProfilePreview[];
   peopleToDiscover: ProfilePreview[];
@@ -10285,6 +10303,7 @@ function MobileDashboardUtilityRail({
   totalLikes,
   totalComments,
   totalShares,
+  parachatUnreadCount = 0,
   onCreatePost,
 }: {
   currentProfile: ProfilePreview | null;
@@ -10296,6 +10315,7 @@ function MobileDashboardUtilityRail({
   totalLikes: number;
   totalComments: number;
   totalShares: number;
+  parachatUnreadCount?: number;
   onCreatePost: () => void;
 }) {
   return (
@@ -10332,7 +10352,7 @@ function MobileDashboardUtilityRail({
       <div style={mobileQuickToolsGridStyle}>
         <button type="button" onClick={onCreatePost} style={mobileQuickToolButtonStyle}>Create Post</button>
         <Link href="/reels" style={mobileQuickToolLinkStyle}>Explore Reels</Link>
-        <Link href="/messages" style={mobileQuickToolLinkStyle}>Parachat</Link>
+        <Link href="/messages" style={mobileQuickToolLinkStyle}>Parachat{parachatUnreadCount > 0 ? ` (${parachatUnreadCount > 99 ? "99+" : parachatUnreadCount})` : ""}</Link>
         <Link href="/notifications" style={mobileQuickToolLinkStyle}>Notifications</Link>
       </div>
 
@@ -11120,11 +11140,11 @@ function DashboardShowcaseComposerModal({
 
 function MobileBottomNav({
   currentUserId,
-  notificationsCount,
+  parachatUnreadCount,
   onCreatePost,
 }: {
   currentUserId: string;
-  notificationsCount: number;
+  parachatUnreadCount: number;
   onCreatePost: () => void;
 }) {
   return (
@@ -11146,7 +11166,7 @@ function MobileBottomNav({
       <Link href="/messages" style={mobileNavItemStyle} aria-label="Parachat">
         <span style={{ ...mobileNavIconSlotStyle, position: "relative" }}>
           <ChatIcon />
-          {notificationsCount > 0 ? <span style={mobileNavBadgeStyle}>{notificationsCount > 9 ? "9+" : notificationsCount}</span> : null}
+          {parachatUnreadCount > 0 ? <span style={mobileNavBadgeStyle}>{parachatUnreadCount > 9 ? "9+" : parachatUnreadCount}</span> : null}
         </span>
         <span style={mobileNavLabelStyle}>Parachat</span>
       </Link>

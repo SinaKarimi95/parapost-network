@@ -392,20 +392,29 @@ export default function ProfileReelsGridPage() {
                   >
                     {reel.video_url ? (
                       <>
-                        <video
-                          src={reel.video_url}
-                          poster={reel.poster_url || undefined}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                            display: "block",
-                            background: "#000",
-                          }}
-                        />
+                        reel.poster_url ? (
+                          <img
+                            src={reel.poster_url || undefined}
+                            alt="Parapost Reel preview"
+                            loading="lazy"
+                            decoding="async"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              display: "block",
+                              background: "#000",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              background: "#000",
+                            }}
+                          />
+                        )
                         <div
                           style={{
                             position: "absolute",

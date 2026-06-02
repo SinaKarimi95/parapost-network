@@ -92,6 +92,7 @@ type ProfileComment = {
 type Reel = {
   id: string;
   video_url: string | null;
+  poster_url: string | null;
   user_id: string;
   created_at?: string | null;
 };
@@ -14442,14 +14443,22 @@ return (
                     <div style={miniReelGridStyle}>
                       {reels.slice(0, 6).map((reel) => (
                         <Link key={reel.id} href={`/profile/${profileId}/reels/view?reelId=${reel.id}`} style={miniReelTileStyle}>
-                          {reel.video_url ? (
-                            <video src={reel.video_url} muted playsInline preload="metadata" style={miniReelVideoStyle} />
+                        {reel.video_url ? (
+                          reel.poster_url ? (
+                            <img
+                              src={reel.poster_url || undefined}
+                              alt="Parapost Reel preview"
+                              style={miniReelVideoStyle}
+                            />
                           ) : (
-                            <span>Reel unavailable</span>
-                          )}
-                        </Link>
-                      ))}
-                    </div>
+                            <span>Preview unavailable</span>
+                          )
+                        ) : (
+                          <span>Reel unavailable</span>
+                         )}
+                      </Link>
+                    ))}
+                  </div>
                   )}
                 </div>
               ) : null}

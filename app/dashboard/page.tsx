@@ -9789,16 +9789,17 @@ function SharedReelCard({
           style={sharedReelVideoStyle}
           aria-label={`Watch ${reelTitle} on Parapost Reels`}
         >
-          <video
-            src={shared.reel_video_url}
-            poster={shared.reel_poster_url || undefined}
-            muted
-            playsInline
-            preload="metadata"
-            onLoadedMetadata={primeVideoPreview}
-            onLoadedData={primeVideoPreview}
-            style={sharedReelInlineVideoStyle}
-          />
+          {shared.reel_poster_url ? (
+            <img
+              src={shared.reel_poster_url || undefined}
+              alt="Shared Parapost Reel preview"
+              loading="lazy"
+              decoding="async"
+              style={sharedReelInlineVideoStyle}
+            />
+          ) : (
+            <div style={sharedReelInlineVideoStyle} />
+           )}
           <div style={sharedReelOverlayStyle}>
             <span style={sharedReelPlayButtonStyle}>▶</span>
           </div>

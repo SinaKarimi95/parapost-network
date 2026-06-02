@@ -1552,14 +1552,24 @@ function MessagesPage() {
     setStatusMessage("");
     setErrorMessage("");
 
-    const { error } = await supabase
+    const { data: deletedMessage, error } = await supabase
       .from("direct_messages")
       .delete()
       .eq("id", message.id)
-      .eq("sender_id", viewerId);
+      .eq("sender_id", viewerId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       setErrorMessage(`Could not delete this message: ${getParachatErrorMessage(error.message)}`);
+      setDeletingMessageId(null);
+      return;
+    }
+
+    if (!deletedMessage?.id) {
+      setErrorMessage(
+        "This message could not be removed from the conversation. Please refresh and try again. If the problem continues, the Parachat delete policy needs to be checked."
+      );
       setDeletingMessageId(null);
       return;
     }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import BackToPrevious from "@/components/BackToPrevious";
 
 type ProfilePreview = {
   id: string;
@@ -216,32 +217,6 @@ function applyPersonalizationToDocument(accent: string, font: string) {
   }
 }
 
-
-function BackToPrevious({
-  label = "← Back",
-  fallbackHref = "/settings",
-}: {
-  label?: string;
-  fallbackHref?: string;
-}) {
-  const handleBack = () => {
-    if (typeof window !== "undefined") {
-      window.location.href = fallbackHref;
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleBack}
-      className="text-sm font-bold no-underline transition hover:text-white"
-      style={{ color: "var(--parapost-accent-text)" }}
-    >
-      {label}
-    </button>
-  );
-}
-
 export default function PersonalizationSettingsPage() {
   const [currentUserId, setCurrentUserId] = useState("");
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
@@ -445,7 +420,7 @@ export default function PersonalizationSettingsPage() {
   };
 
   return (
-    <main className="parapost-personalization-page h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
+    <main className="parapost-personalization-page px-3 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-6">
       <style jsx global>{`
         .parapost-personalization-page {
           -webkit-overflow-scrolling: touch;
@@ -534,32 +509,10 @@ export default function PersonalizationSettingsPage() {
         }
       `}</style>
 
-      <div
-        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-soft)" }}
-      />
-      <div
-        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-muted-bg)" }}
-      />
-      <div
-        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-soft)" }}
-      />
-
-      <div className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <BackToPrevious label="← Back to Settings" fallbackHref="/settings" />
-
-          <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
-            style={{
-              borderColor: "var(--parapost-accent-border)",
-              background: "var(--parapost-accent-muted-bg)",
-              color: "var(--parapost-accent-readable-text)",
-              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
-            }}
-          >
+      <div className="relative z-10 mx-auto w-full max-w-4xl">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <BackToPrevious label="← Back" fallbackHref="/settings" />
+          <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
             Personalization
           </span>
         </div>

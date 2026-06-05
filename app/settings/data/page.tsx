@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import BackToPrevious from "@/components/BackToPrevious";
 
 type RequestType =
   | "data_access"
@@ -136,31 +137,6 @@ function isAdminRole(role: string) {
 
 function getRequestLabel(value: RequestType) {
   return requestTypes.find((item) => item.value === value)?.label || "Data / Account Request";
-}
-
-function BackToPrevious({
-  label = "← Back",
-  fallbackHref = "/settings/account",
-}: {
-  label?: string;
-  fallbackHref?: string;
-}) {
-  const handleBack = () => {
-    if (typeof window !== "undefined") {
-      window.location.href = fallbackHref;
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleBack}
-      className="text-sm font-bold no-underline transition hover:text-white"
-      style={{ color: "var(--parapost-accent-text)" }}
-    >
-      {label}
-    </button>
-  );
 }
 
 export default function DataAccountSettingsPage() {
@@ -297,39 +273,15 @@ export default function DataAccountSettingsPage() {
   };
 
   return (
-    <main className="h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8 max-[480px]:px-3 max-[480px]:py-4 max-[480px]:pb-[calc(8.5rem+env(safe-area-inset-bottom))]">
-      <div
-        className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-soft)" }}
-      />
-      <div
-        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-muted-bg)" }}
-      />
-      <div
-        className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-soft)" }}
-      />
-
-      <div className="relative z-10 mx-auto w-full max-w-6xl max-[480px]:max-w-full">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 max-[520px]:items-start">
-          <div className="flex flex-wrap items-center gap-3 max-[520px]:w-full">
-            <BackToPrevious label="← Back to Your Account" fallbackHref="/settings/account" />
-
-            <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Settings
-            </Link>
+    <main className="px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-6 max-[480px]:px-3 max-[480px]:py-4 max-[480px]:pb-[calc(8.5rem+env(safe-area-inset-bottom))]">
+      <div className="relative z-10 mx-auto w-full max-w-4xl max-[480px]:max-w-full">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <BackToPrevious label="← Back" fallbackHref="/settings/account" />
+            <span className="text-slate-700 select-none">/</span>
+            <Link href="/settings" className="truncate text-xs font-bold text-slate-500 no-underline transition hover:text-white">Settings</Link>
           </div>
-
-          <span
-            className="rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg"
-            style={{
-              borderColor: "var(--parapost-accent-border)",
-              background: "var(--parapost-accent-muted-bg)",
-              color: "var(--parapost-accent-readable-text)",
-              boxShadow: "0 12px 28px var(--parapost-accent-glow)",
-            }}
-          >
+          <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
             Data & Account
           </span>
         </div>

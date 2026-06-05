@@ -1,18 +1,9 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-
-type SupportTopic =
-  | "account"
-  | "privacy_safety"
-  | "report_problem"
-  | "data_delete_account"
-  | "payments"
-  | "bug_report"
-  | "legal_policy"
-  | "other";
+import BackToPrevious from "@/components/BackToPrevious";
 
 type ProfilePreview = {
   id: string;
@@ -26,49 +17,6 @@ type AdminUserRow = {
   role: string;
 };
 
-const SUPPORT_TOPICS: Array<{ value: SupportTopic; label: string; helper: string }> = [
-  {
-    value: "account",
-    label: "Account",
-    helper: "Login, profile, email, password, or account access.",
-  },
-  {
-    value: "privacy_safety",
-    label: "Privacy & Safety",
-    helper: "Blocking, privacy controls, safety concerns, or unwanted contact.",
-  },
-  {
-    value: "report_problem",
-    label: "Report a Problem",
-    helper: "Something on Parapost Network is not working correctly.",
-  },
-  {
-    value: "data_delete_account",
-    label: "Data / Delete Account",
-    helper: "Account deletion, data deletion, or privacy/data help.",
-  },
-  {
-    value: "payments",
-    label: "Payments",
-    helper: "Future payments, promotions, sponsorships, or billing questions.",
-  },
-  {
-    value: "bug_report",
-    label: "Bug Report",
-    helper: "Technical bug, layout issue, broken button, or app problem.",
-  },
-  {
-    value: "legal_policy",
-    label: "Legal / Policy",
-    helper: "Terms, privacy policy, community guidelines, or content policy.",
-  },
-  {
-    value: "other",
-    label: "Other",
-    helper: "Anything else you want to send to Parapost Network support.",
-  },
-];
-
 type SettingsCard = {
   eyebrow: string;
   title: string;
@@ -79,97 +27,139 @@ type SettingsCard = {
   comingSoon?: boolean;
 };
 
-const SETTINGS_CARDS: SettingsCard[] = [
+type SettingsGroup = {
+  label: string;
+  icon: string;
+  cards: SettingsCard[];
+};
+
+const SETTINGS_GROUPS: SettingsGroup[] = [
   {
-    eyebrow: "Account",
-    title: "Account & Security",
-    description:
-      "Manage your signed-in account, email and password help, account access, sign out, and account security tools.",
-    items: ["Signed-in account", "Email & password", "Password reset", "Sign out"],
-    href: "/settings/account",
-    active: true,
+    label: "Your Account",
+    icon: "◎",
+    cards: [
+      {
+        eyebrow: "Account",
+        title: "Account & Security",
+        description: "Manage your signed-in account, email, password reset, sign out, and security tools.",
+        items: ["Signed-in account", "Email & password", "Password reset", "Sign out"],
+        href: "/settings/account",
+        active: true,
+      },
+      {
+        eyebrow: "Profile",
+        title: "Profile Settings",
+        description: "Edit your profile details, avatar, bio, and public information.",
+        items: ["Profile info", "Avatar", "Bio", "Profile details"],
+        href: "/settings/profile",
+        active: true,
+      },
+      {
+        eyebrow: "Visibility",
+        title: "Profile Visibility",
+        description: "Set your profile to public or private and control who sees your content.",
+        items: ["Public profile", "Private profile", "Visibility toggle"],
+        href: "/settings/profile-visibility",
+        active: true,
+      },
+    ],
   },
   {
-    eyebrow: "Profile",
-    title: "Profile Settings",
-    description: "Edit your profile details, avatar, bio, public information, and profile presentation.",
-    items: ["Profile info", "Avatar", "Bio", "Profile details"],
-    href: "/settings/profile",
-    active: true,
+    label: "Privacy & Safety",
+    icon: "⊙",
+    cards: [
+      {
+        eyebrow: "Privacy",
+        title: "Privacy & Safety",
+        description: "Control privacy, blocking, reporting, and community protection tools.",
+        items: ["Profile visibility", "Blocked users", "Reports", "Safety tools"],
+        href: "/settings/privacy-safety",
+        active: true,
+      },
+      {
+        eyebrow: "Safety",
+        title: "Blocked Users",
+        description: "Review accounts you have blocked and unblock them safely if needed.",
+        items: ["Blocked accounts", "Unblock users"],
+        href: "/settings/blocked-users",
+        active: true,
+      },
+    ],
   },
   {
-    eyebrow: "Privacy",
-    title: "Privacy & Safety",
-    description: "Control privacy, safety, blocking, reporting, profile visibility, and community protection tools.",
-    items: ["Profile visibility", "Blocked users", "Reports", "Safety tools"],
-    href: "/settings/privacy-safety",
-    active: true,
+    label: "Preferences",
+    icon: "◈",
+    cards: [
+      {
+        eyebrow: "Personalization",
+        title: "Personalization",
+        description: "Customize accent colors, theme appearance, and font style options.",
+        items: ["Accent color", "Theme", "Font style"],
+        href: "/settings/personalization",
+        active: true,
+      },
+      {
+        eyebrow: "Notifications",
+        title: "Notifications",
+        description: "Manage alerts for friend requests, Parachat, comments, likes, and Reels.",
+        items: ["Friend requests", "Parachat", "Comments & likes", "Reels"],
+        href: "/settings/notifications",
+        active: true,
+      },
+      {
+        eyebrow: "Feed",
+        title: "Content & Feed",
+        description: "Manage feed preferences, muted words, hidden posts, and content filters.",
+        items: ["Feed preferences", "Muted words", "Hidden posts"],
+        href: "/settings/content-feed",
+        active: true,
+      },
+    ],
   },
   {
-    eyebrow: "Safety",
-    title: "Blocked Users",
-    description: "Review accounts you have blocked and safely unblock them later if needed.",
-    items: ["Blocked accounts", "Safety list", "Unblock users", "User control"],
-    href: "/settings/blocked-users",
-    active: true,
+    label: "Data & Support",
+    icon: "◇",
+    cards: [
+      {
+        eyebrow: "Data",
+        title: "Data & Account Files",
+        description: "Request account data, correct information, or start account deletion.",
+        items: ["Request my data", "Correct data", "Account deletion"],
+        href: "/settings/data",
+        active: true,
+      },
+      {
+        eyebrow: "Support",
+        title: "Help & Support",
+        description: "Contact Parapost Network for account help, privacy, bugs, or policy questions.",
+        items: ["Contact support", "Report a problem", "Account help"],
+        href: "/settings/help-support",
+        active: true,
+      },
+      {
+        eyebrow: "Legal",
+        title: "Legal & Policies",
+        description: "Review Parapost Network policies for trust, safety, and user protection.",
+        items: ["Terms", "Privacy Policy", "Community Guidelines"],
+        href: "/settings/legal",
+        active: true,
+      },
+    ],
   },
   {
-    eyebrow: "Personalization",
-    title: "Personalization",
-    description: "Customize Parapost Network with accent colors, theme appearance, and future font style options.",
-    items: ["Accent color", "Theme appearance", "Font style", "Preferences"],
-    href: "/settings/personalization",
-    active: true,
-  },
-  {
-    eyebrow: "Notifications",
-    title: "Notifications",
-    description: "Manage alerts for friend requests, Parachat, comments, likes, Reels, badges, and support updates.",
-    items: ["Friend requests", "Parachat", "Comments & likes", "Reels activity"],
-    href: "/settings/notifications",
-    active: true,
-  },
-  {
-    eyebrow: "Feed",
-    title: "Content & Feed",
-    description: "Manage feed preferences, hidden posts, muted words, content filters, and Reels preferences.",
-    items: ["Feed preferences", "Muted words", "Hidden posts", "Reels filters"],
-    href: "/settings/content-feed",
-    active: true,
-  },
-  {
-    eyebrow: "Data",
-    title: "Data & Account Files",
-    description: "Request account data, correct information, ask for data deletion, or start account deletion support.",
-    items: ["Request my data", "Correct data", "Data deletion", "Account deletion"],
-    href: "/settings/data",
-    active: true,
-  },
-  {
-    eyebrow: "Support",
-    title: "Help & Support",
-    description: "Contact Parapost Network for account help, privacy, safety, bugs, data, and policy questions.",
-    items: ["Contact support", "Report a problem", "Account help", "Safety help"],
-    href: "/settings/help-support",
-    active: true,
-  },
-  {
-    eyebrow: "Legal",
-    title: "Legal & Policies",
-    description: "Review Parapost Network policies for trust, safety, app-store readiness, and user protection.",
-    items: ["Terms", "Privacy Policy", "Community Guidelines", "Data Policy"],
-    href: "/settings/legal",
-    active: true,
-  },
-  {
-    eyebrow: "Coming Soon",
-    title: "Payments",
-    description:
-      "Coming soon for promoted posts, sponsored content, billing history, business tools, and future payment settings.",
-    items: ["Promotions", "Sponsored posts", "Billing history", "Not live yet"],
-    href: "/settings/payments",
-    active: true,
-    comingSoon: true,
+    label: "Monetization",
+    icon: "◬",
+    cards: [
+      {
+        eyebrow: "Coming Soon",
+        title: "Payments",
+        description: "Promoted posts, sponsored content, billing history, and business tools — coming soon.",
+        items: ["Promotions", "Sponsored posts", "Billing history"],
+        href: "/settings/payments",
+        active: true,
+        comingSoon: true,
+      },
+    ],
   },
 ];
 
@@ -178,44 +168,11 @@ function getInitial(profile: ProfilePreview | null) {
   return value.charAt(0).toUpperCase();
 }
 
-function getTopicLabel(topic: SupportTopic) {
-  return SUPPORT_TOPICS.find((item) => item.value === topic)?.label || "Other";
-}
-
 function isAdminRole(role: string) {
   return ["owner", "admin", "support", "moderator"].includes(role);
 }
 
-
-function BackToPrevious({
-  label = "← Back",
-  fallbackHref = "/settings",
-}: {
-  label?: string;
-  fallbackHref?: string;
-}) {
-  const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      window.location.href = fallbackHref;
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleBack}
-      className="text-sm font-bold no-underline transition hover:text-white"
-      style={{ color: "var(--parapost-accent-text)" }}
-    >
-      {label}
-    </button>
-  );
-}
+type SearchResult = SettingsCard & { groupLabel: string; groupIcon: string };
 
 export default function SettingsPage() {
   const [currentProfile, setCurrentProfile] = useState<ProfilePreview | null>(null);
@@ -223,24 +180,36 @@ export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState("");
   const [adminRole, setAdminRole] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
-
-  const [supportTopic, setSupportTopic] = useState<SupportTopic>("account");
-  const [supportMessage, setSupportMessage] = useState("");
-  const [deleteMessage, setDeleteMessage] = useState("");
-
-  const [supportSubmitting, setSupportSubmitting] = useState(false);
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
-  const [supportStatus, setSupportStatus] = useState("");
-  const [deleteStatus, setDeleteStatus] = useState("");
-  const [supportError, setSupportError] = useState("");
-  const [deleteError, setDeleteError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const displayName = currentProfile?.full_name || currentProfile?.username || "Parapost Member";
   const canSeeAdminSupport = isAdminRole(adminRole);
 
-  const selectedTopicHelper = useMemo(() => {
-    return SUPPORT_TOPICS.find((item) => item.value === supportTopic)?.helper || "";
-  }, [supportTopic]);
+  // Compute search results across all cards — title, description, eyebrow, items, group label
+  const searchResults = useMemo<SearchResult[] | null>(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return null;
+
+    const results: SearchResult[] = [];
+    for (const group of SETTINGS_GROUPS) {
+      for (const card of group.cards) {
+        const haystack = [
+          card.title,
+          card.description,
+          card.eyebrow,
+          group.label,
+          ...card.items,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (haystack.includes(query)) {
+          results.push({ ...card, groupLabel: group.label, groupIcon: group.icon });
+        }
+      }
+    }
+    return results;
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -297,542 +266,281 @@ export default function SettingsPage() {
     };
   }, []);
 
-  const submitSupportMessage = async ({
-    topic,
-    message,
-    setStatus,
-    setError,
-    setSubmitting,
-  }: {
-    topic: SupportTopic;
-    message: string;
-    setStatus: (value: string) => void;
-    setError: (value: string) => void;
-    setSubmitting: (value: boolean) => void;
-  }) => {
-    const cleanMessage = message.trim();
+  // Reusable card renderer — used in both normal and search views
+  function SettingsCardItem({ card, groupLabel, groupIcon }: {
+    card: SettingsCard;
+    groupLabel?: string;
+    groupIcon?: string;
+  }) {
+    const content = (
+      <div
+        className={`group/card flex h-full flex-col rounded-[20px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-md transition-all duration-150 hover:border-white/[0.15] hover:bg-white/[0.06] hover:shadow-lg ${
+          card.active ? "" : "opacity-50 pointer-events-none"
+        }`}
+      >
+        {/* Group breadcrumb — shown in search results only */}
+        {groupLabel && (
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-[10px] text-purple-400/40" aria-hidden="true">{groupIcon}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-purple-300/40">
+              {groupLabel}
+            </span>
+          </div>
+        )}
 
-    setStatus("");
-    setError("");
-
-    if (!currentUserId) {
-      setError("Please sign in before sending a message to Parapost Network support.");
-      return false;
-    }
-
-    if (cleanMessage.length < 5) {
-      setError("Please add a little more detail before sending your message.");
-      return false;
-    }
-
-    setSubmitting(true);
-
-    const { error } = await supabase.from("support_messages").insert({
-      user_id: currentUserId,
-      user_email: userEmail || null,
-      user_name: displayName,
-      topic,
-      message: cleanMessage,
-      status: "open",
-      priority: topic === "privacy_safety" || topic === "data_delete_account" ? "high" : "normal",
-      source: "settings",
-      page_url: typeof window !== "undefined" ? window.location.href : null,
-      metadata: {
-        topic_label: getTopicLabel(topic),
-        submitted_from: "settings_page",
-      },
-    });
-
-    setSubmitting(false);
-
-    if (error) {
-      setError(`Could not send message: ${error.message}`);
-      return false;
-    }
-
-    setStatus("Message sent. Parapost Network support will review it.");
-    return true;
-  };
-
-  const handleSupportSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const sent = await submitSupportMessage({
-      topic: supportTopic,
-      message: supportMessage,
-      setStatus: setSupportStatus,
-      setError: setSupportError,
-      setSubmitting: setSupportSubmitting,
-    });
-
-    if (sent) setSupportMessage("");
-  };
-
-  const handleDeleteRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const fallbackMessage =
-      "I would like help with deleting my Parapost Network account and understanding what happens to my profile, posts, Reels, Showcases, messages, comments, and account data.";
-
-    const sent = await submitSupportMessage({
-      topic: "data_delete_account",
-      message: deleteMessage.trim() || fallbackMessage,
-      setStatus: setDeleteStatus,
-      setError: setDeleteError,
-      setSubmitting: setDeleteSubmitting,
-    });
-
-    if (sent) setDeleteMessage("");
-  };
-
-  return (
-    <main className="settings-page-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-3 py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] text-white sm:px-5 sm:py-6 lg:px-8">
-      <div className="pointer-events-none fixed -right-28 -top-28 h-96 w-96 rounded-full bg-purple-600/25 blur-3xl" />
-      <div className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-28 -left-28 h-96 w-96 rounded-full bg-indigo-500/12 blur-3xl" />
-
-      <div className="settings-page-container relative z-10 mx-auto w-full max-w-6xl">
-        <div className="settings-topbar mb-5 flex flex-wrap items-center justify-between gap-3">
-          <BackToPrevious label="← Back" fallbackHref="/dashboard" />
-
-          <span className="rounded-full border border-purple-300/30 bg-purple-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-purple-100 shadow-lg shadow-purple-950/20">
-            Settings Center
+        {/* Eyebrow + badge row */}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-300/60">
+            {card.eyebrow}
           </span>
+          {card.comingSoon ? (
+            <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black text-amber-300">
+              Coming soon
+            </span>
+          ) : null}
         </div>
 
-        <section className="settings-hero-grid mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="settings-hero-card rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/14 via-white/[0.065] to-slate-950/70 p-5 shadow-2xl shadow-purple-950/20 ring-1 ring-white/[0.035] sm:p-7">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-              Parapost Network Settings
-            </p>
-            <h1 className="settings-main-title max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
-              Manage your account, privacy, safety, and support.
-            </h1>
-            <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Use this settings center to manage your Parapost Network account, profile, privacy, safety, support, personalization, notifications, data requests, legal policies, and coming-soon payment tools.
-            </p>
+        {/* Title */}
+        <h3 className="text-base font-black leading-snug tracking-[-0.02em] text-white">
+          {card.title}
+        </h3>
 
-            <div className="settings-quick-actions mt-6 flex flex-wrap gap-3">
-              <a
-                href="#support"
-                className="settings-action-button rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110"
-              >
-                Contact Support
-              </a>
-              <Link
-                href="/settings/privacy-safety"
-                className="settings-action-button rounded-full border border-purple-200/20 bg-purple-400/10 px-5 py-3 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/10 transition hover:bg-purple-400/15"
-              >
-                Privacy & Safety
-              </Link>
-              {canSeeAdminSupport ? (
-                <Link
-                  href="/admin/support"
-                  className="settings-action-button rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-100 no-underline hover:bg-emerald-400/15"
-                >
-                  Support Inbox
-                </Link>
-              ) : null}
+        {/* Description */}
+        <p className="mt-1.5 flex-1 text-sm leading-[1.55] text-slate-500">
+          {card.description}
+        </p>
+
+        {/* Item tags */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {card.items.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2.5 py-0.5 text-[11px] font-semibold text-slate-500"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+
+        {/* Arrow — shown on hover */}
+        {!card.comingSoon && (
+          <div className="mt-3 flex justify-end">
+            <span className="text-xs text-purple-400/0 transition-all duration-150 group-hover/card:text-purple-400/80">
+              Open →
+            </span>
+          </div>
+        )}
+      </div>
+    );
+
+    if (card.href) {
+      return (
+        <Link href={card.href} className="block text-white no-underline">
+          {content}
+        </Link>
+      );
+    }
+    return <div>{content}</div>;
+  }
+
+  return (
+    <main className="px-4 py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 lg:px-6">
+      <div className="relative z-10 mx-auto w-full max-w-3xl">
+
+        {/* Top bar */}
+        <div className="mb-5 flex items-center gap-3">
+          <BackToPrevious label="← Dashboard" fallbackHref="/dashboard" />
+        </div>
+
+        {/* Hero — user card */}
+        <div className="mb-4 rounded-[22px] border border-white/[0.08] bg-gradient-to-br from-purple-500/10 via-white/[0.04] to-slate-950/60 p-5 shadow-xl ring-1 ring-white/[0.04]">
+          <div className="flex items-center gap-4">
+            {/* Avatar */}
+            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-900 text-sm font-black ring-2 ring-white/10">
+              {currentProfile?.avatar_url ? (
+                <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
+              ) : (
+                getInitial(currentProfile)
+              )}
+            </div>
+
+            {/* Name + email */}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black leading-tight text-white">
+                {pageLoading ? "Loading…" : displayName}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-slate-500">{userEmail || "Signed out"}</p>
             </div>
           </div>
 
-          <aside className="settings-user-card rounded-[30px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035]">
-            <div className="flex items-center gap-4">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-slate-950 text-2xl font-black ring-1 ring-white/15">
-                {currentProfile?.avatar_url ? (
-                  <img src={currentProfile.avatar_url} alt="" className="h-full w-full object-cover object-center" />
-                ) : (
-                  getInitial(currentProfile)
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <div className="truncate text-lg font-black">{pageLoading ? "Loading..." : displayName}</div>
-                <div className="truncate text-sm text-slate-400">{userEmail || "Signed out"}</div>
-              </div>
-            </div>
-
-            {!pageLoading && canSeeAdminSupport ? (
+          {/* Quick actions — row below */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/settings/help-support"
+              className="rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-4 py-2 text-sm font-black text-white no-underline shadow-lg shadow-purple-950/40 transition hover:brightness-110"
+            >
+              Contact Support
+            </Link>
+            <Link
+              href="/settings/privacy-safety"
+              className="rounded-full border border-purple-200/20 bg-purple-400/10 px-4 py-2 text-sm font-black text-white no-underline transition hover:bg-purple-400/15"
+            >
+              Privacy & Safety
+            </Link>
+            {canSeeAdminSupport ? (
               <Link
                 href="/admin/support"
-                className="mt-5 block rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-4 text-sm font-bold leading-6 text-emerald-100 no-underline transition hover:bg-emerald-400/15"
+                className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-2 text-sm font-black text-emerald-100 no-underline transition hover:bg-emerald-400/15"
               >
-                Admin Support Inbox
-                <span className="mt-1 block text-xs font-medium text-emerald-100/70">
-                  You have {adminRole} access.
-                </span>
+                Support Inbox
               </Link>
             ) : null}
+          </div>
+        </div>
 
-            {!pageLoading && !currentUserId ? (
-              <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
-                Sign in is required to send support messages and manage account controls.
-              </div>
-            ) : null}
-          </aside>
-        </section>
+        {/* ── Search bar ── */}
+        <div className="mb-6 relative">
+          {/* Search icon */}
+          <span
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 select-none"
+            aria-hidden="true"
+          >
+            ⌕
+          </span>
 
-        <section className="settings-content-grid grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="space-y-4">
-            <section id="support" className="settings-panel rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">Support</p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">Contact Parapost Network</h2>
-                </div>
-                <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-black text-emerald-200">
-                  Active
-                </span>
-              </div>
+          <input
+            ref={searchInputRef}
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search settings… try 'password', 'notifications', 'avatar'"
+            aria-label="Search settings"
+            className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 pl-10 pr-10 text-sm text-white placeholder-slate-600 outline-none transition focus:border-purple-500/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-purple-500/20"
+          />
 
-              <p className="mb-5 text-sm leading-7 text-slate-300">
-                Send a private message to Parapost Network support for account help, privacy and safety questions,
-                bug reports, data requests, legal questions, or general support.
-              </p>
+          {/* Clear button */}
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                searchInputRef.current?.focus();
+              }}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-500 transition hover:text-white"
+            >
+              ✕
+            </button>
+          )}
+        </div>
 
-              <form onSubmit={handleSupportSubmit} className="space-y-4">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-bold text-slate-100">Topic</span>
-                  <select
-                    value={supportTopic}
-                    onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                      setSupportTopic(event.target.value as SupportTopic)
-                    }
-                    className="w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-white outline-none focus:border-purple-300/50"
-                  >
-                    {SUPPORT_TOPICS.map((topic) => (
-                      <option key={topic.value} value={topic.value}>
-                        {topic.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <p className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-slate-300">
-                  {selectedTopicHelper}
+        {/* ── Search results view ── */}
+        {searchResults !== null ? (
+          <div>
+            {searchResults.length > 0 ? (
+              <>
+                {/* Result count */}
+                <p className="mb-3 px-0.5 text-[11px] font-black uppercase tracking-[0.2em] text-purple-300/55">
+                  {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery.trim()}&rdquo;
                 </p>
 
-                <label className="block">
-                  <span className="mb-2 block text-sm font-bold text-slate-100">Message</span>
-                  <textarea
-                    value={supportMessage}
-                    onChange={(event) => setSupportMessage(event.target.value)}
-                    placeholder="Tell us what you need help with..."
-                    rows={7}
-                    maxLength={5000}
-                    className="min-h-[170px] w-full resize-y rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-purple-300/50"
-                  />
-                </label>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500">{supportMessage.trim().length}/5000</span>
-                  <button
-                    type="submit"
-                    disabled={supportSubmitting}
-                    className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                  >
-                    {supportSubmitting ? "Sending..." : "Send Message"}
-                  </button>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {searchResults.map((result) => (
+                    <SettingsCardItem
+                      key={result.href}
+                      card={result}
+                      groupLabel={result.groupLabel}
+                      groupIcon={result.groupIcon}
+                    />
+                  ))}
                 </div>
-
-                {supportStatus ? (
-                  <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
-                    {supportStatus}
-                  </div>
-                ) : null}
-
-                {supportError ? (
-                  <div className="rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
-                    {supportError}
-                  </div>
-                ) : null}
-              </form>
-            </section>
-
-            <section id="delete-account" className="settings-panel rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              </>
+            ) : (
+              /* Empty state */
+              <div className="flex flex-col items-center gap-4 rounded-[20px] border border-white/[0.06] bg-white/[0.025] px-6 py-10 text-center">
+                <span className="text-3xl opacity-30" aria-hidden="true">⌕</span>
                 <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-                    Data & Account
+                  <p className="text-sm font-black text-white">
+                    No results for &ldquo;{searchQuery.trim()}&rdquo;
                   </p>
-                  <h2 className="text-2xl font-black tracking-[-0.03em]">Delete Account / Data Request</h2>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Try a different keyword — or browse the sections below.
+                  </p>
                 </div>
-                <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-black text-amber-100">
-                  Important
-                </span>
+                {/* Quick suggestions */}
+                <div className="flex flex-wrap justify-center gap-2">
+                  {["password", "privacy", "notifications", "avatar", "blocked", "theme"].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => setSearchQuery(suggestion)}
+                      className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs font-semibold text-slate-400 transition hover:border-white/[0.15] hover:text-white"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               </div>
-
-              <p className="mb-5 text-sm leading-7 text-slate-300">
-                Use this form to start an account or data deletion request. You can also manage these requests in{" "}
-                <Link href="/settings/data" className="font-black text-purple-200 no-underline hover:text-white">
-                  Data & Account Files
-                </Link>
-                . Parapost Network will review these requests carefully before account or data changes are made.
-              </p>
-
-              <form onSubmit={handleDeleteRequestSubmit} className="space-y-4">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-bold text-slate-100">Add details, optional</span>
-                  <textarea
-                    value={deleteMessage}
-                    onChange={(event) => setDeleteMessage(event.target.value)}
-                    placeholder="Example: I want to delete my account and understand what happens to my posts, Reels, Showcases, comments, and messages."
-                    rows={5}
-                    maxLength={5000}
-                    className="min-h-[140px] w-full resize-y rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-purple-300/50"
-                  />
-                </label>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500">{deleteMessage.trim().length}/5000</span>
-                  <button
-                    type="submit"
-                    disabled={deleteSubmitting}
-                    className="w-full rounded-2xl bg-red-100 px-5 py-3 text-sm font-black text-red-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                  >
-                    {deleteSubmitting ? "Sending..." : "Send Delete/Data Request"}
-                  </button>
+            )}
+          </div>
+        ) : (
+          /* ── Normal grouped view ── */
+          <div className="space-y-7">
+            {SETTINGS_GROUPS.map((group) => (
+              <div key={group.label}>
+                {/* Section header */}
+                <div className="mb-3 flex items-center gap-2 px-0.5">
+                  <span className="text-sm text-purple-400/50" aria-hidden="true">{group.icon}</span>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-purple-300/55">
+                    {group.label}
+                  </p>
                 </div>
 
-                {deleteStatus ? (
-                  <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
-                    {deleteStatus}
-                  </div>
-                ) : null}
-
-                {deleteError ? (
-                  <div className="rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
-                    {deleteError}
-                  </div>
-                ) : null}
-              </form>
-            </section>
-
-            <section className="settings-panel rounded-[28px] border border-purple-200/15 bg-gradient-to-br from-purple-500/10 via-white/[0.055] to-slate-950/55 p-5 shadow-2xl shadow-purple-950/15 ring-1 ring-white/[0.035] sm:p-6">
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-purple-200">
-                About Parapost Network
-              </p>
-              <h2 className="text-2xl font-black tracking-[-0.03em]">Paranormal-friendly, built for everyone.</h2>
-              <p className="mt-4 text-sm leading-7 text-slate-300">
-                Parapost Network is a paranormal-friendly social platform built for investigators, creators,
-                teams, fans, and everyday users. While the platform has a strong paranormal community identity,
-                anyone can use Parapost Network to share posts, photos, videos, Parapost Reels, Showcases,
-                messages, events, and connect with others.
-              </p>
-            </section>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {group.cards.map((card) => (
+                    <SettingsCardItem key={card.href} card={card} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
+        )}
 
-          <aside className="settings-side-nav space-y-4">
-            {canSeeAdminSupport ? (
-              <Link href="/admin/support" className="block text-white no-underline">
-                <section className="settings-nav-card rounded-[26px] border border-emerald-300/20 bg-emerald-400/10 p-5 shadow-xl transition hover:bg-emerald-400/15">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
-                      Admin
-                    </span>
-                    <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-black text-emerald-100">
-                      {adminRole}
-                    </span>
-                  </div>
+        {/* Admin support panel — always visible */}
+        {canSeeAdminSupport ? (
+          <div className="mt-8">
+            <Link
+              href="/admin/support"
+              className="flex items-center justify-between gap-4 rounded-[20px] border border-emerald-300/15 bg-emerald-400/[0.07] p-5 text-white no-underline transition hover:bg-emerald-400/[0.11]"
+            >
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-400">
+                  Admin · {adminRole}
+                </p>
+                <p className="text-sm font-black">Support Inbox</p>
+                <p className="mt-0.5 text-xs text-emerald-100/50">
+                  Review messages, bug reports, privacy issues, and data requests.
+                </p>
+              </div>
+              <span className="shrink-0 text-emerald-400/60">→</span>
+            </Link>
+          </div>
+        ) : null}
 
-                  <h3 className="text-lg font-black tracking-[-0.02em]">Support Inbox</h3>
-                  <p className="mt-2 text-sm leading-6 text-emerald-100/80">
-                    Review support messages, data requests, bug reports, privacy/safety issues, and payment questions.
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {["Open messages", "Admin notes", "Status updates", "Priority control"].map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-emerald-300/20 bg-black/25 px-3 py-1.5 text-xs font-bold text-emerald-100"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              </Link>
-            ) : null}
-
-            {SETTINGS_CARDS.map((card) => {
-              const content = (
-                <section
-                  className={`settings-nav-card rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-xl ${
-                    card.active ? "" : "opacity-65"
-                  }`}
-                >
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-purple-200">
-                      {card.eyebrow}
-                    </span>
-                    {card.comingSoon ? (
-                      <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2.5 py-1 text-[11px] font-black text-amber-100">
-                        Coming soon
-                      </span>
-                    ) : !card.active ? (
-                      <span className="rounded-full border border-purple-200/15 bg-purple-400/10 px-2.5 py-1 text-[11px] font-black text-slate-300">
-                        Coming soon
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <h3 className="text-lg font-black tracking-[-0.02em]">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {card.items.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-purple-200/15 bg-black/30 px-3 py-1.5 text-xs font-bold text-slate-300"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              );
-
-              if (card.href) {
-                return (
-                  <Link key={card.title} href={card.href} className="block text-white no-underline">
-                    {content}
-                  </Link>
-                );
-              }
-
-              return <div key={card.title}>{content}</div>;
-            })}
-          </aside>
-        </section>
       </div>
 
       <style jsx global>{`
-        .settings-page-root {
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: thin;
-        }
+        /* suppress browser's default search clear button — we have our own */
+        input[type="search"]::-webkit-search-cancel-button { display: none; }
+        input[type="search"]::-ms-clear { display: none; }
 
-        .settings-action-button,
-        .settings-side-nav a,
-        .settings-panel button,
-        .settings-panel select,
-        .settings-panel textarea {
-          touch-action: manipulation;
-        }
-
-        @media (max-width: 1120px) {
-          .settings-hero-grid,
-          .settings-content-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .settings-page-container {
-            max-width: 900px !important;
-          }
-        }
-
-        @media (min-width: 1121px) and (max-width: 1366px) {
-          .settings-page-container {
-            max-width: 1080px !important;
-          }
-
-          .settings-content-grid {
-            grid-template-columns: minmax(0, 1fr) 340px !important;
-          }
-        }
-
-        @media (max-width: 760px) {
-          .settings-page-root {
-            padding-left: 12px !important;
-            padding-right: 12px !important;
-            padding-top: 18px !important;
-            padding-bottom: calc(8.75rem + env(safe-area-inset-bottom)) !important;
-          }
-
-          .settings-topbar {
-            align-items: flex-start !important;
-          }
-
-          .settings-topbar > span {
-            width: 100% !important;
-            text-align: center !important;
-          }
-
-          .settings-hero-card,
-          .settings-user-card,
-          .settings-panel,
-          .settings-nav-card {
-            border-radius: 22px !important;
-            padding: 16px !important;
-          }
-
-          .settings-main-title {
-            font-size: clamp(2.15rem, 12vw, 3rem) !important;
-            line-height: 0.96 !important;
-          }
-
-          .settings-quick-actions {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 10px !important;
-          }
-
-          .settings-action-button {
-            width: 100% !important;
-            justify-content: center !important;
-            text-align: center !important;
-          }
-
-          .settings-panel textarea {
-            min-height: 132px !important;
-          }
-
-          .settings-panel select,
-          .settings-panel textarea {
-            font-size: 16px !important;
-          }
-
-          .settings-side-nav {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-          }
-        }
-
-        @media (max-width: 420px) {
-          .settings-page-root {
-            padding-left: 10px !important;
-            padding-right: 10px !important;
-          }
-
-          .settings-hero-card,
-          .settings-user-card,
-          .settings-panel,
-          .settings-nav-card {
-            border-radius: 20px !important;
-            padding: 14px !important;
-          }
-
-          .settings-main-title {
-            font-size: clamp(1.95rem, 11.5vw, 2.45rem) !important;
-          }
-        }
-
-        @media (max-width: 760px) and (max-height: 720px) {
-          .settings-page-root {
-            padding-top: 14px !important;
-            padding-bottom: calc(7.5rem + env(safe-area-inset-bottom)) !important;
-          }
-
-          .settings-hero-card,
-          .settings-user-card,
-          .settings-panel,
-          .settings-nav-card {
-            padding: 14px !important;
+        @media (max-width: 480px) {
+          main {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
           }
         }
       `}</style>
-
     </main>
   );
 }

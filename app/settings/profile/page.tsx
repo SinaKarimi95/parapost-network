@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import BackToPrevious from "@/components/BackToPrevious";
 
 type ProfileSettingsRow = {
   id: string;
@@ -27,30 +28,6 @@ const emptyForm: ProfileSettingsForm = {
   is_private: false,
 };
 
-function BackToPrevious({
-  label = "← Back",
-  fallbackHref = "/settings/account",
-}: {
-  label?: string;
-  fallbackHref?: string;
-}) {
-  const handleBack = () => {
-    if (typeof window !== "undefined") {
-      window.location.href = fallbackHref;
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleBack}
-      className="text-sm font-bold no-underline transition hover:text-white"
-      style={{ color: "var(--parapost-accent-text)" }}
-    >
-      {label}
-    </button>
-  );
-}
 
 function getInitial(name?: string | null, username?: string | null) {
   const value = name || username || "P";
@@ -171,8 +148,8 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <main className="profile-settings-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-8 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-6xl">
+      <main className="profile-settings-root px-4 py-8 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-6">
+        <div className="mx-auto w-full max-w-4xl">
           <div className="animate-pulse rounded-[32px] border border-white/10 bg-white/[0.055] p-6 shadow-2xl">
             <div className="mb-5 h-8 w-48 rounded bg-white/10" />
             <div className="mb-3 h-12 rounded-2xl bg-white/10" />
@@ -186,38 +163,27 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <main className="profile-settings-root h-dvh min-h-dvh overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#05050b] px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-8">
-      <div
-        className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-soft)" }}
-      />
-      <div
-        className="pointer-events-none fixed left-1/2 top-24 h-80 w-80 -translate-x-1/2 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-muted-bg)" }}
-      />
-      <div
-        className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "var(--parapost-accent-soft)" }}
-      />
-
-      <section className="relative z-10 mx-auto w-full max-w-6xl">
-        <div className="profile-settings-topbar mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <BackToPrevious label="← Back to Your Account" fallbackHref="/settings/account" />
-            <Link href="/settings" className="text-sm font-bold text-slate-300 no-underline hover:text-white">
-              Settings
-            </Link>
+    <main className="profile-settings-root px-4 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white sm:px-6 lg:px-6">
+      <section className="relative z-10 mx-auto w-full max-w-4xl">
+        <div className="profile-settings-topbar mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <BackToPrevious label="← Back" fallbackHref="/settings/account" />
+            <span className="text-slate-700 select-none">/</span>
+            <Link href="/settings" className="truncate text-xs font-bold text-slate-500 no-underline transition hover:text-white">Settings</Link>
           </div>
 
           {userId ? (
             <Link
               href={`/profile/${userId}`}
-              className="rounded-full border px-4 py-2 text-sm font-bold text-slate-200 no-underline transition hover:bg-white/10"
-              style={{ borderColor: "var(--parapost-accent-border)", background: "rgba(255,255,255,0.055)" }}
+              className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-slate-300 no-underline transition hover:bg-white/[0.08] hover:text-white"
             >
-              View Profile
+              View Profile →
             </Link>
-          ) : null}
+          ) : (
+            <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Profile Settings
+            </span>
+          )}
         </div>
 
         <section className="profile-settings-hero-grid mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">

@@ -54,7 +54,8 @@ export default function BottomNav({
     pathname?.startsWith("/messages") ||
     pathname?.startsWith("/profile") ||
     pathname?.startsWith("/friends") ||
-    pathname?.startsWith("/notifications");
+    pathname?.startsWith("/notifications") ||
+    pathname?.startsWith("/settings");
 
   if (!shouldShow) return null;
 

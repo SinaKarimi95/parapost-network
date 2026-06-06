@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local development context — never pushed to GitHub
+CLAUDE.md
+AGENTS.md
+TASKS.md
+PROJECT_CONTEXT.md
+*.local.md
+SETTINGS_CHANGES_REPORT.txt

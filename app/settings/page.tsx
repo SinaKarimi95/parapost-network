@@ -301,12 +301,12 @@ export default function SettingsPage() {
         </div>
 
         {/* Title */}
-        <h3 className="text-base font-black leading-snug tracking-[-0.02em] text-white">
+        <h3 className="text-lg font-black leading-snug tracking-[-0.02em] text-white">
           {card.title}
         </h3>
 
         {/* Description */}
-        <p className="mt-1.5 flex-1 text-sm leading-[1.55] text-slate-500">
+        <p className="mt-1.5 flex-1 text-sm leading-[1.55] text-slate-400">
           {card.description}
         </p>
 
@@ -315,7 +315,7 @@ export default function SettingsPage() {
           {card.items.map((item) => (
             <span
               key={item}
-              className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2.5 py-0.5 text-[11px] font-semibold text-slate-500"
+              className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2.5 py-0.5 text-[11px] font-semibold text-slate-400"
             >
               {item}
             </span>
@@ -440,7 +440,7 @@ export default function SettingsPage() {
             {searchResults.length > 0 ? (
               <>
                 {/* Result count */}
-                <p className="mb-3 px-0.5 text-[11px] font-black uppercase tracking-[0.2em] text-purple-300/55">
+                <p className="mb-3 px-0.5 text-[11px] font-black uppercase tracking-[0.2em] text-purple-300/80">
                   {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery.trim()}&rdquo;
                 </p>
 
@@ -491,7 +491,7 @@ export default function SettingsPage() {
                 {/* Section header */}
                 <div className="mb-3 flex items-center gap-2 px-0.5">
                   <span className="text-sm text-purple-400/50" aria-hidden="true">{group.icon}</span>
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-purple-300/55">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-purple-300/80">
                     {group.label}
                   </p>
                 </div>

@@ -1261,7 +1261,7 @@ function MessagesPage() {
               .map((conversation) => {
                 if (conversation.id !== nextMessage.conversation_id) return conversation;
 
-                const isActive = activeConversationId === nextMessage.conversation_id;
+                const isActive = activeConversationIdRef.current === nextMessage.conversation_id;
                 const isMine = nextMessage.sender_id === viewerId;
 
                 return {
@@ -1286,7 +1286,7 @@ function MessagesPage() {
               })
           );
 
-          if (nextMessage.conversation_id === activeConversationId) {
+          if (nextMessage.conversation_id === activeConversationIdRef.current) {
             setMessages((prev) => {
               if (prev.some((message) => message.id === nextMessage.id)) return prev;
               return [...prev, nextMessage];
@@ -4665,6 +4665,7 @@ const composerInputStyle: React.CSSProperties = {
   minHeight: "44px",
   maxHeight: "130px",
   resize: "none",
+  overflowY: "hidden",
   borderRadius: "18px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(255,255,255,0.065)",

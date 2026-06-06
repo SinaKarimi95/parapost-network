@@ -871,6 +871,7 @@ const composerInputStyle: React.CSSProperties = {
   minHeight: "44px",
   maxHeight: "130px",
   resize: "none",
+  overflowY: "hidden",
   borderRadius: "18px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(255,255,255,0.065)",

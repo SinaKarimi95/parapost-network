@@ -613,6 +613,50 @@ async function loadEarnedProfileBadges(targetProfileId: string) {
   return sortProfileBadges(mapped);
 }
 
+// Awards the default ParaGhost badge to a user who has none yet.
+// Idempotent — safe to call multiple times; returns early if already awarded.
+async function awardInitialBadge(userId: string): Promise<void> {
+  if (!userId) return;
+
+  // Find the default ParaGhost badge in the catalog
+  const { data: badge } = await supabase
+    .from("badges")
+    .select("id, name")
+    .or("slug.ilike.%para-ghost%,name.ilike.%paraghost%,name.ilike.%para ghost%,name.ilike.%para_ghost%")
+    .limit(1)
+    .maybeSingle();
+
+  if (!badge?.id) return; // Badge not in DB catalog — nothing to award
+
+  // Check if already awarded (prevents duplicates)
+  const { data: existing } = await supabase
+    .from("user_badges")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("badge_id", badge.id)
+    .maybeSingle();
+
+  if (existing) return; // Already has this badge
+
+  // Award the badge
+  const { error: awardError } = await supabase
+    .from("user_badges")
+    .insert([{ user_id: userId, badge_id: badge.id, awarded_at: new Date().toISOString() }]);
+
+  if (awardError) {
+    console.warn("Could not award initial badge:", awardError.message);
+    return;
+  }
+
+  // Create a badge award notification
+  await supabase.from("notifications").insert([{
+    user_id: userId,
+    type: "badge_award",
+    message: `You earned the ${badge.name} badge.`,
+    is_read: false,
+  }]);
+}
+
 function getAchievementPublicIconUrl(iconPath?: string | null) {
   if (!iconPath) return "";
 
@@ -1984,6 +2028,7 @@ export default function ProfilePage() {
   const profileActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const openPostMenuIdRef = useRef<string | null>(null);
   const profileActionsOpenRef = useRef(false);
+  const friendRequestInFlight = useRef(false);
   const [profileActionMenuPosition, setProfileActionMenuPosition] = useState({
     top: 0,
     left: 0,
@@ -2950,6 +2995,20 @@ useEffect(() => {
 useEffect(() => {
   openPostMenuIdRef.current = openPostMenuId;
 }, [openPostMenuId]);
+
+// Award the initial ParaGhost badge to this user if they have none yet.
+// Runs only on the user's own profile, after badges have finished loading.
+useEffect(() => {
+  if (!isOwnProfile || !viewerId) return;
+  if (profileBadgesLoading) return;
+  if (profileBadges.length > 0) return; // already has badges
+  awardInitialBadge(viewerId).then(() => {
+    // Reload the badges display after awarding
+    loadEarnedProfileBadges(viewerId).then((updated) => {
+      if (Array.isArray(updated)) setProfileBadges(updated);
+    });
+  });
+}, [isOwnProfile, viewerId, profileBadgesLoading, profileBadges.length]);
 
 useEffect(() => {
   profileActionsOpenRef.current = profileActionsOpen;
@@ -3978,6 +4037,8 @@ useEffect(() => {
 
   const handleSendFriendRequest = async () => {
     if (!viewerId || !profileId || isOwnProfile) return;
+    if (friendRequestInFlight.current) return;
+    friendRequestInFlight.current = true;
 
     setFriendLoading(true);
 
@@ -4024,6 +4085,7 @@ useEffect(() => {
         error instanceof Error ? error.message : "Unable to send friend request.";
       alert(message);
     } finally {
+      friendRequestInFlight.current = false;
       setFriendLoading(false);
     }
   };

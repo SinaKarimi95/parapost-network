@@ -236,6 +236,29 @@ export default function ConversationPage() {
     setMessages((messageData as MessageRow[]) || []);
     setLoading(false);
     scrollToBottom("auto");
+
+    // Mark incoming messages as read
+    await supabase
+      .from("direct_messages")
+      .update({ is_read: true })
+      .eq("conversation_id", conversationId)
+      .neq("sender_id", user.id)
+      .eq("is_read", false);
+
+    // Clear the matching dashboard notifications from this sender
+    if (nextOtherUserId) {
+      const { error: notificationReadError } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("actor_id", nextOtherUserId)
+        .in("type", ["parachat_message", "parachat_photo"])
+        .eq("is_read", false);
+
+      if (notificationReadError) {
+        console.warn("Parachat notification read warning:", notificationReadError.message);
+      }
+    }
   }, [conversationId, scrollToBottom]);
 
   useEffect(() => {
@@ -321,6 +344,24 @@ export default function ConversationPage() {
         if (prev.some((message) => message.id === data.id)) return prev;
         return [...prev, data as MessageRow];
       });
+    }
+
+    // Notify the recipient so the message shows up in their dashboard notifications
+    if (otherProfile?.id && otherProfile.id !== viewerId) {
+      const { error: notifyError } = await supabase.from("notifications").insert({
+        user_id: otherProfile.id,
+        actor_id: viewerId,
+        type: "parachat_message",
+        post_id: null,
+        comment_id: null,
+        friend_request_id: null,
+        message: null,
+        is_read: false,
+      });
+
+      if (notifyError) {
+        console.warn("Parachat notification warning:", notifyError.message);
+      }
     }
 
     await supabase
@@ -500,6 +541,7 @@ export default function ConversationPage() {
           <form onSubmit={handleSubmit} style={composerShellStyle}>
             <textarea
               ref={textareaRef}
+              className="parachat-composer-input"
               value={messageText}
               onChange={handleTextChange}
               onKeyDown={handleComposerKeyDown}

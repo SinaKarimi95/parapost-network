@@ -88,6 +88,21 @@ select {
   font-family: inherit;
 }
 
+/* Parachat composer: hide scrollbar chrome cross-browser while keeping scroll functional.
+   These properties are independent of overflow-y, so they win even when media-query
+   rules force overflow-y: auto !important on the composer textarea. */
+.parachat-composer textarea,
+.parachat-composer-input {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* old Edge/IE */
+}
+.parachat-composer textarea::-webkit-scrollbar,
+.parachat-composer-input::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;                /* Chromium / Safari / Edge */
+}
+
 /* Keep links clean by default */
 a {
   color: inherit;
